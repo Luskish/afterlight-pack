@@ -132,6 +132,9 @@
 				type: "item"
 				item: { count: 1, id: "create:wrench" }
 				count: 1 }
+				{ id: "6708F14D35022ED2"
+				type: "gamestage"
+				stage: "afterlight_cert_kinetics_i" }
 			]
 		}
 	]

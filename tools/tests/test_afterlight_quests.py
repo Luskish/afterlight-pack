@@ -254,7 +254,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_act_three_catalog_has_exact_shape_chain_and_finale_ids(self) -> None:
-        catalog = self.quests.build_catalog()[6:]
+        catalog = self.quests.build_catalog()[6:11]
         expected_quests = [
             [
                 "Machine Core", "Pulverization", "Centrifuge", "Assembly",
@@ -312,7 +312,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_act_three_finales_have_exact_memories_progression_and_stages(self) -> None:
-        catalog = self.quests.build_catalog()[6:]
+        catalog = self.quests.build_catalog()[6:11]
         progression = [
             ("kubejs:schematic_kinetic_frame", "afterlight:gate_create"),
             ("kubejs:schematic_industrial_anchor", "afterlight:gate_ie"),
@@ -350,7 +350,8 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertCountEqual(rewarded_progression, progression_ids)
 
     def test_act_three_uses_exact_special_task_shapes(self) -> None:
-        catalog = self.quests.build_catalog()[6:]
+        catalog = self.quests.build_catalog()[6:11]
+        pre_task_five = self.quests.build_catalog()[:11]
         quests = {
             quest.title: quest
             for chapter in catalog
@@ -415,21 +416,207 @@ class QuestCompilerTests(unittest.TestCase):
         ))
         self.assertEqual(
             (
-                len(self.quests.build_catalog()),
-                sum(len(chapter.quests) for chapter in self.quests.build_catalog()),
+                len(pre_task_five),
+                sum(len(chapter.quests) for chapter in pre_task_five),
                 sum(
                     len(quest.tasks)
-                    for chapter in self.quests.build_catalog()
+                    for chapter in pre_task_five
                     for quest in chapter.quests
                 ),
                 sum(
                     len(quest.rewards)
-                    for chapter in self.quests.build_catalog()
+                    for chapter in pre_task_five
                     for quest in chapter.quests
                 ),
             ),
             (11, 104, 117, 137),
         )
+
+    def test_repeatable_quest_fields_render_exact_ftb_schema(self) -> None:
+        catalog = self.make_catalog()
+        catalog[0].quests[0].can_repeat = True
+        catalog[0].quests[0].repeat_cooldown = 1200
+
+        rendered = self.quests.render_chapter(catalog[0])
+
+        self.assertIn("\t\t\tcan_repeat: true", rendered)
+        self.assertIn("\t\t\trepeat_cooldown: 1200", rendered)
+
+    def test_task_five_catalog_has_certifications_and_depot(self) -> None:
+        catalog = self.quests.build_catalog()[11:]
+
+        self.assertEqual([chapter.title for chapter in catalog], [
+            "Logistics I",
+            "Ore Loop I",
+            "Autocrafting I",
+            "Cross-Mod I",
+            "Power I",
+            "Infrastructure II",
+            "Requisition Depot: Early",
+            "Requisition Depot: Mid",
+            "Requisition Depot: Late",
+        ])
+        self.assertEqual([len(chapter.quests) for chapter in catalog], [6, 6, 6, 6, 6, 6, 1, 1, 1])
+        self.assertTrue(all(
+            chapter.group.resolved_id == "CA20F33642175B95"
+            for chapter in catalog
+        ))
+        self.assertEqual([chapter.order_index for chapter in catalog], [1, 2, 3, 4, 5, 6, 20, 21, 22])
+        full_catalog = self.quests.build_catalog()
+        self.assertEqual(
+            (
+                len(full_catalog),
+                sum(len(chapter.quests) for chapter in full_catalog),
+                sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
+                sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
+            ),
+            (20, 143, 162, 188),
+        )
+
+    def test_task_five_certification_finales_award_exact_stages(self) -> None:
+        certifications = self.quests.build_catalog()[11:17]
+        expected_stages = [
+            "afterlight_cert_logistics_i",
+            "afterlight_cert_ore_loop_i",
+            "afterlight_cert_autocrafting_i",
+            "afterlight_cert_cross_mod_i",
+            "afterlight_cert_power_i",
+            "afterlight_cert_infrastructure_ii",
+        ]
+
+        for chapter, expected_stage in zip(certifications, expected_stages):
+            stage_rewards = [
+                reward for reward in chapter.quests[-1].rewards
+                if reward.reward_type == "gamestage"
+            ]
+            self.assertEqual(len(stage_rewards), 1)
+            self.assertEqual(stage_rewards[0].data, {"stage": expected_stage})
+
+        infrastructure_proof = certifications[-1].quests[0]
+        self.assertEqual(
+            [task.data["stage"] for task in infrastructure_proof.tasks],
+            [
+                "afterlight_cert_kinetics_i",
+                "afterlight_cert_logistics_i",
+                "afterlight_cert_ore_loop_i",
+                "afterlight_cert_autocrafting_i",
+                "afterlight_cert_cross_mod_i",
+                "afterlight_cert_power_i",
+            ],
+        )
+        self.assertTrue(all(
+            task.task_type == "gamestage" for task in infrastructure_proof.tasks
+        ))
+
+    def test_task_five_power_certification_uses_real_grid_finale(self) -> None:
+        power = self.quests.build_catalog()[15]
+
+        self.assertEqual(
+            power.quests[0].dependency_ids,
+            ("6B876A865DE7A77A",),
+        )
+
+    def test_task_five_depot_consumes_chits_and_uses_choice_tables(self) -> None:
+        depots = self.quests.build_catalog()[17:]
+        expected = [
+            (8, self.quests.DEPOT_EARLY_TABLE),
+            (16, self.quests.DEPOT_MID_TABLE),
+            (32, self.quests.DEPOT_LATE_TABLE),
+        ]
+
+        for chapter, (cost, table_id) in zip(depots, expected):
+            exchange = chapter.quests[0]
+            self.assertTrue(exchange.can_repeat)
+            self.assertEqual(exchange.repeat_cooldown, 1200)
+            self.assertEqual(len(exchange.tasks), 1)
+            self.assertEqual(exchange.tasks[0].task_type, "item")
+            self.assertEqual(exchange.tasks[0].data, {
+                "item": {"count": 1, "id": "kubejs:requisition_chit"},
+                "count": self.quests.SnbtLong(cost),
+                "consume_items": True,
+            })
+            self.assertEqual(len(exchange.rewards), 1)
+            self.assertEqual(exchange.rewards[0].reward_type, "choice")
+            self.assertEqual(exchange.rewards[0].data, {"table_id": table_id})
+
+    def test_task_five_depot_tables_are_balanced_and_progression_safe(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        expected = {
+            "depot_early.snbt": (
+                self.quests.DEPOT_EARLY_TABLE,
+                {
+                    "minecraft:iron_ingot",
+                    "minecraft:copper_ingot",
+                    "minecraft:redstone",
+                    "minecraft:coal",
+                    "minecraft:bread",
+                },
+            ),
+            "depot_mid.snbt": (
+                self.quests.DEPOT_MID_TABLE,
+                {
+                    "create:brass_ingot",
+                    "mekanism:alloy_infused",
+                    "ae2:fluix_crystal",
+                    "immersiveengineering:ingot_steel",
+                    "minecraft:diamond",
+                },
+            ),
+            "depot_late.snbt": (
+                self.quests.DEPOT_LATE_TABLE,
+                {
+                    "mekanism:alloy_atomic",
+                    "ae2:calculation_processor",
+                    "immersiveengineering:component_electronic_adv",
+                    "oritech:machine_core_2",
+                    "minecraft:netherite_ingot",
+                },
+            ),
+        }
+        progression_items = {
+            "kubejs:deep_vault_key",
+            "kubejs:schematic_kinetic_frame",
+            "kubejs:schematic_industrial_anchor",
+            "kubejs:schematic_isotopic_core",
+            "kubejs:schematic_lattice_matrix",
+            "kubejs:gate_blueprint",
+            "kubejs:undercurrent_stabilizer_precursor",
+            "kubejs:ascendancy_seal",
+        }
+
+        for filename, (table_id, item_ids) in expected.items():
+            path = ROOT / "config/ftbquests/quests/reward_tables" / filename
+            parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+            self.assertEqual(int(parsed["id"], 16), table_id.value)
+            actual_items = {reward["item"]["id"] for reward in parsed["rewards"]}
+            self.assertEqual(actual_items, item_ids)
+            self.assertFalse(actual_items & progression_items)
+
+    def test_kinetics_finale_keeps_ids_and_awards_stage(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        path = ROOT / "config/ftbquests/quests/chapters/23643435F7BE74AC.snbt"
+        parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(parsed["id"], "23643435F7BE74AC")
+        self.assertEqual(
+            [quest["id"] for quest in parsed["quests"]],
+            [
+                "1641CC316D20D678",
+                "2E19596E25ADFC17",
+                "692967044603050B",
+                "490AEF80C130D8DD",
+                "93E278CD695BCE11",
+                "5ADAE277C9FEF0F1",
+            ],
+        )
+        stage_rewards = [
+            reward for reward in parsed["quests"][-1]["rewards"]
+            if reward["type"] == "gamestage"
+        ]
+        self.assertEqual(len(stage_rewards), 1)
+        self.assertEqual(stage_rewards[0]["stage"], "afterlight_cert_kinetics_i")
 
     def test_catalog_collision_detection_rejects_reused_id(self) -> None:
         catalog = self.make_catalog()

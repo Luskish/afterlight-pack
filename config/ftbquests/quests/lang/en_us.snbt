@@ -1011,4 +1011,250 @@
 		"&d[MEMORY FRAGMENT 15 RESTORED]&r"
 		"&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
 	]
+	chapter.FBA8A3335FAC821A.title: "Logistics I"
+	quest.25E5B276B9FA47ED.title: "Drawer Bank"
+	quest.25E5B276B9FA47ED.quest_subtitle: "Buffers should advertise their limits."
+	quest.25E5B276B9FA47ED.quest_desc: [
+		"Build four Functional Storage drawers as visible input and output buffers."
+		"A hidden backlog is not storage. It is a delayed incident."
+	]
+	quest.728DC4B32B1B045D.title: "Storage Controller"
+	quest.728DC4B32B1B045D.quest_subtitle: "One address, several honest inventories."
+	quest.728DC4B32B1B045D.quest_desc: [
+		"Build a Storage Controller and link the drawer bank."
+		"Test each drawer from the controller before attaching automation."
+	]
+	quest.1C6C7CF716AF3B22.title: "Item Pipes"
+	quest.1C6C7CF716AF3B22.quest_subtitle: "Routing starts with enough segments to make mistakes."
+	quest.1C6C7CF716AF3B22.quest_desc: [
+		"Produce sixteen Item Pipes and connect a source, buffer, and destination."
+		"Do not connect the final machine until the buffer path is visible."
+	]
+	quest.E9B64516EEE84F33.title: "Filtered Route"
+	quest.E9B64516EEE84F33.quest_subtitle: "A route without a filter is a future mixture."
+	quest.E9B64516EEE84F33.quest_desc: [
+		"Build an Improved Pipe Upgrade, then configure an allowlist on one destination."
+		"The task verifies the upgrade. Send a wrong item to prove the filter refuses it."
+	]
+	quest.8446A553E485B528.title: "Round-Robin Routing"
+	quest.8446A553E485B528.quest_subtitle: "Equal destinations deserve equal inconvenience."
+	quest.8446A553E485B528.quest_desc: [
+		"Build an Advanced Pipe Upgrade and enable round-robin distribution across two outputs."
+		"Count several deliveries. One alternating pair is not a stability test."
+	]
+	quest.B107D8813D59B2FF.title: "Overflow Safety"
+	quest.B107D8813D59B2FF.quest_subtitle: "Full output must stop the line without losing matter."
+	quest.B107D8813D59B2FF.quest_desc: [
+		"Build a Void Upgrade for a deliberately safe overflow drawer, then test a full normal output."
+		"Only disposable byproducts belong behind the void path. Valuable output must backpressure cleanly."
+	]
+	chapter.16E0B20162F6DAE5.title: "Ore Loop I"
+	quest.B6C4194B7CFEFF70.title: "Crushing Stage"
+	quest.B6C4194B7CFEFF70.quest_subtitle: "First machine, first controlled reduction."
+	quest.B6C4194B7CFEFF70.quest_desc: [
+		"Build a Mekanism Crusher and give it dedicated input and output buffers."
+		"This certification tests a three-machine loop, not a shared machine pile."
+	]
+	quest.9AE92DE8CA81283E.title: "Enrichment Stage"
+	quest.9AE92DE8CA81283E.quest_subtitle: "Intermediate material needs a named destination."
+	quest.9AE92DE8CA81283E.quest_desc: [
+		"Build an Enrichment Chamber and route the Crusher output into it."
+		"Keep a bypass chest available while the line is being tuned."
+	]
+	quest.325B8D7EEA0D7D7E.title: "Smelting Stage"
+	quest.325B8D7EEA0D7D7E.quest_subtitle: "The third machine should finish, not improvise."
+	quest.325B8D7EEA0D7D7E.quest_desc: [
+		"Build an Energized Smelter and complete the processing chain."
+		"Lock its input to the expected intermediate before unattended operation."
+	]
+	quest.39A3C4D0124436A8.title: "Measured Buffer"
+	quest.39A3C4D0124436A8.quest_subtitle: "A bin makes congestion visible."
+	quest.39A3C4D0124436A8.quest_desc: [
+		"Build a Basic Bin as the final output buffer."
+		"Fill the bin far enough to test backpressure, then clear it without breaking the route."
+	]
+	quest.4FB05F3A79B495D5.title: "Energy Budget"
+	quest.4FB05F3A79B495D5.quest_subtitle: "Five million FE, transferred deliberately."
+	quest.4FB05F3A79B495D5.quest_desc: [
+		"Submit five million FE at no more than 100,000 FE per transfer."
+		"The limit catches lines that rely on one uncontrolled power spike."
+	]
+	quest.66CDE7B061D8DA5C.title: "256-Ingot Run"
+	quest.66CDE7B061D8DA5C.quest_subtitle: "One stack is a sample. Four stacks are a process."
+	quest.66CDE7B061D8DA5C.quest_desc: [
+		"Produce 256 Osmium Ingots through the complete loop."
+		"Inventory quantity is detectable. Observe the line long enough to verify recovery from a full output."
+	]
+	chapter.775CD739E3318A7E.title: "Autocrafting I"
+	quest.3011977E372A3BC6.title: "Pattern Provider"
+	quest.3011977E372A3BC6.quest_subtitle: "A recipe needs a network address."
+	quest.3011977E372A3BC6.quest_desc: [
+		"Build a Pattern Provider and connect it to a channel-managed AE2 network."
+		"Keep the provider visible until every adjacent machine is proven."
+	]
+	quest.A86A4CEE8655F1C7.title: "Molecular Assembler"
+	quest.A86A4CEE8655F1C7.quest_subtitle: "The network may now act on its memory."
+	quest.A86A4CEE8655F1C7.quest_desc: [
+		"Build four Molecular Assemblers around the provider."
+		"Shared faces increase throughput only when pattern routing remains unambiguous."
+	]
+	quest.F84F7B6D01B73C00.title: "Crafting CPU"
+	quest.F84F7B6D01B73C00.quest_subtitle: "Queued work requires explicit memory."
+	quest.F84F7B6D01B73C00.quest_desc: [
+		"Build a 4K Crafting Storage block and form a valid crafting CPU."
+		"The task sees the block. Confirm the multiblock appears in the crafting status screen."
+	]
+	quest.EF08C63EA2CCD60A.title: "Encoded Set"
+	quest.EF08C63EA2CCD60A.quest_subtitle: "Sixteen instructions reveal routing mistakes quickly."
+	quest.EF08C63EA2CCD60A.quest_desc: [
+		"Encode sixteen Crafting Patterns across more than one processing depth."
+		"Include at least one recipe that depends on another encoded recipe."
+	]
+	quest.83220200E8B9DBF4.title: "256-Item Order"
+	quest.83220200E8B9DBF4.quest_subtitle: "A useful request is large enough to expose starvation."
+	quest.83220200E8B9DBF4.quest_desc: [
+		"Autocraft 256 Quartz Glass in one order."
+		"The task verifies the completed quantity. The crafting monitor is your proof of provenance."
+	]
+	quest.42EE25F560AE65CD.title: "Failure Recovery"
+	quest.42EE25F560AE65CD.quest_subtitle: "Interrupt the line before trusting it."
+	quest.42EE25F560AE65CD.quest_desc: [
+		"Block one assembler output, cancel a job, clear the obstruction, and submit the checkmark after recovery."
+		"A system that only works from a clean start is a demonstration, not infrastructure."
+	]
+	chapter.98471B3E458EAB62.title: "Cross-Mod I"
+	quest.02BA27AF63721ACA.title: "Create Input"
+	quest.02BA27AF63721ACA.quest_subtitle: "Mechanical delivery begins the chain."
+	quest.02BA27AF63721ACA.quest_desc: [
+		"Produce eight Chutes and use Create to meter raw material into the process buffer."
+		"A belt line should stop at the buffer when the downstream system is unavailable."
+	]
+	quest.761F4F3BCF42CE42.title: "Mekanism Process"
+	quest.761F4F3BCF42CE42.quest_subtitle: "One ecosystem transforms what another delivers."
+	quest.761F4F3BCF42CE42.quest_desc: [
+		"Route the buffered input through a dedicated Mekanism Crusher."
+		"Do not let direct insertion bypass the visible input buffer."
+	]
+	quest.395EBD42A8D0F2CC.title: "IE Output"
+	quest.395EBD42A8D0F2CC.quest_subtitle: "Heavy machinery closes the material loop."
+	quest.395EBD42A8D0F2CC.quest_desc: [
+		"Build an Immersive Engineering Metal Press as the final processing step."
+		"Provide a separate output inventory so a full AE2 network cannot trap the press conveyor."
+	]
+	quest.7264694AABFD343B.title: "AE2 Stocking"
+	quest.7264694AABFD343B.quest_subtitle: "The lattice should request, not merely receive."
+	quest.7264694AABFD343B.quest_desc: [
+		"Build two ME Interfaces and configure one stocked output target."
+		"Test both replenishment and the behavior when the destination is already full."
+	]
+	quest.11B87D7ED3233F04.title: "Steel Batch"
+	quest.11B87D7ED3233F04.quest_subtitle: "Two hundred fifty-six units cross four systems."
+	quest.11B87D7ED3233F04.quest_desc: [
+		"Produce 256 Steel Ingots through the connected chain."
+		"The item count cannot prove the route. Watch the full batch and inspect every buffer afterward."
+	]
+	quest.E1F5D15817ED5EFD.title: "Cross-System Recovery"
+	quest.E1F5D15817ED5EFD.quest_subtitle: "Disconnect one boundary and recover without item loss."
+	quest.E1F5D15817ED5EFD.quest_desc: [
+		"Break one transport boundary, allow the upstream buffer to fill, reconnect it, and submit the checkmark."
+		"Certification records recovery behavior, not merely a successful first pass."
+	]
+	chapter.8FAB5AA8294D4487.title: "Power I"
+	quest.E4659C3AE503FE5D.title: "Dedicated Generation"
+	quest.E4659C3AE503FE5D.quest_subtitle: "Infrastructure power should have one accountable source."
+	quest.E4659C3AE503FE5D.quest_desc: [
+		"Build a Nitro Reactor for the certification grid."
+		"Keep survival storage isolated until the new grid has passed its shutdown test."
+	]
+	quest.E804D5D74CD20FE6.title: "Local Reserve"
+	quest.E804D5D74CD20FE6.quest_subtitle: "A cell buys time to stop cleanly."
+	quest.E804D5D74CD20FE6.quest_desc: [
+		"Build a Nitro Energy Cell and place it between generation and the distribution boundary."
+		"Reserve capacity is useful only when its discharge path is intentional."
+	]
+	quest.9C25A0AC671BEE49.title: "Induction Buffer"
+	quest.9C25A0AC671BEE49.quest_subtitle: "Sixteen casings make the second reserve inspectable."
+	quest.9C25A0AC671BEE49.quest_desc: [
+		"Produce sixteen Induction Casings and form a Mekanism induction matrix."
+		"Use the matrix to separate short spikes from sustained load."
+	]
+	quest.071E21B340A9E74B.title: "Priority Routing"
+	quest.071E21B340A9E74B.quest_subtitle: "One plug imports. One point obeys priority."
+	quest.071E21B340A9E74B.quest_desc: [
+		"Build a Flux Plug and Flux Point, then assign explicit network priorities."
+		"Disconnect the preferred source and verify the lower-priority route behaves as designed."
+	]
+	quest.D4094B71582818F6.title: "100M FE Delivery"
+	quest.D4094B71582818F6.quest_subtitle: "Capacity becomes useful when it can be delivered."
+	quest.D4094B71582818F6.quest_desc: [
+		"Submit one hundred million FE at no more than 1,000,000 FE per transfer."
+		"Observe the reserves during submission and confirm no survival system browns out."
+	]
+	quest.FC9EA276C2D84333.title: "Emergency Shutdown"
+	quest.FC9EA276C2D84333.quest_subtitle: "A safe grid stops before it becomes a story fragment."
+	quest.FC9EA276C2D84333.quest_desc: [
+		"Trigger the emergency cutoff, verify generation stops feeding the line, then restore service in order."
+		"Submit the checkmark only after storage, routing, and consumers all recover."
+	]
+	chapter.D070DE6E2B300F4B.title: "Infrastructure II"
+	quest.7CB2D7D361BEA4C4.title: "Six Certifications"
+	quest.7CB2D7D361BEA4C4.quest_subtitle: "Separate proofs become one operating standard."
+	quest.7CB2D7D361BEA4C4.quest_desc: [
+		"Complete Kinetics, Logistics, Ore Loop, Autocrafting, Cross-Mod, and Power certifications."
+		"The stage tasks verify claimed certificates before the bulk trial begins."
+	]
+	quest.0880A01ABFC1FAB0.title: "Kinetic Quota"
+	quest.0880A01ABFC1FAB0.quest_subtitle: "One thousand twenty-four sheets without hand feeding."
+	quest.0880A01ABFC1FAB0.quest_desc: [
+		"Produce 1,024 Iron Sheets through the certified kinetic line."
+		"Do not refill or clear a machine manually during the observed run."
+	]
+	quest.C4FEE3F4874BF144.title: "Lattice Quota"
+	quest.C4FEE3F4874BF144.quest_subtitle: "Five hundred twelve processors, all requested."
+	quest.C4FEE3F4874BF144.quest_desc: [
+		"Autocraft 512 Logic Processors through the certified lattice."
+		"Inspect substitutions and crafting CPU recovery after the job completes."
+	]
+	quest.6957697A48020CDB.title: "Pressure Quota"
+	quest.6957697A48020CDB.quest_subtitle: "Five hundred twelve circuits under stable pressure."
+	quest.6957697A48020CDB.quest_desc: [
+		"Produce 512 Printed Circuit Boards through the pressure line."
+		"Confirm pressure, etching supply, and output handling remain unattended."
+	]
+	quest.F92E405CE058FD1A.title: "Industry Quota"
+	quest.F92E405CE058FD1A.quest_subtitle: "One thousand twenty-four ingots through shared logistics."
+	quest.F92E405CE058FD1A.quest_desc: [
+		"Produce 1,024 Steel Ingots while the other certified systems remain online."
+		"The count proves inventory. Your logs prove the factory did not borrow manual intervention."
+	]
+	quest.E524EE78235F0942.title: "Unattended Cycle"
+	quest.E524EE78235F0942.quest_subtitle: "Leave the facility. Return to evidence, not hope."
+	quest.E524EE78235F0942.quest_desc: [
+		"Run all four quotas unattended through one complete buffer cycle, then inspect every failure boundary."
+		"Submit the checkmark when full outputs, power loss, and restart recovery have all been tested."
+	]
+	chapter.F58F5AEF697F7EFD.title: "Requisition Depot: Early"
+	quest.44C4CC196D2FB334.title: "Early Supply Exchange"
+	quest.44C4CC196D2FB334.quest_subtitle: "8 Chits authorize one selected supply package."
+	quest.44C4CC196D2FB334.quest_desc: [
+		"Submit 8 Requisition Chits and choose one early-tier supply package."
+		"The Depot returns materials, not progression keys. Choice rewards must be claimed individually."
+		"The exchange may be repeated after the cooldown. Chits are consumed on submission."
+	]
+	chapter.FC611E8A94BC5CE5.title: "Requisition Depot: Mid"
+	quest.22699BF1FF1633C4.title: "Mid Supply Exchange"
+	quest.22699BF1FF1633C4.quest_subtitle: "16 Chits authorize one selected supply package."
+	quest.22699BF1FF1633C4.quest_desc: [
+		"Submit 16 Requisition Chits and choose one mid-tier supply package."
+		"The Depot returns materials, not progression keys. Choice rewards must be claimed individually."
+		"The exchange may be repeated after the cooldown. Chits are consumed on submission."
+	]
+	chapter.099200314296766A.title: "Requisition Depot: Late"
+	quest.0CD3B784A9C67990.title: "Late Supply Exchange"
+	quest.0CD3B784A9C67990.quest_subtitle: "32 Chits authorize one selected supply package."
+	quest.0CD3B784A9C67990.quest_desc: [
+		"Submit 32 Requisition Chits and choose one late-tier supply package."
+		"The Depot returns materials, not progression keys. Choice rewards must be claimed individually."
+		"The exchange may be repeated after the cooldown. Chits are consumed on submission."
+	]
 }

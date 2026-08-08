@@ -1,0 +1,36 @@
+{
+	id: "182578C414DC8A45"
+	order_index: 11
+	filename: "depot_mid"
+	icon: { id: "create:brass_ingot" }
+	loot_size: 1
+	use_title: true
+	rewards: [
+		{ id: "B218AA146C6A032A"
+			type: "item"
+			item: { count: 16, id: "create:brass_ingot" }
+			count: 16
+			weight: 1.0f }
+		{ id: "46EA7BCA0A604FC4"
+			type: "item"
+			item: { count: 8, id: "mekanism:alloy_infused" }
+			count: 8
+			weight: 1.0f }
+		{ id: "42B7D981C11D3626"
+			type: "item"
+			item: { count: 16, id: "ae2:fluix_crystal" }
+			count: 16
+			weight: 1.0f }
+		{ id: "06DD280620C1B72A"
+			type: "item"
+			item: { count: 16, id: "immersiveengineering:ingot_steel" }
+			count: 16
+			weight: 1.0f }
+		{ id: "C2B61FCEA14442E4"
+			type: "item"
+			item: { count: 8, id: "minecraft:diamond" }
+			count: 8
+			weight: 1.0f }
+	]
+	title: "Requisition Depot: Mid"
+}

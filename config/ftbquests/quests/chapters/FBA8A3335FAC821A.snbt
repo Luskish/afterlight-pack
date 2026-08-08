@@ -1,0 +1,161 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "FBA8A3335FAC821A"
+	group: "CA20F33642175B95"
+	icon: { id: "functionalstorage:storage_controller" }
+	id: "FBA8A3335FAC821A"
+	images: [ ]
+	order_index: 1
+	quest_links: [ ]
+	quests: [
+		{
+			id: "25E5B276B9FA47ED"
+			dependencies: ["5ADAE277C9FEF0F1"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "3E9B9F4610A7FE37"
+					type: "item"
+					item: { count: 1, id: "functionalstorage:oak_1" }
+					count: 4L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "19FF3389D67034BC"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "728DC4B32B1B045D"
+			dependencies: ["25E5B276B9FA47ED"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "38D5EBAEE9FDB49B"
+					type: "item"
+					item: { count: 1, id: "functionalstorage:storage_controller" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "DBFD5E3E271A0B90"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "1C6C7CF716AF3B22"
+			dependencies: ["728DC4B32B1B045D"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "997A244952E9C1D9"
+					type: "item"
+					item: { count: 1, id: "pipez:item_pipe" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4A6EC0F642D08DE8"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "E9B64516EEE84F33"
+			dependencies: ["1C6C7CF716AF3B22"]
+			x: 6.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "5FA0E8C88434F91A"
+					type: "item"
+					item: { count: 1, id: "pipez:improved_upgrade" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "60E109D81D6D408E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "8446A553E485B528"
+			dependencies: ["E9B64516EEE84F33"]
+			x: 8.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "54F321BC0476F5A5"
+					type: "item"
+					item: { count: 1, id: "pipez:advanced_upgrade" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "B71AC3B09C44B9C4"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "B107D8813D59B2FF"
+			dependencies: ["8446A553E485B528"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "A167C291C81DCE84"
+					type: "item"
+					item: { count: 1, id: "functionalstorage:void_upgrade" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "304CCC323F388AA1"
+					type: "item"
+					item: { count: 10, id: "kubejs:requisition_chit" }
+					count: 10
+				}
+				{
+					id: "83968AB4138E9D3B"
+					type: "xp"
+					xp: 300
+				}
+				{
+					id: "B20C97CF4F1BA983"
+					type: "gamestage"
+					stage: "afterlight_cert_logistics_i"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,158 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "98471B3E458EAB62"
+	group: "CA20F33642175B95"
+	icon: { id: "immersiveengineering:metal_press" }
+	id: "98471B3E458EAB62"
+	images: [ ]
+	order_index: 4
+	quest_links: [ ]
+	quests: [
+		{
+			id: "02BA27AF63721ACA"
+			dependencies: ["66CDE7B061D8DA5C", "42EE25F560AE65CD"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "239AAFA3BE80706A"
+					type: "item"
+					item: { count: 1, id: "create:chute" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "C0005994D134257E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "761F4F3BCF42CE42"
+			dependencies: ["02BA27AF63721ACA"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "8FBA3062FEC0B421"
+					type: "item"
+					item: { count: 1, id: "mekanism:crusher" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "04A71A62ED98F39E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "395EBD42A8D0F2CC"
+			dependencies: ["761F4F3BCF42CE42"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "689B4556402FAA78"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:metal_press" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "C9F701E3BCB9BD88"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "7264694AABFD343B"
+			dependencies: ["395EBD42A8D0F2CC"]
+			x: 6.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "30A40C97224F6494"
+					type: "item"
+					item: { count: 1, id: "ae2:interface" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "534FFFE342F25C3B"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "11B87D7ED3233F04"
+			dependencies: ["7264694AABFD343B"]
+			x: 8.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "4DBFE04EBC41F9CD"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					count: 256L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "BA3AD5202B4B08B3"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "E1F5D15817ED5EFD"
+			dependencies: ["11B87D7ED3233F04"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "436724F8E723EC3E"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "A7F72DC527F8AD7F"
+					type: "item"
+					item: { count: 10, id: "kubejs:requisition_chit" }
+					count: 10
+				}
+				{
+					id: "9F4537EAB2E779DF"
+					type: "xp"
+					xp: 300
+				}
+				{
+					id: "DE9C1DE1D7FDE28B"
+					type: "gamestage"
+					stage: "afterlight_cert_cross_mod_i"
+				}
+			]
+		}
+	]
+}

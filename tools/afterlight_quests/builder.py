@@ -21,6 +21,8 @@ VANILLA_ITEM_ALLOWLIST = frozenset(
         "minecraft:blast_furnace",
         "minecraft:bread",
         "minecraft:chiseled_tuff_bricks",
+        "minecraft:coal",
+        "minecraft:copper_ingot",
         "minecraft:crafting_table",
         "minecraft:diamond",
         "minecraft:enchanted_golden_apple",
@@ -28,6 +30,7 @@ VANILLA_ITEM_ALLOWLIST = frozenset(
         "minecraft:golden_apple",
         "minecraft:iron_block",
         "minecraft:iron_ingot",
+        "minecraft:netherite_ingot",
         "minecraft:netherite_scrap",
         "minecraft:netherrack",
         "minecraft:oak_planks",
@@ -127,6 +130,8 @@ class QuestSpec:
     shape: str = ""
     size: float | None = None
     optional: bool | None = None
+    can_repeat: bool | None = None
+    repeat_cooldown: int | None = None
 
     @property
     def id(self) -> str:
@@ -256,6 +261,10 @@ def render_chapter(chapter: ChapterSpec) -> str:
             quest_fields.append(("size", quest.size))
         if quest.optional is not None:
             quest_fields.append(("optional", quest.optional))
+        if quest.can_repeat is not None:
+            quest_fields.append(("can_repeat", quest.can_repeat))
+        if quest.repeat_cooldown is not None:
+            quest_fields.append(("repeat_cooldown", quest.repeat_cooldown))
 
         lines.append("\t\t{")
         for key, value in quest_fields:

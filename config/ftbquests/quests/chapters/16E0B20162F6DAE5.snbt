@@ -1,0 +1,160 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "16E0B20162F6DAE5"
+	group: "CA20F33642175B95"
+	icon: { id: "mekanism:enrichment_chamber" }
+	id: "16E0B20162F6DAE5"
+	images: [ ]
+	order_index: 2
+	quest_links: [ ]
+	quests: [
+		{
+			id: "B6C4194B7CFEFF70"
+			dependencies: ["DA407B47132C07C6", "B107D8813D59B2FF"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "5BF68C8F99B53A72"
+					type: "item"
+					item: { count: 1, id: "mekanism:crusher" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "71495E043E48F565"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "9AE92DE8CA81283E"
+			dependencies: ["B6C4194B7CFEFF70"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "28CF948D7FE0F995"
+					type: "item"
+					item: { count: 1, id: "mekanism:enrichment_chamber" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "B1E6422F1649715F"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "325B8D7EEA0D7D7E"
+			dependencies: ["9AE92DE8CA81283E"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "754B9F346D54420E"
+					type: "item"
+					item: { count: 1, id: "mekanism:energized_smelter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "59F775425D76781F"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "39A3C4D0124436A8"
+			dependencies: ["325B8D7EEA0D7D7E"]
+			x: 6.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "2B983D7C5BE4C39F"
+					type: "item"
+					item: { count: 1, id: "mekanism:basic_bin" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "64BB51181CCC0463"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "4FB05F3A79B495D5"
+			dependencies: ["325B8D7EEA0D7D7E"]
+			x: 6.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "2314D214A12CABD6"
+					type: "forge_energy"
+					value: 5000000L
+					max_input: 100000L
+				}
+			]
+			rewards: [
+				{
+					id: "D82094B7A3327256"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "66CDE7B061D8DA5C"
+			dependencies: ["39A3C4D0124436A8", "4FB05F3A79B495D5"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "83EDA6E84C30FCEE"
+					type: "item"
+					item: { count: 1, id: "mekanism:ingot_osmium" }
+					count: 256L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "55C80C840C81EFED"
+					type: "item"
+					item: { count: 10, id: "kubejs:requisition_chit" }
+					count: 10
+				}
+				{
+					id: "88FFA0E0EE319CB8"
+					type: "xp"
+					xp: 300
+				}
+				{
+					id: "04900EE55C47FBBA"
+					type: "gamestage"
+					stage: "afterlight_cert_ore_loop_i"
+				}
+			]
+		}
+	]
+}

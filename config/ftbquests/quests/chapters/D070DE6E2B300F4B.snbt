@@ -1,0 +1,181 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "D070DE6E2B300F4B"
+	group: "CA20F33642175B95"
+	icon: { id: "ae2:logic_processor" }
+	id: "D070DE6E2B300F4B"
+	images: [ ]
+	order_index: 6
+	quest_links: [ ]
+	quests: [
+		{
+			id: "7CB2D7D361BEA4C4"
+			dependencies: ["B107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "E1F5D15817ED5EFD", "FC9EA276C2D84333"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "43E614C7900CAC9B"
+					type: "gamestage"
+					stage: "afterlight_cert_kinetics_i"
+				}
+				{
+					id: "0EE35DF02B88A918"
+					type: "gamestage"
+					stage: "afterlight_cert_logistics_i"
+				}
+				{
+					id: "D8E060EBA4D857B7"
+					type: "gamestage"
+					stage: "afterlight_cert_ore_loop_i"
+				}
+				{
+					id: "0E714D06D9F64870"
+					type: "gamestage"
+					stage: "afterlight_cert_autocrafting_i"
+				}
+				{
+					id: "93234178ED1BF454"
+					type: "gamestage"
+					stage: "afterlight_cert_cross_mod_i"
+				}
+				{
+					id: "EFC030CEDC471D36"
+					type: "gamestage"
+					stage: "afterlight_cert_power_i"
+				}
+			]
+			rewards: [
+				{
+					id: "1CD8C5F9F73C112E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "0880A01ABFC1FAB0"
+			dependencies: ["7CB2D7D361BEA4C4"]
+			x: 2.0d
+			y: -2.0d
+			tasks: [
+				{
+					id: "73060E37DDB3FD85"
+					type: "item"
+					item: { count: 1, id: "create:iron_sheet" }
+					count: 1024L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "5F4D9DE69E070802"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "C4FEE3F4874BF144"
+			dependencies: ["7CB2D7D361BEA4C4"]
+			x: 2.0d
+			y: -0.5d
+			tasks: [
+				{
+					id: "62278CEA0790420C"
+					type: "item"
+					item: { count: 1, id: "ae2:logic_processor" }
+					count: 512L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "72C26FBAA231E1D4"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "6957697A48020CDB"
+			dependencies: ["7CB2D7D361BEA4C4"]
+			x: 2.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "C57E1ACF5AD62CD2"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
+					count: 512L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "926A657840ED1B1C"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F92E405CE058FD1A"
+			dependencies: ["7CB2D7D361BEA4C4"]
+			x: 2.0d
+			y: 2.5d
+			tasks: [
+				{
+					id: "1679C5714C2F2A74"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					count: 1024L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "DD403721BE433BE7"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "E524EE78235F0942"
+			dependencies: ["0880A01ABFC1FAB0", "C4FEE3F4874BF144", "6957697A48020CDB", "F92E405CE058FD1A"]
+			x: 5.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "6189BA7C78E546C4"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "A6460851C20380AD"
+					type: "item"
+					item: { count: 10, id: "kubejs:requisition_chit" }
+					count: 10
+				}
+				{
+					id: "92A6C6D52CA0CE7E"
+					type: "xp"
+					xp: 300
+				}
+				{
+					id: "48A0AB1E5D0ED4E6"
+					type: "gamestage"
+					stage: "afterlight_cert_infrastructure_ii"
+				}
+			]
+		}
+	]
+}

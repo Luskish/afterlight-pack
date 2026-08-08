@@ -16,11 +16,19 @@ from .builder import (
     validate_quests,
     write_catalog,
 )
-from .catalog import build_catalog
+from .catalog import (
+    DEPOT_EARLY_TABLE,
+    DEPOT_LATE_TABLE,
+    DEPOT_MID_TABLE,
+    build_catalog,
+)
 
 
 __all__ = [
     "ChapterSpec",
+    "DEPOT_EARLY_TABLE",
+    "DEPOT_LATE_TABLE",
+    "DEPOT_MID_TABLE",
     "GroupSpec",
     "KUBEJS_ITEM_ALLOWLIST",
     "QuestCounts",

@@ -23,6 +23,9 @@ ATLAS = GroupSpec(
 )
 
 ASCENDANCY_CACHE_TABLE = SnbtLong(10622272618344871329)
+DEPOT_EARLY_TABLE = SnbtLong(1722236105617115092)
+DEPOT_MID_TABLE = SnbtLong(1739929614607485509)
+DEPOT_LATE_TABLE = SnbtLong(13373195924909545525)
 CHAPTER_FIVE_FINALE = "DA407B47132C07C6"
 
 
@@ -76,6 +79,25 @@ def _progression_finale_rewards(
     return (
         *_finale_rewards(quest_slug, chits, xp),
         _item_reward(quest_slug, item_id, 1, "progression"),
+        RewardSpec(
+            slug=f"{quest_slug}/reward/stage",
+            reward_type="gamestage",
+            data={"stage": stage},
+        ),
+    )
+
+
+def _certification_rewards(
+    quest_slug: str,
+    stage: str,
+) -> tuple[RewardSpec, ...]:
+    return (
+        _item_reward(quest_slug, "kubejs:requisition_chit", 10, "chits"),
+        RewardSpec(
+            slug=f"{quest_slug}/reward/xp",
+            reward_type="xp",
+            data={"xp": 300},
+        ),
         RewardSpec(
             slug=f"{quest_slug}/reward/stage",
             reward_type="gamestage",
@@ -187,6 +209,67 @@ def _task_quest(
             if finale
             else _routine_rewards(slug)
         ),
+    )
+
+
+def _certification_quest(
+    slug: str,
+    title: str,
+    subtitle: str,
+    description: tuple[str, ...],
+    task_type: str,
+    task_data: Mapping[str, object],
+    dependencies: tuple[str, ...],
+    x: float,
+    y: float,
+    *,
+    stage: str = "",
+) -> QuestSpec:
+    return QuestSpec(
+        slug=slug,
+        title=title,
+        subtitle=subtitle,
+        description=description,
+        x=x,
+        y=y,
+        dependencies=dependencies,
+        tasks=(TaskSpec(f"{slug}/task", task_type, task_data),),
+        rewards=(
+            _certification_rewards(slug, stage)
+            if stage
+            else _routine_rewards(slug)
+        ),
+    )
+
+
+def _certification_item_quest(
+    slug: str,
+    title: str,
+    subtitle: str,
+    description: tuple[str, ...],
+    item_id: str,
+    count: int,
+    dependencies: tuple[str, ...],
+    x: float,
+    y: float,
+    *,
+    stage: str = "",
+) -> QuestSpec:
+    return _certification_quest(
+        slug,
+        title,
+        subtitle,
+        description,
+        "item",
+        {
+            "item": {"count": 1, "id": item_id},
+            "count": SnbtLong(count),
+            "consume_items": False,
+        },
+        dependencies,
+        x,
+        y,
+        stage=stage,
     )
 
 
@@ -954,6 +1037,348 @@ def _chapter_sixteen(previous: str) -> ChapterSpec:
     )
 
 
+def _certification_logistics() -> ChapterSpec:
+    drawer = "certifications/logistics-i/drawer-bank"
+    controller = "certifications/logistics-i/controller"
+    pipes = "certifications/logistics-i/item-pipes"
+    filters = "certifications/logistics-i/filtered-route"
+    round_robin = "certifications/logistics-i/round-robin"
+    finale = "certifications/logistics-i/overflow-safety"
+    quests = (
+        _certification_item_quest(drawer, "Drawer Bank", "Buffers should advertise their limits.", (
+            "Build four Functional Storage drawers as visible input and output buffers.",
+            "A hidden backlog is not storage. It is a delayed incident.",
+        ), "functionalstorage:oak_1", 4, ("5ADAE277C9FEF0F1",), 0.0, 0.0),
+        _certification_item_quest(controller, "Storage Controller", "One address, several honest inventories.", (
+            "Build a Storage Controller and link the drawer bank.",
+            "Test each drawer from the controller before attaching automation.",
+        ), "functionalstorage:storage_controller", 1, (drawer,), 2.0, 0.0),
+        _certification_item_quest(pipes, "Item Pipes", "Routing starts with enough segments to make mistakes.", (
+            "Produce sixteen Item Pipes and connect a source, buffer, and destination.",
+            "Do not connect the final machine until the buffer path is visible.",
+        ), "pipez:item_pipe", 16, (controller,), 4.0, 0.0),
+        _certification_item_quest(filters, "Filtered Route", "A route without a filter is a future mixture.", (
+            "Build an Improved Pipe Upgrade, then configure an allowlist on one destination.",
+            "The task verifies the upgrade. Send a wrong item to prove the filter refuses it.",
+        ), "pipez:improved_upgrade", 1, (pipes,), 6.0, -1.0),
+        _certification_item_quest(round_robin, "Round-Robin Routing", "Equal destinations deserve equal inconvenience.", (
+            "Build an Advanced Pipe Upgrade and enable round-robin distribution across two outputs.",
+            "Count several deliveries. One alternating pair is not a stability test.",
+        ), "pipez:advanced_upgrade", 1, (filters,), 8.0, -1.0),
+        _certification_item_quest(finale, "Overflow Safety", "Full output must stop the line without losing matter.", (
+            "Build a Void Upgrade for a deliberately safe overflow drawer, then test a full normal output.",
+            "Only disposable byproducts belong behind the void path. Valuable output must backpressure cleanly.",
+        ), "functionalstorage:void_upgrade", 1, (round_robin,), 10.0, 0.0,
+            stage="afterlight_cert_logistics_i"),
+    )
+    return ChapterSpec(
+        "certifications/logistics-i", "Logistics I", CERTIFICATIONS,
+        "functionalstorage:storage_controller", 1, quests,
+    )
+
+
+def _certification_ore_loop(logistics_finale: str) -> ChapterSpec:
+    crusher = "certifications/ore-loop-i/crusher"
+    enrichment = "certifications/ore-loop-i/enrichment"
+    smelter = "certifications/ore-loop-i/smelter"
+    buffer = "certifications/ore-loop-i/buffer"
+    energy = "certifications/ore-loop-i/energy"
+    finale = "certifications/ore-loop-i/throughput"
+    quests = (
+        _certification_item_quest(crusher, "Crushing Stage", "First machine, first controlled reduction.", (
+            "Build a Mekanism Crusher and give it dedicated input and output buffers.",
+            "This certification tests a three-machine loop, not a shared machine pile.",
+        ), "mekanism:crusher", 1, (CHAPTER_FIVE_FINALE, logistics_finale), 0.0, 0.0),
+        _certification_item_quest(enrichment, "Enrichment Stage", "Intermediate material needs a named destination.", (
+            "Build an Enrichment Chamber and route the Crusher output into it.",
+            "Keep a bypass chest available while the line is being tuned.",
+        ), "mekanism:enrichment_chamber", 1, (crusher,), 2.0, 0.0),
+        _certification_item_quest(smelter, "Smelting Stage", "The third machine should finish, not improvise.", (
+            "Build an Energized Smelter and complete the processing chain.",
+            "Lock its input to the expected intermediate before unattended operation.",
+        ), "mekanism:energized_smelter", 1, (enrichment,), 4.0, 0.0),
+        _certification_item_quest(buffer, "Measured Buffer", "A bin makes congestion visible.", (
+            "Build a Basic Bin as the final output buffer.",
+            "Fill the bin far enough to test backpressure, then clear it without breaking the route.",
+        ), "mekanism:basic_bin", 1, (smelter,), 6.0, -1.0),
+        _certification_quest(energy, "Energy Budget", "Five million FE, transferred deliberately.", (
+            "Submit five million FE at no more than 100,000 FE per transfer.",
+            "The limit catches lines that rely on one uncontrolled power spike.",
+        ), "forge_energy", {
+            "value": SnbtLong(5_000_000),
+            "max_input": SnbtLong(100_000),
+        }, (smelter,), 6.0, 1.0),
+        _certification_item_quest(finale, "256-Ingot Run", "One stack is a sample. Four stacks are a process.", (
+            "Produce 256 Osmium Ingots through the complete loop.",
+            "Inventory quantity is detectable. Observe the line long enough to verify recovery from a full output.",
+        ), "mekanism:ingot_osmium", 256, (buffer, energy), 8.0, 0.0,
+            stage="afterlight_cert_ore_loop_i"),
+    )
+    return ChapterSpec(
+        "certifications/ore-loop-i", "Ore Loop I", CERTIFICATIONS,
+        "mekanism:enrichment_chamber", 2, quests,
+    )
+
+
+def _certification_autocrafting(logistics_finale: str) -> ChapterSpec:
+    provider = "certifications/autocrafting-i/provider"
+    assembler = "certifications/autocrafting-i/assembler"
+    cpu = "certifications/autocrafting-i/cpu"
+    patterns = "certifications/autocrafting-i/patterns"
+    order = "certifications/autocrafting-i/order"
+    finale = "certifications/autocrafting-i/recovery"
+    quests = (
+        _certification_item_quest(provider, "Pattern Provider", "A recipe needs a network address.", (
+            "Build a Pattern Provider and connect it to a channel-managed AE2 network.",
+            "Keep the provider visible until every adjacent machine is proven.",
+        ), "ae2:pattern_provider", 1, ("story/06-lattice/first-autocraft", logistics_finale), 0.0, 0.0),
+        _certification_item_quest(assembler, "Molecular Assembler", "The network may now act on its memory.", (
+            "Build four Molecular Assemblers around the provider.",
+            "Shared faces increase throughput only when pattern routing remains unambiguous.",
+        ), "ae2:molecular_assembler", 4, (provider,), 2.0, 0.0),
+        _certification_item_quest(cpu, "Crafting CPU", "Queued work requires explicit memory.", (
+            "Build a 4K Crafting Storage block and form a valid crafting CPU.",
+            "The task sees the block. Confirm the multiblock appears in the crafting status screen.",
+        ), "ae2:4k_crafting_storage", 1, (assembler,), 4.0, 0.0),
+        _certification_item_quest(patterns, "Encoded Set", "Sixteen instructions reveal routing mistakes quickly.", (
+            "Encode sixteen Crafting Patterns across more than one processing depth.",
+            "Include at least one recipe that depends on another encoded recipe.",
+        ), "ae2:crafting_pattern", 16, (cpu,), 6.0, -1.0),
+        _certification_item_quest(order, "256-Item Order", "A useful request is large enough to expose starvation.", (
+            "Autocraft 256 Quartz Glass in one order.",
+            "The task verifies the completed quantity. The crafting monitor is your proof of provenance.",
+        ), "ae2:quartz_glass", 256, (patterns,), 8.0, -1.0),
+        _certification_quest(finale, "Failure Recovery", "Interrupt the line before trusting it.", (
+            "Block one assembler output, cancel a job, clear the obstruction, and submit the checkmark after recovery.",
+            "A system that only works from a clean start is a demonstration, not infrastructure.",
+        ), "checkmark", {}, (order,), 10.0, 0.0, stage="afterlight_cert_autocrafting_i"),
+    )
+    return ChapterSpec(
+        "certifications/autocrafting-i", "Autocrafting I", CERTIFICATIONS,
+        "ae2:pattern_provider", 3, quests,
+    )
+
+
+def _certification_cross_mod(ore_finale: str, autocrafting_finale: str) -> ChapterSpec:
+    input_path = "certifications/cross-mod-i/create-input"
+    process = "certifications/cross-mod-i/mekanism-process"
+    output = "certifications/cross-mod-i/ie-output"
+    stocking = "certifications/cross-mod-i/ae2-stocking"
+    batch = "certifications/cross-mod-i/steel-batch"
+    finale = "certifications/cross-mod-i/recovery"
+    quests = (
+        _certification_item_quest(input_path, "Create Input", "Mechanical delivery begins the chain.", (
+            "Produce eight Chutes and use Create to meter raw material into the process buffer.",
+            "A belt line should stop at the buffer when the downstream system is unavailable.",
+        ), "create:chute", 8, (ore_finale, autocrafting_finale), 0.0, 0.0),
+        _certification_item_quest(process, "Mekanism Process", "One ecosystem transforms what another delivers.", (
+            "Route the buffered input through a dedicated Mekanism Crusher.",
+            "Do not let direct insertion bypass the visible input buffer.",
+        ), "mekanism:crusher", 1, (input_path,), 2.0, 0.0),
+        _certification_item_quest(output, "IE Output", "Heavy machinery closes the material loop.", (
+            "Build an Immersive Engineering Metal Press as the final processing step.",
+            "Provide a separate output inventory so a full AE2 network cannot trap the press conveyor.",
+        ), "immersiveengineering:metal_press", 1, (process,), 4.0, 0.0),
+        _certification_item_quest(stocking, "AE2 Stocking", "The lattice should request, not merely receive.", (
+            "Build two ME Interfaces and configure one stocked output target.",
+            "Test both replenishment and the behavior when the destination is already full.",
+        ), "ae2:interface", 2, (output,), 6.0, -1.0),
+        _certification_item_quest(batch, "Steel Batch", "Two hundred fifty-six units cross four systems.", (
+            "Produce 256 Steel Ingots through the connected chain.",
+            "The item count cannot prove the route. Watch the full batch and inspect every buffer afterward.",
+        ), "immersiveengineering:ingot_steel", 256, (stocking,), 8.0, -1.0),
+        _certification_quest(finale, "Cross-System Recovery", "Disconnect one boundary and recover without item loss.", (
+            "Break one transport boundary, allow the upstream buffer to fill, reconnect it, and submit the checkmark.",
+            "Certification records recovery behavior, not merely a successful first pass.",
+        ), "checkmark", {}, (batch,), 10.0, 0.0, stage="afterlight_cert_cross_mod_i"),
+    )
+    return ChapterSpec(
+        "certifications/cross-mod-i", "Cross-Mod I", CERTIFICATIONS,
+        "immersiveengineering:metal_press", 4, quests,
+    )
+
+
+def _certification_power() -> ChapterSpec:
+    generation = "certifications/power-i/generation"
+    storage = "certifications/power-i/storage"
+    induction = "certifications/power-i/induction"
+    routing = "certifications/power-i/routing"
+    proof = "certifications/power-i/proof"
+    finale = "certifications/power-i/shutdown"
+    quests = (
+        _certification_item_quest(generation, "Dedicated Generation", "Infrastructure power should have one accountable source.", (
+            "Build a Nitro Reactor for the certification grid.",
+            "Keep survival storage isolated until the new grid has passed its shutdown test.",
+        ), "powah:reactor_nitro", 1, ("story/09-grid/energy-reserve",), 0.0, 0.0),
+        _certification_item_quest(storage, "Local Reserve", "A cell buys time to stop cleanly.", (
+            "Build a Nitro Energy Cell and place it between generation and the distribution boundary.",
+            "Reserve capacity is useful only when its discharge path is intentional.",
+        ), "powah:energy_cell_nitro", 1, (generation,), 2.0, 0.0),
+        _certification_item_quest(induction, "Induction Buffer", "Sixteen casings make the second reserve inspectable.", (
+            "Produce sixteen Induction Casings and form a Mekanism induction matrix.",
+            "Use the matrix to separate short spikes from sustained load.",
+        ), "mekanism:induction_casing", 16, (storage,), 4.0, 0.0),
+        QuestSpec(
+            slug=routing,
+            title="Priority Routing",
+            subtitle="One plug imports. One point obeys priority.",
+            description=(
+                "Build a Flux Plug and Flux Point, then assign explicit network priorities.",
+                "Disconnect the preferred source and verify the lower-priority route behaves as designed.",
+            ),
+            x=6.0,
+            y=-1.0,
+            dependencies=(induction,),
+            tasks=(
+                TaskSpec(f"{routing}/task/plug", "item", {
+                    "item": {"count": 1, "id": "fluxnetworks:flux_plug"},
+                    "count": SnbtLong(1),
+                    "consume_items": False,
+                }),
+                TaskSpec(f"{routing}/task/point", "item", {
+                    "item": {"count": 1, "id": "fluxnetworks:flux_point"},
+                    "count": SnbtLong(1),
+                    "consume_items": False,
+                }),
+            ),
+            rewards=_routine_rewards(routing),
+        ),
+        _certification_quest(proof, "100M FE Delivery", "Capacity becomes useful when it can be delivered.", (
+            "Submit one hundred million FE at no more than 1,000,000 FE per transfer.",
+            "Observe the reserves during submission and confirm no survival system browns out.",
+        ), "forge_energy", {
+            "value": SnbtLong(100_000_000),
+            "max_input": SnbtLong(1_000_000),
+        }, (routing,), 8.0, -1.0),
+        _certification_quest(finale, "Emergency Shutdown", "A safe grid stops before it becomes a story fragment.", (
+            "Trigger the emergency cutoff, verify generation stops feeding the line, then restore service in order.",
+            "Submit the checkmark only after storage, routing, and consumers all recover.",
+        ), "checkmark", {}, (proof,), 10.0, 0.0, stage="afterlight_cert_power_i"),
+    )
+    return ChapterSpec(
+        "certifications/power-i", "Power I", CERTIFICATIONS,
+        "powah:reactor_nitro", 5, quests,
+    )
+
+
+def _certification_infrastructure(
+    logistics_finale: str,
+    ore_finale: str,
+    autocrafting_finale: str,
+    cross_mod_finale: str,
+    power_finale: str,
+) -> ChapterSpec:
+    proof = "certifications/infrastructure-ii/stage-proof"
+    sheets = "certifications/infrastructure-ii/sheets"
+    processors = "certifications/infrastructure-ii/processors"
+    circuits = "certifications/infrastructure-ii/circuits"
+    steel = "certifications/infrastructure-ii/steel"
+    finale = "certifications/infrastructure-ii/unattended"
+    stages = (
+        "afterlight_cert_kinetics_i",
+        "afterlight_cert_logistics_i",
+        "afterlight_cert_ore_loop_i",
+        "afterlight_cert_autocrafting_i",
+        "afterlight_cert_cross_mod_i",
+        "afterlight_cert_power_i",
+    )
+    quests = (
+        QuestSpec(
+            slug=proof,
+            title="Six Certifications",
+            subtitle="Separate proofs become one operating standard.",
+            description=(
+                "Complete Kinetics, Logistics, Ore Loop, Autocrafting, Cross-Mod, and Power certifications.",
+                "The stage tasks verify claimed certificates before the bulk trial begins.",
+            ),
+            x=0.0,
+            y=0.0,
+            dependencies=(
+                logistics_finale,
+                ore_finale,
+                autocrafting_finale,
+                cross_mod_finale,
+                power_finale,
+            ),
+            tasks=tuple(
+                TaskSpec(f"{proof}/task/{index}", "gamestage", {"stage": stage})
+                for index, stage in enumerate(stages, start=1)
+            ),
+            rewards=_routine_rewards(proof),
+        ),
+        _certification_item_quest(sheets, "Kinetic Quota", "One thousand twenty-four sheets without hand feeding.", (
+            "Produce 1,024 Iron Sheets through the certified kinetic line.",
+            "Do not refill or clear a machine manually during the observed run.",
+        ), "create:iron_sheet", 1024, (proof,), 2.0, -2.0),
+        _certification_item_quest(processors, "Lattice Quota", "Five hundred twelve processors, all requested.", (
+            "Autocraft 512 Logic Processors through the certified lattice.",
+            "Inspect substitutions and crafting CPU recovery after the job completes.",
+        ), "ae2:logic_processor", 512, (proof,), 2.0, -0.5),
+        _certification_item_quest(circuits, "Pressure Quota", "Five hundred twelve circuits under stable pressure.", (
+            "Produce 512 Printed Circuit Boards through the pressure line.",
+            "Confirm pressure, etching supply, and output handling remain unattended.",
+        ), "pneumaticcraft:printed_circuit_board", 512, (proof,), 2.0, 1.0),
+        _certification_item_quest(steel, "Industry Quota", "One thousand twenty-four ingots through shared logistics.", (
+            "Produce 1,024 Steel Ingots while the other certified systems remain online.",
+            "The count proves inventory. Your logs prove the factory did not borrow manual intervention.",
+        ), "immersiveengineering:ingot_steel", 1024, (proof,), 2.0, 2.5),
+        _certification_quest(finale, "Unattended Cycle", "Leave the facility. Return to evidence, not hope.", (
+            "Run all four quotas unattended through one complete buffer cycle, then inspect every failure boundary.",
+            "Submit the checkmark when full outputs, power loss, and restart recovery have all been tested.",
+        ), "checkmark", {}, (sheets, processors, circuits, steel), 5.0, 0.0,
+            stage="afterlight_cert_infrastructure_ii"),
+    )
+    return ChapterSpec(
+        "certifications/infrastructure-ii", "Infrastructure II", CERTIFICATIONS,
+        "ae2:logic_processor", 6, quests,
+    )
+
+
+def _depot_chapter(
+    tier: str,
+    order_index: int,
+    cost: int,
+    table_id: SnbtLong,
+    icon: str,
+    dependency: str = "",
+) -> ChapterSpec:
+    slug = f"certifications/depot-{tier.lower()}"
+    exchange = f"{slug}/exchange"
+    quest = QuestSpec(
+        slug=exchange,
+        title=f"{tier} Supply Exchange",
+        subtitle=f"{cost} Chits authorize one selected supply package.",
+        description=(
+            f"Submit {cost} Requisition Chits and choose one {tier.lower()}-tier supply package.",
+            "The Depot returns materials, not progression keys. Choice rewards must be claimed individually.",
+            "The exchange may be repeated after the cooldown. Chits are consumed on submission.",
+        ),
+        x=0.0,
+        y=0.0,
+        dependencies=((dependency,) if dependency else ()),
+        tasks=(TaskSpec(f"{exchange}/task", "item", {
+            "item": {"count": 1, "id": "kubejs:requisition_chit"},
+            "count": SnbtLong(cost),
+            "consume_items": True,
+        }),),
+        rewards=(RewardSpec(
+            f"{exchange}/reward/choice",
+            "choice",
+            {"table_id": table_id},
+        ),),
+        can_repeat=True,
+        repeat_cooldown=1200,
+    )
+    return ChapterSpec(
+        slug,
+        f"Requisition Depot: {tier}",
+        CERTIFICATIONS,
+        icon,
+        order_index,
+        (quest,),
+    )
+
+
 def build_catalog() -> list[ChapterSpec]:
     chapter_six = _chapter_six()
     chapter_seven = _chapter_seven(chapter_six.quests[-1].slug)
@@ -966,6 +1391,31 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_fourteen = _chapter_fourteen(chapter_thirteen.quests[-1].slug)
     chapter_fifteen = _chapter_fifteen(chapter_fourteen.quests[-1].slug)
     chapter_sixteen = _chapter_sixteen(chapter_fifteen.quests[-1].slug)
+    logistics = _certification_logistics()
+    ore_loop = _certification_ore_loop(logistics.quests[-1].slug)
+    autocrafting = _certification_autocrafting(logistics.quests[-1].slug)
+    cross_mod = _certification_cross_mod(
+        ore_loop.quests[-1].slug,
+        autocrafting.quests[-1].slug,
+    )
+    power = _certification_power()
+    infrastructure = _certification_infrastructure(
+        logistics.quests[-1].slug,
+        ore_loop.quests[-1].slug,
+        autocrafting.quests[-1].slug,
+        cross_mod.quests[-1].slug,
+        power.quests[-1].slug,
+    )
+    depot_early = _depot_chapter(
+        "Early", 20, 8, DEPOT_EARLY_TABLE, "minecraft:iron_ingot",
+    )
+    depot_mid = _depot_chapter(
+        "Mid", 21, 16, DEPOT_MID_TABLE, "create:brass_ingot", CHAPTER_FIVE_FINALE,
+    )
+    depot_late = _depot_chapter(
+        "Late", 22, 32, DEPOT_LATE_TABLE, "mekanism:alloy_atomic",
+        chapter_eleven.quests[-1].slug,
+    )
     return [
         chapter_six,
         chapter_seven,
@@ -978,4 +1428,13 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_fourteen,
         chapter_fifteen,
         chapter_sixteen,
+        logistics,
+        ore_loop,
+        autocrafting,
+        cross_mod,
+        power,
+        infrastructure,
+        depot_early,
+        depot_mid,
+        depot_late,
     ]

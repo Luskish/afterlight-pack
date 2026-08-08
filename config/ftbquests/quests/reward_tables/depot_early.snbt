@@ -1,0 +1,36 @@
+{
+	id: "17E69C9CFEA907D4"
+	order_index: 10
+	filename: "depot_early"
+	icon: { id: "minecraft:iron_ingot" }
+	loot_size: 1
+	use_title: true
+	rewards: [
+		{ id: "C49392CEAB33EF8E"
+			type: "item"
+			item: { count: 32, id: "minecraft:iron_ingot" }
+			count: 32
+			weight: 1.0f }
+		{ id: "89246C24F00938D4"
+			type: "item"
+			item: { count: 32, id: "minecraft:copper_ingot" }
+			count: 32
+			weight: 1.0f }
+		{ id: "3FB80DB5EF6C1D8C"
+			type: "item"
+			item: { count: 32, id: "minecraft:redstone" }
+			count: 32
+			weight: 1.0f }
+		{ id: "82BD9A40C33D6EBB"
+			type: "item"
+			item: { count: 32, id: "minecraft:coal" }
+			count: 32
+			weight: 1.0f }
+		{ id: "2B0E3558F42EAA8C"
+			type: "item"
+			item: { count: 32, id: "minecraft:bread" }
+			count: 32
+			weight: 1.0f }
+	]
+	title: "Requisition Depot: Early"
+}

@@ -16,7 +16,7 @@
 > Note: prefer the .mrpack file. The "-curseforge.zip" variant embeds mod files directly and is for our friend group only — don't re-upload or share it publicly.
 
 ## Joining the server
-Server address comes from Shane. Simple Voice Chat works out of the box — press V for voice settings.
+Server address comes from Shane. Voice chat (Simple Voice Chat) arrives with the full mod roster in an upcoming update — the pack auto-updates, so you'll just have it one day.
 
 ## If your game crashes
 The pack includes Crash Assistant — it pops a window with the crash report. Send Shane the "Copy to clipboard" output, not a screenshot.

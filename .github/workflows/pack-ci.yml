@@ -22,7 +22,18 @@ jobs:
         run: ./tools/export.sh
       - name: Headless server boot smoke test
         run: BOOT_TIMEOUT=600 ./tools/server-test.sh
+      # Metadata only. The CurseForge zip embeds mod jars and is friends-only
+      # (docs/INSTALL.md) — never publish it from a public run page.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: afterlight-dist
-          path: dist/
+          path: dist/*.mrpack
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: server-test-logs
+          path: |
+            server-test/boot.log
+            server-test/logs/
+          if-no-files-found: ignore

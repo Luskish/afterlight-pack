@@ -6,6 +6,11 @@ hash = "ed45c352a49b65c7221e57d979d0c6935522dfef4968aa5b7421f4d3e670ce40"
 metafile = true
 
 [[files]]
+file = "mods/aether.pw.toml"
+hash = "cc3f6e6e8f1838d16e47cce9241e32176279673efb1438ff4451ccffa9579b14"
+metafile = true
+
+[[files]]
 file = "mods/alexs-mobs-1-21-1-port.pw.toml"
 hash = "e3bbf8c3650fd5fc795b36b0b38fdb5bd287b22b6b7d94cde7e35561b0bf5000"
 metafile = true
@@ -171,6 +176,16 @@ hash = "36debf7653e95a855b4fedacc19027cf2e01960fc0b6d55ef2ffbffbcb455690"
 metafile = true
 
 [[files]]
+file = "mods/deep-aether.pw.toml"
+hash = "e3211d7d54a7203a183ed3b453be5dd52d27f389dbef26dd7e769f20e1dea81f"
+metafile = true
+
+[[files]]
+file = "mods/deeperdarker.pw.toml"
+hash = "a9ecc4476d26e707189e9f988c19f22961c33dfd5e5b4db1dfd6f87c6a81c545"
+metafile = true
+
+[[files]]
 file = "mods/dungeons-and-taverns.pw.toml"
 hash = "b9244dca740d333c22f3425991fdd2fd40d3ae12384079a40a6fb7d4bca18a18"
 metafile = true
@@ -183,6 +198,11 @@ metafile = true
 [[files]]
 file = "mods/entityculling.pw.toml"
 hash = "4fbe037c1ec3570be84f68e075c3e8293b15f64dda22bca4735924705fb38236"
+metafile = true
+
+[[files]]
+file = "mods/eternal-starlight.pw.toml"
+hash = "82d3cb6526cdda2996ea32e388a9754a92d332bea86d28508c3f1ac91106cd1f"
 metafile = true
 
 [[files]]
@@ -391,6 +411,11 @@ hash = "11e0c514e11f8a8a07f71ad6454770e0f4586f126cd5ed768dec8ab2d32df928"
 metafile = true
 
 [[files]]
+file = "mods/moonlight.pw.toml"
+hash = "1707b4f1e3df638815211af1336c4d565d7eeae0b629527f1f9cd14eae9c0335"
+metafile = true
+
+[[files]]
 file = "mods/mouse-tweaks.pw.toml"
 hash = "6bc414cc0f2d4c078fe83f384d786343f701f371d657c5279b5b0df1595804bd"
 metafile = true
@@ -423,6 +448,11 @@ metafile = true
 [[files]]
 file = "mods/oritech.pw.toml"
 hash = "62aaadc77869b15ca9cce5e15829492809652cd3005e02134664939b2566c95e"
+metafile = true
+
+[[files]]
+file = "mods/owo-lib.pw.toml"
+hash = "46831c04077a06df823bcd0f254833a90a9a9ccc78f5069f4b4c27fa301ac0cf"
 metafile = true
 
 [[files]]
@@ -522,12 +552,12 @@ metafile = true
 
 [[files]]
 file = "mods/structory-towers.pw.toml"
-hash = "0f4f506b1171a3a7d7b73150721075f5b1bc703c043fa539bcdd72c93e665b94"
+hash = "a66da60b40337e8bb57d81aef0f0c168771f2c6d8ae9d5e4af24031da2320795"
 metafile = true
 
 [[files]]
 file = "mods/structory.pw.toml"
-hash = "3c4da8a221086153d491104bba4fd8796dac92d5c3e0b2dc111a6c5d53b65484"
+hash = "70cd30931bd186fd3f9770062dd998774ac9e1c0cf478938a62d5815ffdcfe5b"
 metafile = true
 
 [[files]]
@@ -541,8 +571,23 @@ hash = "fef2f8085bbdf6d398b02c87225ad9ccf9cc5d71edde13cd18e12a154764c84e"
 metafile = true
 
 [[files]]
+file = "mods/terrablender.pw.toml"
+hash = "15962183bec2468058c70e87aa32e902a08489b0f86741088cdc9aa958ba4931"
+metafile = true
+
+[[files]]
 file = "mods/terralith.pw.toml"
 hash = "da7ee99189ad35aac094919fe33cac647d98533b23c228f10d4811f08989e2b8"
+metafile = true
+
+[[files]]
+file = "mods/the-twilight-forest.pw.toml"
+hash = "9088f93a00bc3242f0239a7115bdcbc4480e19c6120f5396fb3af27d77abda3e"
+metafile = true
+
+[[files]]
+file = "mods/the-undergarden.pw.toml"
+hash = "cf08653612ce37b29ebabf07c5dfce80c493927d4cb7760d68a361738fb54d1d"
 metafile = true
 
 [[files]]
@@ -618,4 +663,9 @@ metafile = true
 [[files]]
 file = "mods/zerocore.pw.toml"
 hash = "b51c9c50edbb8a8ef8823160e2cb5d6b1d20c06c5b86dc2d3541c456b8962ab3"
+metafile = true
+
+[[files]]
+file = "mods/zeta.pw.toml"
+hash = "cb474b6c0dde741836ed4f796f3b6ab0b9d3cdc0453e651122cd002d5d1f8df8"
 metafile = true

@@ -49,9 +49,9 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh; do
+for s in tools/export.sh tools/server-test.sh; do
   bash -n "$s" && echo "OK: $s parses" || { echo "FAIL: $s syntax"; FAIL=1; }
+  [ -x "$s" ] && echo "OK: $s executable" || { echo "FAIL: $s not executable"; FAIL=1; }
 done
-[ -x tools/export.sh ] && echo "OK: export.sh executable" || { echo "FAIL: export.sh not executable"; FAIL=1; }
 
 if [ "$FAIL" -eq 0 ]; then echo "VERIFY: ALL GREEN"; else echo "VERIFY: FAILURES PRESENT"; exit 1; fi

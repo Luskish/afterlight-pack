@@ -284,4 +284,33 @@
 		"One day the Gate will need a stabilizer built exactly this way. I am telling you now so that future-you is not surprised. Consider it the only prophecy I will ever make."
 	]
 	chapter.E5C7EC00C7DC1038.title: "Anomalous Readings"
+	quest.96783315E0833B1D.title: "The Deep Vault"
+	quest.96783315E0833B1D.quest_subtitle: "Optional. Enormous. Patient."
+	quest.96783315E0833B1D.quest_desc: [
+		"Beneath the vault you woke in, there is another vault. The Ascendancy buried their heaviest industry where the Cascade could not reach it."
+		"Everything in this wing is optional. Nothing in this wing is small. Bring a hammer; the Deep Vault starts with honest metallurgy."
+	]
+	quest.747D181BE87A2429.title: "The Bronze Standard"
+	quest.747D181BE87A2429.quest_subtitle: "Sixteen ingots the old way."
+	quest.747D181BE87A2429.quest_desc: [
+		"Bronze: copper and tin, hammered into agreement."
+		"The surface world will offer you faster metals. The Deep Vault does not care. Down here, sequence is the technology."
+	]
+	quest.9738976FB1A6167A.title: "Pressure"
+	quest.9738976FB1A6167A.quest_subtitle: "Water, fire, and consequences."
+	quest.9738976FB1A6167A.quest_desc: [
+		"A boiler converts water and patience into working pressure. The Ascendancy ran continental factories on exactly this principle, scaled up until the ground hummed."
+	]
+	quest.DEEFEE4A3873DE5C.title: "Casings, Again"
+	quest.DEEFEE4A3873DE5C.quest_subtitle: "The Deep Vault version."
+	quest.DEEFEE4A3873DE5C.quest_desc: [
+		"Four bronze casings. You have done this dance upstairs with steel; the Deep Vault does it heavier and expects you to enjoy it."
+	]
+	quest.F2CE68CEF727A313.title: "The Steam Drill"
+	quest.F2CE68CEF727A313.quest_subtitle: "The Vault approves of you."
+	quest.F2CE68CEF727A313.quest_desc: [
+		"A steam mining drill: the first tool down here that outperforms its surface cousin."
+		"This is how the Deep Vault pays: slower to start, heavier at the end. The pattern holds all the way down to machines I am still not cleared to describe."
+	]
+	chapter.6B2D7DB791D992C3.title: "The Deep Vault"
 }

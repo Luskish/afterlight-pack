@@ -1,0 +1,115 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "6B2D7DB791D992C3"
+	group: "4DEAD1F5F7AB4DA3"
+	icon: { id: "modern_industrialization:forge_hammer" }
+	id: "6B2D7DB791D992C3"
+	images: [ ]
+	order_index: 0
+	quest_links: [ ]
+	quests: [
+		{
+			id: "96783315E0833B1D"
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{ id: "E595488C9696FD3D"
+				type: "item"
+				item: { count: 1, id: "modern_industrialization:forge_hammer" }
+				count: 1L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "300AB696B71C85DF"
+				type: "item"
+				item: { count: 3, id: "kubejs:requisition_chit" }
+				count: 3 }
+			]
+		}
+		{
+			id: "747D181BE87A2429"
+			dependencies: ["96783315E0833B1D"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{ id: "F0386E249F64C241"
+				type: "item"
+				item: { count: 1, id: "modern_industrialization:bronze_ingot" }
+				count: 16L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "3F4B8DA2BF026248"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "9738976FB1A6167A"
+			dependencies: ["747D181BE87A2429"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{ id: "448C181914369553"
+				type: "item"
+				item: { count: 1, id: "modern_industrialization:bronze_boiler" }
+				count: 1L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "96B4C8E5A1B26706"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "DEEFEE4A3873DE5C"
+			dependencies: ["747D181BE87A2429"]
+			x: 4.0d
+			y: 1.0d
+			tasks: [
+				{ id: "88B818D0316B37F9"
+				type: "item"
+				item: { count: 1, id: "modern_industrialization:bronze_machine_casing" }
+				count: 4L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "60C70F21C10E9726"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "F2CE68CEF727A313"
+			dependencies: ["9738976FB1A6167A", "DEEFEE4A3873DE5C"]
+			x: 6.0d
+			y: 0.0d
+			shape: "hexagon"
+			size: 1.4d
+			tasks: [
+				{ id: "1BE02019A215A7C4"
+				type: "item"
+				item: { count: 1, id: "modern_industrialization:steam_mining_drill" }
+				count: 1L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "DDF12C4395F6A64A"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "B75634D32BF15E2B"
+				type: "item"
+				item: { count: 10, id: "kubejs:requisition_chit" }
+				count: 10 }
+				{ id: "937D55E3FC4E0FC8"
+				type: "xp"
+				xp: 180 }
+			]
+		}
+	]
+}

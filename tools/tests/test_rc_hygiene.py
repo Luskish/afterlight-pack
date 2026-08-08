@@ -632,24 +632,64 @@ class JarOverrideFixtureTests(unittest.TestCase):
         self.assertEqual(evidence["enabled_metadata"], 158)
         self.assertEqual(evidence["top_level_artifacts"], 157)
         self.assertEqual(evidence["archive_scopes"], 305)
-        self.assertEqual(evidence["mixin_configs"], 255)
-        self.assertEqual(evidence["common_mixins"], 2258)
-        self.assertEqual(evidence["direct_clientlevel_mixins"], 10)
+        self.assertEqual(evidence["mixin_configs"], 261)
+        self.assertEqual(evidence["common_mixins"], 2286)
+        self.assertEqual(evidence["annotation_clientlevel_mixins"], 3)
         self.assertEqual(len(evidence["pseudo_clientlevel_candidates"]), 3)
         self.assertEqual(
             tuple(candidate[2] for candidate in evidence["pseudo_clientlevel_candidates"]),
             tuple(rc_hygiene.SABLE_MIXIN_CLASSES),
+        )
+        self.assertEqual(
+            tuple(candidate[-2] for candidate in evidence["pseudo_clientlevel_candidates"]),
+            ("value", "value", "value"),
         )
 
     def test_idas_compat_release_is_source_authenticated_and_data_free(self) -> None:
         evidence = rc_hygiene.verify_idas_compat_source_evidence(ROOT, INSTALL_ROOT)
         self.assertEqual(
             evidence["artifact_sha256"],
-            "458bbaeb5d93923d24b18d69ed7f60dbf3bab9854d50a02671f6ecb7a0338b1b",
+            "086ac4a56becba5ec2e7708855f09eef74613300f235601c18e033a35adac324",
         )
         self.assertEqual(
             evidence["artifact_sha512"],
-            "26a490e6f4e2bde870ada10325dc8f7cad2774b96fa1c35e11a709010de50d126e0ffb33853a8b5f8fcfa1ced28e2d377b7603ddae056c634e959b760be82c54",
+            "af39e726630f7fbfd2465cdb0dc6001e3ab7ea3f9180192e999530a8f9ed4afb35410b7707eea4d3d967ae68314229418d0ee7d18ce5dfb8cf0e946ae12beb43",
+        )
+        self.assertEqual(
+            evidence["source_commit"],
+            "02c0254513afdcaff65af0c50f8339013f0cc045",
+        )
+        self.assertEqual(
+            evidence["reviewed_templates"],
+            {
+                "idas:underground_camp/underground_camp_deep1": {
+                    "sourceSha256": "652e2bbac736f171c102342547538430a2f5327de38319503fc4bd323e7ee7da",
+                    "candidateCount": 1,
+                    "auditDigest": "79fe677f9e4c30ea95806383468977e42b46e79dd2f47a7748d089ceacec29b5",
+                },
+                "idas:underground_camp/underground_camp1": {
+                    "sourceSha256": "0d7ecc5059d0d94d8cde9621d5358df1a9b89bf7dc27e93fd564668064aceb8a",
+                    "candidateCount": 2,
+                    "auditDigest": "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+                },
+                "idas:tudor_pub/tudor_pub": {
+                    "sourceSha256": "36e2bbc9ae46052b84d97819a50a65c1233064af4708a724e94ebaffdb424c3f",
+                    "candidateCount": 8,
+                    "auditDigest": "9e9afaf0cdd2470ef45319d2f18f7205d1939a3165f57daa6c2927f9633fd9d1",
+                },
+                "idas:tudor_pub/tudor_pub_bottom": {
+                    "sourceSha256": "67a0d8447e8ec42c1eef447111bc3d40bd71e089395fa5472ae754ed88052bd2",
+                    "candidateCount": 9,
+                    "auditDigest": "4dfd6abd605d244e35aa8be0235746a2e48cbf3e9d5e133553810750c2af0cc0",
+                },
+            },
+        )
+        self.assertEqual(
+            evidence["negative_test_sources"],
+            {
+                "src/test/java/dev/afterlight/idascompat/MixinContractTest.java": "a280e9dc046f5d3cc61944921c646cf753cca70a2578dec2c7a873fd2464a321",
+                "src/test/java/dev/afterlight/idascompat/ReviewedTemplateProvenanceTest.java": "8bbb91acfdcfc784e38084205e63459ad55bc1b8de7f3d7d9decd2a9f4296b1b",
+            },
         )
         self.assertEqual(source_jar("idas_compat").name, rc_hygiene.IDAS_COMPAT_FILENAME)
 

@@ -1,8 +1,8 @@
 name = "AFTERLIGHT IDAS Compatibility"
-filename = "afterlight_idas_compat-0.1.0+1.21.1.jar"
+filename = "afterlight_idas_compat-0.1.1+1.21.1.jar"
 side = "both"
 
 [download]
-url = "https://github.com/Luskish/afterlight-idas-compat/releases/download/v0.1.0/afterlight_idas_compat-0.1.0%2B1.21.1.jar"
+url = "https://github.com/Luskish/afterlight-idas-compat/releases/download/v0.1.1/afterlight_idas_compat-0.1.1%2B1.21.1.jar"
 hash-format = "sha512"
-hash = "26a490e6f4e2bde870ada10325dc8f7cad2774b96fa1c35e11a709010de50d126e0ffb33853a8b5f8fcfa1ced28e2d377b7603ddae056c634e959b760be82c54"
+hash = "af39e726630f7fbfd2465cdb0dc6001e3ab7ea3f9180192e999530a8f9ed4afb35410b7707eea4d3d967ae68314229418d0ee7d18ce5dfb8cf0e946ae12beb43"

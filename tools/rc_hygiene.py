@@ -21,10 +21,12 @@ class VerificationError(RuntimeError):
 
 @dataclass(frozen=True)
 class LogRecord:
+    timestamp: str
     thread: str
     level: str
     logger: str
     message: str
+    continuations: tuple[str, ...]
     text: str
 
 
@@ -35,7 +37,9 @@ class LogAllowance:
     logger: str
     message: str
     count: int
-    contexts: tuple[str, ...] = ()
+    thread: str = "main"
+    continuations: tuple[str, ...] = ()
+    canonical_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -133,13 +137,13 @@ SABLE_MIXIN_CLASSES = {
 SABLE_ENABLED_METADATA_COUNT = 158
 SABLE_TOP_LEVEL_ARTIFACT_COUNT = 157
 SABLE_ARCHIVE_SCOPE_COUNT = 305
-SABLE_MIXIN_CONFIG_COUNT = 255
-SABLE_COMMON_MIXIN_COUNT = 2258
-SABLE_DIRECT_CLIENTLEVEL_MIXIN_COUNT = 10
+SABLE_MIXIN_CONFIG_COUNT = 261
+SABLE_COMMON_MIXIN_COUNT = 2286
+SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
 SABLE_STACK_SHA256 = {
-    "prepare": "87df768dd4921f00d5b8c13e02beeb365885f0708d0216a58dfc961ba443192d",
-    "validate": "40c05a51c8a02d94692457d73ec3414e456a22dccdc04cbc59d308e8abd29f87",
-    "validate_changes": "c1e2e1e8d01e33eebbc20cd18f868bbe28447ccecaa6958f3a527377750320ec",
+    "prepare": "bae3607214c9f8b88f6bd73e309b99f58eb926a2baae5d8515d3feba85efc7ca",
+    "validate": "364c2c1f95784628e77870ba1d8be5f7b808016042ba565bc18d4ef27c94500b",
+    "validate_changes": "6c44a8c02c15710e7a9233fe7b9b1ba456a7598db09ac21858b1d59b0fc29cac",
 }
 SABLE_RUNTIME_SHA256 = {
     "libraries/net/neoforged/fancymodloader/loader/4.0.43/loader-4.0.43.jar": (
@@ -152,19 +156,59 @@ SABLE_RUNTIME_SHA256 = {
 }
 
 IDAS_COMPAT_METADATA = "mods/afterlight-idas-compat.pw.toml"
-IDAS_COMPAT_FILENAME = "afterlight_idas_compat-0.1.0+1.21.1.jar"
+IDAS_COMPAT_FILENAME = "afterlight_idas_compat-0.1.1+1.21.1.jar"
 IDAS_COMPAT_URL = (
     "https://github.com/Luskish/afterlight-idas-compat/releases/download/"
-    "v0.1.0/afterlight_idas_compat-0.1.0%2B1.21.1.jar"
+    "v0.1.1/afterlight_idas_compat-0.1.1%2B1.21.1.jar"
 )
 IDAS_COMPAT_SHA512 = (
-    "26a490e6f4e2bde870ada10325dc8f7cad2774b96fa1c35e11a709010de50d126"
-    "e0ffb33853a8b5f8fcfa1ced28e2d377b7603ddae056c634e959b760be82c54"
+    "af39e726630f7fbfd2465cdb0dc6001e3ab7ea3f9180192e999530a8f9ed4afb"
+    "35410b7707eea4d3d967ae68314229418d0ee7d18ce5dfb8cf0e946ae12beb43"
 )
-IDAS_COMPAT_SHA256 = "458bbaeb5d93923d24b18d69ed7f60dbf3bab9854d50a02671f6ecb7a0338b1b"
+IDAS_COMPAT_SHA256 = "086ac4a56becba5ec2e7708855f09eef74613300f235601c18e033a35adac324"
+IDAS_COMPAT_SOURCE_COMMIT = "02c0254513afdcaff65af0c50f8339013f0cc045"
+IDAS_COMPAT_REVIEWED_TEMPLATES = {
+    "idas:underground_camp/underground_camp_deep1": {
+        "sourceSha256": "652e2bbac736f171c102342547538430a2f5327de38319503fc4bd323e7ee7da",
+        "candidateCount": 1,
+        "auditDigest": "79fe677f9e4c30ea95806383468977e42b46e79dd2f47a7748d089ceacec29b5",
+    },
+    "idas:underground_camp/underground_camp1": {
+        "sourceSha256": "0d7ecc5059d0d94d8cde9621d5358df1a9b89bf7dc27e93fd564668064aceb8a",
+        "candidateCount": 2,
+        "auditDigest": "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+    },
+    "idas:tudor_pub/tudor_pub": {
+        "sourceSha256": "36e2bbc9ae46052b84d97819a50a65c1233064af4708a724e94ebaffdb424c3f",
+        "candidateCount": 8,
+        "auditDigest": "9e9afaf0cdd2470ef45319d2f18f7205d1939a3165f57daa6c2927f9633fd9d1",
+    },
+    "idas:tudor_pub/tudor_pub_bottom": {
+        "sourceSha256": "67a0d8447e8ec42c1eef447111bc3d40bd71e089395fa5472ae754ed88052bd2",
+        "candidateCount": 9,
+        "auditDigest": "4dfd6abd605d244e35aa8be0235746a2e48cbf3e9d5e133553810750c2af0cc0",
+    },
+}
+IDAS_COMPAT_NEGATIVE_TEST_SOURCES = {
+    "src/test/java/dev/afterlight/idascompat/MixinContractTest.java": (
+        "a280e9dc046f5d3cc61944921c646cf753cca70a2578dec2c7a873fd2464a321"
+    ),
+    "src/test/java/dev/afterlight/idascompat/ReviewedTemplateProvenanceTest.java": (
+        "8bbb91acfdcfc784e38084205e63459ad55bc1b8de7f3d7d9decd2a9f4296b1b"
+    ),
+}
 IDAS_COMPAT_RESOURCE_SHA256 = {
+    "META-INF/LICENSE": (
+        "b5b105b0aec29aa2fd5d1b53d75339152409f6905873ca9a4f1b47a9def4e00e"
+    ),
+    "META-INF/MANIFEST.MF": (
+        "48384fd9721266d062824a40e3f9259180931578dbae5bd796d8e72191e3b0a9"
+    ),
+    "META-INF/afterlight-provenance.json": (
+        "71ee94ca374321b312358e8d5d102cb01aa457f656264c2a0460d0a213b20e00"
+    ),
     "META-INF/neoforge.mods.toml": (
-        "ad87e101ddc5672ec917a9431192f0087c30a77270f967970ce586a0aa260bfc"
+        "f59532e083771083ed0f6fef3cef680817444e7b98ab0db05613d7f6c1b93a91"
     ),
     "afterlight_idas_compat.mixins.json": (
         "f1ea036959fde1aed3d5626343b11b328bad56d2174795b8cd9c065e2812fece"
@@ -172,17 +216,56 @@ IDAS_COMPAT_RESOURCE_SHA256 = {
     "dev/afterlight/idascompat/AfterlightIdasCompat.class": (
         "092d27ea4f2020ad8bc7296101cfd86356637f8ba44420ef5eba3308a387ffb3"
     ),
+    "dev/afterlight/idascompat/IdasArtifactVerifier$Authentication.class": (
+        "bb7a547ed6edc292c4ae659cf6480cf35b70defce528e57eadc2b06b3b242491"
+    ),
     "dev/afterlight/idascompat/IdasArtifactVerifier.class": (
         "bc541ecb87883de9d06da89938048437bbaba1ec9a20d48496454e2ffe6966ce"
     ),
+    "dev/afterlight/idascompat/LoadedStructureResourceVerifier$Result.class": (
+        "2a6d7773378ac6b02688ef41fdfbdf265b132931a5ebe683bbb8f7697349437a"
+    ),
+    "dev/afterlight/idascompat/LoadedStructureResourceVerifier.class": (
+        "c32efa9134fed2f2dbb13744bdbeb6f06d8e3aca9eb9106c739a061b153885e3"
+    ),
+    "dev/afterlight/idascompat/ReviewedTemplateRegistry$Approval.class": (
+        "9311a9c3a5cf1caf5b10057579f2eabf4bd0cd0bd8ed5f7188be2f7d001bd9e7"
+    ),
+    "dev/afterlight/idascompat/ReviewedTemplateRegistry.class": (
+        "f316326915ed96377da0e688231047b62cbc3e26617bc72c9ea49e3c88b412ad"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Action.class": (
+        "55744b0e8f90c5b783cacfe301a03ccf57cae7e3bcd2eb1f9572a049c6bd4c2d"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Inspection.class": (
+        "be34712da3ac9ddde4fb52127f215ec2c89ee6a7a484a928b67f89ec30f7d669"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Mutation.class": (
+        "253abc5280cba873bf4522958cb9e166ad64d26d5440805eabbb2cb29873b7e1"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Parent.class": (
+        "1fa253c3b36e136cb8a7a0ed91f59798c5c1b5c84ff100ff4caa51876abd6b4f"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Result.class": (
+        "96468a00dbe65fbc6226dfa32eb0571bd4a8cda55139f32765e831648cdd5cdd"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Root.class": (
+        "6a89c2a3d24dda3d951f6f4f48a2a582c57bf5859a75746afad63a541f2e51fc"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Shape.class": (
+        "b74c2d4b2288306baf4c2a2eddaf437d31d0c7a08d6c32915da7e99ffc361ee5"
+    ),
+    "dev/afterlight/idascompat/StructureAirItemSanitizer$Unreviewed.class": (
+        "ddfaeda8ae8b581f5ea4c1aad99e63d1712d9c1cec9a358299069d477ce1f60a"
+    ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer.class": (
-        "aa5b7326570380a66f326fb3add930a6466f81cb3c24e25e6e8501e652c5b01e"
+        "f69edcd59ebb21449015b2e04ff075d18058b59effc436e52d0c4443b3703149"
     ),
     "dev/afterlight/idascompat/mixin/StructureTemplateAccessor.class": (
         "eeaef3dd31492cabec8db1d8dec79cd5aa0777c4ec4e048a4794fcf4b1361a86"
     ),
     "dev/afterlight/idascompat/mixin/StructureTemplateManagerMixin.class": (
-        "15c6edee0810c86656a5d971724c163fdac498fba5699782b4a75cdea7f9d436"
+        "07caf35e586f56c7aff8157a1ded8600bb6b37ddb6e21045e22c25a6985551a2"
     ),
 }
 IDAS_COMPAT_LOGGER = "afterlight_idas_compat/STRUCTURE_SANITIZER/"
@@ -209,9 +292,12 @@ IDAS_COMPAT_BOOT_SANITIZED_MESSAGES = (
 
 
 LOG_HEADER = re.compile(
-    r"^\[[^\]]+\] \[(?P<thread>[^\]]+)\/(?P<level>[A-Z]+)\] "
+    r"^\[(?P<timestamp>\d{2}[A-Z][a-z]{2}\d{4} \d{2}:\d{2}:\d{2}\.\d{3})\] "
+    r"\[(?P<thread>[^\]\r\n]+)\/(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\] "
     r"\[(?P<logger>[^\]]+)\]: (?P<message>.*)$"
 )
+ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
+SEVERE_HEADER_LIKE = re.compile(r"/(?:ERROR|FATAL)(?:\]|\s|$)")
 
 
 def _hash_bytes(payload: bytes, hash_format: str) -> str:
@@ -547,21 +633,62 @@ def _class_annotations(payload: bytes) -> dict[str, dict[str, object]]:
     return annotations
 
 
-def _mixin_targets(payload: bytes) -> tuple[bool, bool, tuple[str, ...]]:
+def _normalize_mixin_target(target: str) -> str:
+    if not target or target != target.strip():
+        raise VerificationError(f"invalid Mixin target {target!r}")
+    if target.startswith("L") or target.endswith(";"):
+        if not target.startswith("L") or not target.endswith(";"):
+            raise VerificationError(f"malformed Mixin target descriptor {target!r}")
+        internal = target[1:-1]
+    elif "/" in target:
+        if "." in target:
+            raise VerificationError(f"mixed Mixin target notation {target!r}")
+        internal = target
+    else:
+        internal = target.replace(".", "/")
+    segment = r"[A-Za-z_$][A-Za-z0-9_$]*"
+    if re.fullmatch(rf"{segment}(?:/{segment})*", internal) is None:
+        raise VerificationError(f"invalid Mixin target class name {target!r}")
+    return f"L{internal};"
+
+
+def _mixin_targets(payload: bytes) -> tuple[bool, bool, str, tuple[str, ...]]:
     annotations = _class_annotations(payload)
     pseudo = "Lorg/spongepowered/asm/mixin/Pseudo;" in annotations
     mixin = annotations.get("Lorg/spongepowered/asm/mixin/Mixin;")
     if mixin is None:
-        return pseudo, False, ()
-    values = mixin.get("value", ())
-    if not isinstance(values, tuple):
-        raise VerificationError("Mixin value annotation is not an array")
-    targets = tuple(
-        value[1]
-        for value in values
-        if isinstance(value, tuple) and len(value) == 2 and value[0] == "class"
-    )
-    return pseudo, True, targets
+        return pseudo, False, "none", ()
+    has_value = "value" in mixin
+    has_targets = "targets" in mixin
+    if has_value == has_targets:
+        raise VerificationError(
+            "Mixin annotation must declare exactly one of value or targets"
+        )
+    if has_value:
+        declaration = mixin["value"]
+        form = "value"
+        if not isinstance(declaration, tuple) or not declaration:
+            raise VerificationError("Mixin value annotation is not a non-empty array")
+        raw_targets = []
+        for value in declaration:
+            if (
+                not isinstance(value, tuple)
+                or len(value) != 2
+                or value[0] != "class"
+                or not isinstance(value[1], str)
+            ):
+                raise VerificationError("Mixin value contains a non-class target")
+            raw_targets.append(value[1])
+    else:
+        declaration = mixin["targets"]
+        form = "targets"
+        if not isinstance(declaration, tuple) or not declaration:
+            raise VerificationError("Mixin targets annotation is not a non-empty array")
+        if not all(isinstance(value, str) for value in declaration):
+            raise VerificationError("Mixin targets contains a non-string target")
+        raw_targets = list(declaration)
+    targets = tuple(_normalize_mixin_target(target) for target in raw_targets)
+    return pseudo, True, form, targets
 
 
 def _manifest_attributes(payload: bytes) -> dict[str, str]:
@@ -669,9 +796,16 @@ def _scan_mixin_archive(
                 if not isinstance(config_hashes, dict):
                     raise VerificationError("invalid mixin config hash accumulator")
                 config_hash = _hash_bytes(config_payload, "sha256")
-                if resource in config_hashes:
+                identity = (label, resource)
+                prior_hash = config_hashes.get(identity)
+                if prior_hash is not None:
+                    if prior_hash != config_hash:
+                        raise VerificationError(
+                            "conflicting mixin config bytes for authenticated identity "
+                            f"{label}!/{resource}: {prior_hash} != {config_hash}"
+                        )
                     continue
-                config_hashes[resource] = config_hash
+                config_hashes[identity] = config_hash
                 result["mixin_configs"] = int(result["mixin_configs"]) + 1
                 common = config.get("mixins", [])
                 if not isinstance(common, list):
@@ -687,17 +821,16 @@ def _scan_mixin_archive(
                             f"missing common mixin class {label}!/{class_resource}"
                         )
                     class_payload = archive.read(class_resource)
-                    pseudo, has_mixin, targets = _mixin_targets(class_payload)
-                    if (
-                        has_mixin
-                        and b"Lnet/minecraft/client/multiplayer/ClientLevel;" in class_payload
+                    pseudo, has_mixin, target_form, targets = _mixin_targets(
+                        class_payload
+                    )
+                    if has_mixin and (
+                        "Lnet/minecraft/client/multiplayer/ClientLevel;" in targets
                     ):
-                        result["direct_clientlevel_mixins"] = (
-                            int(result["direct_clientlevel_mixins"]) + 1
+                        result["annotation_clientlevel_mixins"] = (
+                            int(result["annotation_clientlevel_mixins"]) + 1
                         )
-                        if pseudo and (
-                            "Lnet/minecraft/client/multiplayer/ClientLevel;" in targets
-                        ):
+                        if pseudo:
                             candidates = result["pseudo_clientlevel_candidates"]
                             if not isinstance(candidates, list):
                                 raise VerificationError("invalid candidate accumulator")
@@ -708,6 +841,7 @@ def _scan_mixin_archive(
                                     mixin_name,
                                     class_resource,
                                     _hash_bytes(class_payload, "sha256"),
+                                    target_form,
                                     targets,
                                 )
                             )
@@ -801,10 +935,16 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
                 f"Sable mixin class hash mismatch for {resource}: "
                 f"expected {expected_hash}, got {actual_hash}"
             )
-        pseudo, has_mixin, targets = _mixin_targets(payload)
-        if not pseudo or not has_mixin or targets != expected_targets:
+        pseudo, has_mixin, target_form, targets = _mixin_targets(payload)
+        if (
+            not pseudo
+            or not has_mixin
+            or target_form != "value"
+            or targets != expected_targets
+        ):
             raise VerificationError(
-                f"Sable mixin annotations changed for {resource}: pseudo={pseudo}, targets={targets}"
+                "Sable mixin annotations changed for "
+                f"{resource}: pseudo={pseudo}, form={target_form}, targets={targets}"
             )
         class_hashes[resource] = actual_hash
         expected_candidates.append(
@@ -814,6 +954,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
                 mixin_name,
                 resource,
                 actual_hash,
+                target_form,
                 targets,
             )
         )
@@ -832,7 +973,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": 0,
         "mixin_configs": 0,
         "common_mixins": 0,
-        "direct_clientlevel_mixins": 0,
+        "annotation_clientlevel_mixins": 0,
         "pseudo_clientlevel_candidates": [],
         "mixin_config_hashes": {},
     }
@@ -851,7 +992,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": SABLE_ARCHIVE_SCOPE_COUNT,
         "mixin_configs": SABLE_MIXIN_CONFIG_COUNT,
         "common_mixins": SABLE_COMMON_MIXIN_COUNT,
-        "direct_clientlevel_mixins": SABLE_DIRECT_CLIENTLEVEL_MIXIN_COUNT,
+        "annotation_clientlevel_mixins": SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT,
     }
     for key, expected in expected_counts.items():
         actual = int(scan[key])
@@ -876,8 +1017,16 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": int(scan["archive_scopes"]),
         "mixin_configs": int(scan["mixin_configs"]),
         "common_mixins": int(scan["common_mixins"]),
-        "direct_clientlevel_mixins": int(scan["direct_clientlevel_mixins"]),
+        "annotation_clientlevel_mixins": int(
+            scan["annotation_clientlevel_mixins"]
+        ),
         "pseudo_clientlevel_candidates": candidates,
+        "mixin_config_identities": tuple(
+            (label, resource, config_hash)
+            for (label, resource), config_hash in sorted(
+                scan["mixin_config_hashes"].items()
+            )
+        ),
     }
 
 
@@ -911,7 +1060,9 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         )
     try:
         with zipfile.ZipFile(artifact) as archive:
-            names = set(archive.namelist())
+            names = {
+                entry.filename for entry in archive.infolist() if not entry.is_dir()
+            }
             forbidden = sorted(
                 name
                 for name in names
@@ -922,6 +1073,12 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
             if forbidden:
                 raise VerificationError(
                     f"IDAS compat artifact contains forbidden payloads: {forbidden}"
+                )
+            expected_names = set(IDAS_COMPAT_RESOURCE_SHA256)
+            if names != expected_names:
+                raise VerificationError(
+                    "IDAS compat artifact file set changed: "
+                    f"expected {sorted(expected_names)}, got {sorted(names)}"
                 )
             resources = {
                 resource: archive.read(resource)
@@ -940,6 +1097,9 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         )
     try:
         mixin_config = json.loads(resources["afterlight_idas_compat.mixins.json"])
+        provenance = json.loads(
+            resources["META-INF/afterlight-provenance.json"]
+        )
         mod_metadata = tomllib.loads(
             resources["META-INF/neoforge.mods.toml"].decode("utf-8")
         )
@@ -954,12 +1114,29 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         raise VerificationError("IDAS compat mixin set changed")
     if "client" in mixin_config:
         raise VerificationError("IDAS compat gained a client-only mixin list")
+    expected_provenance = {
+        "schema": 1,
+        "sourceRepository": (
+            "https://github.com/Luskish/afterlight-idas-compat"
+        ),
+        "sourceCommit": IDAS_COMPAT_SOURCE_COMMIT,
+        "version": "0.1.1+1.21.1",
+        "idasArtifactSha256": (
+            "7f5031dd90ae0b32d7fe5c6c47c877cac1eb95a178bc78d196cb24c17ce82522"
+        ),
+        "reviewedTemplates": IDAS_COMPAT_REVIEWED_TEMPLATES,
+        "negativeTestSources": IDAS_COMPAT_NEGATIVE_TEST_SOURCES,
+    }
+    if provenance != expected_provenance:
+        raise VerificationError(
+            f"IDAS compat embedded source provenance changed: {provenance}"
+        )
     mods = mod_metadata.get("mods")
     if not isinstance(mods, list) or len(mods) != 1:
         raise VerificationError("IDAS compat mod metadata shape changed")
     if mods[0].get("modId") != "afterlight_idas_compat" or mods[0].get(
         "version"
-    ) != "0.1.0+1.21.1":
+    ) != "0.1.1+1.21.1":
         raise VerificationError("IDAS compat mod identity changed")
     dependencies = mod_metadata.get("dependencies", {}).get(
         "afterlight_idas_compat", []
@@ -983,6 +1160,9 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         "artifact_sha256": artifact_sha256,
         "artifact_sha512": IDAS_COMPAT_SHA512,
         "resource_sha256": resource_hashes,
+        "source_commit": provenance["sourceCommit"],
+        "reviewed_templates": provenance["reviewedTemplates"],
+        "negative_test_sources": provenance["negativeTestSources"],
     }
 
 
@@ -997,22 +1177,41 @@ def parse_log_records(log_text: str) -> tuple[LogRecord, ...]:
             return
         records.append(
             LogRecord(
+                timestamp=current_match.group("timestamp"),
                 thread=current_match.group("thread"),
                 level=current_match.group("level"),
                 logger=current_match.group("logger"),
                 message=current_match.group("message"),
+                continuations=tuple(current_lines[1:]),
                 text="\n".join(current_lines),
             )
         )
 
-    for line in log_text.splitlines():
+    for line_number, raw_line in enumerate(log_text.splitlines(), start=1):
+        line = ANSI_ESCAPE.sub("", raw_line)
+        if "\x1b" in line:
+            raise VerificationError(
+                f"unsupported ANSI escape in log line {line_number}"
+            )
         match = LOG_HEADER.match(line)
         if match:
             finish_record()
             current_match = match
             current_lines = [line]
-        elif current_match is not None:
-            current_lines.append(line)
+            continue
+        if line.startswith("[") and SEVERE_HEADER_LIKE.search(line):
+            raise VerificationError(
+                f"malformed ERROR/FATAL log header at line {line_number}: {line}"
+            )
+        if line.startswith("[") and re.match(r"^\[\d{2}[A-Z][a-z]{2}\d{4}", line):
+            raise VerificationError(
+                f"malformed anchored log header at line {line_number}: {line}"
+            )
+        if current_match is None:
+            raise VerificationError(
+                f"unattached log line {line_number}: {line}"
+            )
+        current_lines.append(line)
     finish_record()
     return tuple(records)
 
@@ -1027,16 +1226,102 @@ def _record_is(
     )
 
 
+def _normalized_record_thread(record: LogRecord) -> str:
+    if (
+        record.logger == "net.neoforged.neoforge.registries.DataMapLoader/"
+        and record.level == "WARN"
+        and record.message == APOTHIC_WARNING_MESSAGE
+        and re.fullmatch(r"Worker-Main-\d+", record.thread)
+    ):
+        return "Worker-Main-N"
+    if record.logger == IDAS_COMPAT_LOGGER:
+        if re.fullmatch(r"Worker-Main-\d+", record.thread):
+            return "Worker-Main-N"
+        if re.fullmatch(r"modloading-worker-\d+", record.thread):
+            return "modloading-worker-N"
+    return record.thread
+
+
+def _normalize_continuation_line(line: str) -> str:
+    normalized = re.sub(r"jar%23\d+", "jar%23N", line)
+    return re.sub(
+        r"\$Anonymous\$[0-9a-fA-F]+", "$Anonymous$<ANON>", normalized
+    )
+
+
+def canonical_record_tuple(
+    record: LogRecord,
+) -> tuple[str, str, str, str, tuple[str, ...]]:
+    return (
+        _normalized_record_thread(record),
+        record.level,
+        record.logger,
+        record.message,
+        tuple(_normalize_continuation_line(line) for line in record.continuations),
+    )
+
+
+def _canonical_fields_tuple(
+    thread: str,
+    level: str,
+    logger: str,
+    message: str,
+    continuations: Sequence[str] = (),
+) -> tuple[str, str, str, str, tuple[str, ...]]:
+    return (
+        thread,
+        level,
+        logger,
+        message,
+        tuple(_normalize_continuation_line(line) for line in continuations),
+    )
+
+
+def _canonical_tuple_sha256(
+    canonical: tuple[str, str, str, str, tuple[str, ...]],
+) -> str:
+    payload = json.dumps(
+        canonical, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    return _hash_bytes(payload, "sha256")
+
+
+def canonical_record_fingerprint(record: LogRecord) -> str:
+    return _canonical_tuple_sha256(canonical_record_tuple(record))
+
+
+def _allowance_fingerprint(allowance: LogAllowance) -> str:
+    if allowance.canonical_sha256 is not None:
+        if re.fullmatch(r"[0-9a-f]{64}", allowance.canonical_sha256) is None:
+            raise VerificationError(
+                f"{allowance.label} has an invalid canonical SHA-256"
+            )
+        return allowance.canonical_sha256
+    return _canonical_tuple_sha256(
+        _canonical_fields_tuple(
+            allowance.thread,
+            allowance.level,
+            allowance.logger,
+            allowance.message,
+            allowance.continuations,
+        )
+    )
+
+
+def _allowance_matches(record: LogRecord, allowance: LogAllowance) -> bool:
+    return (
+        record.level == allowance.level
+        and record.logger == allowance.logger
+        and record.message == allowance.message
+        and _normalized_record_thread(record) == allowance.thread
+        and canonical_record_fingerprint(record) == _allowance_fingerprint(allowance)
+    )
+
+
 def _normalized_stack_payload(record: LogRecord) -> bytes:
-    frames = []
-    for line in record.text.splitlines():
-        if not line.startswith("\tat "):
-            continue
-        normalized = re.sub(r" (?:~)?\[[^\]]*\]$", "", line)
-        normalized = re.sub(r"jar%23\d+", "jar%23N", normalized)
-        normalized = re.sub(r"\$Anonymous\$[0-9a-fA-F]+", "$Anonymous$<ANON>", normalized)
-        frames.append(normalized)
-    return "\n".join(frames).encode("utf-8")
+    return "\n".join(
+        _normalize_continuation_line(line) for line in record.continuations
+    ).encode("utf-8")
 
 
 def _require_stack_hash(record: LogRecord, expected: str, label: str) -> None:
@@ -1049,7 +1334,7 @@ def _require_stack_hash(record: LogRecord, expected: str, label: str) -> None:
 
 
 def _require_single_line(record: LogRecord, label: str) -> None:
-    if len(record.text.splitlines()) != 1:
+    if record.continuations:
         raise VerificationError(f"{label} record gained unreviewed continuation context")
 
 
@@ -1060,7 +1345,21 @@ def project_sable_error_requirement() -> LogAllowance:
         logger="net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM",
         message=RUNTIME_DIST_CLEANER_MESSAGE,
         count=12,
+        thread="main",
     )
+
+
+def _require_exact_context_record(
+    record: LogRecord,
+    thread: str,
+    level: str,
+    logger: str,
+    message: str,
+    label: str,
+) -> None:
+    expected = _canonical_fields_tuple(thread, level, logger, message)
+    if canonical_record_tuple(record) != expected:
+        raise VerificationError(f"RuntimeDistCleaner {label} context changed")
 
 
 def _unique_record_index(
@@ -1079,6 +1378,9 @@ def _unique_record_index(
         raise VerificationError(
             f"RuntimeDistCleaner {label} anchor count changed: expected 1, got {len(indices)}"
         )
+    _require_exact_context_record(
+        records[indices[0]], "main", level, logger, message, label
+    )
     return indices[0]
 
 
@@ -1088,9 +1390,7 @@ def _validate_sable_debug_records(
     indices = [
         index
         for index, record in enumerate(records)
-        if _record_is(
-            record, requirement.level, requirement.logger, requirement.message
-        )
+        if _allowance_matches(record, requirement)
     ]
     if len(indices) != requirement.count:
         raise VerificationError(
@@ -1100,10 +1400,6 @@ def _validate_sable_debug_records(
     for index in indices:
         record = records[index]
         _require_single_line(record, "RuntimeDistCleaner")
-        if record.thread != "main":
-            raise VerificationError(
-                f"RuntimeDistCleaner record moved to unreviewed thread {record.thread}"
-            )
 
     access_logger = "net.neoforged.accesstransformer.AccessTransformer/AXFORM"
     access_field = (
@@ -1115,7 +1411,6 @@ def _validate_sable_debug_records(
         "getEntities()Lnet/minecraft/world/level/entity/LevelEntityGetter; "
         "to access PUBLIC and LEAVE"
     )
-    catch_exception = f"java.lang.RuntimeException: {RUNTIME_DIST_CLEANER_MESSAGE}"
     mixin_load_warning = (
         "Error loading class: net/minecraft/client/multiplayer/ClientLevel "
         f"(java.lang.RuntimeException: {RUNTIME_DIST_CLEANER_MESSAGE})"
@@ -1125,22 +1420,30 @@ def _validate_sable_debug_records(
     for position, index in enumerate(indices[:9]):
         if index < 2 or index + 1 >= len(records):
             raise VerificationError("RuntimeDistCleaner lifecycle context is truncated")
-        if not _record_is(records[index - 2], "DEBUG", access_logger, access_field):
-            raise VerificationError(
-                f"RuntimeDistCleaner lifecycle record {position + 1} lost ClientLevel field context"
-            )
-        if not _record_is(records[index - 1], "DEBUG", access_logger, access_method):
-            raise VerificationError(
-                f"RuntimeDistCleaner lifecycle record {position + 1} lost ClientLevel method context"
-            )
+        _require_exact_context_record(
+            records[index - 2],
+            "main",
+            "DEBUG",
+            access_logger,
+            access_field,
+            f"lifecycle record {position + 1} ClientLevel field",
+        )
+        _require_exact_context_record(
+            records[index - 1],
+            "main",
+            "DEBUG",
+            access_logger,
+            access_method,
+            f"lifecycle record {position + 1} ClientLevel method",
+        )
         catching = records[index + 1]
         if not _record_is(catching, "TRACE", "mixin/CATCHING", "Catching"):
             raise VerificationError(
                 f"RuntimeDistCleaner lifecycle record {position + 1} lost Mixin catch context"
             )
-        if catch_exception not in catching.text:
+        if catching.thread != "main":
             raise VerificationError(
-                f"RuntimeDistCleaner lifecycle record {position + 1} exception changed"
+                f"RuntimeDistCleaner lifecycle record {position + 1} catch thread changed"
             )
 
     for position, mixin_name in enumerate(source_mixins):
@@ -1154,7 +1457,7 @@ def _validate_sable_debug_records(
             f"sable.mixins.json:{mixin_name} from mod sable"
         )
         markers = [
-            record.message
+            record
             for record in records[index + 2 : segment_end]
             if record.logger == "mixin/"
             and record.message.startswith(
@@ -1162,10 +1465,19 @@ def _validate_sable_debug_records(
                 "sable.mixins.json:"
             )
         ]
-        if markers != [expected_marker]:
+        if len(markers) != 1:
             raise VerificationError(
-                f"RuntimeDistCleaner prepare source context changed for {mixin_name}: {markers}"
+                "RuntimeDistCleaner prepare source context changed for "
+                f"{mixin_name}: {[record.message for record in markers]}"
             )
+        _require_exact_context_record(
+            markers[0],
+            "main",
+            "DEBUG",
+            "mixin/",
+            expected_marker,
+            f"prepare source {mixin_name}",
+        )
 
     access_logger = "net.neoforged.accesstransformer.AccessTransformer/AXFORM"
     p3_first = _unique_record_index(
@@ -1256,22 +1568,23 @@ def _validate_sable_debug_records(
                 raise VerificationError(
                     f"RuntimeDistCleaner validation context is truncated for {mixin_name}"
                 )
-            if not _record_is(
-                records[phase_index + 2], "WARN", "mixin/", mixin_load_warning
-            ):
-                raise VerificationError(
-                    f"RuntimeDistCleaner validation warning changed for {mixin_name}"
-                )
-            if not _record_is(
+            _require_exact_context_record(
+                records[phase_index + 2],
+                "main",
+                "WARN",
+                "mixin/",
+                mixin_load_warning,
+                f"validation warning {mixin_name}",
+            )
+            _require_exact_context_record(
                 records[phase_index + 3],
+                "main",
                 "TRACE",
                 "mixin/",
                 "Added class metadata for net/minecraft/client/multiplayer/ClientLevel "
                 "to metadata cache",
-            ):
-                raise VerificationError(
-                    f"RuntimeDistCleaner validation metadata context changed for {mixin_name}"
-                )
+                f"validation metadata {mixin_name}",
+            )
 
     for position, mixin_name in enumerate(source_mixins):
         index = indices[9 + position]
@@ -1283,24 +1596,119 @@ def _validate_sable_debug_records(
             raise VerificationError(
                 f"RuntimeDistCleaner application context is truncated for {mixin_name}"
             )
-        if not _record_is(records[index - 1], "DEBUG", "mixin/", expected_source):
-            raise VerificationError(
-                f"RuntimeDistCleaner application source context changed for {mixin_name}"
-            )
-        if not _record_is(records[index + 1], "WARN", "mixin/", mixin_load_warning):
-            raise VerificationError(
-                f"RuntimeDistCleaner application warning changed for {mixin_name}"
-            )
+        _require_exact_context_record(
+            records[index - 1],
+            "main",
+            "DEBUG",
+            "mixin/",
+            expected_source,
+            f"application source {mixin_name}",
+        )
+        _require_exact_context_record(
+            records[index + 1],
+            "main",
+            "WARN",
+            "mixin/",
+            mixin_load_warning,
+            f"application warning {mixin_name}",
+        )
     return tuple(indices)
 
 
 def _error_fatal_projection(
     records: Sequence[LogRecord],
-) -> tuple[tuple[str, str, str], ...]:
+) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
     return tuple(
-        (record.level, record.logger, record.message)
+        canonical_record_tuple(record)
         for record in records
         if record.level in ("ERROR", "FATAL")
+    )
+
+
+def _accepted_warning_projection(
+    records: Sequence[LogRecord], indices: Sequence[int]
+) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
+    return tuple(canonical_record_tuple(records[index]) for index in indices)
+
+
+def _validate_canonical_log_pair(
+    latest_records: Sequence[LogRecord], debug_records: Sequence[LogRecord]
+) -> tuple[
+    Counter[str],
+    Counter[str],
+    tuple[int, ...],
+    tuple[int, ...],
+]:
+    error_allowances = project_error_allowances() + (
+        project_sable_error_requirement(),
+    )
+    latest_errors, latest_error_indices = _validate_allowance_records(
+        latest_records,
+        error_allowances,
+        lambda record: record.level in ("ERROR", "FATAL"),
+        "ERROR/FATAL",
+        require_every_selected=True,
+    )
+    debug_errors, debug_error_indices = _validate_allowance_records(
+        debug_records,
+        error_allowances,
+        lambda record: record.level in ("ERROR", "FATAL"),
+        "ERROR/FATAL",
+        require_every_selected=True,
+    )
+    latest_error_projection = tuple(
+        canonical_record_tuple(latest_records[index])
+        for index in latest_error_indices
+    )
+    debug_error_projection = tuple(
+        canonical_record_tuple(debug_records[index])
+        for index in debug_error_indices
+    )
+    if latest_error_projection != debug_error_projection:
+        raise VerificationError(
+            "latest.log and debug.log canonical ERROR/FATAL projections differ"
+        )
+    if latest_errors != debug_errors:
+        raise VerificationError(
+            "latest.log and debug.log canonical ERROR/FATAL identities differ"
+        )
+
+    warning_allowances = project_warning_allowances()
+    warning_identities = {
+        (allowance.level, allowance.logger, allowance.message)
+        for allowance in warning_allowances
+    }
+    latest_warnings, latest_warning_indices = _validate_allowance_records(
+        latest_records,
+        warning_allowances,
+        lambda record: (record.level, record.logger, record.message)
+        in warning_identities,
+        "known residual WARN",
+        require_every_selected=False,
+    )
+    debug_warnings, debug_warning_indices = _validate_allowance_records(
+        debug_records,
+        warning_allowances,
+        lambda record: (record.level, record.logger, record.message)
+        in warning_identities,
+        "known residual WARN",
+        require_every_selected=False,
+    )
+    if _accepted_warning_projection(
+        latest_records, latest_warning_indices
+    ) != _accepted_warning_projection(debug_records, debug_warning_indices):
+        raise VerificationError(
+            "latest.log and debug.log canonical accepted WARN projections differ"
+        )
+    if latest_warnings != debug_warnings:
+        raise VerificationError(
+            "latest.log and debug.log accepted WARN identities differ"
+        )
+    return (
+        latest_errors,
+        latest_warnings,
+        latest_error_indices,
+        debug_error_indices,
     )
 
 
@@ -1313,24 +1721,23 @@ def verify_sable_runtime_dist_cleaner_evidence(
     status: int,
 ) -> DedicatedErrorEvidence:
     verify_sable_source_evidence(root, install)
-    validate_boot_markers(latest_text, nonce, status)
-    validate_boot_markers(debug_text, nonce, status)
+    latest_state = validate_boot_markers(latest_text, nonce, status, root)
+    debug_state = validate_boot_markers(debug_text, nonce, status, root)
+    if latest_state != debug_state:
+        raise VerificationError(
+            "latest.log and debug.log canonical boot state projections differ"
+        )
     latest_records = parse_log_records(latest_text)
     debug_records = parse_log_records(debug_text)
-    latest_projection = _error_fatal_projection(latest_records)
-    debug_projection = _error_fatal_projection(debug_records)
-    if latest_projection != debug_projection:
-        raise VerificationError(
-            "latest.log and debug.log ordered ERROR/FATAL projections differ"
-        )
+    _, _, latest_error_indices, debug_error_indices = _validate_canonical_log_pair(
+        latest_records, debug_records
+    )
 
     requirement = project_sable_error_requirement()
     latest_indices = tuple(
         index
-        for index, record in enumerate(latest_records)
-        if _record_is(
-            record, requirement.level, requirement.logger, requirement.message
-        )
+        for index in latest_error_indices
+        if _allowance_matches(latest_records[index], requirement)
     )
     if len(latest_indices) != requirement.count:
         raise VerificationError(
@@ -1338,6 +1745,15 @@ def verify_sable_runtime_dist_cleaner_evidence(
             f"expected {requirement.count}, got {len(latest_indices)}"
         )
     debug_indices = _validate_sable_debug_records(debug_records, requirement)
+    projected_debug_indices = tuple(
+        index
+        for index in debug_error_indices
+        if _allowance_matches(debug_records[index], requirement)
+    )
+    if debug_indices != projected_debug_indices:
+        raise VerificationError(
+            "RuntimeDistCleaner debug source indices differ from canonical projection"
+        )
     return DedicatedErrorEvidence(
         label=requirement.label,
         latest_record_indices=latest_indices,
@@ -1347,9 +1763,9 @@ def verify_sable_runtime_dist_cleaner_evidence(
 
 def _idas_compat_audit_projection(
     records: Sequence[LogRecord],
-) -> tuple[tuple[str, str], ...]:
+) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
     return tuple(
-        (record.level, record.message)
+        canonical_record_tuple(record)
         for record in records
         if record.logger == IDAS_COMPAT_LOGGER
         and record.level in ("INFO", "WARN", "ERROR", "FATAL")
@@ -1461,74 +1877,63 @@ def validate_error_records(
     allowances: Iterable[LogAllowance],
     consumed_record_indices: Iterable[int] = (),
 ) -> Counter[str]:
+    if tuple(consumed_record_indices):
+        raise VerificationError(
+            "pre-consumed ERROR/FATAL records are not supported by the canonical oracle"
+        )
     allowance_list = tuple(allowances)
     records = parse_log_records(log_text)
-    consumed = frozenset(consumed_record_indices)
-    for index in consumed:
-        if not 0 <= index < len(records):
-            raise VerificationError(f"consumed ERROR record index is invalid: {index}")
-        if records[index].level not in ("ERROR", "FATAL"):
-            raise VerificationError(f"consumed record {index} is not ERROR or FATAL")
-    observed: Counter[str] = Counter()
-    for index, record in enumerate(records):
-        if record.level not in ("ERROR", "FATAL"):
-            continue
-        if index in consumed:
-            continue
-        matches = [
-            allowance
-            for allowance in allowance_list
-            if record.level == allowance.level
-            and record.logger == allowance.logger
-            and record.message == allowance.message
-            and all(context in record.text for context in allowance.contexts)
-        ]
-        if len(matches) != 1:
-            raise VerificationError(
-                f"unmatched {record.level} record from {record.logger}: {record.message}"
-            )
-        observed[matches[0].label] += 1
-
-    for allowance in allowance_list:
-        actual = observed[allowance.label]
-        if actual != allowance.count:
-            raise VerificationError(
-                f"{allowance.label} count mismatch: expected {allowance.count}, got {actual}"
-            )
+    observed, _ = _validate_allowance_records(
+        records,
+        allowance_list,
+        lambda record: record.level in ("ERROR", "FATAL"),
+        "ERROR/FATAL",
+        require_every_selected=True,
+    )
     return observed
 
 
-def _validate_selected_records(
-    records: Iterable[LogRecord],
-    allowances: Iterable[LogAllowance],
+def _validate_allowance_records(
+    records: Sequence[LogRecord],
+    allowances: Sequence[LogAllowance],
     selected: Callable[[LogRecord], bool],
     category: str,
-) -> Counter[str]:
-    allowance_list = tuple(allowances)
+    require_every_selected: bool,
+) -> tuple[Counter[str], tuple[int, ...]]:
     observed: Counter[str] = Counter()
-    for record in records:
+    accepted_indices: list[int] = []
+    for index, record in enumerate(records):
         if not selected(record):
             continue
         matches = [
             allowance
-            for allowance in allowance_list
-            if record.level == allowance.level
-            and record.logger == allowance.logger
-            and record.message == allowance.message
-            and all(context in record.text for context in allowance.contexts)
+            for allowance in allowances
+            if _allowance_matches(record, allowance)
         ]
+        if not matches and not require_every_selected:
+            expected_identity = any(
+                record.level == allowance.level
+                and record.logger == allowance.logger
+                and record.message == allowance.message
+                for allowance in allowances
+            )
+            if not expected_identity:
+                continue
         if len(matches) != 1:
             raise VerificationError(
-                f"unmatched {category} record from {record.logger}: {record.message}"
+                f"unmatched canonical {category} record from "
+                f"{record.thread} {record.logger}: {record.message}"
             )
         observed[matches[0].label] += 1
-    for allowance in allowance_list:
+        accepted_indices.append(index)
+
+    for allowance in allowances:
         actual = observed[allowance.label]
         if actual != allowance.count:
             raise VerificationError(
                 f"{allowance.label} count mismatch: expected {allowance.count}, got {actual}"
             )
-    return observed
+    return observed, tuple(accepted_indices)
 
 
 def project_error_allowances() -> tuple[LogAllowance, ...]:
@@ -1539,8 +1944,12 @@ def project_error_allowances() -> tuple[LogAllowance, ...]:
             logger="Moonlight/",
             message=MOONLIGHT_FABRIC_MESSAGE,
             count=1,
-            contexts=(
+            thread="modloading-sync-worker",
+            continuations=(
                 "Mods that bundle Fabric API: [forgified-fabric-api-0.115.6+2.1.0+1.21.1.jar]",
+            ),
+            canonical_sha256=(
+                "16f8b1e44b35ebd10d63ee3b244e44e208f3d40a267a49bd16e43d3e2fa4288c"
             ),
         ),
         LogAllowance(
@@ -1549,10 +1958,9 @@ def project_error_allowances() -> tuple[LogAllowance, ...]:
             logger="net.minecraft.server.packs.AbstractPackResources/",
             message="Couldn't load fabric:overlays metadata",
             count=1,
-            contexts=(
-                "Unknown resource condition key: tectonic:config",
-                "fabric_resource_conditions_api_v1$applyOverlayConditions",
-                "tectonic@3.0.26/dev.worldgen.tectonic.platform.neoforge.TectonicNeoforge.registerEnabledPacks",
+            thread="main",
+            canonical_sha256=(
+                "a21b5e9526cfa36945dc2596eae19282286ffdada02a5355aa4e32aca35fdd9b"
             ),
         ),
     )
@@ -1570,6 +1978,7 @@ def project_warning_allowances() -> tuple[LogAllowance, ...]:
                 f"{KALEIDOSCOPE_SUFFIX}"
             ),
             count=1,
+            thread="main",
         )
         for food in ("shengjian_mantou", "dumpling", "zongzi")
         for count in range(1, 10)
@@ -1584,6 +1993,7 @@ def project_warning_allowances() -> tuple[LogAllowance, ...]:
                 f"malum:{metal}_from_node_smelting. Reason: The result item is empty."
             ),
             count=1,
+            thread="main",
         )
         for metal in (
             "tin",
@@ -1604,6 +2014,7 @@ def project_warning_allowances() -> tuple[LogAllowance, ...]:
             logger="KubeJS Server/",
             message=INCENDIUM_WARNING_MESSAGE,
             count=1,
+            thread="main",
         ),
     ) + malum + (
         LogAllowance(
@@ -1612,6 +2023,7 @@ def project_warning_allowances() -> tuple[LogAllowance, ...]:
             logger="net.neoforged.neoforge.registries.DataMapLoader/",
             message=APOTHIC_WARNING_MESSAGE,
             count=1,
+            thread="Worker-Main-N",
         ),
         LogAllowance(
             label="Just Dire Things early pancake candidate scan",
@@ -1619,34 +2031,43 @@ def project_warning_allowances() -> tuple[LogAllowance, ...]:
             logger="Supplementaries/",
             message=JDT_WARNING_MESSAGE,
             count=1,
+            thread="main",
         ),
     )
 
 
 def validate_known_residual_warnings(log_text: str) -> Counter[str]:
-    def selected(record: LogRecord) -> bool:
+    records = parse_log_records(log_text)
+    for record in records:
         if record.level != "WARN":
-            return False
-        message = record.message
-        return any(
-            marker in message
-            for marker in (
-                "kaleidoscope_cookery:stockpot/",
-                "incendium:upgrade_elytra",
-                "[EnderIO] Unable to inherit the cooking recipe with ID: malum:",
-                "apothic_enchanting:enchantment_info",
-                "registering dispenser behavior for item",
-                "Not all defined tags for registry ResourceKey[minecraft:root / minecraft:worldgen/biome] are present in data pack: idas:",
-                "Couldn't load tag idas:",
+            continue
+        if (
+            record.logger == "net.minecraft.core.MappedRegistry/"
+            and re.fullmatch(
+                r"Not all defined tags for registry ResourceKey\[minecraft:root / "
+                r"minecraft:worldgen/biome\] are present in data pack: idas:[a-z0-9_./-]+",
+                record.message,
             )
-        )
-
-    return _validate_selected_records(
-        parse_log_records(log_text),
-        project_warning_allowances(),
-        selected,
+        ) or (
+            record.logger == "net.minecraft.tags.TagLoader/"
+            and re.fullmatch(r"Couldn't load tag idas:[a-z0-9_./-]+.*", record.message)
+        ):
+            raise VerificationError(
+                f"unmatched known residual WARN from {record.logger}: {record.message}"
+            )
+    allowances = project_warning_allowances()
+    identities = {
+        (allowance.level, allowance.logger, allowance.message)
+        for allowance in allowances
+    }
+    observed, _ = _validate_allowance_records(
+        records,
+        allowances,
+        lambda record: (record.level, record.logger, record.message) in identities,
         "known residual WARN",
+        require_every_selected=False,
     )
+    return observed
 
 
 def verify_jdt_evidence(root: Path | str, install: Path | str) -> None:
@@ -1724,72 +2145,249 @@ def verify_boot_run(
     audits = verify_idas_compat_runtime_evidence(
         root_path, install_path, log_text, debug_text
     )
-    allowances = project_error_allowances()
-    errors = validate_error_records(
-        log_text, allowances, sable.latest_record_indices
+    latest_records = parse_log_records(log_text)
+    debug_records = parse_log_records(debug_text)
+    errors, warnings, _, _ = _validate_canonical_log_pair(
+        latest_records, debug_records
     )
-    debug_errors = validate_error_records(
-        debug_text, allowances, sable.debug_record_indices
-    )
-    errors[sable.label] = len(sable.latest_record_indices)
-    debug_errors[sable.label] = len(sable.debug_record_indices)
-    if debug_errors != errors:
+    latest_warning_check = validate_known_residual_warnings(log_text)
+    debug_warning_check = validate_known_residual_warnings(debug_text)
+    if latest_warning_check != warnings or debug_warning_check != warnings:
         raise VerificationError(
-            f"latest.log and debug.log ERROR identities differ: {errors} != {debug_errors}"
+            "canonical warning projection differs from repaired-signature validation"
         )
-    warnings = validate_known_residual_warnings(log_text)
+    if errors[sable.label] != len(sable.latest_record_indices):
+        raise VerificationError("Sable canonical error count differs from source proof")
     return {"errors": errors, "warnings": warnings, "audits": audits}
 
 
-def validate_boot_markers(log_text: str, nonce: str, status: int) -> None:
+def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
+    script_path = (
+        Path(root).resolve()
+        / "kubejs"
+        / "server_scripts"
+        / "afterlight"
+        / "generated_quest_item_audit.js"
+    )
+    try:
+        script = script_path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read generated quest audit script {script_path}: {error}"
+        ) from error
+    digest_matches = re.findall(
+        r"^const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '([0-9a-f]{64})'$",
+        script,
+        flags=re.MULTILINE,
+    )
+    if len(digest_matches) != 1:
+        raise VerificationError(
+            "generated quest audit script must declare exactly one digest"
+        )
+    item_match = re.search(
+        r"^const AFTERLIGHT_QUEST_ITEM_IDS = (?P<items>\[.*?\])\n\nServerEvents\.loaded",
+        script,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if item_match is None:
+        raise VerificationError("generated quest audit item array is malformed")
+    try:
+        items = json.loads(item_match.group("items"))
+    except json.JSONDecodeError as error:
+        raise VerificationError(
+            f"generated quest audit item array cannot be decoded: {error}"
+        ) from error
+    if (
+        not isinstance(items, list)
+        or not items
+        or not all(isinstance(item, str) for item in items)
+        or len(set(items)) != len(items)
+    ):
+        raise VerificationError("generated quest audit item array is not canonical")
+    success_line = (
+        "  console.info(`[AFTERLIGHT QUEST ITEM AUDIT] OK "
+        "${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} "
+        "${AFTERLIGHT_QUEST_ITEM_IDS.length} ${bootNonce}`)"
+    )
+    if script.count(success_line) != 1:
+        raise VerificationError("generated quest audit success emitter changed")
+    return digest_matches[0], len(items)
+
+
+def validate_boot_markers(
+    log_text: str,
+    nonce: str,
+    status: int,
+    root: Path | str | None = None,
+) -> tuple[tuple[str, tuple[str, str, str, str, tuple[str, ...]]], ...]:
     if status != 0:
         raise VerificationError(f"server exit status {status} is not a graceful exit")
     records = parse_log_records(log_text)
-    done = [
-        record
-        for record in records
-        if record.level == "INFO"
-        and record.logger == "net.minecraft.server.dedicated.DedicatedServer/"
-        and re.fullmatch(r'Done \(\d+(?:\.\d+)?s\)! For help, type "help"', record.message)
-    ]
-    if len(done) != 1:
-        raise VerificationError(
-            f"expected one anchored DedicatedServer Done record, got {len(done)}"
-        )
-
-    audit_pattern = re.compile(
-        rf"\[AFTERLIGHT QUEST ITEM AUDIT\] OK [0-9a-f]{{64}} 219 {re.escape(nonce)}"
+    root_path = (
+        Path(root).resolve()
+        if root is not None
+        else Path(__file__).resolve().parents[1]
     )
-    audits = [
-        record
-        for record in records
-        if record.level == "INFO"
-        and record.logger == "KubeJS Server/"
-        and audit_pattern.fullmatch(record.message)
-    ]
-    if len(audits) != 1:
-        raise VerificationError(
-            f"expected one fresh audit nonce record for {nonce}, got {len(audits)}"
-        )
-
-    shutdown_messages = (
-        "Stopping server",
-        "Saving players",
-        "Saving worlds",
-        "ThreadedAnvilChunkStorage: All dimensions are saved",
+    audit_digest, audit_count = quest_audit_expectation(root_path)
+    audit_message = (
+        f"[AFTERLIGHT QUEST ITEM AUDIT] OK {audit_digest} {audit_count} {nonce}"
     )
-    missing = [
-        message
-        for message in shutdown_messages
-        if not any(
+    ftb_message = "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables"
+
+    def exact_single(
+        record: LogRecord,
+        thread_pattern: str,
+        logger: str,
+        message: str,
+    ) -> bool:
+        return (
             record.level == "INFO"
-            and record.logger == "net.minecraft.server.MinecraftServer/"
+            and re.fullmatch(thread_pattern, record.thread) is not None
+            and record.logger == logger
             and record.message == message
-            for record in records
+            and not record.continuations
+        )
+
+    marker_specs: list[
+        tuple[str, Callable[[LogRecord], bool], str | None]
+    ] = [
+        (
+            "IDAS READY",
+            lambda record: exact_single(
+                record,
+                r"modloading-worker-\d+",
+                IDAS_COMPAT_LOGGER,
+                IDAS_COMPAT_READY_MESSAGE,
+            ),
+            None,
         )
     ]
-    if missing:
-        raise VerificationError(f"clean shutdown markers missing: {', '.join(missing)}")
+    marker_specs.extend(
+        (
+            f"IDAS SANITIZED {position}",
+            lambda record, message=message: exact_single(
+                record, r"Worker-Main-\d+", IDAS_COMPAT_LOGGER, message
+            ),
+            None,
+        )
+        for position, message in enumerate(
+            IDAS_COMPAT_BOOT_SANITIZED_MESSAGES, start=1
+        )
+    )
+    done_pattern = re.compile(
+        r'Done \(\d+(?:\.\d+)?s\)! For help, type "help"'
+    )
+    marker_specs.extend(
+        (
+            (
+                "DedicatedServer Done",
+                lambda record: (
+                    record.thread == "Server thread"
+                    and record.level == "INFO"
+                    and record.logger
+                    == "net.minecraft.server.dedicated.DedicatedServer/"
+                    and done_pattern.fullmatch(record.message) is not None
+                    and not record.continuations
+                ),
+                'Done (<SECONDS>s)! For help, type "help"',
+            ),
+            (
+                "quest audit",
+                lambda record: exact_single(
+                    record, r"Server thread", "KubeJS Server/", audit_message
+                ),
+                None,
+            ),
+            (
+                "FTB Quests load",
+                lambda record: exact_single(
+                    record, r"Server thread", "FTB Quests/", ftb_message
+                ),
+                None,
+            ),
+            (
+                "stopping",
+                lambda record: exact_single(
+                    record,
+                    r"Server thread",
+                    "net.minecraft.server.MinecraftServer/",
+                    "Stopping server",
+                ),
+                None,
+            ),
+            (
+                "saving players",
+                lambda record: exact_single(
+                    record,
+                    r"Server thread",
+                    "net.minecraft.server.MinecraftServer/",
+                    "Saving players",
+                ),
+                None,
+            ),
+            (
+                "saving worlds",
+                lambda record: exact_single(
+                    record,
+                    r"Server thread",
+                    "net.minecraft.server.MinecraftServer/",
+                    "Saving worlds",
+                ),
+                None,
+            ),
+            (
+                "all dimensions saved",
+                lambda record: exact_single(
+                    record,
+                    r"Server thread",
+                    "net.minecraft.server.MinecraftServer/",
+                    "ThreadedAnvilChunkStorage: All dimensions are saved",
+                ),
+                None,
+            ),
+        )
+    )
+
+    selected: list[tuple[str, int, LogRecord, str | None]] = []
+    for label, predicate, normalized_message in marker_specs:
+        matches = [
+            (index, record)
+            for index, record in enumerate(records)
+            if predicate(record)
+        ]
+        if len(matches) != 1:
+            raise VerificationError(
+                f"boot state marker {label} count mismatch: expected 1, got {len(matches)}"
+            )
+        index, record = matches[0]
+        selected.append((label, index, record, normalized_message))
+
+    indices = tuple(index for _, index, _, _ in selected)
+    if indices != tuple(sorted(indices)) or len(set(indices)) != len(indices):
+        raise VerificationError(
+            f"boot state marker order changed: {tuple(label for label, _, _, _ in selected)}"
+        )
+    sanitized_threads = {
+        record.thread for _, _, record, _ in selected[1:5]
+    }
+    if len(sanitized_threads) != 1:
+        raise VerificationError(
+            f"IDAS SANITIZED worker thread changed within run: {sanitized_threads}"
+        )
+
+    projection = []
+    for label, _, record, normalized_message in selected:
+        canonical = canonical_record_tuple(record)
+        if normalized_message is not None:
+            canonical = (
+                canonical[0],
+                canonical[1],
+                canonical[2],
+                normalized_message,
+                canonical[4],
+            )
+        projection.append((label, canonical))
+    return tuple(projection)
 
 
 FILTER_METADATA = {

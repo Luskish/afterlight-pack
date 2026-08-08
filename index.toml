@@ -482,7 +482,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "931b70c91acf08b90df9dbe591e8d2e316d020ede325263fa59419e6bcb0a0b6"
+hash = "3c902850d434dc205497ba95fe978416284323acd347c77b0633ec49bdff450c"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -509,7 +509,7 @@ metafile = true
 
 [[files]]
 file = "mods/afterlight-idas-compat.pw.toml"
-hash = "95ae21af439e9321fb32181cee965c145c16b136935a4099b96087b8d8dc86c4"
+hash = "f88d72df9671b74b0e7731dda20d199db594f8ce20117c10c611e49da15b7c0c"
 metafile = true
 
 [[files]]

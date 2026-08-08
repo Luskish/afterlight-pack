@@ -11,7 +11,32 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Friend-facing artifact `dist/AFTERLIGHT-prism-instance.zip` is built but NOT yet distribution-approved: Shane must first do one manual Prism import + launch (client-side boot has never been exercised; needs a Microsoft account).
 - The design spec, the completed Plan 01 (with the Plan 02-07 roadmap table), and six committed project skills in `.agents/skills/` are all in this repo.
 
-## What comes next: Plan 02 (full roster + configs)
+## Plan 02 status: IN EXECUTION
+
+The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roster.md` (Task 0 hardening + Waves 1-13 + verification sweep + configs). Resume at the first wave below not marked complete, following the plan's Wave Pattern exactly.
+
+### Plan 02 live progress (update after every wave)
+
+| Task | Status | Notes |
+|---|---|---|
+| Task 0 hardening (3 commits) | pending | |
+| W1 Tech spine A | pending | |
+| W2 Tech spine B (MILESTONE) | pending | |
+| W3 Create set | pending | |
+| W4 Deep Vault (MILESTONE) | pending | |
+| W5 Undercurrent magic | pending | |
+| W6 Dangerous world (MILESTONE) | pending | |
+| W7 Worldgen/structures | pending | |
+| W8 Dimensions (MILESTONE) | pending | |
+| W9 Storage/QoL 2 | pending | |
+| W10 Food | pending | |
+| W11 Multiplayer | pending | |
+| W12 Story/scripting (MILESTONE) | pending | |
+| W13 Endgame + perf 2 | pending | |
+| Task 14 verification sweep | pending | |
+| Task 15 configs + main merge | pending | needs Shane's explicit approval to merge |
+
+## Plan 02 original scope notes
 
 Scope per the roadmap: grow from 22 to roughly 320 mods in category waves following spec section 5, then config normalization and AlmostUnified recipe unification. Mandated first three commits (from the final Plan 01 review):
 1. Add an empty `.nojekyll` at repo root, then confirm https://luskish.github.io/afterlight-pack/pack.toml still serves after the next main deploy.

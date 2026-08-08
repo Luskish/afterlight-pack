@@ -16,21 +16,33 @@ TIMEOUT_BIN=$(command -v gtimeout || command -v timeout || true)
 BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/latest/download/packwiz-installer-bootstrap.jar"
 DIR=server-test
 BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
+SERVE_PORT=${SERVE_PORT:-8199}
 
 rm -rf "$DIR" && mkdir -p "$DIR"
 
 # 1) Serve the working-dir pack locally
-packwiz serve --port 8199 & SERVE_PID=$!
-trap 'kill $SERVE_PID 2>/dev/null || true' EXIT
-sleep 2
+# Refuse to run if something already owns the port — otherwise packwiz stays alive
+# without binding and the installer would silently pull from the foreign server.
+if curl -sf "http://localhost:${SERVE_PORT}/" >/dev/null 2>&1; then
+  echo "FAIL: port ${SERVE_PORT} already in use"; exit 4
+fi
+packwiz serve --port "$SERVE_PORT" & SERVE_PID=$!
+trap 'kill $SERVE_PID 2>/dev/null || true' EXIT INT TERM
+READY=0
+for _ in $(seq 1 20); do
+  if curl -sf "http://localhost:${SERVE_PORT}/pack.toml" >/dev/null 2>&1; then READY=1; break; fi
+  sleep 0.5
+done
+[ "$READY" -eq 1 ] || { echo "FAIL: packwiz serve not ready on port ${SERVE_PORT}"; exit 5; }
 
 # 2) Install NeoForge server
-curl -sL -o "$DIR/neoforge-installer.jar" "https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/neoforge-${NEOFORGE_VERSION}-installer.jar"
+NEOFORGE_URL="https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/neoforge-${NEOFORGE_VERSION}-installer.jar"
+curl -sfL -o "$DIR/neoforge-installer.jar" "$NEOFORGE_URL" || { echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"; exit 3; }
 (cd "$DIR" && "$JAVA" -jar neoforge-installer.jar --install-server . > installer.log 2>&1)
 
 # 3) Install the pack's server side via packwiz-installer
-curl -sL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL"
-(cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:8199/pack.toml" > packwiz-install.log 2>&1)
+curl -sfL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL" || { echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"; exit 3; }
+(cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1)
 
 # 4) Boot headless with a watchdog, EULA accepted for local test only
 echo "eula=true" > "$DIR/eula.txt"

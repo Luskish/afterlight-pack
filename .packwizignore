@@ -10,3 +10,4 @@ skills-lock.json
 .claude/**
 server-test/**
 .superpowers/**
+**/.gitkeep

@@ -5,3 +5,4 @@ run/
 server-test/
 .packwiz-cache/
 .superpowers/
+dist/

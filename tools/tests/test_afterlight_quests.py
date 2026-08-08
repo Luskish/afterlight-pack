@@ -93,6 +93,9 @@ class QuestCompilerTests(unittest.TestCase):
         nonce_path.write_text(f"{nonce}\n", encoding="utf-8")
         return nonce
 
+    def audit_item_count(self, item_id: str = "example:widget") -> int:
+        return len(self.quests.KUBEJS_ITEM_ALLOWLIST | {item_id})
+
     def test_stable_id_uses_truncated_uppercase_sha256(self) -> None:
         expected = hashlib.sha256(b"quest:story/test/widget").hexdigest()[:16].upper()
         self.assertEqual(
@@ -222,7 +225,8 @@ class QuestCompilerTests(unittest.TestCase):
 
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 {nonce}\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
+                f"{self.audit_item_count()} {nonce}\n",
                 encoding="utf-8",
             )
             self.assertEqual(
@@ -246,7 +250,8 @@ class QuestCompilerTests(unittest.TestCase):
             nonce = self.write_runtime_nonce(base)
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 {nonce}\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
+                f"{self.audit_item_count()} {nonce}\n",
                 encoding="utf-8",
             )
             audit_script = (
@@ -294,6 +299,23 @@ class QuestCompilerTests(unittest.TestCase):
             self.assertNotEqual(second, third)
             self.assertNotEqual(third, fourth)
 
+    def test_runtime_item_audit_includes_allowlisted_kubejs_items_without_quests(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+
+            self.quests.write_catalog([], quest_root)
+
+            audit_script = (
+                base
+                / "kubejs"
+                / "server_scripts"
+                / "afterlight"
+                / "generated_quest_item_audit.js"
+            ).read_text(encoding="utf-8")
+            for item_id in self.quests.KUBEJS_ITEM_ALLOWLIST:
+                self.assertIn(f'  "{item_id}"', audit_script)
+
     def test_runtime_item_audit_rejects_nonce_from_prior_boot(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -305,7 +327,8 @@ class QuestCompilerTests(unittest.TestCase):
             self.write_runtime_nonce(base, "current-boot")
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 prior-boot\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
+                f"{self.audit_item_count()} prior-boot\n",
                 encoding="utf-8",
             )
 

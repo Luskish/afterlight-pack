@@ -43,7 +43,14 @@ VANILLA_ITEM_ALLOWLIST = frozenset(
 KUBEJS_ITEM_ALLOWLIST = frozenset(
     {
         "kubejs:ascendancy_seal",
+        "kubejs:deep_vault_key",
+        "kubejs:gate_blueprint",
         "kubejs:requisition_chit",
+        "kubejs:schematic_industrial_anchor",
+        "kubejs:schematic_isotopic_core",
+        "kubejs:schematic_kinetic_frame",
+        "kubejs:schematic_lattice_matrix",
+        "kubejs:undercurrent_stabilizer_precursor",
     }
 )
 
@@ -596,7 +603,8 @@ def _parsed_quest_files(quest_root: Path) -> dict[Path, Any]:
 
 
 def _quest_item_ids(quest_root: Path) -> tuple[str, ...]:
-    return tuple(sorted(_item_references_from_parsed(_parsed_quest_files(quest_root))))
+    quest_item_ids = _item_references_from_parsed(_parsed_quest_files(quest_root))
+    return tuple(sorted(quest_item_ids.keys() | KUBEJS_ITEM_ALLOWLIST))
 
 
 def _registry_input_digest(repo_root: Path) -> str:
@@ -869,7 +877,7 @@ def validate_quests(
                 errors.append(f"impossible item reference {item_id}: {locations}")
 
     if require_runtime_audit:
-        item_ids = tuple(sorted(item_references))
+        item_ids = _quest_item_ids(quest_root)
         digest = quest_item_audit_digest(quest_root)
         repo_root = quest_root.parents[2]
         audit_script = (

@@ -74,7 +74,7 @@ hash = "75920c94189e08d8413f6c9e929011b5e60aed9253954d3c1db5ad6d080f8a29"
 
 [[files]]
 file = "kubejs/assets/kubejs/lang/en_us.json"
-hash = "9b136b8861a5f128a5541c56f0d8a3cd2135a915d18e06c8a3a4344ffba0a245"
+hash = "8b6c673a7625f160727f48a2541a3541f13d3c4075a0a0428fa748f8652a1fda"
 
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/ascendancy_seal.png"
@@ -126,7 +126,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "b31be2593ec8d307c743d0e183b6859995eb088eecf2de0e794a5e0b17194d67"
+hash = "6d821c4b0b6d492118344920be7ada9299c7eae4c856a77b1aa8480ae8a77c91"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -134,7 +134,7 @@ hash = "0ec9ba2283507e330e865eb6b6706880c97b3890924a4537885fdb38b25f0dde"
 
 [[files]]
 file = "kubejs/startup_scripts/afterlight/registry.js"
-hash = "3060d1e06a4a19a4bcf575e338bdfd2842ad1e9a43a762b13283d6587f8dcefb"
+hash = "3fa38a1c174acfa8af0f19950bfdc4150a3b028ec21ba8188dbd7b5aabd2b88f"
 
 [[files]]
 file = "mods/advanced-loot-info.pw.toml"

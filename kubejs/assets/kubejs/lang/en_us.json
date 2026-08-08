@@ -1,4 +1,11 @@
 {
   "item.kubejs.requisition_chit": "Requisition Chit",
-  "item.kubejs.ascendancy_seal": "Ascendancy Seal"
+  "item.kubejs.ascendancy_seal": "Ascendancy Seal",
+  "item.kubejs.deep_vault_key": "Deep Vault Key",
+  "item.kubejs.schematic_kinetic_frame": "Kinetic Frame Schematic",
+  "item.kubejs.schematic_industrial_anchor": "Industrial Anchor Schematic",
+  "item.kubejs.schematic_isotopic_core": "Isotopic Core Schematic",
+  "item.kubejs.schematic_lattice_matrix": "Lattice Matrix Schematic",
+  "item.kubejs.gate_blueprint": "Gate Blueprint",
+  "item.kubejs.undercurrent_stabilizer_precursor": "Undercurrent Stabilizer Precursor"
 }

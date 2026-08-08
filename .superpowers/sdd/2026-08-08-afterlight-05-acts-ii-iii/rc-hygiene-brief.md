@@ -9,6 +9,8 @@ The controller explicitly approved the following additions to the original hygie
 1. Oritech turbofuel fluid ingredient serializer repair.
 2. Industrial Foregoing Curios entity-slot repair.
 3. Cataclysm empty tool-requirement block tags.
+4. A dedicated Sable RuntimeDistCleaner provenance verifier.
+5. An original IDAS in-memory structure compatibility mod.
 
 These are authorized release-candidate repairs, not scope violations.
 
@@ -28,8 +30,10 @@ These are authorized release-candidate repairs, not scope violations.
 12. Replace the sixteen invalid Create Connected Dye Depot catalyst loot tables, `extendedae:blocks/ex_emc_interface`, and `irons_spellbooks:test/ring_gen_break_me` with valid empty loot tables.
 13. Make the four source IDAS compatibility tags non-required while preserving their source IDs: `byg_redwood_biomes`, `bygmohogany_biomes`, `bopredwood_biomes`, and `bopmohogany_biomes`.
 14. Add exact optional empty definitions for every structure-referenced IDAS tag absent from the source jar: `idas:has_structure/bygredwood_biomes`, `idas:has_structure/bygmahogany_biomes`, and `idas:has_structure/bopmahogany_biomes`.
-15. Never modify or redistribute IDAS structure NBT. Bind the two benign `minecraft:air` ItemStack errors to the exact source `underground_camp1.nbt` bytes and its Create saw filter and toolbox compartment paths.
-16. Pin Terralith to Modrinth version `IY93YaEe`, version `2.6.2`, filename `Terralith_1.21.1_v2.6.2_Neoforge.jar`, SHA-512 `35298f1682567f63dc16658b04cee5498b30819f1c05f9712b4480d7f5eb17059db3b13ab14f81a05fe257149d11ced2cce2030d3727c1747edd8657c53e2a85`, and side `both`. Set Lithostitched side to `both`.
+15. Never modify, copy, filter, or redistribute IDAS structure NBT. Eliminate the generic `minecraft:air` ItemStack errors with the original MIT-licensed `afterlight_idas_compat` mod version `0.1.0+1.21.1`, published from `Luskish/afterlight-idas-compat` tag `v0.1.0` and installed through exact direct-download Packwiz metadata with side `both`.
+16. Authenticate IDAS version `1.13.7+1.21.1-neoforge` and artifact SHA-256 `7f5031dd90ae0b32d7fe5c6c47c877cac1eb95a178bc78d196cb24c17ce82522` before mutation. Inject only at `StructureTemplateManager.loadFromResource(ResourceLocation)` return, retain the source ID, and sanitize only direct compounds under the `idas` namespace with `id = minecraft:air`, numeric `count`, and one of the three exact reviewed key sets.
+17. Remove matching compound-field entries. Replace matching list entries with an empty `CompoundTag` so list cardinality is preserved. Any artifact mismatch or unreviewed air shape must perform no mutation, emit a dedicated ERROR, and fail the release gate.
+18. Pin Terralith to Modrinth version `IY93YaEe`, version `2.6.2`, filename `Terralith_1.21.1_v2.6.2_Neoforge.jar`, SHA-512 `35298f1682567f63dc16658b04cee5498b30819f1c05f9712b4480d7f5eb17059db3b13ab14f81a05fe257149d11ced2cce2030d3727c1747edd8657c53e2a85`, and side `both`. Set Lithostitched side to `both`.
 
 ## Just Dire Things Determination
 
@@ -45,8 +49,10 @@ Do not add compensation, disable pancakes, disable Supplementaries dispenser beh
 4. Pin `packwiz-installer-bootstrap` v0.0.3 and verify SHA-256 `a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c` before execution.
 5. Run `packwiz serve --refresh=false`. Verify manifest and index coherence before install and fail if `pack.toml` or `index.toml` changes at any phase.
 6. Preserve the server process status. Require status `0`, one anchored `DedicatedServer` Done record in the authoritative current `latest.log`, the fresh nonce in that log, and all clean shutdown markers.
-7. Parse every ERROR and FATAL record from the authoritative log. Reject every unmatched record. Bind every allowed residual to exact logger, full stable message, resource or stack context where available, current source evidence, and exact count. Require zero repaired signatures and zero IDAS missing-tag records.
-8. Preserve exact known residuals: 27 Kaleidoscope carrier warnings, one Incendium smithing fallback, nine EnderIO Malum inheritance warnings, exactly two source-bound IDAS air ItemStack errors, one Apothic Enchanting stale data-map warning, one source-bound Just Dire Things early scan warning, 12 RuntimeDistCleaner errors, one Moonlight Fabric API error, and one Fabric overlay metadata error.
-9. Run focused negative tests, all fixtures, full quest tests, static and runtime quest validation, a genuinely clean-world `BOOT_TIMEOUT=1200 ./tools/server-test.sh`, and `./tools/verify-pack.sh`. Require `SERVER BOOT: OK` and `VERIFY: ALL GREEN`.
-10. Inspect the Packwiz index for leaks. Do not run `packwiz refresh` after the final commit.
-11. Lithostitched client launch remains a manual release item. Do not claim client proof from dedicated-server verification.
+7. Parse every ERROR and FATAL record from the authoritative current `latest.log`. Reject every unmatched record. Bind every allowed residual to exact logger, full stable message, source or stack context, authenticated artifacts, and exact count. Require zero repaired signatures, zero IDAS missing-tag records, and zero generic ItemStack air errors.
+8. Verify all 12 RuntimeDistCleaner records through a dedicated Sable verifier, not generic allowance matching. Authenticate Sable, loader, and Mixin runtime artifacts, exact mixin JSON and class hashes, the exhaustive common `@Pseudo` `ClientLevel` candidate set, normalized stack hashes, named P1 through P3 windows, application adjacency, and same-run latest/debug projection. Any changed source, phase, stack, logger, message, exception, target, or count must fail.
+9. Require exactly one authenticated IDAS compatibility READY record and the exact fixed-seed SANITIZED audit sequence, including `idas:underground_camp/underground_camp1` with two replacements and digest `772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06`.
+10. Preserve exact known residuals: 27 Kaleidoscope carrier warnings, one Incendium smithing fallback, nine EnderIO Malum inheritance warnings, one Apothic Enchanting stale data-map warning, one source-bound Just Dire Things early scan warning, 12 dedicated Sable RuntimeDistCleaner errors, one Moonlight Fabric API error, and one Fabric overlay metadata error.
+11. Run focused negative tests, all fixtures, compatibility Gradle tests and dedicated-server safety checks, full quest tests, static and runtime quest validation, a genuinely clean-world `BOOT_TIMEOUT=1200 ./tools/server-test.sh`, and `./tools/verify-pack.sh`. Require `SERVER BOOT: OK` and `VERIFY: ALL GREEN`.
+12. Inspect the Packwiz index for leaks. Do not run `packwiz refresh` after the final commit.
+13. Lithostitched client launch remains a manual release item. Do not claim client proof from dedicated-server verification.

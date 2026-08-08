@@ -7,11 +7,14 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
+DEBUG_LOG = ROOT / "server-test" / "logs" / "debug.log"
+LATEST_LOG = ROOT / "server-test" / "logs" / "latest.log"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -104,6 +107,40 @@ def valid_boot_log(nonce: str) -> str:
     )
 
 
+def relocate_record(
+    log_text: str, logger: str, message: str, change_thread: bool = True
+) -> str:
+    lines = log_text.splitlines()
+    record_index = next(
+        index
+        for index, line in enumerate(lines)
+        if f"[{logger}]: {message}" in line
+    )
+    moved = lines.pop(record_index)
+    if change_thread:
+        moved = re.sub(
+            r"\[[^\]]+/ERROR\]", "[Unrelated-Worker/ERROR]", moved, count=1
+        )
+    done_index = next(
+        index
+        for index, line in enumerate(lines)
+        if "[net.minecraft.server.dedicated.DedicatedServer/]: Done (" in line
+    )
+    lines.insert(done_index + 1, moved)
+    return "\n".join(lines) + "\n"
+
+
+def add_unrelated_record_context(log_text: str, logger: str, message: str) -> str:
+    lines = log_text.splitlines()
+    record_index = next(
+        index
+        for index, line in enumerate(lines)
+        if f"[{logger}]: {message}" in line
+    )
+    lines.insert(record_index + 1, "\tat unrelated.Substitute.run(Substitute.java:7)")
+    return "\n".join(lines) + "\n"
+
+
 class BootOracleNegativeTests(unittest.TestCase):
     def allowance(self):
         hygiene = hygiene_module()
@@ -148,6 +185,128 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(hygiene.VerificationError, "unmatched ERROR"):
             hygiene.validate_error_records(substituted, (self.allowance(),))
+
+    def assert_sable_debug_rejected(self, debug_text: str, pattern: str) -> None:
+        hygiene = hygiene_module()
+        records = hygiene.parse_log_records(debug_text)
+        with self.assertRaisesRegex(hygiene.VerificationError, pattern):
+            hygiene._validate_sable_debug_records(
+                records, hygiene.project_sable_error_requirement()
+            )
+
+    def test_project_generic_allowances_cannot_consume_sable_records(self) -> None:
+        hygiene = hygiene_module()
+        requirement = hygiene.project_sable_error_requirement()
+        self.assertFalse(
+            any(
+                allowance.logger == requirement.logger
+                and allowance.message == requirement.message
+                for allowance in hygiene.project_error_allowances()
+            )
+        )
+        log_text = (
+            "[08Aug2026 12:00:00.000] [main/ERROR] "
+            f"[{requirement.logger}]: {requirement.message}\n"
+        )
+        with self.assertRaisesRegex(hygiene.VerificationError, "unmatched ERROR"):
+            hygiene.validate_error_records(log_text, hygiene.project_error_allowances())
+
+    def test_project_generic_allowances_cannot_consume_idas_air_errors(self) -> None:
+        hygiene = hygiene_module()
+        log_text = (
+            "[08Aug2026 12:00:00.000] [Worker-Main-1/ERROR] "
+            "[net.minecraft.world.item.ItemStack/]: "
+            f"{hygiene.ITEMSTACK_AIR_MESSAGE}\n"
+        )
+        with self.assertRaisesRegex(hygiene.VerificationError, "unmatched ERROR"):
+            hygiene.validate_error_records(log_text, hygiene.project_error_allowances())
+
+    def test_sable_dedicated_verifier_accepts_current_named_context(self) -> None:
+        hygiene = hygiene_module()
+        records = hygiene.parse_log_records(
+            DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        )
+        indices = hygiene._validate_sable_debug_records(
+            records, hygiene.project_sable_error_requirement()
+        )
+        self.assertEqual(len(indices), 12)
+
+    def test_sable_verifier_rejects_same_count_relocation(self) -> None:
+        hygiene = hygiene_module()
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        relocated = relocate_record(
+            debug_text,
+            "net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM",
+            hygiene.RUNTIME_DIST_CLEANER_MESSAGE,
+            change_thread=False,
+        )
+        self.assert_sable_debug_rejected(relocated, "RuntimeDistCleaner")
+
+    def test_sable_verifier_rejects_added_substitute_context(self) -> None:
+        hygiene = hygiene_module()
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        substituted = add_unrelated_record_context(
+            debug_text,
+            "net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM",
+            hygiene.RUNTIME_DIST_CLEANER_MESSAGE,
+        )
+        self.assert_sable_debug_rejected(substituted, "continuation context")
+
+    def test_sable_verifier_rejects_named_prepare_source_substitution(self) -> None:
+        hygiene = hygiene_module()
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        substituted = debug_text.replace(
+            "sable.mixins.json:entity.entity_aabb_lookup.LevelsMixin from mod sable",
+            "substitute.mixins.json:other.LevelsMixin from mod substitute",
+            1,
+        )
+        self.assert_sable_debug_rejected(substituted, "prepare source context")
+
+    def test_sable_verifier_rejects_application_source_substitution(self) -> None:
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        substituted = debug_text.replace(
+            "Mixing plot.LevelsMixin from sable.mixins.json into "
+            "net.minecraft.server.level.ServerLevel",
+            "Mixing substitute.LevelsMixin from substitute.mixins.json into "
+            "net.minecraft.server.level.ServerLevel",
+            1,
+        )
+        self.assert_sable_debug_rejected(substituted, "application source context")
+
+    def test_sable_verifier_rejects_changed_normalized_stack_source(self) -> None:
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        substituted = debug_text.replace(
+            "RuntimeDistCleaner.processClassWithFlags(RuntimeDistCleaner.java:60)",
+            "RuntimeDistCleaner.processClassWithFlags(RuntimeDistCleaner.java:61)",
+            1,
+        )
+        self.assert_sable_debug_rejected(substituted, "normalized stack hash changed")
+
+    def test_sable_verifier_rejects_named_window_relocation(self) -> None:
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        anchor = (
+            "[main/TRACE] [mixin/]: Added class metadata for "
+            "dev/ryanhcode/sable/api/command/SubLevelArgumentType$Info to metadata cache"
+        )
+        lines = debug_text.splitlines()
+        anchor_index = next(index for index, line in enumerate(lines) if anchor in line)
+        moved = lines.pop(anchor_index)
+        p2_anchor = next(
+            index
+            for index, line in enumerate(lines)
+            if "SubLevelEntityCollision$FirstCollisionInfo to metadata cache" in line
+        )
+        lines.insert(p2_anchor, moved)
+        self.assert_sable_debug_rejected("\n".join(lines) + "\n", "P1 source window")
+
+    def test_sable_verifier_rejects_missing_first_p3_named_anchor(self) -> None:
+        debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        substituted = debug_text.replace(
+            "ServerConnectionListenerMixin$1 to metadata cache",
+            "ServerConnectionListenerMixin$changed to metadata cache",
+            1,
+        )
+        self.assert_sable_debug_rejected(substituted, "P3 first start")
 
     def test_fake_done_logger_is_rejected(self) -> None:
         hygiene = hygiene_module()
@@ -279,6 +438,126 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(hygiene.VerificationError, "not installed on the server side"):
                 hygiene.resolve_source_jar(root, install, "mods/fixture.pw.toml")
+
+    def test_sable_verifier_rejects_authenticated_artifact_hash_change(self) -> None:
+        hygiene = hygiene_module()
+        original_hash_file = hygiene._hash_file
+
+        def changed_hash(path: Path, hash_format: str) -> str:
+            if path.name == "sable-neoforge-1.21.1-2.0.3.jar" and hash_format == "sha256":
+                return "0" * 64
+            return original_hash_file(path, hash_format)
+
+        with mock.patch.object(hygiene, "_hash_file", side_effect=changed_hash):
+            with self.assertRaisesRegex(hygiene.VerificationError, "Sable artifact hash"):
+                hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
+
+    def test_sable_verifier_rejects_fourth_pseudo_clientlevel_candidate(self) -> None:
+        hygiene = hygiene_module()
+        original_scan = hygiene._scan_mixin_archive
+        injected = False
+
+        def changed_scan(label, payload, result, nested_queue=None):
+            nonlocal injected
+            original_scan(label, payload, result, nested_queue)
+            if label == hygiene.SABLE_METADATA and not injected:
+                result["pseudo_clientlevel_candidates"].append(
+                    (
+                        "mods/substitute.pw.toml",
+                        "substitute.mixins.json",
+                        "substitute.LevelsMixin",
+                        "substitute/LevelsMixin.class",
+                        "0" * 64,
+                        (
+                            "Lnet/minecraft/server/level/ServerLevel;",
+                            "Lnet/minecraft/client/multiplayer/ClientLevel;",
+                        ),
+                    )
+                )
+                injected = True
+
+        with mock.patch.object(
+            hygiene, "_scan_mixin_archive", side_effect=changed_scan
+        ):
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "@Pseudo ClientLevel candidate set"
+            ):
+                hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
+
+
+class CurrentBootProjectionNegativeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.hygiene = hygiene_module()
+        self.latest = LATEST_LOG.read_text(encoding="utf-8", errors="replace")
+        self.debug = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        self.nonce = (ROOT / "server-test" / "afterlight-audit-nonce.txt").read_text(
+            encoding="utf-8"
+        ).strip()
+        self.status = int(
+            (ROOT / "server-test" / "afterlight-server-exit-status.txt")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+
+    def verify(self, latest: str, debug: str) -> None:
+        self.hygiene.verify_sable_runtime_dist_cleaner_evidence(
+            ROOT,
+            ROOT / "server-test",
+            latest,
+            debug,
+            self.nonce,
+            self.status,
+        )
+
+    def test_sable_verifier_rejects_stale_debug_log_nonce(self) -> None:
+        stale = self.debug.replace(self.nonce, "stale-nonce", 1)
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError, "fresh audit nonce"
+        ):
+            self.verify(self.latest, stale)
+
+    def test_sable_verifier_rejects_same_count_source_substitution(self) -> None:
+        substituted = self.debug.replace(
+            "Mixing water_occlusion.LevelsMixin from sable.mixins.json into "
+            "net.minecraft.server.level.ServerLevel",
+            "Mixing substitute.LevelsMixin from substitute.mixins.json into "
+            "net.minecraft.server.level.ServerLevel",
+            1,
+        )
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError, "application source context"
+        ):
+            self.verify(self.latest, substituted)
+
+    def test_idas_compat_verifier_rejects_same_count_audit_substitution(self) -> None:
+        changed = self.hygiene.IDAS_COMPAT_CAMP_MESSAGE.replace(
+            "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+            "0" * 64,
+        )
+        latest = self.latest.replace(self.hygiene.IDAS_COMPAT_CAMP_MESSAGE, changed, 1)
+        debug = self.debug.replace(self.hygiene.IDAS_COMPAT_CAMP_MESSAGE, changed, 1)
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError, "SANITIZED audit sequence changed"
+        ):
+            self.hygiene.verify_idas_compat_runtime_evidence(
+                ROOT, ROOT / "server-test", latest, debug
+            )
+
+    def test_idas_compat_verifier_rejects_any_generic_air_error(self) -> None:
+        injected = (
+            "[08Aug2026 12:00:00.000] [Worker-Main-1/ERROR] "
+            "[net.minecraft.world.item.ItemStack/]: "
+            f"{self.hygiene.ITEMSTACK_AIR_MESSAGE}\n"
+        )
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError, "generic ItemStack air ERROR"
+        ):
+            self.hygiene.verify_idas_compat_runtime_evidence(
+                ROOT,
+                ROOT / "server-test",
+                self.latest + injected,
+                self.debug + injected,
+            )
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):

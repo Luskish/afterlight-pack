@@ -39,6 +39,7 @@ SOURCE_METADATA = {
     "extendedae": "mods/ex-pattern-provider.pw.toml",
     "irons_spellbooks": "mods/irons-spells-n-spellbooks.pw.toml",
     "idas": "mods/idas.pw.toml",
+    "idas_compat": "mods/afterlight-idas-compat.pw.toml",
     "terralith": "mods/terralith.pw.toml",
     "lithostitched": "mods/lithostitched.pw.toml",
 }
@@ -601,7 +602,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
         nbt_files = list(idas_root.rglob("*.nbt")) if idas_root.exists() else []
         self.assertEqual(nbt_files, [])
 
-    def test_idas_air_errors_are_bound_to_two_exact_underground_camp_slots(self) -> None:
+    def test_idas_camp1_has_the_two_reviewed_sanitizer_candidates(self) -> None:
         resource = "data/idas/structure/underground_camp/underground_camp1.nbt"
         with zipfile.ZipFile(source_jar("idas")) as archive:
             payload = archive.read(resource)
@@ -617,6 +618,40 @@ class JarOverrideFixtureTests(unittest.TestCase):
                 ("blocks", "95", "nbt", "Inventory", "Compartments", "0"),
             ],
         )
+
+    def test_sable_source_is_authenticated_and_exhaustive(self) -> None:
+        evidence = rc_hygiene.verify_sable_source_evidence(ROOT, INSTALL_ROOT)
+        self.assertEqual(
+            evidence["artifact_sha256"],
+            "da6c3b66238586603d1dcaa2afb012d36815fbce0a2d5938fbb2936701d42279",
+        )
+        self.assertEqual(
+            evidence["mixin_config_sha256"],
+            "02dd86d2bd0ed6bef4841b1ae4ac8579edeb33fe0134f2060191b49102c4878d",
+        )
+        self.assertEqual(evidence["enabled_metadata"], 158)
+        self.assertEqual(evidence["top_level_artifacts"], 157)
+        self.assertEqual(evidence["archive_scopes"], 305)
+        self.assertEqual(evidence["mixin_configs"], 255)
+        self.assertEqual(evidence["common_mixins"], 2258)
+        self.assertEqual(evidence["direct_clientlevel_mixins"], 10)
+        self.assertEqual(len(evidence["pseudo_clientlevel_candidates"]), 3)
+        self.assertEqual(
+            tuple(candidate[2] for candidate in evidence["pseudo_clientlevel_candidates"]),
+            tuple(rc_hygiene.SABLE_MIXIN_CLASSES),
+        )
+
+    def test_idas_compat_release_is_source_authenticated_and_data_free(self) -> None:
+        evidence = rc_hygiene.verify_idas_compat_source_evidence(ROOT, INSTALL_ROOT)
+        self.assertEqual(
+            evidence["artifact_sha256"],
+            "458bbaeb5d93923d24b18d69ed7f60dbf3bab9854d50a02671f6ecb7a0338b1b",
+        )
+        self.assertEqual(
+            evidence["artifact_sha512"],
+            "26a490e6f4e2bde870ada10325dc8f7cad2774b96fa1c35e11a709010de50d126e0ffb33853a8b5f8fcfa1ced28e2d377b7603ddae056c634e959b760be82c54",
+        )
+        self.assertEqual(source_jar("idas_compat").name, rc_hygiene.IDAS_COMPAT_FILENAME)
 
 
 class ModMetadataFixtureTests(unittest.TestCase):
@@ -681,10 +716,17 @@ class CleanBootSignatureFixtureTests(unittest.TestCase):
         self.assertEqual(
             result["errors"],
             {
-                "RuntimeDistCleaner client class errors": 12,
                 "Moonlight Fabric API detection error": 1,
                 "Fabric overlay metadata error": 1,
-                "IDAS underground camp air ItemStack errors": 2,
+                "RuntimeDistCleaner Sable ClientLevel errors": 12,
+            },
+        )
+        self.assertEqual(
+            result["audits"],
+            {
+                "IDAS compat READY": 1,
+                "IDAS camp1 sanitized": 1,
+                "IDAS sanitized templates": 4,
             },
         )
         warnings = result["warnings"]

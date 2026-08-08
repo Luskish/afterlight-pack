@@ -3,7 +3,7 @@
 # Exit 0 = server booted to "Done". Nonzero = failure; see server-test/logs/.
 # Exit codes: 1 boot failed | 2 missing tool | 3 download failed | 4 port in use
 #             5 serve not ready | 6 NeoForge install failed | 7 pack install failed
-#             8 quest item registry audit failed
+#             8 quest item registry audit failed | 9 RC hygiene validation failed
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env
@@ -75,6 +75,10 @@ if grep -q 'Done (' "$DIR"/boot.log || grep -rq 'Done (' "$DIR"/logs/ 2>/dev/nul
     echo "SERVER BOOT: FAILED: quest item registry audit did not pass for this boot"
     grep -rhF '[AFTERLIGHT QUEST ITEM AUDIT]' "$DIR"/logs/ 2>/dev/null || true
     exit 8
+  fi
+  if ! python3 tools/tests/test_rc_hygiene.py; then
+    echo "SERVER BOOT: FAILED: RC hygiene validation did not pass"
+    exit 9
   fi
   echo "SERVER BOOT: OK"
   exit 0

@@ -1,8 +1,16 @@
 hash-format = "sha256"
 
 [[files]]
+file = "config/alexsmobs-common.toml"
+hash = "975a9e68400e9df1f2b2a98c4e8cef50d0c84143678d666e5448066119c3f332"
+
+[[files]]
 file = "config/almostunified/unification/materials.json"
 hash = "c6436bdbdab9d6321fbe208f0048e18bf5c2511e0d11170c4a6e86302c144a97"
+
+[[files]]
+file = "config/create_enchantment_industry-server.toml"
+hash = "74d6bf333342576057cb0da6252a0aa836191090ec30d75d5e100de2b1fb6f68"
 
 [[files]]
 file = "config/ftbchunks-world.snbt"
@@ -213,6 +221,26 @@ file = "config/ftbquests/quests/reward_tables/depot_mid.snbt"
 hash = "47c8cceb679019c7e4f6fe4269bbd06f51e449cb780a66d8d7e9f9c9fb6505f2"
 
 [[files]]
+file = "config/iceandfire/iaf-common.json"
+hash = "958ac28ed3e19774b305a272b74afcd8d39761ba4c62829ed59b47341cef0838"
+
+[[files]]
+file = "config/jupiter.json"
+hash = "c89c0940d0252fe2b8bba72c4a243e35700491435acef7103e4f9a7e86f929c9"
+
+[[files]]
+file = "config/justdirethings-server.toml"
+hash = "1585ad9a8fe3627f4858968de254f17dce69b73607940ca81e99d17a62289fe2"
+
+[[files]]
+file = "config/mcjtylib-server.toml"
+hash = "4c7594784731c81461499616cc1dbe427b92f7eff931ef0034332c06bc233fc1"
+
+[[files]]
+file = "config/quark-common.toml"
+hash = "85510aad8190e2e4a4609d25e4a15587868c556565e047e325b0942006c98094"
+
+[[files]]
 file = "global_packs/required_resources/afterlight_theme/ftbquests/ftb_quests_theme.txt"
 hash = "8a941cd5fd9a67054e514c03d58dd277d1d3f79d48a2385fed228b428f9bd7f4"
 
@@ -261,6 +289,174 @@ file = "kubejs/assets/kubejs/textures/item/undercurrent_stabilizer_precursor.png
 hash = "93908ae9b367cccecc990d6be3c6d9baca81d88b833eb895a527e7d2dbd45a17"
 
 [[files]]
+file = "kubejs/data/afterlight_rc_hygiene.zip"
+hash = "933db51f818727eceb250d1bacdd72b21accf54cf5ab021fc1ab7c28958ec466"
+
+[[files]]
+file = "kubejs/data/cataclysm/tags/block/needs_black_steel_tool.json"
+hash = "0c615d27d6e7932dab70603593b0d4b2098f06e605c17c7e8549a677ec84ef94"
+
+[[files]]
+file = "kubejs/data/cataclysm/tags/block/needs_monstrosity_tool.json"
+hash = "0c615d27d6e7932dab70603593b0d4b2098f06e605c17c7e8549a677ec84ef94"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_amber_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_aqua_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_beige_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_coral_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_forest_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_ginger_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_indigo_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_maroon_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_mint_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_navy_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_olive_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_rose_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_slate_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_tan_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_teal_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_connected/loot_table/blocks/dye_depot_verdant_fan_dyeing_catalyst.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/create_enchantment_industry/data_maps/fluid/unit/experience.json"
+hash = "7dded361f1cf4d2fbc6395d8996f387665662a7564096f79fb34a7cc13086dda"
+
+[[files]]
+file = "kubejs/data/dungeons_arise/advancement/find_fishing_hut.json"
+hash = "c23ca8ecc9e2cb545c1f960ea5fb7d774212424c728d24786a8efdb7d5177aba"
+
+[[files]]
+file = "kubejs/data/dungeons_arise/advancement/find_thornborn_towers.json"
+hash = "ee862a3818693d1420555ec6389294f1a17743535c3e3811e2f58e937c671084"
+
+[[files]]
+file = "kubejs/data/extendedae/loot_table/blocks/ex_emc_interface.json"
+hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
+
+[[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bopmohogany_biomes.json"
+hash = "89d31941fc58f95d9db4c8253bc232d5866f340f3ff6aafa30e49f1937ef2b5f"
+
+[[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bopredwood_biomes.json"
+hash = "3ceccbd7a2a73eb9a284184db07ef3581ef7c343bcf2931fa024e9f829290b58"
+
+[[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/byg_redwood_biomes.json"
+hash = "522d21a0c7b0ec3f3afcb54c6767b153072df04cb0401af4aa2a5cfa57d87118"
+
+[[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bygmohogany_biomes.json"
+hash = "1ad4bb0736c80abcec524d98f702e7d5a175b2542ee0a5d66e7d8a8aea21fae2"
+
+[[files]]
+file = "kubejs/data/industrialforegoing/curios/entities/entities.json"
+hash = "e133cb3438c5a30ea4961bcee328efe55514140394524415819bcd46c972b395"
+
+[[files]]
+file = "kubejs/data/irons_spellbooks/loot_table/test/ring_gen_break_me.json"
+hash = "af73bfdbddd392cbfcf94acfc3638cdeb8cc8f69f70341727b8e174504a838d3"
+
+[[files]]
+file = "kubejs/data/malum/recipe/create/milling/grim_talc.json"
+hash = "acbb1c2283c72577b7fd24ce3f1801031313366850f58592db2bc257ecbd4a28"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/occultism/gold_chalk.json"
+hash = "ebcb8c9b6e43544494d3579d00ced5ee168d6e37540315e7434d2ff4dd4b87fb"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/occultism/purple_chalk.json"
+hash = "67adfb75a44ba672021765859d2a9a738ccb2f228eeb13fa68cedc032df323d0"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/occultism/red_chalk.json"
+hash = "4c9d893b1afab6d919daee9f9136b5cea3d8d6cbacecb4b51212f83ba6ff6c8e"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/occultism/white_chalk.json"
+hash = "0b69d329cd5e55053a94b8f0efb3f11818198d9d5a798deee9ab207cce33628a"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/undergarden/cloggrum.json"
+hash = "1aa3748b7c80818ae2e0658cd732d1a1ae860750391ccd1c6029537fb7a425ea"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/undergarden/forgotten.json"
+hash = "b31bdca7e2c49558d0fb9addaba997b827983e9084dda3a7ffb04390d15a3307"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/undergarden/froststeel.json"
+hash = "ef80792aeea6b46da8fd7d7af09ec3e0071a228ce453eb3f40bb473c75f9e8da"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/undergarden/slingshot.json"
+hash = "507ac00631bc7e72befa3113bc6719fe4c9c8b195323f1779c253c80f24db2e8"
+
+[[files]]
+file = "kubejs/data/malum/recipe/malum/spirit_repair/undergarden/utherium.json"
+hash = "970bd694bb15bb7ada2d46cc9120cc0fea87c352fb06eafe826ab9ab118e2584"
+
+[[files]]
+file = "kubejs/data/minecraft/advancement/give_quest_trader_trade.json"
+hash = "b4923a80a5cdc1c22a28250b09d14fe18be9afe6eb170ba9325c0a07b5d5a037"
+
+[[files]]
+file = "kubejs/data/minecraft/advancement/wander_add_map.json"
+hash = "e7dc7ced944c80f68566c7dfbc5810a01157bdf37fbb1a3b92eb68e5a910d654"
+
+[[files]]
+file = "kubejs/data/oritech/recipe/mixing/compat/create/turbofuel.json"
+hash = "b7004448b6f4d83403cabdbd31948911839fad136f528668777b855809efdf99"
+
+[[files]]
 file = "kubejs/server_scripts/afterlight/_constants.js"
 hash = "a34700297d3c06a70b01693dbb504c40e7630edd62d192359ca6df830866b708"
 
@@ -274,7 +470,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "4e158996793a25552ae2adc84301f6b0ceecb52335e4a0603317019dfd8c9018"
+hash = "b7427f3504e93da35bd4c178aa87c0f400a5d5fe783fe0dd2858c85ac7735535"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -746,7 +942,7 @@ metafile = true
 
 [[files]]
 file = "mods/lithostitched.pw.toml"
-hash = "f0c66fc8c3d9dbea2704b007e79125377d50484ff3a40c280b48707659209045"
+hash = "e06a9a886181277591baeb9e82b484bd6204fe3aec0ffc8781bb05bb11b4d1a9"
 metafile = true
 
 [[files]]
@@ -1006,7 +1202,7 @@ metafile = true
 
 [[files]]
 file = "mods/terralith.pw.toml"
-hash = "da7ee99189ad35aac094919fe33cac647d98533b23c228f10d4811f08989e2b8"
+hash = "81c5c05f9ed4c07b9f027ff6c421939bb04e476075091f135d34aaa05af1f950"
 metafile = true
 
 [[files]]

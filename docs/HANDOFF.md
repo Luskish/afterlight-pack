@@ -24,7 +24,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W2 Tech spine B (MILESTONE) | COMPLETE | 63 mods total. Local server boot OK with full tech spine. Modrinth slug is `enderio` not ender-io. CF-sourced: LaserIO, RFTools Base/Utility/Power, Compact Machines (slug compact-machines), Flux Networks, Just Dire Things (slug just-dire-things). CF name-search trap: "Compact Machines" query offers Preview Fixer first, use exact slugs. Modrinth-absent on 1.21.1: Compact Machines, Flux Networks, Just Dire Things. |
 | W3 Create set | COMPLETE | 73 mods. All 7 requested + 3 legit required deps (Sable via Aeronautics, Create: Dragons Plus via Enchantment Industry, Kotlin for Forge via Slice and Dice). All Modrinth-native. |
 | W4 Deep Vault (MILESTONE) | COMPLETE | 74 mods. ENGINE SWAP (Shane-approved, spec amended): Modern Industrialization replaces GTCEu. GTCEu 7.0.x crashes dedicated servers (client class on server dist); GTCEu 1.4.6 incompatible with Create 6 (IStressValueProvider removed). Both proven by boot tests. MI 2.5.6 boots green. Revisit GTCEu at 26.x migration. |
-| W5 Undercurrent magic | pending | |
+| W5 Undercurrent magic | COMPLETE | 81 mods. 4 requested + legit deps: curios (W9 want), modonomicon (W12 want), smartbrainlib. All Modrinth-native. |
 | W6 Dangerous world (MILESTONE) | pending | |
 | W7 Worldgen/structures | pending | |
 | W8 Dimensions (MILESTONE) | pending | |

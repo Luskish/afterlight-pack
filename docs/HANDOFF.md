@@ -31,7 +31,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W9 Storage/QoL 2 | COMPLETE | 142 mods. quark+curios arrived early via deps in W5/W7. Inventory Sorter is CF-only (slug inventory-sorter); Modrinth veinminer-client is correctly side=client. |
 | W10 Food | COMPLETE | Farmers Delight + My Nethers Delight + Kaleidoscope Cookery. |
 | W11 Multiplayer | COMPLETE | 151 mods. FTB suite is CF-only: slugs ftb-teams-forge/ftb-chunks-forge/ftb-ranks-forge (+ftb-library-forge dep) but plain ftb-essentials. SVC + LuckPerms Modrinth-native. W10 note: mynethersdelight not on Modrinth 1.21.1, skipped per plan.
-| W12 Story/scripting (MILESTONE) | pending | |
+| W12 Story/scripting (MILESTONE) | COMPLETE | 161 mods, boot OK. Slugs: almostunified (no hyphen), CF ftb-quests-forge + ftb-xmod-compat + immersive-messages-api; Global Packs CF slug is global-datapacks. Modonomicon was already in via W5. |
 | W13 Endgame + perf 2 | pending | |
 | Task 14 verification sweep | pending | |
 | Task 15 configs + main merge | pending | needs Shane's explicit approval to merge |

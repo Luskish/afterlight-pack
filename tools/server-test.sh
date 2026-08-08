@@ -3,6 +3,7 @@
 # Exit 0 = server booted to "Done". Nonzero = failure; see server-test/logs/.
 # Exit codes: 1 boot failed | 2 missing tool | 3 download failed | 4 port in use
 #             5 serve not ready | 6 NeoForge install failed | 7 pack install failed
+#             8 quest item registry audit failed
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env

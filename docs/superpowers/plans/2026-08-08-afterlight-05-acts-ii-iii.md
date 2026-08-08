@@ -67,6 +67,7 @@
 
 **Interfaces:**
 - Adds six story chapters in Story group `4525BB3160467FCB`.
+- Adds exactly 57 named quests, bringing the full corpus to 15 chapters and 113 quests.
 - Chapter 6 depends on the final quest in Chapter 5. Each later chapter starts from the previous chapter finale.
 
 - [ ] Add Chapter 6, `The Lattice` (10 quests): Certus Resonance, Charged Matter, Fluix, Lost Presses, Processor Line, Controller, Cell Bank, Crafting Terminal, External Storage, First Autocraft. ECHO rediscovers distributed memory and remembers records being deleted before evacuation.

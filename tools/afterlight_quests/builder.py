@@ -196,6 +196,10 @@ def _escape(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def _format_key(value: str) -> str:
+    return value if re.fullmatch(r"[A-Za-z0-9_.+-]+", value) else _escape(value)
+
+
 def _format_scalar(value: Any) -> str:
     if isinstance(value, SnbtLong):
         return f"{value.value}L"
@@ -208,7 +212,10 @@ def _format_scalar(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.1f}d"
     if isinstance(value, Mapping):
-        fields = ", ".join(f"{key}: {_format_scalar(item)}" for key, item in value.items())
+        fields = ", ".join(
+            f"{_format_key(str(key))}: {_format_scalar(item)}"
+            for key, item in value.items()
+        )
         return f"{{ {fields} }}"
     if isinstance(value, (tuple, list)):
         return "[" + ", ".join(_format_scalar(item) for item in value) + "]"

@@ -1,0 +1,230 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "A57F2005E2D76B80"
+	group: "4525BB3160467FCB"
+	icon: { id: "fluxnetworks:flux_controller" }
+	id: "A57F2005E2D76B80"
+	images: [ ]
+	order_index: 8
+	quest_links: [ ]
+	quests: [
+		{
+			id: "0D1D4842B326D878"
+			dependencies: ["D91C65D0AC3AABA7"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "0E6E8246E063FF20"
+					type: "item"
+					item: { count: 1, id: "powah:energizing_orb" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "F73224603B7D2ECD"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "868564885949C7CB"
+			dependencies: ["0D1D4842B326D878"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "34DB4AAA9AD50F79"
+					type: "item"
+					item: { count: 1, id: "powah:thermo_generator_basic" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "486492E8F5EA7BFE"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "2C2EF25F89BFE5E5"
+			dependencies: ["868564885949C7CB"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "C8FD9CC73EE69DBA"
+					type: "item"
+					item: { count: 1, id: "powah:reactor_basic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4C20F10286B8415D"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "CE76FFCCB1836525"
+			dependencies: ["868564885949C7CB"]
+			x: 4.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "826A3343A9451DCB"
+					type: "item"
+					item: { count: 1, id: "powah:energy_cell_basic" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "B31A5C74A44F0554"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "8EB523691407A912"
+			dependencies: ["2C2EF25F89BFE5E5", "CE76FFCCB1836525"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "554C5061966DCA68"
+					type: "item"
+					item: { count: 1, id: "enderio:basic_capacitor_bank" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7A7358BF650E0F15"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "4AEF6244C3588A9F"
+			dependencies: ["8EB523691407A912"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "11B5FB8321FA8CA0"
+					type: "item"
+					item: { count: 1, id: "enderio:conduit", components: { "enderio:conduit": "enderio:energy" } }
+					count: 32L
+					consume_items: false
+					match_components: "fuzzy"
+				}
+			]
+			rewards: [
+				{
+					id: "C653893AFCDC9CEF"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "73E90DB4726301B0"
+			dependencies: ["4AEF6244C3588A9F"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "7085764F315AC1CA"
+					type: "item"
+					item: { count: 1, id: "fluxnetworks:flux_plug" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "B18A1DA7AEB6AE32"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "91239054873E1CD7"
+			dependencies: ["73E90DB4726301B0"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "0971562C9301B587"
+					type: "item"
+					item: { count: 1, id: "fluxnetworks:flux_controller" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "F426CBD75FCD761E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "6B876A865DE7A77A"
+			dependencies: ["91239054873E1CD7"]
+			x: 14.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "A33437755BA69526"
+					type: "forge_energy"
+					value: 10000000L
+					max_input: 250000L
+				}
+			]
+			rewards: [
+				{
+					id: "57D4DE000CACE3FE"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "9563E63C54404D11"
+					type: "item"
+					item: { count: 18, id: "kubejs:requisition_chit" }
+					count: 18
+				}
+				{
+					id: "7F127A4EA4163F5C"
+					type: "xp"
+					xp: 400
+				}
+			]
+		}
+	]
+}

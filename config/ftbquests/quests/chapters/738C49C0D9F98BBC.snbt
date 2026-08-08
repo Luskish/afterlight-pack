@@ -1,0 +1,230 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "738C49C0D9F98BBC"
+	group: "4525BB3160467FCB"
+	icon: { id: "create:schedule" }
+	id: "738C49C0D9F98BBC"
+	images: [ ]
+	order_index: 6
+	quest_links: [ ]
+	quests: [
+		{
+			id: "4B0048F311BDF3D9"
+			dependencies: ["95746440BEE5E5A7"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "1B970E9ED406757F"
+					type: "item"
+					item: { count: 1, id: "create:brass_ingot" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "0573CA99AA6E63BD"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "0E0B7A51EBA0479C"
+			dependencies: ["4B0048F311BDF3D9"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "9F171DAED4EB452C"
+					type: "item"
+					item: { count: 1, id: "create:precision_mechanism" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "33911A01FA6BAC2E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D4B5107AC6501C0C"
+			dependencies: ["0E0B7A51EBA0479C"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "D80E7A5C4D0D3272"
+					type: "item"
+					item: { count: 1, id: "create:deployer" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "AF18C78CA19F8ECF"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "BEE519FDA95C5462"
+			dependencies: ["0E0B7A51EBA0479C"]
+			x: 4.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "A151725CE28012A2"
+					type: "item"
+					item: { count: 1, id: "create:brass_funnel" }
+					count: 4L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "8082B42BEB958E69"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "C0100D03C6B635A9"
+			dependencies: ["D4B5107AC6501C0C", "BEE519FDA95C5462"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "76E60B61876FD4BA"
+					type: "item"
+					item: { count: 1, id: "create:mechanical_arm" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4DD8F3E2217E31B5"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "0E0A85D7FB4E9A7E"
+			dependencies: ["C0100D03C6B635A9"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "44D308E36795DD83"
+					type: "item"
+					item: { count: 1, id: "create:portable_storage_interface" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "EC37BF6A93B73896"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "43E0C5463F3FF8E1"
+			dependencies: ["0E0A85D7FB4E9A7E"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "7C21EEE6E3F51C6F"
+					type: "item"
+					item: { count: 1, id: "create:railway_casing" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "B78129DD7451CE81"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "9A36799BE3F63ADF"
+			dependencies: ["43E0C5463F3FF8E1"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "701723A2F214438C"
+					type: "item"
+					item: { count: 1, id: "create:schedule" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "81151A83B7B8CC2A"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F199A16DB5D83154"
+			dependencies: ["9A36799BE3F63ADF"]
+			x: 14.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "54CAD9F88B838722"
+					type: "item"
+					item: { count: 1, id: "create:track" }
+					count: 256L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6994DA5E0FF24228"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "15E60E698E49625A"
+					type: "item"
+					item: { count: 14, id: "kubejs:requisition_chit" }
+					count: 14
+				}
+				{
+					id: "647601543E73544E"
+					type: "xp"
+					xp: 300
+				}
+			]
+		}
+	]
+}

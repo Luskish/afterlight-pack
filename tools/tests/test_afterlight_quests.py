@@ -103,6 +103,128 @@ class QuestCompilerTests(unittest.TestCase):
             expected,
         )
 
+    def test_act_two_catalog_has_exact_shape_and_dependency_chain(self) -> None:
+        catalog = self.quests.build_catalog()
+        expected_quests = [
+            [
+                "Certus Resonance", "Charged Matter", "Fluix", "Lost Presses",
+                "Processor Line", "Controller", "Cell Bank", "Crafting Terminal",
+                "External Storage", "First Autocraft",
+            ],
+            [
+                "Brass Standard", "Precision Mechanism", "Deployer", "Filtered Belts",
+                "Mechanical Arm", "Portable Interface", "Rail Stock",
+                "Station and Schedule", "256-Track Capstone",
+            ],
+            [
+                "Air Compressor", "Pressure Chamber", "Compressed Iron", "Plastic",
+                "Etching Acid", "Printed Circuit", "Programmer", "Logistics Drone",
+                "64-Circuit Capstone",
+            ],
+            [
+                "Energizing Orb", "Reliable Generation", "Reactor Core", "Energy Cell",
+                "Capacitor Bank", "Conduit Backbone", "Flux Plug",
+                "Flux Point and Controller", "10M FE Reserve",
+            ],
+            [
+                "Oxygen Separation", "Purification", "Crushing", "Chemical Injection",
+                "Factory Upgrade", "Digital Miner", "Sulfur Chain", "Fissile Fuel",
+                "1,024-Ingot Quota", "Reactor Warning",
+            ],
+            [
+                "AE Stockkeeping", "Create Feed Line", "Drone Delivery", "IE Assembly",
+                "Conduit Routing", "Laser Extraction", "Automated Processor Batch",
+                "Automated Steel Batch", "Stable Power Proof", "Signal Triangulated",
+            ],
+        ]
+
+        self.assertEqual([chapter.title for chapter in catalog], [
+            "The Lattice",
+            "Lines of Motion",
+            "Pressure Language",
+            "The Grid",
+            "Thresholds",
+            "Convergence",
+        ])
+        self.assertEqual([len(chapter.quests) for chapter in catalog], [10, 9, 9, 9, 10, 10])
+        self.assertEqual(
+            [[quest.title for quest in chapter.quests] for chapter in catalog],
+            expected_quests,
+        )
+        self.assertEqual(sum(len(chapter.quests) for chapter in catalog), 57)
+        self.assertTrue(
+            all(chapter.group.resolved_id == "4525BB3160467FCB" for chapter in catalog)
+        )
+        self.assertEqual([chapter.order_index for chapter in catalog], [5, 6, 7, 8, 9, 10])
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("DA407B47132C07C6",))
+        for previous, current in zip(catalog, catalog[1:]):
+            self.assertEqual(
+                current.quests[0].dependency_ids,
+                (previous.quests[-1].id,),
+            )
+
+    def test_act_two_finales_have_memory_cache_chits_and_xp(self) -> None:
+        catalog = self.quests.build_catalog()
+
+        for fragment, chapter in enumerate(catalog, start=5):
+            finale = chapter.quests[-1]
+            reward_types = [reward.reward_type for reward in finale.rewards]
+            self.assertIn(f"MEMORY FRAGMENT {fragment:02d} RESTORED", "\n".join(finale.description))
+            self.assertEqual(reward_types.count("loot"), 1)
+            self.assertEqual(reward_types.count("xp"), 1)
+            self.assertTrue(
+                any(
+                    reward.reward_type == "item"
+                    and reward.data.get("item", {}).get("id") == "kubejs:requisition_chit"
+                    for reward in finale.rewards
+                )
+            )
+
+        key_rewards = [
+            reward
+            for chapter in catalog
+            for quest in chapter.quests
+            for reward in quest.rewards
+            if reward.reward_type == "item"
+            and reward.data.get("item", {}).get("id") == "kubejs:deep_vault_key"
+        ]
+        self.assertEqual(len(key_rewards), 1)
+        self.assertIn(key_rewards[0], catalog[-1].quests[-1].rewards)
+        self.assertFalse(
+            any(
+                "schematic" in str(reward.data)
+                for chapter in catalog
+                for quest in chapter.quests
+                for reward in quest.rewards
+            )
+        )
+
+    def test_act_two_uses_proven_energy_and_conduit_task_shapes(self) -> None:
+        catalog = self.quests.build_catalog()
+        quests = {
+            quest.title: quest
+            for chapter in catalog
+            for quest in chapter.quests
+        }
+
+        reserve = quests["10M FE Reserve"].tasks[0]
+        stable = quests["Stable Power Proof"].tasks[0]
+        self.assertEqual(reserve.task_type, "forge_energy")
+        self.assertEqual(reserve.data, {
+            "value": self.quests.SnbtLong(10_000_000),
+            "max_input": self.quests.SnbtLong(250_000),
+        })
+        self.assertEqual(stable.task_type, "forge_energy")
+        self.assertEqual(stable.data, {
+            "value": self.quests.SnbtLong(50_000_000),
+            "max_input": self.quests.SnbtLong(500_000),
+        })
+
+        rendered = "\n".join(self.quests.render_chapter(chapter) for chapter in catalog)
+        self.assertIn('"enderio:conduit": "enderio:energy"', rendered)
+        self.assertIn('"enderio:conduit": "enderio:item"', rendered)
+        self.assertEqual(rendered.count('match_components: "fuzzy"'), 2)
+
     def test_catalog_collision_detection_rejects_reused_id(self) -> None:
         catalog = self.make_catalog()
         duplicate = self.quests.QuestSpec(

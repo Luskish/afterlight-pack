@@ -1,0 +1,259 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "11CA083771CCB5BE"
+	group: "4525BB3160467FCB"
+	icon: { id: "kubejs:deep_vault_key" }
+	id: "11CA083771CCB5BE"
+	images: [ ]
+	order_index: 10
+	quest_links: [ ]
+	quests: [
+		{
+			id: "27AEE834BFD148F2"
+			dependencies: ["C5A86A6AA4AD7824"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "34CCB95C5004A582"
+					type: "item"
+					item: { count: 1, id: "ae2:level_emitter" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "07FDA94A8845BD68"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F42BEB99DFA479FD"
+			dependencies: ["27AEE834BFD148F2"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "AAE87B5B13082212"
+					type: "item"
+					item: { count: 1, id: "create:brass_funnel" }
+					count: 4L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "851AEF119F2E073B"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "CF8F8B4545572260"
+			dependencies: ["F42BEB99DFA479FD"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "5F2E6C996E92FA22"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:logistics_drone" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "DB70D975DD0198F1"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "BF5F3AB86AF7D719"
+			dependencies: ["F42BEB99DFA479FD"]
+			x: 4.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "5698BBC06CA546A2"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:assembler" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1B059699779A045B"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "0FA1B57455BEE680"
+			dependencies: ["27AEE834BFD148F2"]
+			x: 6.0d
+			y: -2.0d
+			tasks: [
+				{
+					id: "50B61BD91A25DBD7"
+					type: "item"
+					item: { count: 1, id: "enderio:conduit", components: { "enderio:conduit": "enderio:item" } }
+					count: 32L
+					consume_items: false
+					match_components: "fuzzy"
+				}
+			]
+			rewards: [
+				{
+					id: "F1CF969CCAE8649B"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "A1ED60C828D8519B"
+			dependencies: ["0FA1B57455BEE680"]
+			x: 8.0d
+			y: -2.0d
+			tasks: [
+				{
+					id: "8DAE655FF078D506"
+					type: "item"
+					item: { count: 1, id: "laserio:laser_node" }
+					count: 2L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1C5087ACC7007C70"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "9551D0E76B9801FB"
+			dependencies: ["27AEE834BFD148F2", "CF8F8B4545572260"]
+			x: 10.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "32E58FFE1874EF5D"
+					type: "item"
+					item: { count: 1, id: "ae2:logic_processor" }
+					count: 64L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "A80237CE4726E2A1"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "28F212A9C22AEEAA"
+			dependencies: ["BF5F3AB86AF7D719", "A1ED60C828D8519B"]
+			x: 10.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "33B5B56650A6AEDF"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					count: 64L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "057F53A2E9286C24"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D37BF340B7765AB8"
+			dependencies: ["9551D0E76B9801FB", "28F212A9C22AEEAA"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "B6FB186C91B79D78"
+					type: "forge_energy"
+					value: 50000000L
+					max_input: 500000L
+				}
+			]
+			rewards: [
+				{
+					id: "AB013364DA7A0349"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "836D1C6E20B78461"
+			dependencies: ["D37BF340B7765AB8"]
+			x: 14.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "23D5EBAF627E4FAF"
+					type: "item"
+					item: { count: 1, id: "ae2:quantum_ring" }
+					count: 3L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "533A4139643DABFD"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "A43968C006E7D70B"
+					type: "item"
+					item: { count: 24, id: "kubejs:requisition_chit" }
+					count: 24
+				}
+				{
+					id: "08916C80DAFE085E"
+					type: "xp"
+					xp: 500
+				}
+				{
+					id: "3445592C35B43B2D"
+					type: "item"
+					item: { count: 1, id: "kubejs:deep_vault_key" }
+					count: 1
+				}
+			]
+		}
+	]
+}

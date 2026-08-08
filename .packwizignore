@@ -12,3 +12,5 @@ server-test/**
 .superpowers/**
 **/.gitkeep
 dist/**
+AGENTS.md
+CLAUDE.md

@@ -254,4 +254,34 @@
 		"&8Somewhere in your base, a machine just hummed. I logged the frequency. It is a start.&r"
 	]
 	chapter.52EF477C2D995F40.title: "The Engine Room"
+	quest.6546BA910285D6EB.title: "Anomalous Readings"
+	quest.6546BA910285D6EB.quest_subtitle: "ECHO cannot explain this section."
+	quest.6546BA910285D6EB.quest_desc: [
+		"Let me be precise about what follows: I have no instrumentation for it."
+		"The Undercurrent is the thing that broke the world. It is also, apparently, learnable. The notebook you are holding was written by survivors who learned it. My advice is caution. My data is none."
+	]
+	quest.CCAA052A2178377C.title: "The First Grimoire"
+	quest.CCAA052A2178377C.quest_subtitle: "Science by other means."
+	quest.CCAA052A2178377C.quest_desc: [
+		"A spell book. The pages index themselves and the ink moves when I am not sampling it."
+		"The Ascendancy refused to study this. That refusal is item one on my list of suspected causes."
+	]
+	quest.5DA50309DBF9D019.title: "Source"
+	quest.5DA50309DBF9D019.quest_subtitle: "The Undercurrent, crystallized."
+	quest.5DA50309DBF9D019.quest_desc: [
+		"Source gems: the anomaly in mineral form. My spectrometer reads them as empty. My cameras read them as glowing. Both readings are correct, which should not be possible."
+	]
+	quest.8133A61DB9FB84AC.title: "The Imbuement Chamber"
+	quest.8133A61DB9FB84AC.quest_subtitle: "Machinery that runs on maybe."
+	quest.8133A61DB9FB84AC.quest_desc: [
+		"A chamber that soaks matter in Source. It has no wires and I resent it."
+		"Note from the engineering side of my personality: it still obeys throughput math. Whatever the Undercurrent is, it respects queues."
+	]
+	quest.7480D99D56556C8E.title: "Apparatus"
+	quest.7480D99D56556C8E.quest_subtitle: "The anomaly, harnessed politely."
+	quest.7480D99D56556C8E.quest_desc: [
+		"The enchanting apparatus: eight pedestals and a promise. With it you can fold the Undercurrent into objects that last."
+		"One day the Gate will need a stabilizer built exactly this way. I am telling you now so that future-you is not surprised. Consider it the only prophecy I will ever make."
+	]
+	chapter.E5C7EC00C7DC1038.title: "Anomalous Readings"
 }

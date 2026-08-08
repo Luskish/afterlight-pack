@@ -215,4 +215,43 @@
 		"&8Act Two is the Engine Room: Mekanism, logistics, the lattice. The Ascendancy's real toolbox. Rest first. Then we go deeper.&r"
 	]
 	chapter.C5491A24F6B8C192.title: "Foothold"
+	quest.43860D6CFEF31BB9.title: "The Engine Room"
+	quest.43860D6CFEF31BB9.quest_subtitle: "Osmium: the Ascendancy loved it too."
+	quest.43860D6CFEF31BB9.quest_desc: [
+		"Act Two. The vault taught you to survive; the Engine Room teaches you to multiply."
+		"Osmium first. Dense, obedient, everywhere under the scarlands. Every machine ahead of you eats it."
+	]
+	quest.AD231B51E916504C.title: "Casings"
+	quest.AD231B51E916504C.quest_subtitle: "Four frames for four futures."
+	quest.AD231B51E916504C.quest_desc: [
+		"A steel casing is a promise: whatever goes inside will be a machine, not a campfire with opinions."
+		"Four of them. You will spend them faster than you think."
+	]
+	quest.B3252BE859F3761C.title: "The Infuser"
+	quest.B3252BE859F3761C.quest_subtitle: "Where alloys begin."
+	quest.B3252BE859F3761C.quest_desc: [
+		"Carbon into iron, redstone into osmium. The metallurgic infuser is the Engine Room's front door."
+		"The Ascendancy had a saying: every empire is an alloy. They were engineers; subtlety was not the discipline."
+	]
+	quest.39CDF7B349EA6E50.title: "One Becomes Two"
+	quest.39CDF7B349EA6E50.quest_subtitle: "The enrichment chamber doubles ore."
+	quest.39CDF7B349EA6E50.quest_desc: [
+		"Listen carefully, because this is the sentence that changes your economy: one raw ore, two ingots."
+		"The chamber pays for itself by lunch. After this, mining is a choice, not a chore."
+	]
+	quest.9876B3999E5E28F1.title: "Arteries"
+	quest.9876B3999E5E28F1.quest_subtitle: "Sixteen cables. The base gets a pulse."
+	quest.9876B3999E5E28F1.quest_desc: [
+		"Current wants to travel. Cables are how your generator stops being furniture and starts being infrastructure."
+		"Wire the infuser. Wire the chamber. Wire everything. I will pretend not to notice the mess."
+	]
+	quest.DA407B47132C07C6.title: "The Room Hums"
+	quest.DA407B47132C07C6.quest_subtitle: "Smelting without fire. Fragment recovered."
+	quest.DA407B47132C07C6.quest_desc: [
+		"An energized smelter: heat with no flame, output with no ash. The Engine Room is officially online."
+		"&d[MEMORY FRAGMENT 04 RESTORED]&r"
+		"&7...the Engine Room crews called their machines the choir. On shift-change recordings you can hear it: four hundred infusers in harmonic, singing the same note. The note was E. I have not heard E since the Cascade...&r"
+		"&8Somewhere in your base, a machine just hummed. I logged the frequency. It is a start.&r"
+	]
+	chapter.52EF477C2D995F40.title: "The Engine Room"
 }

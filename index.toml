@@ -81,6 +81,11 @@ hash = "5a21b57951f08465ee9a49e5a7650655291dd441e8ee114c6a7c7caf0a180527"
 metafile = true
 
 [[files]]
+file = "mods/asyncparticles.pw.toml"
+hash = "acef69d2a8f50aa740234ede9a1a45c443ed641b5baeec2e3e786975afcf467b"
+metafile = true
+
+[[files]]
 file = "mods/athena-ctm.pw.toml"
 hash = "f54cf71372645810ce22b0ba68e706139565437150e4cfd22bde4c14606099c4"
 metafile = true
@@ -91,6 +96,11 @@ hash = "f4ed8dbabc400434daa13b37041055261f3a74af387e4aea8ba8ca12ef142b4c"
 metafile = true
 
 [[files]]
+file = "mods/better-block-entities.pw.toml"
+hash = "93f48d0cae69080be80efe8354e034511b18e9eb959e12e8d6817f0353e143be"
+metafile = true
+
+[[files]]
 file = "mods/better-combat.pw.toml"
 hash = "438170e7e704a1b8ed67bf0521dc5d77cdeeaabf6f729dba9f8dfdad75330acf"
 metafile = true
@@ -98,6 +108,11 @@ metafile = true
 [[files]]
 file = "mods/bosses-of-mass-destruction-forge.pw.toml"
 hash = "74143850a12b0f9daf3ef2c503e61141319f3715a48a2fde53bc31b3c9719788"
+metafile = true
+
+[[files]]
+file = "mods/brandons-core.pw.toml"
+hash = "7904c140247e0d8a87231cf4d36718fc018e0f851dbec2517b673acdc25547df"
 metafile = true
 
 [[files]]
@@ -123,6 +138,11 @@ metafile = true
 [[files]]
 file = "mods/clumps.pw.toml"
 hash = "2acaff560bbda5741538528a2967355ec86a8f7564adba0b2316989c66892374"
+metafile = true
+
+[[files]]
+file = "mods/codechicken-lib-1-8.pw.toml"
+hash = "107f1089debe869dc912e119eedbc3f6b523dbdd8193719ba51ce476914f4f5a"
 metafile = true
 
 [[files]]
@@ -193,6 +213,11 @@ metafile = true
 [[files]]
 file = "mods/deeperdarker.pw.toml"
 hash = "a9ecc4476d26e707189e9f988c19f22961c33dfd5e5b4db1dfd6f87c6a81c545"
+metafile = true
+
+[[files]]
+file = "mods/draconic-evolution.pw.toml"
+hash = "bc1d52bd43eace5fe032e8815df90323adcc82ab765d382d5d4a536eee3a0f06"
 metafile = true
 
 [[files]]
@@ -358,6 +383,11 @@ metafile = true
 [[files]]
 file = "mods/irons-spells-n-spellbooks.pw.toml"
 hash = "76f6ec0d8429c4e25430c356563bc3d51b6baf6fc500469f5ec75eb2ae7039a1"
+metafile = true
+
+[[files]]
+file = "mods/ixeris.pw.toml"
+hash = "fa4ac92194cf35913966ff39d83cb5049e2985ab3b8d66b098c879837567eef6"
 metafile = true
 
 [[files]]

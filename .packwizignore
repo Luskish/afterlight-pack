@@ -12,6 +12,7 @@ server-test/**
 .superpowers/**
 **/__pycache__/**
 **/*.pyc
+config/ftbquests/quests/.afterlight-managed.json
 **/.gitkeep
 dist/**
 AGENTS.md

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import argparse
+
 from pathlib import Path
 
 from afterlight_quests import count_quests, validate_quests
@@ -11,11 +13,24 @@ MODS_DIR = ROOT / "server-test" / "mods"
 RUNTIME_LOGS = (
     ROOT / "server-test" / "logs" / "latest.log",
     ROOT / "server-test" / "logs" / "debug.log",
+    ROOT / "server-test" / "logs" / "kubejs" / "server.log",
 )
 
 
 def main() -> int:
-    errors = validate_quests(QUEST_ROOT, MODS_DIR, runtime_logs=RUNTIME_LOGS)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--static",
+        action="store_true",
+        help="skip the fresh runtime registry digest requirement before a server boot",
+    )
+    args = parser.parse_args()
+    errors = validate_quests(
+        QUEST_ROOT,
+        MODS_DIR,
+        runtime_logs=RUNTIME_LOGS,
+        require_runtime_audit=not args.static,
+    )
     if errors:
         for error in errors:
             print(f"ERROR: {error}")

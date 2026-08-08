@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
 RESOURCE_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
+MANAGED_STATE_NAME = ".afterlight-managed.json"
 
 VANILLA_ITEM_ALLOWLIST = frozenset(
     {
@@ -58,6 +59,17 @@ class QuestCounts:
     quests: int
     tasks: int
     rewards: int
+
+
+class SnbtParseError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class _SnbtToken:
+    kind: str
+    value: str
+    offset: int
 
 
 @dataclass(frozen=True)
@@ -295,8 +307,15 @@ def _render_language_entry(key: str, value: str | tuple[str, ...]) -> list[str]:
     return lines
 
 
-def _merge_language(text: str, entries: Mapping[str, str | tuple[str, ...]]) -> str:
+def _merge_language(
+    text: str,
+    entries: Mapping[str, str | tuple[str, ...]],
+    remove_keys: Iterable[str] = (),
+) -> str:
     order, blocks = _split_language_entries(text)
+    for key in remove_keys:
+        blocks.pop(key, None)
+    order = [key for key in order if key in blocks]
     for key, value in entries.items():
         if key not in blocks:
             order.append(key)
@@ -324,18 +343,85 @@ def _atomic_write(path: Path, content: str) -> None:
         temp_path.unlink(missing_ok=True)
 
 
+def _load_managed_state(path: Path) -> tuple[set[str], set[str]]:
+    if not path.exists():
+        return set(), set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid managed quest state {path}: {error}") from error
+    chapters = data.get("chapters")
+    localization_keys = data.get("localization_keys")
+    if not isinstance(chapters, list) or not all(isinstance(value, str) for value in chapters):
+        raise ValueError(f"invalid managed chapter list in {path}")
+    if not isinstance(localization_keys, list) or not all(
+        isinstance(value, str) for value in localization_keys
+    ):
+        raise ValueError(f"invalid managed localization list in {path}")
+    return set(chapters), set(localization_keys)
+
+
+def _managed_state(chapters: Iterable[str], localization_keys: Iterable[str]) -> str:
+    return json.dumps(
+        {
+            "version": 1,
+            "chapters": sorted(chapters),
+            "localization_keys": sorted(localization_keys),
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
 def write_catalog(catalog: Sequence[ChapterSpec], quest_root: Path) -> list[Path]:
     assert_no_id_collisions(catalog)
-    if not catalog:
-        return []
+    state_path = quest_root / MANAGED_STATE_NAME
+    old_chapters, old_localization_keys = _load_managed_state(state_path)
+    current_chapters = {chapter.id for chapter in catalog}
+    localization_entries = _localization_entries(catalog)
+    lang_path = quest_root / "lang" / "en_us.snbt"
+    current_language = lang_path.read_text(encoding="utf-8")
+    _, current_language_blocks = _split_language_entries(current_language)
+    current_localization_keys = {
+        key
+        for key in localization_entries
+        if key in old_localization_keys or key not in current_language_blocks
+    }
+
+    for chapter_id in sorted(old_chapters - current_chapters):
+        (quest_root / "chapters" / f"{chapter_id}.snbt").unlink(missing_ok=True)
+
     written: list[Path] = []
     for chapter in catalog:
         chapter_path = quest_root / "chapters" / f"{chapter.id}.snbt"
         _atomic_write(chapter_path, render_chapter(chapter))
         written.append(chapter_path)
-    lang_path = quest_root / "lang" / "en_us.snbt"
-    current_language = lang_path.read_text(encoding="utf-8")
-    _atomic_write(lang_path, _merge_language(current_language, _localization_entries(catalog)))
+
+    managed_entries = {
+        key: value
+        for key, value in localization_entries.items()
+        if key in current_localization_keys
+    }
+    _atomic_write(
+        lang_path,
+        _merge_language(
+            current_language,
+            managed_entries,
+            old_localization_keys - current_localization_keys,
+        ),
+    )
+    _atomic_write(
+        state_path,
+        _managed_state(current_chapters, current_localization_keys),
+    )
+    _atomic_write(
+        quest_root.parents[2]
+        / "kubejs"
+        / "server_scripts"
+        / "afterlight"
+        / "generated_quest_item_audit.js",
+        _render_quest_item_audit(quest_root),
+    )
     return written
 
 
@@ -344,19 +430,213 @@ def _language_keys(path: Path) -> set[str]:
     return set(order)
 
 
-def _jar_item_ids(mods_dir: Path) -> set[str]:
-    item_ids: set[str] = set()
-    asset_pattern = re.compile(r"^assets/([^/]+)/(?:models/item|items)/(.+)\.json$")
+def _tokenize_snbt(text: str) -> list[_SnbtToken]:
+    tokens: list[_SnbtToken] = []
+    cursor = 0
+    punctuation = set("{}[]:,")
+    while cursor < len(text):
+        character = text[cursor]
+        if character.isspace():
+            cursor += 1
+            continue
+        if character in punctuation:
+            tokens.append(_SnbtToken(character, character, cursor))
+            cursor += 1
+            continue
+        if character == '"':
+            start = cursor
+            cursor += 1
+            escaped = False
+            while cursor < len(text):
+                current = text[cursor]
+                if current == '"' and not escaped:
+                    cursor += 1
+                    break
+                if current == "\\" and not escaped:
+                    escaped = True
+                else:
+                    escaped = False
+                cursor += 1
+            else:
+                raise SnbtParseError(f"unterminated string at offset {start}")
+            raw = text[start:cursor]
+            try:
+                value = json.loads(raw)
+            except json.JSONDecodeError as error:
+                raise SnbtParseError(f"invalid string at offset {start}: {error}") from error
+            tokens.append(_SnbtToken("string", value, start))
+            continue
+        start = cursor
+        while (
+            cursor < len(text)
+            and not text[cursor].isspace()
+            and text[cursor] not in punctuation
+        ):
+            cursor += 1
+        if cursor == start:
+            raise SnbtParseError(f"unexpected character {text[cursor]!r} at offset {cursor}")
+        tokens.append(_SnbtToken("bare", text[start:cursor], start))
+    return tokens
+
+
+class _SnbtParser:
+    def __init__(self, text: str) -> None:
+        self.tokens = _tokenize_snbt(text)
+        self.cursor = 0
+
+    def parse(self) -> Any:
+        value = self._parse_value()
+        if self.cursor != len(self.tokens):
+            token = self.tokens[self.cursor]
+            raise SnbtParseError(
+                f"trailing token {token.value!r} at offset {token.offset}"
+            )
+        return value
+
+    def _peek(self) -> _SnbtToken | None:
+        return self.tokens[self.cursor] if self.cursor < len(self.tokens) else None
+
+    def _take(self, kind: str | None = None) -> _SnbtToken:
+        token = self._peek()
+        if token is None:
+            raise SnbtParseError("unexpected end of input")
+        if kind is not None and token.kind != kind:
+            raise SnbtParseError(
+                f"expected {kind!r}, found {token.value!r} at offset {token.offset}"
+            )
+        self.cursor += 1
+        return token
+
+    def _discard_commas(self) -> None:
+        while self._peek() is not None and self._peek().kind == ",":
+            self.cursor += 1
+
+    def _parse_value(self) -> Any:
+        token = self._peek()
+        if token is None:
+            raise SnbtParseError("expected value, found end of input")
+        if token.kind == "{":
+            return self._parse_compound()
+        if token.kind == "[":
+            return self._parse_list()
+        if token.kind == "string":
+            return self._take().value
+        if token.kind == "bare":
+            value = self._take().value
+            if value == "true":
+                return True
+            if value == "false":
+                return False
+            return value
+        raise SnbtParseError(
+            f"expected value, found {token.value!r} at offset {token.offset}"
+        )
+
+    def _parse_compound(self) -> dict[str, Any]:
+        self._take("{")
+        result: dict[str, Any] = {}
+        self._discard_commas()
+        while self._peek() is not None and self._peek().kind != "}":
+            key_token = self._take()
+            if key_token.kind not in {"bare", "string"}:
+                raise SnbtParseError(
+                    f"expected compound key at offset {key_token.offset}"
+                )
+            self._take(":")
+            if key_token.value in result:
+                raise SnbtParseError(
+                    f"duplicate compound key {key_token.value!r} at offset {key_token.offset}"
+                )
+            result[key_token.value] = self._parse_value()
+            self._discard_commas()
+        self._take("}")
+        return result
+
+    def _parse_list(self) -> list[Any]:
+        self._take("[")
+        result: list[Any] = []
+        self._discard_commas()
+        while self._peek() is not None and self._peek().kind != "]":
+            result.append(self._parse_value())
+            self._discard_commas()
+        self._take("]")
+        return result
+
+
+def _parse_snbt(text: str) -> Any:
+    return _SnbtParser(text).parse()
+
+
+def _id_values(value: Any, item_context: bool = False) -> Iterable[tuple[str, bool]]:
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            child_item_context = item_context or key in {"icon", "item", "stack"}
+            if key == "id" and isinstance(child, str):
+                yield child, item_context
+            yield from _id_values(child, child_item_context)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _id_values(child, item_context)
+
+
+def _item_references_from_parsed(parsed_files: Mapping[Path, Any]) -> dict[str, set[Path]]:
+    item_references: dict[str, set[Path]] = {}
+    for path, parsed in parsed_files.items():
+        for value, is_item in _id_values(parsed):
+            if is_item and RESOURCE_ID.fullmatch(value):
+                item_references.setdefault(value, set()).add(path)
+    return item_references
+
+
+def _parsed_quest_files(quest_root: Path) -> dict[Path, Any]:
+    parsed_files: dict[Path, Any] = {}
+    for path in sorted(quest_root.rglob("*.snbt")):
+        parsed_files[path] = _parse_snbt(path.read_text(encoding="utf-8"))
+    return parsed_files
+
+
+def _quest_item_ids(quest_root: Path) -> tuple[str, ...]:
+    return tuple(sorted(_item_references_from_parsed(_parsed_quest_files(quest_root))))
+
+
+def quest_item_audit_digest(quest_root: Path) -> str:
+    payload = "\n".join(_quest_item_ids(quest_root)).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _render_quest_item_audit(quest_root: Path) -> str:
+    item_ids = _quest_item_ids(quest_root)
+    digest = hashlib.sha256("\n".join(item_ids).encode("utf-8")).hexdigest()
+    rendered_ids = json.dumps(item_ids, indent=2)
+    return (
+        "// Generated by tools/build-quests.py. Do not edit by hand.\n"
+        f"const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '{digest}'\n"
+        f"const AFTERLIGHT_QUEST_ITEM_IDS = {rendered_ids}\n\n"
+        "ServerEvents.loaded(() => {\n"
+        "  const invalid = AFTERLIGHT_QUEST_ITEM_IDS.filter(id => !Item.exists(id))\n"
+        "  if (invalid.length > 0) {\n"
+        "    invalid.forEach(id => console.error(`[AFTERLIGHT QUEST ITEM AUDIT] INVALID ${id}`))\n"
+        "    console.error(`[AFTERLIGHT QUEST ITEM AUDIT] FAILED ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST}`)\n"
+        "    return\n"
+        "  }\n"
+        "  console.info(`[AFTERLIGHT QUEST ITEM AUDIT] OK ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${AFTERLIGHT_QUEST_ITEM_IDS.length}`)\n"
+        "})\n"
+    )
+
+
+def _jar_asset_namespaces(mods_dir: Path) -> set[str]:
+    namespaces: set[str] = set()
+    asset_pattern = re.compile(r"^assets/([^/]+)/")
     for jar_path in sorted(mods_dir.glob("*.jar")):
         try:
             with zipfile.ZipFile(jar_path) as jar:
                 for name in jar.namelist():
-                    match = asset_pattern.fullmatch(name)
+                    match = asset_pattern.match(name)
                     if match:
-                        item_ids.add(f"{match.group(1)}:{match.group(2)}")
+                        namespaces.add(match.group(1))
         except zipfile.BadZipFile as error:
             raise ValueError(f"unreadable mod jar {jar_path.name}: {error}") from error
-    return item_ids
+    return namespaces
 
 
 def count_quests(quest_root: Path) -> QuestCounts:
@@ -365,24 +645,22 @@ def count_quests(quest_root: Path) -> QuestCounts:
     task_count = 0
     reward_count = 0
     for path in chapter_files:
-        section = ""
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.startswith("\t\t\ttasks: ["):
-                section = "tasks"
-                continue
-            if line.startswith("\t\t\trewards: ["):
-                section = "rewards"
-                continue
-            if line == "\t\t\t]":
-                section = ""
-                continue
-            if re.match(r'^\t\t\tid:\s*"[0-9A-F]{16}"', line):
-                quest_count += 1
-            elif section and re.search(r'\bid:\s*"[0-9A-F]{16}"', line):
-                if section == "tasks":
-                    task_count += 1
-                else:
-                    reward_count += 1
+        parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+        if not isinstance(parsed, Mapping):
+            raise SnbtParseError(f"chapter root must be a compound: {path}")
+        quests = parsed.get("quests", [])
+        if not isinstance(quests, list):
+            raise SnbtParseError(f"chapter quests must be a list: {path}")
+        quest_count += len(quests)
+        for quest in quests:
+            if not isinstance(quest, Mapping):
+                raise SnbtParseError(f"quest must be a compound: {path}")
+            tasks = quest.get("tasks", [])
+            rewards = quest.get("rewards", [])
+            if not isinstance(tasks, list) or not isinstance(rewards, list):
+                raise SnbtParseError(f"quest tasks and rewards must be lists: {path}")
+            task_count += len(tasks)
+            reward_count += len(rewards)
     return QuestCounts(
         chapters=len(chapter_files),
         quests=quest_count,
@@ -421,11 +699,13 @@ def validate_quests(
     quest_root: Path,
     mods_dir: Path,
     runtime_logs: Sequence[Path] = (),
+    require_runtime_audit: bool = False,
 ) -> list[str]:
     errors: list[str] = []
     chapter_dir = quest_root / "chapters"
     chapter_files = sorted(chapter_dir.glob("*.snbt"))
     all_snbt_files = sorted(quest_root.rglob("*.snbt"))
+    parsed_files: dict[Path, Any] = {}
     all_ids: dict[str, list[Path]] = {}
     quest_ids: set[str] = set()
     chapter_ids: set[str] = set()
@@ -437,9 +717,18 @@ def validate_quests(
         text = path.read_text(encoding="utf-8")
         if "\u2014" in text:
             errors.append(f"em dash in {path}")
-        for value in re.findall(r"\bid\s*:\s*\"([^\"]+)\"", text):
-            if RESOURCE_ID.fullmatch(value):
-                item_references.setdefault(value, set()).add(path)
+        try:
+            parsed = _parse_snbt(text)
+        except SnbtParseError as error:
+            errors.append(f"malformed SNBT in {path}: {error}")
+            continue
+        parsed_files[path] = parsed
+        for value, is_item in _id_values(parsed):
+            if is_item:
+                if RESOURCE_ID.fullmatch(value):
+                    item_references.setdefault(value, set()).add(path)
+                else:
+                    errors.append(f"malformed item ID in {path}: {value}")
             elif HEX_ID.fullmatch(value):
                 all_ids.setdefault(value, []).append(path)
             else:
@@ -447,42 +736,55 @@ def validate_quests(
 
     group_path = quest_root / "chapter_groups.snbt"
     if group_path.exists():
-        group_text = group_path.read_text(encoding="utf-8")
-        group_ids.update(re.findall(r"\bid\s*:\s*\"([0-9A-F]{16})\"", group_text))
+        group_data = parsed_files.get(group_path)
+        if isinstance(group_data, Mapping):
+            groups = group_data.get("chapter_groups", [])
+            if isinstance(groups, list):
+                for group in groups:
+                    if isinstance(group, Mapping) and isinstance(group.get("id"), str):
+                        group_ids.add(group["id"])
 
     for path in chapter_files:
-        text = path.read_text(encoding="utf-8")
-        chapter_match = re.search(r"(?m)^\tid:\s*\"([^\"]+)\"", text)
-        filename_match = re.search(r"(?m)^\tfilename:\s*\"([^\"]+)\"", text)
-        group_match = re.search(r"(?m)^\tgroup:\s*\"([^\"]+)\"", text)
-        if not chapter_match:
+        chapter = parsed_files.get(path)
+        if not isinstance(chapter, Mapping):
+            continue
+        chapter_id = chapter.get("id")
+        if not isinstance(chapter_id, str):
             errors.append(f"malformed IDs in {path}: missing chapter id")
             continue
-        chapter_id = chapter_match.group(1)
         chapter_ids.add(chapter_id)
-        filename = filename_match.group(1) if filename_match else ""
+        filename = chapter.get("filename")
         if filename != chapter_id or path.stem != chapter_id:
             errors.append(
                 f"filename/id mismatch in {path}: filename={filename!r}, id={chapter_id!r}"
             )
-        if group_match and group_match.group(1) not in group_ids:
-            errors.append(f"unresolved group in {path}: {group_match.group(1)}")
+        group_id = chapter.get("group")
+        if isinstance(group_id, str) and group_id not in group_ids:
+            errors.append(f"unresolved group in {path}: {group_id}")
 
-        current_quest: str | None = None
-        for line in text.splitlines():
-            quest_match = re.match(r'^\t\t\tid:\s*"([^"]+)"', line)
-            if quest_match:
-                current_quest = quest_match.group(1)
-                quest_ids.add(current_quest)
-                dependency_graph.setdefault(current_quest, set())
+        quests = chapter.get("quests", [])
+        if not isinstance(quests, list):
+            errors.append(f"malformed SNBT in {path}: quests must be a list")
+            continue
+        for quest in quests:
+            if not isinstance(quest, Mapping):
+                errors.append(f"malformed SNBT in {path}: quest must be a compound")
                 continue
-            dependency_match = re.match(r"^\t\t\tdependencies:\s*\[(.*)\]", line)
-            if dependency_match and current_quest:
-                dependencies = set(re.findall(r'"([^"]+)"', dependency_match.group(1)))
-                dependency_graph[current_quest].update(dependencies)
-                for dependency in dependencies:
-                    if not HEX_ID.fullmatch(dependency):
-                        errors.append(f"malformed IDs in {path}: {dependency}")
+            quest_id = quest.get("id")
+            if not isinstance(quest_id, str):
+                errors.append(f"malformed IDs in {path}: missing quest id")
+                continue
+            quest_ids.add(quest_id)
+            dependency_graph.setdefault(quest_id, set())
+            dependencies = quest.get("dependencies", [])
+            if not isinstance(dependencies, list):
+                errors.append(f"malformed SNBT in {path}: dependencies must be a list")
+                continue
+            for dependency in dependencies:
+                if not isinstance(dependency, str) or not HEX_ID.fullmatch(dependency):
+                    errors.append(f"malformed IDs in {path}: {dependency}")
+                    continue
+                dependency_graph[quest_id].add(dependency)
 
     for identifier, paths in all_ids.items():
         if len(paths) > 1:
@@ -524,30 +826,36 @@ def validate_quests(
         errors.append(f"item audit unavailable: missing mods directory {mods_dir}")
     else:
         try:
-            valid_items = _jar_item_ids(mods_dir)
+            valid_namespaces = _jar_asset_namespaces(mods_dir)
         except ValueError as error:
             errors.append(f"item audit unavailable: {error}")
-            valid_items = set()
-        valid_items.update(VANILLA_ITEM_ALLOWLIST)
-        valid_items.update(KUBEJS_ITEM_ALLOWLIST)
+            valid_namespaces = set()
+        valid_namespaces.update({"minecraft", "kubejs"})
         for item_id in sorted(item_references):
-            if item_id not in valid_items:
+            namespace = item_id.split(":", 1)[0]
+            is_known_builtin = (
+                item_id in VANILLA_ITEM_ALLOWLIST or item_id in KUBEJS_ITEM_ALLOWLIST
+            )
+            if namespace in {"minecraft", "kubejs"} and not is_known_builtin:
+                locations = ", ".join(str(path) for path in sorted(item_references[item_id]))
+                errors.append(f"impossible item reference {item_id}: {locations}")
+            elif namespace not in valid_namespaces:
                 locations = ", ".join(str(path) for path in sorted(item_references[item_id]))
                 errors.append(f"impossible item reference {item_id}: {locations}")
 
-    runtime_item_pattern = re.compile(
-        r"Unknown registry key[^\n]*minecraft:item\]:\s*"
-        r"([a-z0-9_.-]+:[a-z0-9_./-]+)"
-    )
-    runtime_warnings: dict[str, set[Path]] = {}
-    for runtime_log in runtime_logs:
-        if not runtime_log.is_file():
-            continue
-        for item_id in runtime_item_pattern.findall(runtime_log.read_text(encoding="utf-8")):
-            if item_id in item_references:
-                runtime_warnings.setdefault(item_id, set()).add(runtime_log)
-    for item_id, paths in sorted(runtime_warnings.items()):
-        locations = ", ".join(str(path) for path in sorted(paths))
-        errors.append(f"runtime item warning for {item_id}: {locations}")
+    if require_runtime_audit:
+        item_ids = tuple(sorted(item_references))
+        digest = hashlib.sha256("\n".join(item_ids).encode("utf-8")).hexdigest()
+        log_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in runtime_logs
+            if path.is_file()
+        )
+        success_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {len(item_ids)}"
+        failure_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest}"
+        if failure_marker in log_text:
+            errors.append(f"runtime item audit failed for digest {digest}")
+        elif success_marker not in log_text:
+            errors.append(f"runtime item audit missing or stale: expected digest {digest}")
 
     return errors

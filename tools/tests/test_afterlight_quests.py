@@ -134,6 +134,31 @@ class QuestCompilerTests(unittest.TestCase):
             )
             self.assertEqual(list(quest_root.rglob("*.tmp")), [])
 
+    def test_writer_removes_only_stale_compiler_managed_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            unmanaged = quest_root / "chapters" / "AAAAAAAAAAAAAAAA.snbt"
+            unmanaged.write_text("unmanaged\n", encoding="utf-8")
+            catalog = self.make_catalog()
+            managed_chapter = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            managed_key = f"chapter.{catalog[0].id}.title"
+
+            self.quests.write_catalog(catalog, quest_root)
+            self.assertTrue(managed_chapter.exists())
+            self.assertIn(
+                managed_key,
+                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+            )
+
+            self.quests.write_catalog([], quest_root)
+
+            self.assertFalse(managed_chapter.exists())
+            self.assertNotIn(
+                managed_key,
+                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+            )
+            self.assertEqual(unmanaged.read_text(encoding="utf-8"), "unmanaged\n")
+
     def test_validator_accepts_valid_generated_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -144,7 +169,7 @@ class QuestCompilerTests(unittest.TestCase):
 
             self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
 
-    def test_validator_rejects_runtime_unknown_item_warning(self) -> None:
+    def test_validator_rejects_runtime_failed_item_audit(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
             quest_root = self.make_quest_root(base)
@@ -152,9 +177,10 @@ class QuestCompilerTests(unittest.TestCase):
             runtime_log = base / "debug.log"
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
+            digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                "Unknown registry key in ResourceKey[minecraft:root / minecraft:item]: "
-                "example:widget\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] INVALID example:widget\n"
+                f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest}\n",
                 encoding="utf-8",
             )
 
@@ -162,8 +188,43 @@ class QuestCompilerTests(unittest.TestCase):
                 quest_root,
                 mods_dir,
                 runtime_logs=(runtime_log,),
+                require_runtime_audit=True,
             )
-            self.assertTrue(any("runtime item warning" in error for error in errors))
+            self.assertTrue(any("runtime item audit failed" in error for error in errors))
+
+    def test_runtime_item_audit_requires_a_fresh_matching_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            runtime_log = base / "server.log"
+            self.make_mod_jar(mods_dir)
+            self.quests.write_catalog(self.make_catalog(), quest_root)
+
+            missing_errors = self.quests.validate_quests(
+                quest_root,
+                mods_dir,
+                runtime_logs=(runtime_log,),
+                require_runtime_audit=True,
+            )
+            self.assertTrue(
+                any("runtime item audit missing or stale" in error for error in missing_errors)
+            )
+
+            digest = self.quests.quest_item_audit_digest(quest_root)
+            runtime_log.write_text(
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                self.quests.validate_quests(
+                    quest_root,
+                    mods_dir,
+                    runtime_logs=(runtime_log,),
+                    require_runtime_audit=True,
+                ),
+                [],
+            )
 
     def test_count_quests_reports_actual_corpus_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -196,7 +257,7 @@ class QuestCompilerTests(unittest.TestCase):
                 f'filename: "{chapter.id}"', 'filename: "AAAAAAAAAAAAAAAA"', 1
             ),
             "impossible item": lambda text, chapter, quest: text.replace(
-                "example:widget", "example:missing"
+                "example:widget", "missing_namespace:widget"
             ),
         }
 
@@ -221,6 +282,66 @@ class QuestCompilerTests(unittest.TestCase):
                     any(expected in error for error in errors),
                     f"{expected!r} not found in {errors!r}",
                 )
+
+    def test_validator_rejects_resource_shaped_task_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            task_id = catalog[0].quests[0].tasks[0].id
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").replace(
+                    f'id: "{task_id}"', 'id: "minecraft:diamond"', 1
+                ),
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(any("malformed IDs" in error for error in errors), errors)
+
+    def test_validator_rejects_unbalanced_snbt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").rstrip()[:-1] + "\n",
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(any("malformed SNBT" in error for error in errors), errors)
+
+    def test_validator_reads_multiline_dependency_arrays(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            quest_id = catalog[0].quests[0].id
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").replace(
+                    f'id: "{quest_id}"',
+                    f'id: "{quest_id}"\n\t\t\tdependencies: [\n'
+                    '\t\t\t\t"FFFFFFFFFFFFFFFF"\n\t\t\t]',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(any("unresolved dependency" in error for error in errors), errors)
 
     def test_validator_reports_missing_localization(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

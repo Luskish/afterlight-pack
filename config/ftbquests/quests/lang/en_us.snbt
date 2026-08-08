@@ -170,4 +170,49 @@
 		"&8Take the cache. The Ascendancy stocked them for a return that never happened.&r"
 	]
 	chapter.F70DAD173D9C234B.title: "The Scarlands"
+	quest.F9145D1842E317AA.title: "Foothold"
+	quest.F9145D1842E317AA.quest_subtitle: "Stop surviving. Start staying."
+	quest.F9145D1842E317AA.quest_desc: [
+		"A scavenger passes through. An engineer stays and makes the ground obey."
+		"Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then we build like we mean it."
+	]
+	quest.20169EC099FABBA0.title: "The Engineer's Bench"
+	quest.20169EC099FABBA0.quest_subtitle: "Blueprints want a proper table."
+	quest.20169EC099FABBA0.quest_desc: [
+		"The Ascendancy field manuals were printed on tin. They survive. An engineer's workbench reads them."
+		"This is where improvised ends and manufactured begins."
+	]
+	quest.F8E07ADD5BCD1F19.title: "Slow Fire"
+	quest.F8E07ADD5BCD1F19.quest_subtitle: "The coke oven asks for patience."
+	quest.F8E07ADD5BCD1F19.quest_desc: [
+		"Coal into coke, wood into charcoal, time into value. The oven is a multiblock; build it whole."
+		"Nothing about the old world was fast at first. Remember that when the reactors come."
+	]
+	quest.27F6D0AB957BBB8C.title: "Steel Yourself"
+	quest.27F6D0AB957BBB8C.quest_subtitle: "Twelve ingots of intent."
+	quest.27F6D0AB957BBB8C.quest_desc: [
+		"Steel is iron that graduated. Twelve ingots says your foothold has a spine."
+		"The blast furnace remembers the recipe even when I do not. Trust the bricks."
+	]
+	quest.1AC07872BABAC949.title: "First Current"
+	quest.1AC07872BABAC949.quest_subtitle: "Electricity, rediscovered."
+	quest.1AC07872BABAC949.quest_desc: [
+		"A heat generator: lava in, current out. Crude by Ascendancy standards. Miraculous by wasteland ones."
+		"This is the moment the lights start coming back on. I have waited four hundred years to log it."
+	]
+	quest.F52409F46D854A92.title: "Power Draw"
+	quest.F52409F46D854A92.quest_subtitle: "One hundred thousand units, banked."
+	quest.F52409F46D854A92.quest_desc: [
+		"Store one hundred thousand units of energy. Production without storage is a campfire; storage is a grid."
+		"ECHO logs every joule. Old habit. The auditors are dead, but standards are standards."
+	]
+	quest.588A5FE66765D86D.title: "Act One: Foothold Secured"
+	quest.588A5FE66765D86D.quest_subtitle: "The vault is behind you now."
+	quest.588A5FE66765D86D.quest_desc: [
+		"Assessment: shelter, industry, steel, current. You are no longer a survivor of the Cascade. You are a participant in what comes after."
+		"&d[MEMORY FRAGMENT 03 RESTORED]&r"
+		"&7...the evacuation boards listed every name in the sector. I have found my own maintenance designation on the list, marked STAYS WITH THE FACILITY. I did not remember volunteering. I am choosing to believe I did...&r"
+		"&8Act Two is the Engine Room: Mekanism, logistics, the lattice. The Ascendancy's real toolbox. Rest first. Then we go deeper.&r"
+	]
+	chapter.C5491A24F6B8C192.title: "Foothold"
 }

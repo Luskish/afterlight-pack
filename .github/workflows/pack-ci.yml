@@ -1,0 +1,28 @@
+name: pack-ci
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+jobs:
+  verify-and-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - name: Install packwiz
+        run: go install github.com/packwiz/packwiz@latest && echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Manifest integrity
+        run: |
+          packwiz refresh
+          git diff --exit-code index.toml pack.toml || (echo "::error::index.toml drifted — run packwiz refresh and commit" && exit 1)
+      - name: Export artifacts
+        run: ./tools/export.sh
+      - name: Headless server boot smoke test
+        run: BOOT_TIMEOUT=600 ./tools/server-test.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: afterlight-dist
+          path: dist/

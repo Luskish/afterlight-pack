@@ -81,8 +81,36 @@ file = "kubejs/assets/kubejs/textures/item/ascendancy_seal.png"
 hash = "43eb11bc860ab2d6dc54434f742e5489d2e6ece8b3fe7c8855f9342596bfd51b"
 
 [[files]]
+file = "kubejs/assets/kubejs/textures/item/deep_vault_key.png"
+hash = "558b634e0c1472828e8f4da06a9c9c0cd5e16fbc51c7ab877aad7d60c8f99ade"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_blueprint.png"
+hash = "125e6e99f8945e6a514054946b07fe6d6321279d18db02a69e3b105318490fef"
+
+[[files]]
 file = "kubejs/assets/kubejs/textures/item/requisition_chit.png"
 hash = "11d04aa3a49d1a25a89ad6640275cceb424fd38bd0fc9e79de34614798ff2e07"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/schematic_industrial_anchor.png"
+hash = "8ce7cdc1bef8f32574086d8bfdd592514f796fefff24e955cfca8f3d1c251076"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/schematic_isotopic_core.png"
+hash = "d0c275e0d0ee31ead5c1afb75d4ef92a7f6ef723e469819f6223d6f0fc72d558"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/schematic_kinetic_frame.png"
+hash = "dfedac9bb808184aff219f0d92284a90964873df1c40eafbda4814b9d82035dd"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/schematic_lattice_matrix.png"
+hash = "bf2b4a85cccb0e5fead4b2cce7a8445248acaa3e6bc1076741520b1a8ec94a71"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/undercurrent_stabilizer_precursor.png"
+hash = "93908ae9b367cccecc990d6be3c6d9baca81d88b833eb895a527e7d2dbd45a17"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/_constants.js"

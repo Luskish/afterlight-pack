@@ -1,0 +1,7 @@
+# Local dev instance / runtime junk — never pack source
+.DS_Store
+*.log
+run/
+server-test/
+.packwiz-cache/
+.superpowers/

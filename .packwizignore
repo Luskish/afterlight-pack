@@ -1,0 +1,12 @@
+# Repo/dev files that must not ship inside the pack export
+.git/**
+.gitignore
+.github/**
+docs/**
+tools/**
+README.md
+skills-lock.json
+.agents/**
+.claude/**
+server-test/**
+.superpowers/**

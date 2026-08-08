@@ -21,7 +21,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 |---|---|---|
 | Task 0 hardening (3 commits) | COMPLETE | .nojekyll live, Pages verified 200 post-deploy, CI hardened + packwiz pinned (dfd8b68) |
 | W1 Tech spine A | COMPLETE | 37 mods total. CF-sourced (Modrinth-absent): Applied Flux, ExtendedAE (file ex-pattern-provider.pw.toml), Glodium dep. LESSONS: pipe `printf 'Y\n'` into every `packwiz mr add` (dep prompts EOF-abort otherwise); slug extendedae on Modrinth is the WRONG mod (Plus addon). POLICY: CI no longer uploads pack artifacts (CF-sourced mods embed jars in mrpack overrides; friends-only). verify-pack check 1 now tests true refresh idempotence, works mid-wave. |
-| W2 Tech spine B (MILESTONE) | pending | |
+| W2 Tech spine B (MILESTONE) | COMPLETE | 63 mods total. Local server boot OK with full tech spine. Modrinth slug is `enderio` not ender-io. CF-sourced: LaserIO, RFTools Base/Utility/Power, Compact Machines (slug compact-machines), Flux Networks, Just Dire Things (slug just-dire-things). CF name-search trap: "Compact Machines" query offers Preview Fixer first, use exact slugs. Modrinth-absent on 1.21.1: Compact Machines, Flux Networks, Just Dire Things. |
 | W3 Create set | pending | |
 | W4 Deep Vault (MILESTONE) | pending | |
 | W5 Undercurrent magic | pending | |

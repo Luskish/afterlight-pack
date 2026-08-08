@@ -15,16 +15,24 @@
 			y: 0.0d
 			tasks: [
 				{ id: "E595488C9696FD3D"
-				type: "item"
-				item: { count: 1, id: "modern_industrialization:forge_hammer" }
-				count: 1L
-				consume_items: false }
+					type: "item"
+					item: { count: 1, id: "modern_industrialization:forge_hammer" }
+					count: 1L
+					consume_items: false }
+				{ id: "CC3B34BB975A26E4"
+					type: "item"
+					item: { count: 1, id: "kubejs:deep_vault_key" }
+					count: 1L
+					consume_items: false }
 			]
 			rewards: [
 				{ id: "300AB696B71C85DF"
-				type: "item"
-				item: { count: 3, id: "kubejs:requisition_chit" }
-				count: 3 }
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3 }
+				{ id: "3AB2DC0BCB5633EE"
+					type: "gamestage"
+					stage: "afterlight_deep_vault" }
 			]
 		}
 		{
@@ -101,7 +109,7 @@
 			rewards: [
 				{ id: "DDF12C4395F6A64A"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "B75634D32BF15E2B"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }

@@ -1,0 +1,155 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "170AB7B39A0C4E47"
+	group: "C8F8381D9519D002"
+	icon: { id: "undergarden:forgotten_ingot" }
+	id: "170AB7B39A0C4E47"
+	images: [ ]
+	order_index: 2
+	quest_links: [ ]
+	quests: [
+		{
+			id: "8105CB39F994B579"
+			dependencies: ["3196EE02D5C5B413", "A21D817C56D680CA"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "2D042510C949E9E8"
+					type: "dimension"
+					dimension: "undergarden:undergarden"
+				}
+				{
+					id: "7E42CE9863EC50FE"
+					type: "dimension"
+					dimension: "deeperdarker:otherside"
+				}
+			]
+			rewards: [
+				{
+					id: "002BAE4DD457A4EF"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "E3B85107180781C2"
+			dependencies: ["8105CB39F994B579"]
+			x: 2.0d
+			y: -1.5d
+			tasks: [
+				{
+					id: "72C38A24BFD64D33"
+					type: "structure"
+					structure: "undergarden:catacombs"
+				}
+			]
+			rewards: [
+				{
+					id: "826FDCBF859994E1"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "0B8F4FA3D773C75E"
+			dependencies: ["E3B85107180781C2"]
+			x: 4.0d
+			y: -1.5d
+			tasks: [
+				{
+					id: "5773E51AA0170B7F"
+					type: "kill"
+					entity: "undergarden:forgotten_guardian"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "5C93A8C6605F304C"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "825D341769E84821"
+			dependencies: ["8105CB39F994B579"]
+			x: 2.0d
+			y: 1.5d
+			tasks: [
+				{
+					id: "1B44B25981FC77EB"
+					type: "structure"
+					structure: "deeperdarker:ancient_temple"
+				}
+			]
+			rewards: [
+				{
+					id: "C8DA44B2BEB00B0C"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "3AC2AF7542F7CADA"
+			dependencies: ["825D341769E84821"]
+			x: 4.0d
+			y: 1.5d
+			tasks: [
+				{
+					id: "F6F9501294B0EAD1"
+					type: "kill"
+					entity: "deeperdarker:stalker"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "38D8158BE18C47C5"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "26E98713CAC0A689"
+			dependencies: ["0B8F4FA3D773C75E", "3AC2AF7542F7CADA"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "C27C5EBD68F70ECC"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "55D077E8075D1C63"
+					type: "loot"
+					table_id: 6745737485865812687L
+				}
+				{
+					id: "6669BB189AE41760"
+					type: "item"
+					item: { count: 12, id: "kubejs:requisition_chit" }
+					count: 12
+				}
+				{
+					id: "809CFCD835E1FEEE"
+					type: "xp"
+					xp: 300
+				}
+			]
+		}
+	]
+}

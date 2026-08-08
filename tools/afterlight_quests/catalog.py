@@ -22,10 +22,12 @@ ATLAS = GroupSpec(
     "C8F8381D9519D002",
 )
 
-ASCENDANCY_CACHE_TABLE = SnbtLong(10622272618344871329)
-DEPOT_EARLY_TABLE = SnbtLong(1722236105617115092)
-DEPOT_MID_TABLE = SnbtLong(1739929614607485509)
-DEPOT_LATE_TABLE = SnbtLong(13373195924909545525)
+ASCENDANCY_CACHE_TABLE = SnbtLong.from_hex("9369E4AACBCDF5A1")
+ASCENDANCY_CACHE_RARE_TABLE = SnbtLong.from_hex("5D9DAC80C11182CF")
+ASCENDANCY_CACHE_EPIC_TABLE = SnbtLong.from_hex("9A4FA21B1999BDD5")
+DEPOT_EARLY_TABLE = SnbtLong.from_hex("17E69C9CFEA907D4")
+DEPOT_MID_TABLE = SnbtLong.from_hex("182578C414DC8A45")
+DEPOT_LATE_TABLE = SnbtLong.from_hex("B99722D6E7EF5835")
 CHAPTER_FIVE_FINALE = "DA407B47132C07C6"
 
 
@@ -1057,18 +1059,18 @@ def _certification_logistics() -> ChapterSpec:
             "Produce sixteen Item Pipes and connect a source, buffer, and destination.",
             "Do not connect the final machine until the buffer path is visible.",
         ), "pipez:item_pipe", 16, (controller,), 4.0, 0.0),
-        _certification_item_quest(filters, "Filtered Route", "A route without a filter is a future mixture.", (
-            "Build an Improved Pipe Upgrade, then configure an allowlist on one destination.",
-            "The task verifies the upgrade. Send a wrong item to prove the filter refuses it.",
-        ), "pipez:improved_upgrade", 1, (pipes,), 6.0, -1.0),
         _certification_item_quest(round_robin, "Round-Robin Routing", "Equal destinations deserve equal inconvenience.", (
-            "Build an Advanced Pipe Upgrade and enable round-robin distribution across two outputs.",
-            "Count several deliveries. One alternating pair is not a stability test.",
-        ), "pipez:advanced_upgrade", 1, (filters,), 8.0, -1.0),
+            "Build an Improved Pipe Upgrade and enable round-robin distribution across two outputs.",
+            "Improved routing unlocks distribution control. Count several deliveries before adding filters.",
+        ), "pipez:improved_upgrade", 1, (pipes,), 6.0, -1.0),
+        _certification_item_quest(filters, "Filtered Route", "A route without a filter is a future mixture.", (
+            "Build an Advanced Pipe Upgrade, then configure an allowlist on one destination.",
+            "Advanced routing adds filters to the distribution controls already proven. Send a wrong item to confirm refusal.",
+        ), "pipez:advanced_upgrade", 1, (round_robin,), 8.0, -1.0),
         _certification_item_quest(finale, "Overflow Safety", "Full output must stop the line without losing matter.", (
             "Build a Void Upgrade for a deliberately safe overflow drawer, then test a full normal output.",
             "Only disposable byproducts belong behind the void path. Valuable output must backpressure cleanly.",
-        ), "functionalstorage:void_upgrade", 1, (round_robin,), 10.0, 0.0,
+        ), "functionalstorage:void_upgrade", 1, (filters,), 10.0, 0.0,
             stage="afterlight_cert_logistics_i"),
     )
     return ChapterSpec(
@@ -1379,6 +1381,413 @@ def _depot_chapter(
     )
 
 
+def _side_finale_rewards(
+    quest_slug: str,
+    table_id: SnbtLong,
+    chits: int,
+    xp: int,
+    *,
+    item_id: str = "",
+    stage: str = "",
+) -> tuple[RewardSpec, ...]:
+    rewards = [
+        RewardSpec(
+            f"{quest_slug}/reward/cache",
+            "loot",
+            {"table_id": table_id},
+        ),
+        _item_reward(quest_slug, "kubejs:requisition_chit", chits, "chits"),
+        RewardSpec(f"{quest_slug}/reward/xp", "xp", {"xp": xp}),
+    ]
+    if item_id:
+        rewards.append(_item_reward(quest_slug, item_id, 1, "progression"))
+    if stage:
+        rewards.append(
+            RewardSpec(
+                f"{quest_slug}/reward/stage",
+                "gamestage",
+                {"stage": stage},
+            )
+        )
+    return tuple(rewards)
+
+
+def _side_item_quest(
+    slug: str,
+    title: str,
+    subtitle: str,
+    echo_line: str,
+    targets: tuple[tuple[str, int], ...],
+    dependencies: tuple[str, ...],
+    x: float,
+    y: float,
+    *,
+    rewards: tuple[RewardSpec, ...] | None = None,
+) -> QuestSpec:
+    tasks = tuple(
+        TaskSpec(
+            f"{slug}/task" if len(targets) == 1 else f"{slug}/task/{index}",
+            "item",
+            {
+                "item": {"count": 1, "id": item_id},
+                "count": SnbtLong(count),
+                "consume_items": False,
+            },
+        )
+        for index, (item_id, count) in enumerate(targets, start=1)
+    )
+    return QuestSpec(
+        slug=slug,
+        title=title,
+        subtitle=subtitle,
+        description=(echo_line,),
+        x=x,
+        y=y,
+        dependencies=dependencies,
+        tasks=tasks,
+        rewards=rewards if rewards is not None else _routine_rewards(slug),
+    )
+
+
+def _side_task_quest(
+    slug: str,
+    title: str,
+    subtitle: str,
+    echo_line: str,
+    tasks: tuple[tuple[str, Mapping[str, object]], ...],
+    dependencies: tuple[str, ...],
+    x: float,
+    y: float,
+    *,
+    dependency_requirement: str | None = None,
+    rewards: tuple[RewardSpec, ...] | None = None,
+) -> QuestSpec:
+    return QuestSpec(
+        slug=slug,
+        title=title,
+        subtitle=subtitle,
+        description=(echo_line,),
+        x=x,
+        y=y,
+        dependencies=dependencies,
+        dependency_requirement=dependency_requirement,
+        tasks=tuple(
+            TaskSpec(
+                f"{slug}/task" if len(tasks) == 1 else f"{slug}/task/{index}",
+                task_type,
+                data,
+            )
+            for index, (task_type, data) in enumerate(tasks, start=1)
+        ),
+        rewards=rewards if rewards is not None else _routine_rewards(slug),
+    )
+
+
+def _linear_item_chapter(
+    slug: str,
+    title: str,
+    group: GroupSpec,
+    icon: str,
+    order_index: int,
+    first_dependency: str,
+    steps: tuple[
+        tuple[str, str, str, str, tuple[tuple[str, int], ...]], ...
+    ],
+    finale: tuple[SnbtLong, int, int],
+) -> ChapterSpec:
+    quests: list[QuestSpec] = []
+    dependency = first_dependency
+    for index, (name, quest_title, subtitle, echo_line, targets) in enumerate(steps):
+        quest_slug = f"{slug}/{name}"
+        final_rewards = (
+            _side_finale_rewards(quest_slug, *finale)
+            if index == len(steps) - 1
+            else None
+        )
+        quest = _side_item_quest(
+            quest_slug,
+            quest_title,
+            subtitle,
+            echo_line,
+            targets,
+            (dependency,),
+            float(index * 2),
+            0.0,
+            rewards=final_rewards,
+        )
+        quests.append(quest)
+        dependency = quest.slug
+    return ChapterSpec(slug, title, group, icon, order_index, tuple(quests))
+
+
+def _undercurrent_chapters() -> tuple[ChapterSpec, ...]:
+    ars_finale = "7480D99D56556C8E"
+    names = _linear_item_chapter(
+        "undercurrent/01-names-in-circuit",
+        "Names in the Circuit",
+        UNDERCURRENT,
+        "occultism:dictionary_of_spirits",
+        1,
+        ars_finale,
+        (
+            ("dictionary", "Dictionary of Spirits", "Classify the interference.", "The manual names the voices. I preferred them as unclassified interference.", (("occultism:dictionary_of_spirits", 1),)),
+            ("ritual-geometry", "Ritual Geometry", "Circuits drawn in chalk.", "A circle is still a circuit if everyone agrees where current enters.", (("occultism:chalk_white", 1), ("occultism:sacrificial_bowl", 1))),
+            ("attuned-matter", "Attuned Matter", "A crystal that listens.", "The crystal answers questions my instruments cannot hear.", (("occultism:spirit_attuned_gem", 4),)),
+            ("storage-elsewhere", "Storage Elsewhere", "Inventory outside addressable space.", "You have built a warehouse in a place I cannot address. I dislike its efficiency.", (("occultism:storage_controller", 1),)),
+            ("remote-terms", "Remote Terms", "No cable, no latency report.", "Remote access without a network cable. AE2 is filing a complaint.", (("occultism:storage_remote", 1),)),
+            ("stable-wormhole", "Stable Wormhole", "Hold the impossible open.", "The opening remains stable. That sentence would have ended a meeting before the Cascade.", (("occultism:stable_wormhole", 1),)),
+        ),
+        (ASCENDANCY_CACHE_RARE_TABLE, 12, 250),
+    )
+    spells = _linear_item_chapter(
+        "undercurrent/02-spells-under-load",
+        "Spells Under Load",
+        UNDERCURRENT,
+        "irons_spellbooks:arcane_anvil",
+        2,
+        ars_finale,
+        (
+            ("flimsy-journal", "Flimsy Journal", "The equations are armed.", "Calling it flimsy does not make the equations less armed.", (("irons_spellbooks:copper_spell_book", 1),)),
+            ("arcane-residue", "Arcane Residue", "Intent remains in the dust.", "Residue with intent. Label every container.", (("irons_spellbooks:arcane_essence", 32),)),
+            ("executable-ink", "Executable Ink", "Instructions embedded in paper.", "The table writes executable instructions into paper. At least scripts usually admit they are dangerous.", (("irons_spellbooks:inscription_table", 1),)),
+            ("repeatable-force", "Repeatable Force", "A reproducible spell process.", "Repeatable spells are automation. I will tolerate the vocabulary.", (("irons_spellbooks:scroll_forge", 1),)),
+            ("reagent-heat", "Reagent Heat", "A process without a diagram.", "Heat, reagents, and no process diagram. Barbaric, but measurable.", (("irons_spellbooks:alchemist_cauldron", 1),)),
+            ("arcane-anvil", "Arcane Anvil", "Revise force after casting.", "You have made force accept revision.", (("irons_spellbooks:arcane_anvil", 1),)),
+        ),
+        (ASCENDANCY_CACHE_RARE_TABLE, 12, 250),
+    )
+    ledger = _linear_item_chapter(
+        "undercurrent/03-soul-ledger",
+        "The Soul Ledger",
+        UNDERCURRENT,
+        "malum:encyclopedia_arcana",
+        3,
+        ars_finale,
+        (
+            ("encyclopedia", "Encyclopedia Arcana", "An inventory of souls.", "This book catalogs souls as inventory. I recognize the impulse and reject the terminology.", (("malum:encyclopedia_arcana", 1),)),
+            ("spirit-altar", "Spirit Altar", "Handle residue respectfully.", "A workbench for the residue of living things. Use it respectfully.", (("malum:spirit_altar", 1),)),
+            ("containment-ledger", "Containment Ledger", "Containment before understanding.", "Containment is not understanding. It is, however, a start.", (("malum:spirit_jar", 4),)),
+            ("meaning-as-fuel", "Meaning as Fuel", "The crucible burns significance.", "The machine burns meaning instead of fuel.", (("malum:spirit_crucible", 1),)),
+            ("field-geometry", "Field Geometry", "Stable enough to graph.", "The field is stable enough to graph. I wish that helped.", (("malum:arcana_pylon", 4),)),
+            ("soulstained-steel", "Soulstained Steel", "Metal that remembers more.", "Steel remembers the furnace. This remembers more.", (("malum:soul_stained_steel_ingot", 16),)),
+        ),
+        (ASCENDANCY_CACHE_RARE_TABLE, 12, 250),
+    )
+
+    slug = "undercurrent/04-resonance-proof"
+    join = f"{slug}/second-voice"
+    source = f"{slug}/source-reserve"
+    pedestals = f"{slug}/pedestal-ring"
+    focus = f"{slug}/ritual-focus"
+    finale = f"{slug}/resonance-proof"
+    resonance = ChapterSpec(
+        slug,
+        "Resonance Proof",
+        UNDERCURRENT,
+        "kubejs:undercurrent_stabilizer_precursor",
+        4,
+        (
+            _side_task_quest(
+                join, "A Second Voice", "One branch is enough.",
+                "Ars is the carrier. One foreign discipline is enough to expose the harmonic.",
+                (("checkmark", {}),),
+                (names.quests[-1].id, spells.quests[-1].id, ledger.quests[-1].id),
+                0.0, 0.0, dependency_requirement="one_completed",
+            ),
+            _side_item_quest(source, "Source Reserve", "Redundancy remains valid.", "Four jars. Redundancy remains valid even when the fluid is impossible.", (("ars_nouveau:source_jar", 4),), (join,), 2.0, 0.0),
+            _side_item_quest(pedestals, "Pedestal Ring", "Eight points around one idea.", "Eight points define a polite boundary around a dangerous idea.", (("ars_nouveau:arcane_pedestal", 8),), (source,), 4.0, 0.0),
+            _side_item_quest(focus, "Ritual Focus", "A control surface made of fire.", "A control surface made of fire. We have worked with worse.", (("ars_nouveau:ritual_brazier", 1),), (pedestals,), 6.0, 0.0),
+            _side_task_quest(
+                finale, "Resonance Proof", "Two languages, one frequency.",
+                "Two languages agree on one frequency. The Gate may survive what the Ascendancy refused to learn.",
+                (("checkmark", {}),), (focus,), 8.0, 0.0,
+                rewards=_side_finale_rewards(
+                    finale, ASCENDANCY_CACHE_EPIC_TABLE, 20, 500,
+                    item_id="kubejs:undercurrent_stabilizer_precursor",
+                    stage="afterlight_stabilizer_ready",
+                ),
+            ),
+        ),
+    )
+    return names, spells, ledger, resonance
+
+
+def _deep_vault_chapters() -> tuple[ChapterSpec, ...]:
+    current = _linear_item_chapter(
+        "deep-vault/01-current-below", "Current Below", DEEP_VAULT,
+        "modern_industrialization:assembler", 1, "F2CE68CEF727A313",
+        (
+            ("analog-circuit", "Analog Logic", "Electricity enters the archive.", "The Vault begins electricity with logic large enough to inspect by hand.", (("modern_industrialization:analog_circuit", 16),)),
+            ("basic-hulls", "Basic Hulls", "Give the current a chassis.", "Four housings establish a repeatable machine standard.", (("modern_industrialization:basic_machine_hull", 4),)),
+            ("lv-turbines", "Low Voltage Turbines", "Steam becomes current.", "Two turbines convert the old pressure language into electricity.", (("modern_industrialization:lv_steam_turbine", 2),)),
+            ("lv-storage", "Buffered Current", "Store before expanding.", "Buffered power makes failure observable instead of mysterious.", (("modern_industrialization:lv_storage_unit", 1),)),
+            ("electric-macerator", "Powered Reduction", "Grinding joins the grid.", "The macerator replaces muscle with measured current.", (("modern_industrialization:electric_macerator", 1),)),
+            ("electric-wiremill", "Precision Wire", "Draw conductors at scale.", "Wire this precise belongs to infrastructure, not improvisation.", (("modern_industrialization:electric_wiremill", 1),)),
+            ("assembler", "Automated Assembly", "The first electric line closes.", "Assembly is now a process rather than a person.", (("modern_industrialization:assembler", 1),)),
+        ),
+        (ASCENDANCY_CACHE_RARE_TABLE, 12, 300),
+    )
+    black = _linear_item_chapter(
+        "deep-vault/02-black-distillate", "Black Distillate", DEEP_VAULT,
+        "modern_industrialization:distillation_tower", 2, current.quests[-1].id,
+        (
+            ("electronic-circuit", "Electronic Logic", "Smaller logic, larger consequences.", "The circuits shrink as the process map expands.", (("modern_industrialization:electronic_circuit", 16),)),
+            ("oil-rig", "Buried Feedstock", "Reach the black reservoir.", "The rig asks the world what it stored under pressure.", (("modern_industrialization:oil_drilling_rig", 1),)),
+            ("crude-oil", "Crude Reserve", "Eight buckets of unresolved chemistry.", "Crude oil is a queue of useful mistakes.", (("modern_industrialization:crude_oil_bucket", 8),)),
+            ("distillery", "First Separation", "Separate by heat.", "The distillery begins assigning boiling points to the queue.", (("modern_industrialization:distillery", 1),)),
+            ("chemical-reactor", "Reaction Control", "Make chemistry reproducible.", "A reaction becomes engineering when the inputs can be repeated.", (("modern_industrialization:chemical_reactor", 1),)),
+            ("polyethylene", "Polymer Stream", "Turn oil into structure.", "Sixteen buckets prove the polymer stream is no laboratory accident.", (("modern_industrialization:polyethylene_bucket", 16),)),
+            ("distillation-tower", "Black Distillate", "A column for every fraction.", "You have taught crude oil to separate itself by boiling point and social rank.", (("modern_industrialization:distillation_tower", 1),)),
+        ),
+        (ASCENDANCY_CACHE_RARE_TABLE, 16, 400),
+    )
+    hot = _linear_item_chapter(
+        "deep-vault/03-hot-cell", "Hot Cell", DEEP_VAULT,
+        "modern_industrialization:nuclear_reactor", 3, black.quests[-1].id,
+        (
+            ("digital-circuit", "Digital Logic", "The Vault counts faster now.", "Digital logic leaves less room for interpretation and more room for scale.", (("modern_industrialization:digital_circuit", 16),)),
+            ("implosion-compressor", "Implosion Compression", "Pressure by detonation.", "The process is controlled because the explosion has paperwork.", (("modern_industrialization:implosion_compressor", 1),)),
+            ("nuclear-casing", "Hot Cell Walls", "Containment before fuel.", "Build the boundary before introducing the reason it exists.", (("modern_industrialization:nuclear_casing", 16),)),
+            ("nuclear-reactor", "Reactor Vessel", "A disciplined star fragment.", "The vessel is ready. Readiness is not permission to improvise.", (("modern_industrialization:nuclear_reactor", 1),)),
+            ("uranium-rods", "Uranium Rods", "Fuel in inspectable units.", "Eight rods make the energy inventory countable.", (("modern_industrialization:uranium_fuel_rod", 8),)),
+            ("quad-rods", "Quad Fuel", "Density raises every consequence.", "Quad assemblies improve throughput and shorten the list of acceptable mistakes.", (("modern_industrialization:le_uranium_fuel_rod_quad", 4),)),
+            ("plutonium", "Plutonium Stream", "Waste becomes feedstock.", "The waste stream has become a material stream. That is not the same as safe.", (("modern_industrialization:plutonium_ingot", 16),)),
+        ),
+        (ASCENDANCY_CACHE_EPIC_TABLE, 20, 600),
+    )
+    quantum = _linear_item_chapter(
+        "deep-vault/04-quantum-burden", "Quantum Burden", DEEP_VAULT,
+        "modern_industrialization:singularity", 4, hot.quests[-1].id,
+        (
+            ("iridium", "Iridium Stock", "Material for impossible tolerances.", "Iridium is expensive because ordinary matter objects to this assignment.", (("modern_industrialization:iridium_ingot", 16),)),
+            ("superconductor", "Superconductor", "Current without apology.", "The conductor stops wasting energy and begins wasting my risk budget.", (("modern_industrialization:superconductor_ingot", 16),)),
+            ("quantum-circuit", "Quantum Logic", "Eight decisions held at once.", "The circuit evaluates possibilities faster than I can distrust them.", (("modern_industrialization:quantum_circuit", 8),)),
+            ("quantum-hulls", "Quantum Hulls", "Contain machines and uncertainty.", "Four hulls establish boundaries the contents may only statistically respect.", (("modern_industrialization:quantum_machine_hull", 4),)),
+            ("quantum-upgrades", "Quantum Upgrades", "Raise the operating ceiling.", "The upgrades remove limits that were originally safety advice.", (("modern_industrialization:quantum_upgrade", 4),)),
+            ("quantum-storage", "Quantum Storage", "Capacity without sensible volume.", "The tank and barrel contain more than their dimensions are prepared to admit.", (("modern_industrialization:quantum_tank", 1), ("modern_industrialization:quantum_barrel", 1))),
+            ("singularity", "Quantum Burden", "Manufacture the final density.", "The Vault ends by manufacturing a burden too dense for metaphor.", (("modern_industrialization:singularity", 1),)),
+        ),
+        (ASCENDANCY_CACHE_EPIC_TABLE, 28, 900),
+    )
+    return current, black, hot, quantum
+
+
+def _atlas_chapters() -> tuple[ChapterSpec, ...]:
+    def advancement(resource_id: str) -> tuple[str, Mapping[str, object]]:
+        return "advancement", {"advancement": resource_id, "criterion": ""}
+
+    courts_slug = "atlas/01-courts-above-and-beyond"
+    two_skies = f"{courts_slug}/two-skies"
+    naga = f"{courts_slug}/coiled-court"
+    lich = f"{courts_slug}/dead-court"
+    hydra = f"{courts_slug}/many-headed-court"
+    bronze = f"{courts_slug}/bronze-court"
+    silver = f"{courts_slug}/silver-court"
+    gold = f"{courts_slug}/gold-court"
+    court_finale = f"{courts_slug}/court-record"
+    courts = ChapterSpec(
+        courts_slug, "Courts Above and Beyond", ATLAS,
+        "twilightforest:twilight_scepter", 1,
+        (
+            _side_task_quest(two_skies, "Two Skies", "Map both upper courts.", "Two skies, two legal systems, and neither recognizes our credentials.", (("dimension", {"dimension": "twilightforest:twilight_forest"}), ("dimension", {"dimension": "aether:the_aether"})), ("4B24516D89E13CFF", "87475C3BA1A4143F"), 0.0, 0.0),
+            _side_task_quest(naga, "The Coiled Court", "Challenge the first throne.", "The serpent guards a court that forgot its citizens.", (advancement("twilightforest:progress_naga"),), (two_skies,), 2.0, -2.0),
+            _side_task_quest(lich, "The Dead Court", "Remove the second claimant.", "The lich kept authority after life stopped supporting the claim.", (advancement("twilightforest:progress_lich"),), (naga,), 4.0, -2.0),
+            _side_task_quest(hydra, "The Many-Headed Court", "One verdict, several mouths.", "The hydra treats redundancy as sovereignty.", (advancement("twilightforest:progress_hydra"),), (lich,), 6.0, -2.0),
+            _side_task_quest(bronze, "Bronze Court", "Open the first dungeon.", "Bronze is the lowest court only by altitude and confidence.", (advancement("aether:bronze_dungeon"),), (two_skies,), 2.0, 2.0),
+            _side_task_quest(silver, "Silver Court", "Press deeper into the sky.", "The silver court improved the locks and retained the same assumptions.", (advancement("aether:silver_dungeon"),), (bronze,), 4.0, 2.0),
+            _side_task_quest(gold, "Gold Court", "Reach the highest chamber.", "Gold makes authority visible. It does not make it correct.", (advancement("aether:gold_dungeon"),), (silver,), 6.0, 2.0),
+            _side_task_quest(court_finale, "Court Record", "Six thrones entered into evidence.", "Six thrones challenged. The sky is no less beautiful for having defenses.", (("checkmark", {}),), (hydra, gold), 8.0, 0.0, rewards=_side_finale_rewards(court_finale, ASCENDANCY_CACHE_RARE_TABLE, 12, 300)),
+        ),
+    )
+
+    root_slug = "atlas/02-root-and-echo"
+    below = f"{root_slug}/two-depths"
+    catacombs = f"{root_slug}/catacombs"
+    guardian = f"{root_slug}/forgotten-guardian"
+    temple = f"{root_slug}/ancient-temple"
+    stalker = f"{root_slug}/stalker"
+    root_finale = f"{root_slug}/root-and-echo"
+    root = ChapterSpec(
+        root_slug, "Root and Echo", ATLAS, "undergarden:forgotten_ingot", 2,
+        (
+            _side_task_quest(below, "Two Depths", "Descend into root and echo.", "The Cascade reached downward by two routes and apologized by neither.", (("dimension", {"dimension": "undergarden:undergarden"}), ("dimension", {"dimension": "deeperdarker:otherside"})), ("3196EE02D5C5B413", "A21D817C56D680CA"), 0.0, 0.0),
+            _side_task_quest(catacombs, "Root Catacombs", "Find the buried complex.", "The catacombs grew around their occupants rather than above them.", (("structure", {"structure": "undergarden:catacombs"}),), (below,), 2.0, -1.5),
+            _side_task_quest(guardian, "Forgotten Guardian", "Close the root protocol.", "The guardian remembers its duty and nothing about who assigned it.", (("kill", {"entity": "undergarden:forgotten_guardian", "value": SnbtLong(1)}),), (catacombs,), 4.0, -1.5),
+            _side_task_quest(temple, "Ancient Temple", "Trace the echo to its source.", "The temple amplifies a signal no living architect signed.", (("structure", {"structure": "deeperdarker:ancient_temple"}),), (below,), 2.0, 1.5),
+            _side_task_quest(stalker, "The Stalker", "End the pursuit.", "The stalker mistakes silence for concealment.", (("kill", {"entity": "deeperdarker:stalker", "value": SnbtLong(1)}),), (temple,), 4.0, 1.5),
+            _side_task_quest(root_finale, "Root and Echo", "Reconcile both descent records.", "Root and echo agree: the Cascade reached downward as thoroughly as it reached up.", (("checkmark", {}),), (guardian, stalker), 6.0, 0.0, rewards=_side_finale_rewards(root_finale, ASCENDANCY_CACHE_RARE_TABLE, 12, 300)),
+        ),
+    )
+
+    edges_slug = "atlas/03-edges-of-the-map"
+    edge_steps = (
+        ("starlight", "Starlight", "Cross the luminous boundary.", "The edge glows because subtle warnings failed.", "dimension", {"dimension": "eternal_starlight:starlight"}),
+        ("stranghoul-den", "Stranghoul Den", "Find the first den.", "The den is a nest built around a tactical blind spot.", "structure", {"structure": "eternal_starlight:stranghoul_den"}),
+        ("stranghoul", "The Stranghoul", "Clear the den.", "The Stranghoul has confused territorial control with permanence.", "kill", {"entity": "eternal_starlight:stranghoul", "value": SnbtLong(1)}),
+        ("cursed-garden", "Cursed Garden", "Map the cultivated corruption.", "Someone landscaped the anomaly. I object to the confidence.", "structure", {"structure": "eternal_starlight:cursed_garden"}),
+        ("lunar-monstrosity", "Lunar Monstrosity", "Break the garden's orbit.", "Moonlight is not supposed to require combat telemetry.", "advancement", {"advancement": "eternal_starlight:kill_lunar_monstrosity", "criterion": ""}),
+        ("golem-forge", "Golem Forge", "Find the final foundry.", "The forge manufactures guardians and calls that maintenance.", "structure", {"structure": "eternal_starlight:golem_forge"}),
+        ("golem", "The Forged Warden", "Shut down the forge guardian.", "The golem is a process result with opinions.", "advancement", {"advancement": "eternal_starlight:kill_golem", "criterion": ""}),
+        ("gatekeeper", "The Gatekeeper", "Create a vacancy at the edge.", "The edge has a keeper. It now has a vacancy.", "kill", {"entity": "eternal_starlight:the_gatekeeper", "value": SnbtLong(1)}),
+    )
+    edge_quests: list[QuestSpec] = []
+    dependency = "5A355ED3DE01DF28"
+    for index, (name, title, subtitle, line, task_type, data) in enumerate(edge_steps):
+        quest_slug = f"{edges_slug}/{name}"
+        edge_quests.append(_side_task_quest(
+            quest_slug, title, subtitle, line, ((task_type, data),), (dependency,),
+            float(index * 2), 0.0,
+            rewards=(
+                _side_finale_rewards(quest_slug, ASCENDANCY_CACHE_EPIC_TABLE, 18, 500)
+                if index == len(edge_steps) - 1 else None
+            ),
+        ))
+        dependency = quest_slug
+    edges = ChapterSpec(edges_slug, "Edges of the Map", ATLAS, "eternal_starlight:starlight_silver_coin", 3, tuple(edge_quests))
+
+    corrupt_slug = "atlas/04-corrupted-guardians"
+    protocol = f"{corrupt_slug}/guardian-protocol"
+    guardian_targets = (
+        ("wroughtnaut", "Ferrous Wroughtnaut", "mowziesmobs:ferrous_wroughtnaut", "The armor is older than its remaining orders."),
+        ("frostmaw", "Frostmaw", "mowziesmobs:frostmaw", "The cold is territorial, mobile, and awake."),
+        ("umvuthi", "Umvuthi", "mowziesmobs:umvuthi", "Solar authority survives here as a weapon system."),
+    )
+    corrupt_quests: list[QuestSpec] = [
+        _side_task_quest(protocol, "Guardian Protocol", "Open the corruption index.", "The surviving guardians share damage patterns that are too consistent to be natural.", (("checkmark", {}),), (courts.quests[-1].id, root.quests[-1].id, edges.quests[-1].id), 0.0, 0.0)
+    ]
+    boss_slugs: list[str] = []
+    for index, (name, title, entity_id, line) in enumerate(guardian_targets, start=1):
+        quest_slug = f"{corrupt_slug}/{name}"
+        corrupt_quests.append(_side_task_quest(quest_slug, title, "Challenge a corrupted guardian.", line, (("kill", {"entity": entity_id, "value": SnbtLong(1)}),), (protocol,), float(index * 2), -3.0))
+        boss_slugs.append(quest_slug)
+    bomd_targets = (
+        ("gauntlet", "The Gauntlet", "bosses_of_mass_destruction:nether/gauntlet_defeat"),
+        ("night-lich", "Night Lich", "bosses_of_mass_destruction:adventure/night_lich_defeat"),
+        ("obsidilith", "Obsidilith", "bosses_of_mass_destruction:end/obsidilith_defeat"),
+        ("void-blossom", "Void Blossom", "bosses_of_mass_destruction:adventure/void_blossom_defeat"),
+    )
+    for index, (name, title, advancement_id) in enumerate(bomd_targets, start=4):
+        quest_slug = f"{corrupt_slug}/{name}"
+        corrupt_quests.append(_side_task_quest(quest_slug, title, "Challenge a corrupted guardian.", "Another defense system survived long enough to forget what it defended.", (advancement(advancement_id),), (protocol,), float((index - 3) * 2), 0.0))
+        boss_slugs.append(quest_slug)
+    for index, (name, title, entity_id) in enumerate((
+        ("netherite-monstrosity", "Netherite Monstrosity", "cataclysm:netherite_monstrosity"),
+        ("maledictus", "Maledictus", "cataclysm:maledictus"),
+    ), start=8):
+        quest_slug = f"{corrupt_slug}/{name}"
+        corrupt_quests.append(_side_task_quest(quest_slug, title, "Challenge a war remnant.", "The war remnant still executes a campaign whose map no longer exists.", (("kill", {"entity": entity_id, "value": SnbtLong(1)}),), (protocol,), float((index - 7) * 2), 3.0))
+        boss_slugs.append(quest_slug)
+    corrupt_finale = f"{corrupt_slug}/corruption-index"
+    corrupt_quests.append(_side_task_quest(
+        corrupt_finale, "Corruption Index", "Nine guardians, one pattern.",
+        "Guardian corruption was systematic. Someone taught defense systems to survive their purpose.",
+        (("checkmark", {}),), tuple(boss_slugs), 10.0, 0.0,
+        rewards=_side_finale_rewards(corrupt_finale, ASCENDANCY_CACHE_EPIC_TABLE, 28, 800),
+    ))
+    corrupted = ChapterSpec(corrupt_slug, "Corrupted Guardians", ATLAS, "mowziesmobs:wrought_helmet", 4, tuple(corrupt_quests))
+    return courts, root, edges, corrupted
+
+
 def build_catalog() -> list[ChapterSpec]:
     chapter_six = _chapter_six()
     chapter_seven = _chapter_seven(chapter_six.quests[-1].slug)
@@ -1416,6 +1825,9 @@ def build_catalog() -> list[ChapterSpec]:
         "Late", 22, 32, DEPOT_LATE_TABLE, "mekanism:alloy_atomic",
         chapter_eleven.quests[-1].slug,
     )
+    undercurrent = _undercurrent_chapters()
+    deep_vault = _deep_vault_chapters()
+    atlas = _atlas_chapters()
     return [
         chapter_six,
         chapter_seven,
@@ -1437,4 +1849,7 @@ def build_catalog() -> list[ChapterSpec]:
         depot_early,
         depot_mid,
         depot_late,
+        *undercurrent,
+        *deep_vault,
+        *atlas,
     ]

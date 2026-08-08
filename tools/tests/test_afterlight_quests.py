@@ -103,6 +103,30 @@ class QuestCompilerTests(unittest.TestCase):
             expected,
         )
 
+    def test_snbt_long_converts_hex_ids_to_signed_java_longs(self) -> None:
+        self.assertEqual(
+            self.quests.SnbtLong.from_hex("9369E4AACBCDF5A1").value,
+            -7824471455364680287,
+        )
+        self.assertEqual(
+            self.quests.SnbtLong.from_hex("B99722D6E7EF5835").value,
+            -5073548148800006091,
+        )
+        self.assertEqual(
+            self.quests.SnbtLong.from_hex("9A4FA21B1999BDD5").value,
+            -7327459831431184939,
+        )
+        self.assertEqual(
+            self.quests.SnbtLong.from_hex("5D9DAC80C11182CF").value,
+            6745737485865812687,
+        )
+        with self.assertRaisesRegex(ValueError, "signed 64-bit"):
+            self.quests.SnbtLong(1 << 63)
+        with self.assertRaisesRegex(ValueError, "signed 64-bit"):
+            self.quests.SnbtLong(-(1 << 63) - 1)
+        with self.assertRaisesRegex(ValueError, "hex ID"):
+            self.quests.SnbtLong.from_hex("10000000000000000")
+
     def test_act_two_catalog_has_exact_shape_and_dependency_chain(self) -> None:
         catalog = self.quests.build_catalog()[:6]
         expected_quests = [
@@ -442,8 +466,25 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertIn("\t\t\tcan_repeat: true", rendered)
         self.assertIn("\t\t\trepeat_cooldown: 5", rendered)
 
+    def test_dependency_requirement_renders_and_rejects_unknown_modes(self) -> None:
+        catalog = self.make_catalog(dependency="AAAAAAAAAAAAAAAA")
+        catalog[0].quests[0].dependency_requirement = "one_completed"
+
+        rendered = self.quests.render_chapter(catalog[0])
+
+        self.assertIn('\t\t\tdependency_requirement: "one_completed"', rendered)
+        with self.assertRaisesRegex(ValueError, "dependency requirement"):
+            self.quests.QuestSpec(
+                slug="story/test/invalid-dependency-mode",
+                title="Invalid",
+                description=("Invalid dependency mode.",),
+                x=0.0,
+                y=0.0,
+                dependency_requirement="any_completed",
+            )
+
     def test_task_five_catalog_has_certifications_and_depot(self) -> None:
-        catalog = self.quests.build_catalog()[11:]
+        catalog = self.quests.build_catalog()[11:20]
 
         self.assertEqual([chapter.title for chapter in catalog], [
             "Logistics I",
@@ -462,13 +503,13 @@ class QuestCompilerTests(unittest.TestCase):
             for chapter in catalog
         ))
         self.assertEqual([chapter.order_index for chapter in catalog], [1, 2, 3, 4, 5, 6, 20, 21, 22])
-        full_catalog = self.quests.build_catalog()
+        task_five_catalog = self.quests.build_catalog()[:20]
         self.assertEqual(
             (
-                len(full_catalog),
-                sum(len(chapter.quests) for chapter in full_catalog),
-                sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
-                sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
+                len(task_five_catalog),
+                sum(len(chapter.quests) for chapter in task_five_catalog),
+                sum(len(quest.tasks) for chapter in task_five_catalog for quest in chapter.quests),
+                sum(len(quest.rewards) for chapter in task_five_catalog for quest in chapter.quests),
             ),
             (20, 143, 162, 188),
         )
@@ -515,6 +556,31 @@ class QuestCompilerTests(unittest.TestCase):
             power.quests[0].dependency_ids,
             ("6B876A865DE7A77A",),
         )
+
+    def test_task_five_logistics_matches_installed_pipez_upgrade_capabilities(self) -> None:
+        logistics = self.quests.build_catalog()[11]
+
+        self.assertEqual([quest.title for quest in logistics.quests], [
+            "Drawer Bank",
+            "Storage Controller",
+            "Item Pipes",
+            "Round-Robin Routing",
+            "Filtered Route",
+            "Overflow Safety",
+        ])
+        round_robin = logistics.quests[3]
+        filtered = logistics.quests[4]
+        self.assertEqual(
+            round_robin.tasks[0].data["item"]["id"],
+            "pipez:improved_upgrade",
+        )
+        self.assertEqual(
+            filtered.tasks[0].data["item"]["id"],
+            "pipez:advanced_upgrade",
+        )
+        self.assertEqual(filtered.dependency_ids, (round_robin.id,))
+        self.assertIn("distribution", " ".join(round_robin.description).lower())
+        self.assertIn("filter", " ".join(filtered.description).lower())
 
     def test_task_five_ore_loop_uses_coherent_three_machine_path(self) -> None:
         ore_loop = self.quests.build_catalog()[12]
@@ -649,10 +715,402 @@ class QuestCompilerTests(unittest.TestCase):
         for filename, (table_id, item_ids) in expected.items():
             path = ROOT / "config/ftbquests/quests/reward_tables" / filename
             parsed = _parse_snbt(path.read_text(encoding="utf-8"))
-            self.assertEqual(int(parsed["id"], 16), table_id.value)
+            self.assertEqual(self.quests.SnbtLong.from_hex(parsed["id"]), table_id)
             actual_items = {reward["item"]["id"] for reward in parsed["rewards"]}
             self.assertEqual(actual_items, item_ids)
             self.assertFalse(actual_items & progression_items)
+
+    def test_task_six_catalog_has_exact_side_group_shape_and_finales(self) -> None:
+        catalog = self.quests.build_catalog()[20:]
+
+        self.assertEqual([chapter.title for chapter in catalog], [
+            "Names in the Circuit",
+            "Spells Under Load",
+            "The Soul Ledger",
+            "Resonance Proof",
+            "Current Below",
+            "Black Distillate",
+            "Hot Cell",
+            "Quantum Burden",
+            "Courts Above and Beyond",
+            "Root and Echo",
+            "Edges of the Map",
+            "Corrupted Guardians",
+        ])
+        self.assertEqual([len(chapter.quests) for chapter in catalog], [
+            6, 6, 6, 5, 7, 7, 7, 7, 8, 6, 8, 11,
+        ])
+        self.assertEqual([chapter.id for chapter in catalog], [
+            "DCDF0BB344B02192",
+            "91D0B654D6E9B714",
+            "045647E54F0A1D9E",
+            "1A6C8CE2A6D208F9",
+            "3C0EE28909760862",
+            "8A48AB2CC20BC026",
+            "FA26679C913AAF90",
+            "5307E7406CB0DAE6",
+            "4CEEFB108A0EECF8",
+            "170AB7B39A0C4E47",
+            "6A433C07EC56210B",
+            "EEFD817FBDA0461F",
+        ])
+        self.assertEqual([chapter.quests[-1].id for chapter in catalog], [
+            "051EA7B2A3B36BFD",
+            "DF26F92E726A22AC",
+            "C9286624F8D7D554",
+            "87338DE0FE8114CF",
+            "4F4161F5B97E27ED",
+            "3E1151169E81AD32",
+            "7131E55FB7E21244",
+            "505A306462A8BC7E",
+            "0DAB608A7B083DB8",
+            "26E98713CAC0A689",
+            "A31CFB60DB42BD03",
+            "00EB5746A726C5B4",
+        ])
+        self.assertEqual(
+            [chapter.group.resolved_id for chapter in catalog],
+            ["51FF272F5030D2E6"] * 4
+            + ["4DEAD1F5F7AB4DA3"] * 4
+            + ["C8F8381D9519D002"] * 4,
+        )
+        full_catalog = self.quests.build_catalog()
+        self.assertEqual(
+            (
+                len(full_catalog),
+                sum(len(chapter.quests) for chapter in full_catalog),
+                sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
+                sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
+            ),
+            (32, 227, 250, 298),
+        )
+
+    def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:
+        chapters = {chapter.title: chapter for chapter in self.quests.build_catalog()[20:24]}
+        ars_finale = "7480D99D56556C8E"
+        branch_finales = (
+            "051EA7B2A3B36BFD",
+            "DF26F92E726A22AC",
+            "C9286624F8D7D554",
+        )
+
+        for title in ("Names in the Circuit", "Spells Under Load", "The Soul Ledger"):
+            self.assertEqual(chapters[title].quests[0].dependency_ids, (ars_finale,))
+
+        join = chapters["Resonance Proof"].quests[0]
+        self.assertEqual(join.id, "6363BCE8A71FA766")
+        self.assertEqual(join.dependency_ids, branch_finales)
+        self.assertEqual(join.dependency_requirement, "one_completed")
+        self.assertNotIn(ars_finale, join.dependency_ids)
+
+        finale = chapters["Resonance Proof"].quests[-1]
+        precursor_rewards = [
+            reward for reward in finale.rewards
+            if reward.reward_type == "item"
+            and reward.data.get("item", {}).get("id")
+            == "kubejs:undercurrent_stabilizer_precursor"
+        ]
+        self.assertEqual(len(precursor_rewards), 1)
+        self.assertEqual(precursor_rewards[0].data["count"], 1)
+        self.assertEqual(
+            [reward.data["stage"] for reward in finale.rewards if reward.reward_type == "gamestage"],
+            ["afterlight_stabilizer_ready"],
+        )
+        self.assertFalse(any(
+            task.data.get("item", {}).get("id") == "kubejs:undercurrent_stabilizer_precursor"
+            for chapter in self.quests.build_catalog()
+            for quest in chapter.quests
+            for task in quest.tasks
+        ))
+
+    def test_task_six_deep_vault_opener_preserves_ids_and_adds_nonconsuming_key_gate(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        path = ROOT / "config/ftbquests/quests/chapters/6B2D7DB791D992C3.snbt"
+        parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(parsed["id"], "6B2D7DB791D992C3")
+        self.assertEqual([quest["id"] for quest in parsed["quests"]], [
+            "96783315E0833B1D",
+            "747D181BE87A2429",
+            "9738976FB1A6167A",
+            "DEEFEE4A3873DE5C",
+            "F2CE68CEF727A313",
+        ])
+        self.assertEqual(
+            [task["id"] for quest in parsed["quests"] for task in quest["tasks"]],
+            [
+                "E595488C9696FD3D",
+                "CC3B34BB975A26E4",
+                "F0386E249F64C241",
+                "448C181914369553",
+                "88B818D0316B37F9",
+                "1BE02019A215A7C4",
+            ],
+        )
+        self.assertEqual(
+            [reward["id"] for quest in parsed["quests"] for reward in quest["rewards"]],
+            [
+                "300AB696B71C85DF",
+                "3AB2DC0BCB5633EE",
+                "3F4B8DA2BF026248",
+                "96B4C8E5A1B26706",
+                "60C70F21C10E9726",
+                "DDF12C4395F6A64A",
+                "B75634D32BF15E2B",
+                "937D55E3FC4E0FC8",
+            ],
+        )
+        key_tasks = [
+            task for task in parsed["quests"][0]["tasks"]
+            if task.get("item", {}).get("id") == "kubejs:deep_vault_key"
+        ]
+        self.assertEqual(len(key_tasks), 1)
+        self.assertFalse(key_tasks[0]["consume_items"])
+        self.assertEqual(
+            [reward.get("stage") for reward in parsed["quests"][0]["rewards"] if reward["type"] == "gamestage"],
+            ["afterlight_deep_vault"],
+        )
+
+    def test_task_six_side_graph_remains_optional_and_acyclic(self) -> None:
+        catalog = self.quests.build_catalog()
+        side_finales = {
+            chapter.quests[-1].id for chapter in catalog[20:]
+        }
+        story_dependencies = {
+            dependency
+            for chapter in catalog[:11]
+            for quest in chapter.quests
+            for dependency in quest.dependency_ids
+        }
+        self.assertFalse(side_finales & story_dependencies)
+
+        deep_vault = catalog[24:28]
+        self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("F2CE68CEF727A313",))
+        for previous, current in zip(deep_vault, deep_vault[1:]):
+            self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
+
+        atlas = catalog[28:]
+        self.assertEqual(
+            atlas[-1].quests[0].dependency_ids,
+            tuple(chapter.quests[-1].id for chapter in atlas[:3]),
+        )
+
+    def test_task_six_cache_tables_are_progression_safe(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        expected = {
+            "ascendancy_cache_rare.snbt": (
+                self.quests.ASCENDANCY_CACHE_RARE_TABLE,
+                2,
+                {
+                    "kubejs:requisition_chit",
+                    "minecraft:iron_block",
+                    "minecraft:golden_apple",
+                    "minecraft:diamond",
+                    "create:brass_ingot",
+                    "mekanism:alloy_reinforced",
+                    "ae2:logic_processor",
+                    "immersiveengineering:ingot_steel",
+                    "modern_industrialization:stainless_steel_ingot",
+                    "minecraft:experience_bottle",
+                    "minecraft:netherite_scrap",
+                    "minecraft:enchanted_golden_apple",
+                },
+            ),
+            "ascendancy_cache_epic.snbt": (
+                self.quests.ASCENDANCY_CACHE_EPIC_TABLE,
+                3,
+                {
+                    "kubejs:requisition_chit",
+                    "minecraft:iron_block",
+                    "minecraft:golden_apple",
+                    "minecraft:diamond",
+                    "create:brass_ingot",
+                    "mekanism:alloy_reinforced",
+                    "ae2:logic_processor",
+                    "immersiveengineering:ingot_steel",
+                    "modern_industrialization:stainless_steel_ingot",
+                    "minecraft:experience_bottle",
+                    "minecraft:netherite_scrap",
+                    "minecraft:enchanted_golden_apple",
+                },
+            ),
+        }
+        forbidden_fragments = (
+            "deep_vault_key",
+            "schematic_",
+            "gate_",
+            "stabilizer",
+            "ascendancy_seal",
+            "creative",
+        )
+
+        for filename, (table_id, loot_size, item_ids) in expected.items():
+            parsed = _parse_snbt(
+                (ROOT / "config/ftbquests/quests/reward_tables" / filename).read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(self.quests.SnbtLong.from_hex(parsed["id"]), table_id)
+            self.assertEqual(int(parsed["loot_size"]), loot_size)
+            actual_items = {reward["item"]["id"] for reward in parsed["rewards"]}
+            self.assertEqual(actual_items, item_ids)
+            self.assertFalse(any(
+                fragment in item_id
+                for item_id in actual_items
+                for fragment in forbidden_fragments
+            ))
+
+    def test_all_reward_table_references_use_signed_java_longs_and_resolve(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        quest_root = ROOT / "config/ftbquests/quests"
+        table_values: set[int] = set()
+        for path in (quest_root / "reward_tables").glob("*.snbt"):
+            parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+            table_values.add(self.quests.SnbtLong.from_hex(parsed["id"]).value)
+
+        references: list[tuple[Path, str, int]] = []
+
+        def collect(path: Path, value) -> None:
+            if isinstance(value, dict):
+                reward_type = value.get("type")
+                if reward_type in {"choice", "random", "loot", "all_table"}:
+                    raw = value.get("table_id")
+                    self.assertIsInstance(raw, str, f"missing table_id in {path}")
+                    self.assertTrue(raw.endswith("L"), f"untyped table_id in {path}: {raw}")
+                    references.append((path, reward_type, int(raw[:-1])))
+                for child in value.values():
+                    collect(path, child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect(path, child)
+
+        for path in quest_root.rglob("*.snbt"):
+            collect(path, _parse_snbt(path.read_text(encoding="utf-8")))
+
+        self.assertTrue(references)
+        for path, reward_type, table_id in references:
+            self.assertGreaterEqual(table_id, -(1 << 63), (path, reward_type, table_id))
+            self.assertLessEqual(table_id, (1 << 63) - 1, (path, reward_type, table_id))
+            self.assertIn(table_id, table_values, (path, reward_type, table_id))
+
+    def test_retired_generators_have_no_unsigned_reward_table_literals(self) -> None:
+        forbidden = {
+            "10622272618344871329L",
+            "11119284242278366677L",
+            "13373195924909545525L",
+        }
+        occurrences = []
+        for path in ROOT.glob("tools/gen-quests*.py"):
+            text = path.read_text(encoding="utf-8")
+            for literal in forbidden:
+                if literal in text:
+                    occurrences.append((path.name, literal))
+        self.assertEqual(occurrences, [])
+
+    def test_task_six_registry_targets_exist_in_installed_jars(self) -> None:
+        targets = {
+            "item": {
+                "occultism:dictionary_of_spirits", "occultism:chalk_white",
+                "occultism:sacrificial_bowl", "occultism:spirit_attuned_gem",
+                "occultism:storage_controller", "occultism:storage_remote",
+                "occultism:stable_wormhole", "irons_spellbooks:copper_spell_book",
+                "irons_spellbooks:arcane_essence", "irons_spellbooks:inscription_table",
+                "irons_spellbooks:scroll_forge", "irons_spellbooks:alchemist_cauldron",
+                "irons_spellbooks:arcane_anvil", "malum:encyclopedia_arcana",
+                "malum:spirit_altar", "malum:spirit_jar", "malum:spirit_crucible",
+                "malum:arcana_pylon", "malum:soul_stained_steel_ingot",
+                "modern_industrialization:singularity",
+            },
+            "entity": {
+                "undergarden:forgotten_guardian", "deeperdarker:stalker",
+                "eternal_starlight:stranghoul", "eternal_starlight:the_gatekeeper",
+                "mowziesmobs:ferrous_wroughtnaut", "mowziesmobs:frostmaw",
+                "mowziesmobs:umvuthi", "cataclysm:netherite_monstrosity",
+                "cataclysm:maledictus",
+            },
+            "structure": {
+                "undergarden:catacombs", "deeperdarker:ancient_temple",
+                "eternal_starlight:stranghoul_den", "eternal_starlight:cursed_garden",
+                "eternal_starlight:golem_forge",
+            },
+            "dimension": {
+                "twilightforest:twilight_forest", "aether:the_aether",
+                "undergarden:undergarden", "deeperdarker:otherside",
+                "eternal_starlight:starlight",
+            },
+            "advancement": {
+                "twilightforest:progress_naga", "twilightforest:progress_lich",
+                "twilightforest:progress_hydra", "aether:bronze_dungeon",
+                "aether:silver_dungeon", "aether:gold_dungeon",
+                "eternal_starlight:kill_lunar_monstrosity",
+                "eternal_starlight:kill_golem",
+                "bosses_of_mass_destruction:nether/gauntlet_defeat",
+                "bosses_of_mass_destruction:adventure/night_lich_defeat",
+                "bosses_of_mass_destruction:end/obsidilith_defeat",
+                "bosses_of_mass_destruction:adventure/void_blossom_defeat",
+            },
+        }
+        project_items: set[str] = set()
+        for chapter in self.quests.build_catalog()[20:]:
+            project_items.add(chapter.icon)
+            for quest in chapter.quests:
+                for task in quest.tasks:
+                    item_id = task.data.get("item", {}).get("id")
+                    if item_id:
+                        project_items.add(item_id)
+                for reward in quest.rewards:
+                    item_id = reward.data.get("item", {}).get("id")
+                    if item_id:
+                        project_items.add(item_id)
+        targets["item"].update(
+            item_id for item_id in project_items if not item_id.startswith("kubejs:")
+        )
+        registry_script = (
+            ROOT / "kubejs/startup_scripts/afterlight/registry.js"
+        ).read_text(encoding="utf-8")
+        for item_id in project_items:
+            if item_id.startswith("kubejs:"):
+                self.assertIn(f"event.create('{item_id.split(':', 1)[1]}')", registry_script)
+        jar_entries: set[str] = set()
+        language = b""
+        for jar_path in (ROOT / "server-test/mods").glob("*.jar"):
+            with zipfile.ZipFile(jar_path) as jar:
+                names = jar.namelist()
+                jar_entries.update(names)
+                for name in names:
+                    if name.endswith("/lang/en_us.json"):
+                        language += jar.read(name)
+
+        missing = []
+        for kind, resource_ids in targets.items():
+            for resource_id in resource_ids:
+                namespace, path = resource_id.split(":", 1)
+                if kind == "item":
+                    found = (
+                        f"assets/{namespace}/models/item/{path}.json" in jar_entries
+                        or f"assets/{namespace}/items/{path}.json" in jar_entries
+                        or f'item.{namespace}.{path}'.encode() in language
+                    )
+                elif kind == "entity":
+                    found = f'entity.{namespace}.{path}'.encode() in language
+                elif kind == "structure":
+                    found = (
+                        f"data/{namespace}/worldgen/structure/{path}.json" in jar_entries
+                        or f"data/{namespace}/structures/{path}.nbt" in jar_entries
+                    )
+                elif kind == "dimension":
+                    found = f"data/{namespace}/dimension/{path}.json" in jar_entries
+                else:
+                    found = (
+                        f"data/{namespace}/advancement/{path}.json" in jar_entries
+                        or f"data/{namespace}/advancements/{path}.json" in jar_entries
+                    )
+                if not found:
+                    missing.append((kind, resource_id))
+        self.assertEqual(missing, [])
 
     def test_kinetics_finale_keeps_ids_and_awards_stage(self) -> None:
         from afterlight_quests.builder import _parse_snbt

@@ -79,38 +79,15 @@
 			]
 		}
 		{
-			id: "E9B64516EEE84F33"
+			id: "8446A553E485B528"
 			dependencies: ["1C6C7CF716AF3B22"]
 			x: 6.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "5FA0E8C88434F91A"
-					type: "item"
-					item: { count: 1, id: "pipez:improved_upgrade" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "60E109D81D6D408E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "8446A553E485B528"
-			dependencies: ["E9B64516EEE84F33"]
-			x: 8.0d
-			y: -1.0d
-			tasks: [
-				{
 					id: "54F321BC0476F5A5"
 					type: "item"
-					item: { count: 1, id: "pipez:advanced_upgrade" }
+					item: { count: 1, id: "pipez:improved_upgrade" }
 					count: 1L
 					consume_items: false
 				}
@@ -125,8 +102,31 @@
 			]
 		}
 		{
-			id: "B107D8813D59B2FF"
+			id: "E9B64516EEE84F33"
 			dependencies: ["8446A553E485B528"]
+			x: 8.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "5FA0E8C88434F91A"
+					type: "item"
+					item: { count: 1, id: "pipez:advanced_upgrade" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "60E109D81D6D408E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "B107D8813D59B2FF"
+			dependencies: ["E9B64516EEE84F33"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [

@@ -1,0 +1,71 @@
+{
+	id: "5D9DAC80C11182CF"
+	order_index: 1
+	filename: "ascendancy_cache_rare"
+	icon: { id: "create:brass_ingot" }
+	loot_size: 2
+	use_title: true
+	rewards: [
+		{ id: "C2F7AE77976ECC96"
+			type: "item"
+			item: { count: 10, id: "kubejs:requisition_chit" }
+			count: 10
+			weight: 30.0f }
+		{ id: "12AC69356A7247AF"
+			type: "item"
+			item: { count: 4, id: "minecraft:iron_block" }
+			count: 4
+			weight: 20.0f }
+		{ id: "E22410C8BE4AED54"
+			type: "item"
+			item: { count: 3, id: "minecraft:golden_apple" }
+			count: 3
+			weight: 15.0f }
+		{ id: "74B0F48CBB14A5F3"
+			type: "item"
+			item: { count: 4, id: "minecraft:diamond" }
+			count: 4
+			weight: 18.0f }
+		{ id: "701A0D3E15BF19C7"
+			type: "item"
+			item: { count: 12, id: "create:brass_ingot" }
+			count: 12
+			weight: 16.0f }
+		{ id: "283D60B94512B363"
+			type: "item"
+			item: { count: 4, id: "mekanism:alloy_reinforced" }
+			count: 4
+			weight: 12.0f }
+		{ id: "B9B76CB497172A50"
+			type: "item"
+			item: { count: 2, id: "ae2:logic_processor" }
+			count: 2
+			weight: 12.0f }
+		{ id: "FCEBB7A65F7B8553"
+			type: "item"
+			item: { count: 8, id: "immersiveengineering:ingot_steel" }
+			count: 8
+			weight: 16.0f }
+		{ id: "E604B1A872F97EBD"
+			type: "item"
+			item: { count: 8, id: "modern_industrialization:stainless_steel_ingot" }
+			count: 8
+			weight: 10.0f }
+		{ id: "FEE6196244E009DD"
+			type: "item"
+			item: { count: 24, id: "minecraft:experience_bottle" }
+			count: 24
+			weight: 18.0f }
+		{ id: "A617AD63DA377F13"
+			type: "item"
+			item: { count: 1, id: "minecraft:netherite_scrap" }
+			count: 1
+			weight: 4.0f }
+		{ id: "6F247DF2E6BA3E83"
+			type: "item"
+			item: { count: 1, id: "minecraft:enchanted_golden_apple" }
+			count: 1
+			weight: 2.0f }
+	]
+	title: "Ascendancy Cache: Rare"
+}

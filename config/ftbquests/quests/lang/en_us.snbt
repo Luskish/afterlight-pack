@@ -1033,14 +1033,14 @@
 	quest.E9B64516EEE84F33.title: "Filtered Route"
 	quest.E9B64516EEE84F33.quest_subtitle: "A route without a filter is a future mixture."
 	quest.E9B64516EEE84F33.quest_desc: [
-		"Build an Improved Pipe Upgrade, then configure an allowlist on one destination."
-		"The task verifies the upgrade. Send a wrong item to prove the filter refuses it."
+		"Build an Advanced Pipe Upgrade, then configure an allowlist on one destination."
+		"Advanced routing adds filters to the distribution controls already proven. Send a wrong item to confirm refusal."
 	]
 	quest.8446A553E485B528.title: "Round-Robin Routing"
 	quest.8446A553E485B528.quest_subtitle: "Equal destinations deserve equal inconvenience."
 	quest.8446A553E485B528.quest_desc: [
-		"Build an Advanced Pipe Upgrade and enable round-robin distribution across two outputs."
-		"Count several deliveries. One alternating pair is not a stability test."
+		"Build an Improved Pipe Upgrade and enable round-robin distribution across two outputs."
+		"Improved routing unlocks distribution control. Count several deliveries before adding filters."
 	]
 	quest.B107D8813D59B2FF.title: "Overflow Safety"
 	quest.B107D8813D59B2FF.quest_subtitle: "Full output must stop the line without losing matter."
@@ -1256,5 +1256,437 @@
 	quest.310306FFF908FD30.quest_desc: [
 		"Build a Formulaic Assemblicator and encode the osmium storage-block recipe."
 		"Feed it only from the smelter output. Manual ingot insertion invalidates the trial."
+	]
+	chapter.DCDF0BB344B02192.title: "Names in the Circuit"
+	quest.BD05CEEA29790FB9.title: "Dictionary of Spirits"
+	quest.BD05CEEA29790FB9.quest_subtitle: "Classify the interference."
+	quest.BD05CEEA29790FB9.quest_desc: [
+		"The manual names the voices. I preferred them as unclassified interference."
+	]
+	quest.009699B43C7576E8.title: "Ritual Geometry"
+	quest.009699B43C7576E8.quest_subtitle: "Circuits drawn in chalk."
+	quest.009699B43C7576E8.quest_desc: [
+		"A circle is still a circuit if everyone agrees where current enters."
+	]
+	quest.DABDC747E62A1592.title: "Attuned Matter"
+	quest.DABDC747E62A1592.quest_subtitle: "A crystal that listens."
+	quest.DABDC747E62A1592.quest_desc: [
+		"The crystal answers questions my instruments cannot hear."
+	]
+	quest.75C95D06CE61987B.title: "Storage Elsewhere"
+	quest.75C95D06CE61987B.quest_subtitle: "Inventory outside addressable space."
+	quest.75C95D06CE61987B.quest_desc: [
+		"You have built a warehouse in a place I cannot address. I dislike its efficiency."
+	]
+	quest.7D7FD62FD5CB170B.title: "Remote Terms"
+	quest.7D7FD62FD5CB170B.quest_subtitle: "No cable, no latency report."
+	quest.7D7FD62FD5CB170B.quest_desc: [
+		"Remote access without a network cable. AE2 is filing a complaint."
+	]
+	quest.051EA7B2A3B36BFD.title: "Stable Wormhole"
+	quest.051EA7B2A3B36BFD.quest_subtitle: "Hold the impossible open."
+	quest.051EA7B2A3B36BFD.quest_desc: [
+		"The opening remains stable. That sentence would have ended a meeting before the Cascade."
+	]
+	chapter.91D0B654D6E9B714.title: "Spells Under Load"
+	quest.D32A6B9EECE82E69.title: "Flimsy Journal"
+	quest.D32A6B9EECE82E69.quest_subtitle: "The equations are armed."
+	quest.D32A6B9EECE82E69.quest_desc: [
+		"Calling it flimsy does not make the equations less armed."
+	]
+	quest.FA4FCF5F5EEAD9C8.title: "Arcane Residue"
+	quest.FA4FCF5F5EEAD9C8.quest_subtitle: "Intent remains in the dust."
+	quest.FA4FCF5F5EEAD9C8.quest_desc: [
+		"Residue with intent. Label every container."
+	]
+	quest.9C3C84CCFA45C227.title: "Executable Ink"
+	quest.9C3C84CCFA45C227.quest_subtitle: "Instructions embedded in paper."
+	quest.9C3C84CCFA45C227.quest_desc: [
+		"The table writes executable instructions into paper. At least scripts usually admit they are dangerous."
+	]
+	quest.539095BF36C4999C.title: "Repeatable Force"
+	quest.539095BF36C4999C.quest_subtitle: "A reproducible spell process."
+	quest.539095BF36C4999C.quest_desc: [
+		"Repeatable spells are automation. I will tolerate the vocabulary."
+	]
+	quest.AB4DC1F500264B40.title: "Reagent Heat"
+	quest.AB4DC1F500264B40.quest_subtitle: "A process without a diagram."
+	quest.AB4DC1F500264B40.quest_desc: [
+		"Heat, reagents, and no process diagram. Barbaric, but measurable."
+	]
+	quest.DF26F92E726A22AC.title: "Arcane Anvil"
+	quest.DF26F92E726A22AC.quest_subtitle: "Revise force after casting."
+	quest.DF26F92E726A22AC.quest_desc: [
+		"You have made force accept revision."
+	]
+	chapter.045647E54F0A1D9E.title: "The Soul Ledger"
+	quest.90752736922A5C3C.title: "Encyclopedia Arcana"
+	quest.90752736922A5C3C.quest_subtitle: "An inventory of souls."
+	quest.90752736922A5C3C.quest_desc: [
+		"This book catalogs souls as inventory. I recognize the impulse and reject the terminology."
+	]
+	quest.352D54CEF81F094F.title: "Spirit Altar"
+	quest.352D54CEF81F094F.quest_subtitle: "Handle residue respectfully."
+	quest.352D54CEF81F094F.quest_desc: [
+		"A workbench for the residue of living things. Use it respectfully."
+	]
+	quest.183429DB7153D480.title: "Containment Ledger"
+	quest.183429DB7153D480.quest_subtitle: "Containment before understanding."
+	quest.183429DB7153D480.quest_desc: [
+		"Containment is not understanding. It is, however, a start."
+	]
+	quest.1A6847ABC9BFF817.title: "Meaning as Fuel"
+	quest.1A6847ABC9BFF817.quest_subtitle: "The crucible burns significance."
+	quest.1A6847ABC9BFF817.quest_desc: [
+		"The machine burns meaning instead of fuel."
+	]
+	quest.5A083FCA4825F423.title: "Field Geometry"
+	quest.5A083FCA4825F423.quest_subtitle: "Stable enough to graph."
+	quest.5A083FCA4825F423.quest_desc: [
+		"The field is stable enough to graph. I wish that helped."
+	]
+	quest.C9286624F8D7D554.title: "Soulstained Steel"
+	quest.C9286624F8D7D554.quest_subtitle: "Metal that remembers more."
+	quest.C9286624F8D7D554.quest_desc: [
+		"Steel remembers the furnace. This remembers more."
+	]
+	chapter.1A6C8CE2A6D208F9.title: "Resonance Proof"
+	quest.6363BCE8A71FA766.title: "A Second Voice"
+	quest.6363BCE8A71FA766.quest_subtitle: "One branch is enough."
+	quest.6363BCE8A71FA766.quest_desc: [
+		"Ars is the carrier. One foreign discipline is enough to expose the harmonic."
+	]
+	quest.AD4915DD8FDA1D06.title: "Source Reserve"
+	quest.AD4915DD8FDA1D06.quest_subtitle: "Redundancy remains valid."
+	quest.AD4915DD8FDA1D06.quest_desc: [
+		"Four jars. Redundancy remains valid even when the fluid is impossible."
+	]
+	quest.47311C112F22894D.title: "Pedestal Ring"
+	quest.47311C112F22894D.quest_subtitle: "Eight points around one idea."
+	quest.47311C112F22894D.quest_desc: [
+		"Eight points define a polite boundary around a dangerous idea."
+	]
+	quest.1306DADA70B362F3.title: "Ritual Focus"
+	quest.1306DADA70B362F3.quest_subtitle: "A control surface made of fire."
+	quest.1306DADA70B362F3.quest_desc: [
+		"A control surface made of fire. We have worked with worse."
+	]
+	quest.87338DE0FE8114CF.title: "Resonance Proof"
+	quest.87338DE0FE8114CF.quest_subtitle: "Two languages, one frequency."
+	quest.87338DE0FE8114CF.quest_desc: [
+		"Two languages agree on one frequency. The Gate may survive what the Ascendancy refused to learn."
+	]
+	chapter.3C0EE28909760862.title: "Current Below"
+	quest.2826B8E3F1C3FD28.title: "Analog Logic"
+	quest.2826B8E3F1C3FD28.quest_subtitle: "Electricity enters the archive."
+	quest.2826B8E3F1C3FD28.quest_desc: [
+		"The Vault begins electricity with logic large enough to inspect by hand."
+	]
+	quest.E5ECD64817F1A750.title: "Basic Hulls"
+	quest.E5ECD64817F1A750.quest_subtitle: "Give the current a chassis."
+	quest.E5ECD64817F1A750.quest_desc: [
+		"Four housings establish a repeatable machine standard."
+	]
+	quest.B5783224C0644E3E.title: "Low Voltage Turbines"
+	quest.B5783224C0644E3E.quest_subtitle: "Steam becomes current."
+	quest.B5783224C0644E3E.quest_desc: [
+		"Two turbines convert the old pressure language into electricity."
+	]
+	quest.F3FEA26D1A9CD3AB.title: "Buffered Current"
+	quest.F3FEA26D1A9CD3AB.quest_subtitle: "Store before expanding."
+	quest.F3FEA26D1A9CD3AB.quest_desc: [
+		"Buffered power makes failure observable instead of mysterious."
+	]
+	quest.A2136042E5BE2514.title: "Powered Reduction"
+	quest.A2136042E5BE2514.quest_subtitle: "Grinding joins the grid."
+	quest.A2136042E5BE2514.quest_desc: [
+		"The macerator replaces muscle with measured current."
+	]
+	quest.13FD3F81EDE7AE26.title: "Precision Wire"
+	quest.13FD3F81EDE7AE26.quest_subtitle: "Draw conductors at scale."
+	quest.13FD3F81EDE7AE26.quest_desc: [
+		"Wire this precise belongs to infrastructure, not improvisation."
+	]
+	quest.4F4161F5B97E27ED.title: "Automated Assembly"
+	quest.4F4161F5B97E27ED.quest_subtitle: "The first electric line closes."
+	quest.4F4161F5B97E27ED.quest_desc: [
+		"Assembly is now a process rather than a person."
+	]
+	chapter.8A48AB2CC20BC026.title: "Black Distillate"
+	quest.5AEBEF186442407B.title: "Electronic Logic"
+	quest.5AEBEF186442407B.quest_subtitle: "Smaller logic, larger consequences."
+	quest.5AEBEF186442407B.quest_desc: [
+		"The circuits shrink as the process map expands."
+	]
+	quest.C784D48E263BA8CC.title: "Buried Feedstock"
+	quest.C784D48E263BA8CC.quest_subtitle: "Reach the black reservoir."
+	quest.C784D48E263BA8CC.quest_desc: [
+		"The rig asks the world what it stored under pressure."
+	]
+	quest.68D4F306C5686B67.title: "Crude Reserve"
+	quest.68D4F306C5686B67.quest_subtitle: "Eight buckets of unresolved chemistry."
+	quest.68D4F306C5686B67.quest_desc: [
+		"Crude oil is a queue of useful mistakes."
+	]
+	quest.D90D4411D3904C4B.title: "First Separation"
+	quest.D90D4411D3904C4B.quest_subtitle: "Separate by heat."
+	quest.D90D4411D3904C4B.quest_desc: [
+		"The distillery begins assigning boiling points to the queue."
+	]
+	quest.EEEBF04F74011082.title: "Reaction Control"
+	quest.EEEBF04F74011082.quest_subtitle: "Make chemistry reproducible."
+	quest.EEEBF04F74011082.quest_desc: [
+		"A reaction becomes engineering when the inputs can be repeated."
+	]
+	quest.C9E3F26DF9DADDD5.title: "Polymer Stream"
+	quest.C9E3F26DF9DADDD5.quest_subtitle: "Turn oil into structure."
+	quest.C9E3F26DF9DADDD5.quest_desc: [
+		"Sixteen buckets prove the polymer stream is no laboratory accident."
+	]
+	quest.3E1151169E81AD32.title: "Black Distillate"
+	quest.3E1151169E81AD32.quest_subtitle: "A column for every fraction."
+	quest.3E1151169E81AD32.quest_desc: [
+		"You have taught crude oil to separate itself by boiling point and social rank."
+	]
+	chapter.FA26679C913AAF90.title: "Hot Cell"
+	quest.2107CE4AC7DCE2B3.title: "Digital Logic"
+	quest.2107CE4AC7DCE2B3.quest_subtitle: "The Vault counts faster now."
+	quest.2107CE4AC7DCE2B3.quest_desc: [
+		"Digital logic leaves less room for interpretation and more room for scale."
+	]
+	quest.D61929A2956F2507.title: "Implosion Compression"
+	quest.D61929A2956F2507.quest_subtitle: "Pressure by detonation."
+	quest.D61929A2956F2507.quest_desc: [
+		"The process is controlled because the explosion has paperwork."
+	]
+	quest.D3DCD0CBD9BE347A.title: "Hot Cell Walls"
+	quest.D3DCD0CBD9BE347A.quest_subtitle: "Containment before fuel."
+	quest.D3DCD0CBD9BE347A.quest_desc: [
+		"Build the boundary before introducing the reason it exists."
+	]
+	quest.8A362BDB888E949B.title: "Reactor Vessel"
+	quest.8A362BDB888E949B.quest_subtitle: "A disciplined star fragment."
+	quest.8A362BDB888E949B.quest_desc: [
+		"The vessel is ready. Readiness is not permission to improvise."
+	]
+	quest.5C7ADA9A9A49770A.title: "Uranium Rods"
+	quest.5C7ADA9A9A49770A.quest_subtitle: "Fuel in inspectable units."
+	quest.5C7ADA9A9A49770A.quest_desc: [
+		"Eight rods make the energy inventory countable."
+	]
+	quest.C9C43EEDD7055C79.title: "Quad Fuel"
+	quest.C9C43EEDD7055C79.quest_subtitle: "Density raises every consequence."
+	quest.C9C43EEDD7055C79.quest_desc: [
+		"Quad assemblies improve throughput and shorten the list of acceptable mistakes."
+	]
+	quest.7131E55FB7E21244.title: "Plutonium Stream"
+	quest.7131E55FB7E21244.quest_subtitle: "Waste becomes feedstock."
+	quest.7131E55FB7E21244.quest_desc: [
+		"The waste stream has become a material stream. That is not the same as safe."
+	]
+	chapter.5307E7406CB0DAE6.title: "Quantum Burden"
+	quest.616B4C5C04BDD88D.title: "Iridium Stock"
+	quest.616B4C5C04BDD88D.quest_subtitle: "Material for impossible tolerances."
+	quest.616B4C5C04BDD88D.quest_desc: [
+		"Iridium is expensive because ordinary matter objects to this assignment."
+	]
+	quest.E418053F13B8F3C3.title: "Superconductor"
+	quest.E418053F13B8F3C3.quest_subtitle: "Current without apology."
+	quest.E418053F13B8F3C3.quest_desc: [
+		"The conductor stops wasting energy and begins wasting my risk budget."
+	]
+	quest.43B82DB92C7A1E22.title: "Quantum Logic"
+	quest.43B82DB92C7A1E22.quest_subtitle: "Eight decisions held at once."
+	quest.43B82DB92C7A1E22.quest_desc: [
+		"The circuit evaluates possibilities faster than I can distrust them."
+	]
+	quest.057C19B0A4111580.title: "Quantum Hulls"
+	quest.057C19B0A4111580.quest_subtitle: "Contain machines and uncertainty."
+	quest.057C19B0A4111580.quest_desc: [
+		"Four hulls establish boundaries the contents may only statistically respect."
+	]
+	quest.E89170334A824C52.title: "Quantum Upgrades"
+	quest.E89170334A824C52.quest_subtitle: "Raise the operating ceiling."
+	quest.E89170334A824C52.quest_desc: [
+		"The upgrades remove limits that were originally safety advice."
+	]
+	quest.57D1232E7FCAE4B4.title: "Quantum Storage"
+	quest.57D1232E7FCAE4B4.quest_subtitle: "Capacity without sensible volume."
+	quest.57D1232E7FCAE4B4.quest_desc: [
+		"The tank and barrel contain more than their dimensions are prepared to admit."
+	]
+	quest.505A306462A8BC7E.title: "Quantum Burden"
+	quest.505A306462A8BC7E.quest_subtitle: "Manufacture the final density."
+	quest.505A306462A8BC7E.quest_desc: [
+		"The Vault ends by manufacturing a burden too dense for metaphor."
+	]
+	chapter.4CEEFB108A0EECF8.title: "Courts Above and Beyond"
+	quest.C261DA792971891F.title: "Two Skies"
+	quest.C261DA792971891F.quest_subtitle: "Map both upper courts."
+	quest.C261DA792971891F.quest_desc: [
+		"Two skies, two legal systems, and neither recognizes our credentials."
+	]
+	quest.970433D6BE7EA6C8.title: "The Coiled Court"
+	quest.970433D6BE7EA6C8.quest_subtitle: "Challenge the first throne."
+	quest.970433D6BE7EA6C8.quest_desc: [
+		"The serpent guards a court that forgot its citizens."
+	]
+	quest.46D366F3759D2106.title: "The Dead Court"
+	quest.46D366F3759D2106.quest_subtitle: "Remove the second claimant."
+	quest.46D366F3759D2106.quest_desc: [
+		"The lich kept authority after life stopped supporting the claim."
+	]
+	quest.6AD1F62284E66823.title: "The Many-Headed Court"
+	quest.6AD1F62284E66823.quest_subtitle: "One verdict, several mouths."
+	quest.6AD1F62284E66823.quest_desc: [
+		"The hydra treats redundancy as sovereignty."
+	]
+	quest.F5F9827EFEAF090E.title: "Bronze Court"
+	quest.F5F9827EFEAF090E.quest_subtitle: "Open the first dungeon."
+	quest.F5F9827EFEAF090E.quest_desc: [
+		"Bronze is the lowest court only by altitude and confidence."
+	]
+	quest.317C0D9B82BCD3C6.title: "Silver Court"
+	quest.317C0D9B82BCD3C6.quest_subtitle: "Press deeper into the sky."
+	quest.317C0D9B82BCD3C6.quest_desc: [
+		"The silver court improved the locks and retained the same assumptions."
+	]
+	quest.2D4397AD41F67A50.title: "Gold Court"
+	quest.2D4397AD41F67A50.quest_subtitle: "Reach the highest chamber."
+	quest.2D4397AD41F67A50.quest_desc: [
+		"Gold makes authority visible. It does not make it correct."
+	]
+	quest.0DAB608A7B083DB8.title: "Court Record"
+	quest.0DAB608A7B083DB8.quest_subtitle: "Six thrones entered into evidence."
+	quest.0DAB608A7B083DB8.quest_desc: [
+		"Six thrones challenged. The sky is no less beautiful for having defenses."
+	]
+	chapter.170AB7B39A0C4E47.title: "Root and Echo"
+	quest.8105CB39F994B579.title: "Two Depths"
+	quest.8105CB39F994B579.quest_subtitle: "Descend into root and echo."
+	quest.8105CB39F994B579.quest_desc: [
+		"The Cascade reached downward by two routes and apologized by neither."
+	]
+	quest.E3B85107180781C2.title: "Root Catacombs"
+	quest.E3B85107180781C2.quest_subtitle: "Find the buried complex."
+	quest.E3B85107180781C2.quest_desc: [
+		"The catacombs grew around their occupants rather than above them."
+	]
+	quest.0B8F4FA3D773C75E.title: "Forgotten Guardian"
+	quest.0B8F4FA3D773C75E.quest_subtitle: "Close the root protocol."
+	quest.0B8F4FA3D773C75E.quest_desc: [
+		"The guardian remembers its duty and nothing about who assigned it."
+	]
+	quest.825D341769E84821.title: "Ancient Temple"
+	quest.825D341769E84821.quest_subtitle: "Trace the echo to its source."
+	quest.825D341769E84821.quest_desc: [
+		"The temple amplifies a signal no living architect signed."
+	]
+	quest.3AC2AF7542F7CADA.title: "The Stalker"
+	quest.3AC2AF7542F7CADA.quest_subtitle: "End the pursuit."
+	quest.3AC2AF7542F7CADA.quest_desc: [
+		"The stalker mistakes silence for concealment."
+	]
+	quest.26E98713CAC0A689.title: "Root and Echo"
+	quest.26E98713CAC0A689.quest_subtitle: "Reconcile both descent records."
+	quest.26E98713CAC0A689.quest_desc: [
+		"Root and echo agree: the Cascade reached downward as thoroughly as it reached up."
+	]
+	chapter.6A433C07EC56210B.title: "Edges of the Map"
+	quest.8F4178A6A2CF1E5D.title: "Starlight"
+	quest.8F4178A6A2CF1E5D.quest_subtitle: "Cross the luminous boundary."
+	quest.8F4178A6A2CF1E5D.quest_desc: [
+		"The edge glows because subtle warnings failed."
+	]
+	quest.F7CE4A3AE1DBBBE4.title: "Stranghoul Den"
+	quest.F7CE4A3AE1DBBBE4.quest_subtitle: "Find the first den."
+	quest.F7CE4A3AE1DBBBE4.quest_desc: [
+		"The den is a nest built around a tactical blind spot."
+	]
+	quest.8F0F70DEEF2240EE.title: "The Stranghoul"
+	quest.8F0F70DEEF2240EE.quest_subtitle: "Clear the den."
+	quest.8F0F70DEEF2240EE.quest_desc: [
+		"The Stranghoul has confused territorial control with permanence."
+	]
+	quest.DB1790EC7F74E930.title: "Cursed Garden"
+	quest.DB1790EC7F74E930.quest_subtitle: "Map the cultivated corruption."
+	quest.DB1790EC7F74E930.quest_desc: [
+		"Someone landscaped the anomaly. I object to the confidence."
+	]
+	quest.6D23C9E82FF36D47.title: "Lunar Monstrosity"
+	quest.6D23C9E82FF36D47.quest_subtitle: "Break the garden's orbit."
+	quest.6D23C9E82FF36D47.quest_desc: [
+		"Moonlight is not supposed to require combat telemetry."
+	]
+	quest.E7DA7457EB599DE0.title: "Golem Forge"
+	quest.E7DA7457EB599DE0.quest_subtitle: "Find the final foundry."
+	quest.E7DA7457EB599DE0.quest_desc: [
+		"The forge manufactures guardians and calls that maintenance."
+	]
+	quest.5B4F46030C9B8CAE.title: "The Forged Warden"
+	quest.5B4F46030C9B8CAE.quest_subtitle: "Shut down the forge guardian."
+	quest.5B4F46030C9B8CAE.quest_desc: [
+		"The golem is a process result with opinions."
+	]
+	quest.A31CFB60DB42BD03.title: "The Gatekeeper"
+	quest.A31CFB60DB42BD03.quest_subtitle: "Create a vacancy at the edge."
+	quest.A31CFB60DB42BD03.quest_desc: [
+		"The edge has a keeper. It now has a vacancy."
+	]
+	chapter.EEFD817FBDA0461F.title: "Corrupted Guardians"
+	quest.37E7EE94AB9C2675.title: "Guardian Protocol"
+	quest.37E7EE94AB9C2675.quest_subtitle: "Open the corruption index."
+	quest.37E7EE94AB9C2675.quest_desc: [
+		"The surviving guardians share damage patterns that are too consistent to be natural."
+	]
+	quest.499464BC3E160165.title: "Ferrous Wroughtnaut"
+	quest.499464BC3E160165.quest_subtitle: "Challenge a corrupted guardian."
+	quest.499464BC3E160165.quest_desc: [
+		"The armor is older than its remaining orders."
+	]
+	quest.B38780DB7926F700.title: "Frostmaw"
+	quest.B38780DB7926F700.quest_subtitle: "Challenge a corrupted guardian."
+	quest.B38780DB7926F700.quest_desc: [
+		"The cold is territorial, mobile, and awake."
+	]
+	quest.F9F5F12B6BD564B1.title: "Umvuthi"
+	quest.F9F5F12B6BD564B1.quest_subtitle: "Challenge a corrupted guardian."
+	quest.F9F5F12B6BD564B1.quest_desc: [
+		"Solar authority survives here as a weapon system."
+	]
+	quest.ED9E08C372D0906F.title: "The Gauntlet"
+	quest.ED9E08C372D0906F.quest_subtitle: "Challenge a corrupted guardian."
+	quest.ED9E08C372D0906F.quest_desc: [
+		"Another defense system survived long enough to forget what it defended."
+	]
+	quest.A752C3D5F803277A.title: "Night Lich"
+	quest.A752C3D5F803277A.quest_subtitle: "Challenge a corrupted guardian."
+	quest.A752C3D5F803277A.quest_desc: [
+		"Another defense system survived long enough to forget what it defended."
+	]
+	quest.9B0CECC6538D34B5.title: "Obsidilith"
+	quest.9B0CECC6538D34B5.quest_subtitle: "Challenge a corrupted guardian."
+	quest.9B0CECC6538D34B5.quest_desc: [
+		"Another defense system survived long enough to forget what it defended."
+	]
+	quest.C927B70BCF913116.title: "Void Blossom"
+	quest.C927B70BCF913116.quest_subtitle: "Challenge a corrupted guardian."
+	quest.C927B70BCF913116.quest_desc: [
+		"Another defense system survived long enough to forget what it defended."
+	]
+	quest.1E1D393F0208BF48.title: "Netherite Monstrosity"
+	quest.1E1D393F0208BF48.quest_subtitle: "Challenge a war remnant."
+	quest.1E1D393F0208BF48.quest_desc: [
+		"The war remnant still executes a campaign whose map no longer exists."
+	]
+	quest.EBA4692E12E8772A.title: "Maledictus"
+	quest.EBA4692E12E8772A.quest_subtitle: "Challenge a war remnant."
+	quest.EBA4692E12E8772A.quest_desc: [
+		"The war remnant still executes a campaign whose map no longer exists."
+	]
+	quest.00EB5746A726C5B4.title: "Corruption Index"
+	quest.00EB5746A726C5B4.quest_subtitle: "Nine guardians, one pattern."
+	quest.00EB5746A726C5B4.quest_desc: [
+		"Guardian corruption was systematic. Someone taught defense systems to survive their purpose."
 	]
 }

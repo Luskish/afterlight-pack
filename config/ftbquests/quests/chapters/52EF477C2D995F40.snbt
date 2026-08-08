@@ -124,7 +124,7 @@
 			rewards: [
 				{ id: "3F445EF8F408A56C"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "ADD2F48DEE5F7604"
 				type: "item"
 				item: { count: 12, id: "kubejs:requisition_chit" }

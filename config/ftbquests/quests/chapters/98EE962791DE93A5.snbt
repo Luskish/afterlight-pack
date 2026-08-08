@@ -37,7 +37,7 @@
 			rewards: [
 				{ id: "BF12F0B68E053E44"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "C1663D5FAC0A588C"
 				type: "item"
 				item: { count: 8, id: "kubejs:requisition_chit" }
@@ -60,7 +60,7 @@
 			rewards: [
 				{ id: "05C60E9F6E386535"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "4E641BC8C37563CE"
 				type: "item"
 				item: { count: 8, id: "kubejs:requisition_chit" }
@@ -83,7 +83,7 @@
 			rewards: [
 				{ id: "EC8274DB118370E2"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "9737A9EF9FB9552E"
 				type: "item"
 				item: { count: 8, id: "kubejs:requisition_chit" }
@@ -106,7 +106,7 @@
 			rewards: [
 				{ id: "0EAE210FC0046035"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "A4E6A811B540BB47"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }
@@ -131,7 +131,7 @@
 			rewards: [
 				{ id: "5858BAA5AF0481E6"
 				type: "loot"
-				table_id: 10622272618344871329L }
+				table_id: -7824471455364680287L }
 				{ id: "4F800E8131CC7370"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }

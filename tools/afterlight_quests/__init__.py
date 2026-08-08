@@ -17,6 +17,8 @@ from .builder import (
     write_catalog,
 )
 from .catalog import (
+    ASCENDANCY_CACHE_EPIC_TABLE,
+    ASCENDANCY_CACHE_RARE_TABLE,
     DEPOT_EARLY_TABLE,
     DEPOT_LATE_TABLE,
     DEPOT_MID_TABLE,
@@ -25,6 +27,8 @@ from .catalog import (
 
 
 __all__ = [
+    "ASCENDANCY_CACHE_EPIC_TABLE",
+    "ASCENDANCY_CACHE_RARE_TABLE",
     "ChapterSpec",
     "DEPOT_EARLY_TABLE",
     "DEPOT_LATE_TABLE",

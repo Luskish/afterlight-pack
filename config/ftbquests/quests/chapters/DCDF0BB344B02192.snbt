@@ -1,0 +1,168 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "DCDF0BB344B02192"
+	group: "51FF272F5030D2E6"
+	icon: { id: "occultism:dictionary_of_spirits" }
+	id: "DCDF0BB344B02192"
+	images: [ ]
+	order_index: 1
+	quest_links: [ ]
+	quests: [
+		{
+			id: "BD05CEEA29790FB9"
+			dependencies: ["7480D99D56556C8E"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "C45B58CED64EB321"
+					type: "item"
+					item: { count: 1, id: "occultism:dictionary_of_spirits" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "83BFC70F85305DA8"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "009699B43C7576E8"
+			dependencies: ["BD05CEEA29790FB9"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "657E6B0F9F21C709"
+					type: "item"
+					item: { count: 1, id: "occultism:chalk_white" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "AB3961206BFA00E4"
+					type: "item"
+					item: { count: 1, id: "occultism:sacrificial_bowl" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "C4F46E889A36102F"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "DABDC747E62A1592"
+			dependencies: ["009699B43C7576E8"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "FB9589772D640B7D"
+					type: "item"
+					item: { count: 1, id: "occultism:spirit_attuned_gem" }
+					count: 4L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "CDB9B422C8FA0475"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "75C95D06CE61987B"
+			dependencies: ["DABDC747E62A1592"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "F021193D9E3C4B45"
+					type: "item"
+					item: { count: 1, id: "occultism:storage_controller" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "40EA3308A3BF0216"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "7D7FD62FD5CB170B"
+			dependencies: ["75C95D06CE61987B"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "E30B50115C5F9458"
+					type: "item"
+					item: { count: 1, id: "occultism:storage_remote" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "3B38AAA8B50B7C76"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "051EA7B2A3B36BFD"
+			dependencies: ["7D7FD62FD5CB170B"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "10EEAD1B1ED20952"
+					type: "item"
+					item: { count: 1, id: "occultism:stable_wormhole" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "EAC51BB1DE5B7616"
+					type: "loot"
+					table_id: 6745737485865812687L
+				}
+				{
+					id: "4D33D05088EB833B"
+					type: "item"
+					item: { count: 12, id: "kubejs:requisition_chit" }
+					count: 12
+				}
+				{
+					id: "6B47D8BD36CB9B29"
+					type: "xp"
+					xp: 250
+				}
+			]
+		}
+	]
+}

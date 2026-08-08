@@ -15,6 +15,9 @@ from typing import Any, Iterable, Mapping, Sequence
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
 RESOURCE_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MANAGED_STATE_NAME = ".afterlight-managed.json"
+DEPENDENCY_REQUIREMENTS = frozenset(
+    {"all_completed", "one_completed", "all_started", "one_started"}
+)
 
 VANILLA_ITEM_ALLOWLIST = frozenset(
     {
@@ -61,6 +64,18 @@ KUBEJS_ITEM_ALLOWLIST = frozenset(
 @dataclass(frozen=True)
 class SnbtLong:
     value: int
+
+    def __post_init__(self) -> None:
+        if not -(1 << 63) <= self.value <= (1 << 63) - 1:
+            raise ValueError(f"SNBT long is outside signed 64-bit range: {self.value}")
+
+    @classmethod
+    def from_hex(cls, identifier: str) -> SnbtLong:
+        if not re.fullmatch(r"[0-9A-Fa-f]{16}", identifier):
+            raise ValueError(f"reward table hex ID must be 16 hexadecimal digits: {identifier}")
+        unsigned = int(identifier, 16)
+        signed = unsigned if unsigned <= (1 << 63) - 1 else unsigned - (1 << 64)
+        return cls(signed)
 
 
 @dataclass(frozen=True)
@@ -125,6 +140,7 @@ class QuestSpec:
     y: float
     subtitle: str = ""
     dependencies: tuple[str, ...] = ()
+    dependency_requirement: str | None = None
     tasks: tuple[TaskSpec, ...] = ()
     rewards: tuple[RewardSpec, ...] = ()
     shape: str = ""
@@ -132,6 +148,15 @@ class QuestSpec:
     optional: bool | None = None
     can_repeat: bool | None = None
     repeat_cooldown: int | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.dependency_requirement is not None
+            and self.dependency_requirement not in DEPENDENCY_REQUIREMENTS
+        ):
+            raise ValueError(
+                f"unsupported dependency requirement: {self.dependency_requirement}"
+            )
 
     @property
     def id(self) -> str:
@@ -254,6 +279,8 @@ def render_chapter(chapter: ChapterSpec) -> str:
         quest_fields: list[tuple[str, Any]] = [("id", quest.id)]
         if quest.dependency_ids:
             quest_fields.append(("dependencies", quest.dependency_ids))
+        if quest.dependency_requirement is not None:
+            quest_fields.append(("dependency_requirement", quest.dependency_requirement))
         quest_fields.extend((("x", quest.x), ("y", quest.y)))
         if quest.shape:
             quest_fields.append(("shape", quest.shape))
@@ -839,6 +866,15 @@ def validate_quests(
                     errors.append(f"malformed IDs in {path}: {dependency}")
                     continue
                 dependency_graph[quest_id].add(dependency)
+            dependency_requirement = quest.get("dependency_requirement")
+            if (
+                dependency_requirement is not None
+                and dependency_requirement not in DEPENDENCY_REQUIREMENTS
+            ):
+                errors.append(
+                    f"invalid dependency requirement in {path}: "
+                    f"{dependency_requirement!r}"
+                )
 
     for identifier, paths in all_ids.items():
         if len(paths) > 1:

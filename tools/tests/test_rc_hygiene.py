@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import copy
+import gzip
 import hashlib
 import json
+import re
+import struct
 import sys
 import tomllib
 import unittest
@@ -11,19 +14,33 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+TOOLS = ROOT / "tools"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+
+import rc_hygiene
+
+
 KUBEJS_DATA = ROOT / "kubejs" / "data"
-MODS_DIR = ROOT / "server-test" / "mods"
+INSTALL_ROOT = ROOT / "server-test"
 LATEST_LOG = ROOT / "server-test" / "logs" / "latest.log"
 CEI_FILTER_PACK = KUBEJS_DATA / "afterlight_rc_hygiene.zip"
+CONFIG_FIXTURE = ROOT / "tools" / "fixtures" / "rc-hygiene" / "generated-configs.json"
 
-CONFIG_HASHES = {
-    "jupiter.json": "ac6415cb504a1cd8d129435e67e718b0f139613f378127f0f8f21ee61ca4ffe7",
-    "iceandfire/iaf-common.json": "a520e5e7909c9e50d1857874f853e6fafff8ac106fabff239868d5c57a57b546",
-    "justdirethings-server.toml": "7605dc482ee04abd027f9180d1d215eb8acd4a00c95eab8e9f8ea77bd442e894",
-    "mcjtylib-server.toml": "91eb6e4963efb985fe27bd7b0b70f03a3bc2bd15376649002812c4bb343e6582",
-    "create_enchantment_industry-server.toml": "8434e2dcd11cb4c8098dc653e41dc06ec512f9cb3884c90ea19dcae604a256b1",
-    "quark-common.toml": "9bf61c165626d5d0cc972bee5521117523d31693728430577a6d08368456e960",
-    "alexsmobs-common.toml": "219d516786a0c0db3f8f7af0ce6f7d299edbd1d7eff991ba51ac59860b4cc58d",
+SOURCE_METADATA = {
+    "oritech": "mods/oritech.pw.toml",
+    "industrial_foregoing": "mods/industrial-foregoing.pw.toml",
+    "cataclysm": "mods/l_enders-cataclysm.pw.toml",
+    "dungeons_and_taverns": "mods/dungeons-and-taverns.pw.toml",
+    "dungeons_arise": "mods/when-dungeons-arise.pw.toml",
+    "malum": "mods/malum.pw.toml",
+    "cei": "mods/create-enchantment-industry.pw.toml",
+    "create_connected": "mods/create-connected.pw.toml",
+    "extendedae": "mods/ex-pattern-provider.pw.toml",
+    "irons_spellbooks": "mods/irons-spells-n-spellbooks.pw.toml",
+    "idas": "mods/idas.pw.toml",
+    "terralith": "mods/terralith.pw.toml",
+    "lithostitched": "mods/lithostitched.pw.toml",
 }
 
 MALUM_SPIRIT_REPAIRS = {
@@ -118,6 +135,8 @@ REPAIRED_LOG_SIGNATURES = (
     "malum:create/milling/grim_talc[create:milling]",
     "Parsing error loading recipe malum:create/milling/grim_talc",
     "Object with ID enderio:xpjuice specified in data map",
+    "Object with ID enderio:xp_juice specified in data map",
+    "Object with ID enderio:fluid_xp_juice_still specified in data map",
     "Couldn't parse element ResourceKey[minecraft:root / minecraft:loot_table]:create_connected:blocks/dye_depot_",
     "Couldn't parse element ResourceKey[minecraft:root / minecraft:loot_table]:extendedae:blocks/ex_emc_interface",
     "Couldn't parse element ResourceKey[minecraft:root / minecraft:loot_table]:irons_spellbooks:test/ring_gen_break_me",
@@ -125,59 +144,16 @@ REPAIRED_LOG_SIGNATURES = (
     "Couldn't load tag idas:has_structure/bygmohogany_biomes",
     "Couldn't load tag idas:has_structure/bopredwood_biomes",
     "Couldn't load tag idas:has_structure/bopmohogany_biomes",
+    "Couldn't load tag idas:has_structure/bygredwood_biomes",
+    "Couldn't load tag idas:has_structure/bygmahogany_biomes",
+    "Couldn't load tag idas:has_structure/bopmahogany_biomes",
+    "Not all defined tags for registry ResourceKey[minecraft:root / minecraft:worldgen/biome] are present in data pack: idas:",
     "Detected quark:stoneling that was registered with CREATURE mob category",
     "Detected quark:toretoise that was registered with CREATURE mob category",
     "Detected quark:foxhound that was registered with CREATURE mob category",
     "Detected alexsmobs:skreecher that was registered with CREATURE mob category",
     "Detected minecraft:axolotl that was registered with AXOLOTLS mob category but was added under UNDERGROUND_WATER_CREATURE mob category for terralith:",
 )
-
-KNOWN_RESIDUALS = {
-    "Kaleidoscope carrier warnings": (
-        "Failed to read component 'carrier: ingredient?' from recipe kaleidoscope_cookery:",
-        27,
-    ),
-    "Incendium smithing fallback": (
-        "Failed to parse recipe 'incendium:upgrade_elytra[minecraft:smithing_transform]'",
-        1,
-    ),
-    "EnderIO Malum inheritance warnings": (
-        "[EnderIO] Unable to inherit the cooking recipe with ID: malum:",
-        9,
-    ),
-    "IDAS air ItemStack errors": (
-        "Tried to load invalid item: 'Item must not be minecraft:air'",
-        2,
-    ),
-    "Just Dire Things config lifecycle warning": (
-        "Error white registering dispenser behavior for item justdirethings:fuel_canister",
-        1,
-    ),
-    "EnderIO XP Juice registry mismatch": (
-        "Object with ID enderio:xp_juice specified in data map",
-        1,
-    ),
-    "Apothic Enchanting stale data map type": (
-        "Found data map file for non-existent data map type 'apothic_enchanting:enchantment_info'",
-        1,
-    ),
-    "IDAS empty optional tag registry warnings": (
-        "Not all defined tags for registry ResourceKey[minecraft:root / minecraft:worldgen/biome] are present in data pack: idas:",
-        2,
-    ),
-    "RuntimeDistCleaner client class errors": (
-        "[net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM]: Attempted to load class net/minecraft/client/multiplayer/ClientLevel for invalid dist DEDICATED_SERVER",
-        12,
-    ),
-    "Moonlight Fabric API detection error": (
-        "Fabric API detected! This is not a Fabric mod",
-        1,
-    ),
-    "Fabric overlay metadata error": (
-        "Couldn't load fabric:overlays metadata",
-        1,
-    ),
-}
 
 
 def load_json(path: Path) -> dict:
@@ -186,19 +162,14 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def find_jar(name_fragment: str) -> Path:
-    matches = sorted(
-        path for path in MODS_DIR.glob("*.jar") if name_fragment.lower() in path.name.lower()
+def source_jar(source: str) -> Path:
+    return rc_hygiene.resolve_source_jar(
+        ROOT, INSTALL_ROOT, SOURCE_METADATA[source]
     )
-    if len(matches) != 1:
-        raise AssertionError(
-            f"expected one jar containing {name_fragment!r}, found {[path.name for path in matches]}"
-        )
-    return matches[0]
 
 
-def load_jar_json(name_fragment: str, resource: str) -> dict:
-    with zipfile.ZipFile(find_jar(name_fragment)) as jar:
+def load_jar_json(source: str, resource: str) -> dict:
+    with zipfile.ZipFile(source_jar(source)) as jar:
         return json.loads(jar.read(resource))
 
 
@@ -206,16 +177,119 @@ def override_path(resource: str) -> Path:
     return KUBEJS_DATA / resource.removeprefix("data/")
 
 
+class NbtReader:
+    def __init__(self, payload: bytes):
+        self.payload = memoryview(payload)
+        self.offset = 0
+
+    def read(self, size: int) -> bytes:
+        end = self.offset + size
+        if end > len(self.payload):
+            raise AssertionError("truncated NBT fixture")
+        value = self.payload[self.offset:end].tobytes()
+        self.offset = end
+        return value
+
+    def unpack(self, format_string: str):
+        size = struct.calcsize(format_string)
+        return struct.unpack(format_string, self.read(size))[0]
+
+    def string(self) -> str:
+        length = self.unpack(">H")
+        return self.read(length).decode("utf-8")
+
+    def payload_value(self, tag_type: int):
+        if tag_type == 1:
+            return self.unpack(">b")
+        if tag_type == 2:
+            return self.unpack(">h")
+        if tag_type == 3:
+            return self.unpack(">i")
+        if tag_type == 4:
+            return self.unpack(">q")
+        if tag_type == 5:
+            return self.unpack(">f")
+        if tag_type == 6:
+            return self.unpack(">d")
+        if tag_type == 7:
+            return self.read(self.unpack(">i"))
+        if tag_type == 8:
+            return self.string()
+        if tag_type == 9:
+            element_type = self.unpack(">B")
+            return [self.payload_value(element_type) for _ in range(self.unpack(">i"))]
+        if tag_type == 10:
+            compound = {}
+            while True:
+                child_type = self.unpack(">B")
+                if child_type == 0:
+                    return compound
+                child_name = self.string()
+                compound[child_name] = self.payload_value(child_type)
+        if tag_type == 11:
+            return [self.unpack(">i") for _ in range(self.unpack(">i"))]
+        if tag_type == 12:
+            return [self.unpack(">q") for _ in range(self.unpack(">i"))]
+        raise AssertionError(f"unsupported NBT tag type {tag_type}")
+
+
+def parse_nbt(payload: bytes):
+    if payload.startswith(b"\x1f\x8b"):
+        payload = gzip.decompress(payload)
+    reader = NbtReader(payload)
+    root_type = reader.unpack(">B")
+    if root_type != 10:
+        raise AssertionError(f"expected compound NBT root, got {root_type}")
+    reader.string()
+    result = reader.payload_value(root_type)
+    if reader.offset != len(reader.payload):
+        raise AssertionError("unparsed NBT fixture bytes")
+    return result
+
+
+def air_item_paths(value, path=()):
+    matches = []
+    if isinstance(value, dict):
+        if value.get("id") == "minecraft:air":
+            matches.append(path)
+        for key, child in value.items():
+            matches.extend(air_item_paths(child, path + (str(key),)))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            matches.extend(air_item_paths(child, path + (str(index),)))
+    return matches
+
+
 class ReviewedConfigFixtureTests(unittest.TestCase):
-    def test_only_reviewed_generated_configs_are_tracked_with_exact_values(self) -> None:
+    def test_reviewed_configs_reverse_to_clean_generated_fingerprints(self) -> None:
         config_root = ROOT / "config"
-        for relative_path, expected_hash in CONFIG_HASHES.items():
+        fixture = load_json(CONFIG_FIXTURE)
+        self.assertEqual(
+            fixture["evidence"],
+            "Clean server generation on 2026-08-08 with the reviewed files absent",
+        )
+        self.assertEqual(
+            fixture["normalization"], "Remove one final LF before SHA-256"
+        )
+        for relative_path, evidence in fixture["configs"].items():
             with self.subTest(config=relative_path):
                 config_path = config_root / relative_path
                 self.assertTrue(config_path.is_file(), f"missing reviewed config {relative_path}")
-                normalized = config_path.read_bytes().removesuffix(b"\n")
-                actual_hash = hashlib.sha256(normalized).hexdigest()
-                self.assertEqual(actual_hash, expected_hash)
+                reconstructed = config_path.read_text(encoding="utf-8")
+                for replacement in evidence["reverse_replacements"]:
+                    reviewed = replacement["reviewed"]
+                    generated = replacement["generated"]
+                    self.assertEqual(
+                        reconstructed.count(reviewed),
+                        1,
+                        f"approved config edit is not unique in {relative_path}",
+                    )
+                    reconstructed = reconstructed.replace(reviewed, generated, 1)
+                normalized = reconstructed.encode().removesuffix(b"\n")
+                self.assertEqual(
+                    hashlib.sha256(normalized).hexdigest(),
+                    evidence["generated_sha256"],
+                )
 
     def test_quark_spawn_modules_stay_enabled_with_empty_whitelists(self) -> None:
         config_path = ROOT / "config" / "quark-common.toml"
@@ -255,20 +329,20 @@ class ReviewedConfigFixtureTests(unittest.TestCase):
 class JarOverrideFixtureTests(unittest.TestCase):
     def test_oritech_turbofuel_changes_only_fluid_ingredient_serializer(self) -> None:
         resource = "data/oritech/recipe/mixing/compat/create/turbofuel.json"
-        source = load_jar_json("oritech-neoforge", resource)
+        source = load_jar_json("oritech", resource)
         expected = copy.deepcopy(source)
         expected["ingredients"][1]["type"] = "neoforge:single"
         self.assertEqual(load_json(override_path(resource)), expected)
 
     def test_industrial_foregoing_removes_only_invalid_curios_slot(self) -> None:
         resource = "data/industrialforegoing/curios/entities/entities.json"
-        source = load_jar_json("industrialforegoing", resource)
+        source = load_jar_json("industrial_foregoing", resource)
         expected = copy.deepcopy(source)
         expected["slots"].remove("example")
         self.assertEqual(load_json(override_path(resource)), expected)
 
     def test_cataclysm_defines_only_the_two_missing_empty_block_tags(self) -> None:
-        jar = find_jar("L_Ender's Cataclysm")
+        jar = source_jar("cataclysm")
         with zipfile.ZipFile(jar) as archive:
             resources = set(archive.namelist())
         for tag_name in ("needs_black_steel_tool", "needs_monstrosity_tool"):
@@ -280,22 +354,22 @@ class JarOverrideFixtureTests(unittest.TestCase):
     def test_advancements_change_only_the_approved_parent(self) -> None:
         fixtures = (
             (
-                "dungeons-and-taverns",
+                "dungeons_and_taverns",
                 "data/minecraft/advancement/wander_add_map.json",
                 "nova_structures:root",
             ),
             (
-                "dungeons-and-taverns",
+                "dungeons_and_taverns",
                 "data/minecraft/advancement/give_quest_trader_trade.json",
                 "nova_structures:root",
             ),
             (
-                "DungeonsArise",
+                "dungeons_arise",
                 "data/dungeons_arise/advancement/find_fishing_hut.json",
                 "dungeons_arise:wda_root",
             ),
             (
-                "DungeonsArise",
+                "dungeons_arise",
                 "data/dungeons_arise/advancement/find_thornborn_towers.json",
                 "dungeons_arise:wda_root",
             ),
@@ -311,7 +385,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
         for relative_name, selector_type in MALUM_SPIRIT_REPAIRS.items():
             resource = f"data/malum/recipe/malum/spirit_repair/{relative_name}.json"
             with self.subTest(recipe=relative_name):
-                source = load_jar_json("malum-", resource)
+                source = load_jar_json("malum", resource)
                 expected = copy.deepcopy(source)
 
                 if selector_type == "valid_items" and "inputs" in expected:
@@ -341,7 +415,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
 
     def test_malum_grim_talc_changes_only_create_result_keys(self) -> None:
         resource = "data/malum/recipe/create/milling/grim_talc.json"
-        source = load_jar_json("malum-", resource)
+        source = load_jar_json("malum", resource)
         expected = copy.deepcopy(source)
         for result in expected["results"]:
             result["id"] = result.pop("item")
@@ -349,17 +423,38 @@ class JarOverrideFixtureTests(unittest.TestCase):
 
     def test_cei_experience_map_preserves_every_value_except_enderio_id(self) -> None:
         resource = "data/create_enchantment_industry/data_maps/fluid/unit/experience.json"
-        source = load_jar_json("create-enchantment-industry", resource)
+        source = load_jar_json("cei", resource)
         expected = copy.deepcopy(source)
         expected["replace"] = True
         expected["remove"] = ["enderio:xpjuice"]
-        expected["values"]["enderio:xp_juice"] = expected["values"].pop("enderio:xpjuice")
-        self.assertEqual(expected["values"]["enderio:xp_juice"]["neoforge:value"], 20)
+        expected["values"]["enderio:fluid_xp_juice_still"] = expected["values"].pop(
+            "enderio:xpjuice"
+        )
+        replacement = expected["values"]["enderio:fluid_xp_juice_still"]
+        self.assertEqual(replacement["neoforge:value"], 20)
+        self.assertEqual(
+            replacement["neoforge:conditions"],
+            [{"type": "neoforge:mod_loaded", "modid": "enderio"}],
+        )
         self.assertEqual(load_json(override_path(resource)), expected)
 
     def test_cei_filter_pack_blocks_only_the_stale_lower_resource(self) -> None:
+        archive_bytes = CEI_FILTER_PACK.read_bytes()
+        self.assertEqual(archive_bytes, rc_hygiene.build_filter_archive())
+        self.assertEqual(
+            hashlib.sha256(archive_bytes).hexdigest(),
+            "414a79bb450bdfb11fb18e51808c7baba2d87c0197d938ed82c7442b94746262",
+        )
         with zipfile.ZipFile(CEI_FILTER_PACK) as archive:
             self.assertEqual(archive.namelist(), ["pack.mcmeta"])
+            info = archive.getinfo("pack.mcmeta")
+            self.assertEqual(info.date_time, (1980, 1, 1, 0, 0, 0))
+            self.assertEqual(info.compress_type, zipfile.ZIP_STORED)
+            self.assertEqual(info.create_system, 3)
+            self.assertEqual(info.external_attr >> 16, 0o100644)
+            self.assertEqual(info.extra, b"")
+            self.assertEqual(info.comment, b"")
+            self.assertEqual(archive.comment, b"")
             metadata = json.loads(archive.read("pack.mcmeta"))
         self.assertEqual(
             metadata,
@@ -371,12 +466,46 @@ class JarOverrideFixtureTests(unittest.TestCase):
                 "filter": {
                     "block": [
                         {
-                            "namespace": "create_enchantment_industry",
-                            "path": "data_maps/fluid/unit/experience\\.json",
+                            "namespace": "^create_enchantment_industry$",
+                            "path": "^data_maps/fluid/unit/experience\\.json$",
                         }
                     ]
                 },
             },
+        )
+        block = metadata["filter"]["block"][0]
+        provenance = rc_hygiene.verify_install_provenance(ROOT, INSTALL_ROOT)
+        metadata_paths = sorted(
+            relative
+            for relative, cached in provenance["cachedFiles"].items()
+            if relative.endswith(".pw.toml")
+            and cached.get("optionValue") is True
+            and cached.get("onlyOtherSide") is not True
+        )
+        artifacts = rc_hygiene.resolve_source_jars(
+            ROOT, INSTALL_ROOT, metadata_paths
+        )
+        blocked = []
+        for metadata_path, artifact in artifacts.items():
+            with zipfile.ZipFile(artifact) as archive:
+                for resource in archive.namelist():
+                    match = re.fullmatch(r"data/([^/]+)/(.+)", resource)
+                    if match and rc_hygiene.filter_matches(
+                        block["namespace"],
+                        block["path"],
+                        match.group(1),
+                        match.group(2),
+                    ):
+                        blocked.append((metadata_path, artifact.name, resource))
+        self.assertEqual(
+            blocked,
+            [
+                (
+                    "mods/create-enchantment-industry.pw.toml",
+                    "create-enchantment-industry-2.5.1.jar",
+                    "data/create_enchantment_industry/data_maps/fluid/unit/experience.json",
+                )
+            ],
         )
 
     def test_invalid_block_loot_tables_are_replaced_with_empty_block_tables(self) -> None:
@@ -388,7 +517,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
             for color in DYE_DEPOT_COLORS
         ]
         fixtures.append(
-            ("ExtendedAE", "data/extendedae/loot_table/blocks/ex_emc_interface.json")
+            ("extendedae", "data/extendedae/loot_table/blocks/ex_emc_interface.json")
         )
         for jar_name, resource in fixtures:
             with self.subTest(resource=resource):
@@ -415,7 +544,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
         for tag_name in tag_names:
             resource = f"data/idas/tags/worldgen/biome/has_structure/{tag_name}.json"
             with self.subTest(tag=tag_name):
-                source = load_jar_json("idas-", resource)
+                source = load_jar_json("idas", resource)
                 expected = copy.deepcopy(source)
                 expected["replace"] = True
                 expected["values"] = [
@@ -423,10 +552,71 @@ class JarOverrideFixtureTests(unittest.TestCase):
                 ]
                 self.assertEqual(load_json(override_path(resource)), expected)
 
+    def test_every_idas_structure_biome_tag_resolves_to_source_or_exact_empty_override(self) -> None:
+        jar = source_jar("idas")
+        with zipfile.ZipFile(jar) as archive:
+            resources = set(archive.namelist())
+            references = set()
+            for resource in resources:
+                if not resource.startswith("data/idas/worldgen/structure/") or not resource.endswith(
+                    ".json"
+                ):
+                    continue
+                biomes = json.loads(archive.read(resource)).get("biomes")
+                if isinstance(biomes, str) and biomes.startswith("#idas:"):
+                    references.add(biomes.removeprefix("#idas:"))
+
+        missing_source_tags = {
+            tag
+            for tag in references
+            if f"data/idas/tags/worldgen/biome/{tag}.json" not in resources
+        }
+        self.assertEqual(
+            missing_source_tags,
+            {
+                "has_structure/bygredwood_biomes",
+                "has_structure/bygmahogany_biomes",
+                "has_structure/bopmahogany_biomes",
+            },
+        )
+        for tag in missing_source_tags:
+            with self.subTest(tag=tag):
+                resource = f"data/idas/tags/worldgen/biome/{tag}.json"
+                self.assertEqual(
+                    load_json(override_path(resource)),
+                    {"replace": True, "values": []},
+                )
+        unresolved = {
+            tag
+            for tag in references
+            if f"data/idas/tags/worldgen/biome/{tag}.json" not in resources
+            and not override_path(
+                f"data/idas/tags/worldgen/biome/{tag}.json"
+            ).is_file()
+        }
+        self.assertEqual(unresolved, set())
+
     def test_no_idas_structure_nbt_is_redistributed(self) -> None:
         idas_root = KUBEJS_DATA / "idas"
         nbt_files = list(idas_root.rglob("*.nbt")) if idas_root.exists() else []
         self.assertEqual(nbt_files, [])
+
+    def test_idas_air_errors_are_bound_to_two_exact_underground_camp_slots(self) -> None:
+        resource = "data/idas/structure/underground_camp/underground_camp1.nbt"
+        with zipfile.ZipFile(source_jar("idas")) as archive:
+            payload = archive.read(resource)
+        self.assertEqual(
+            hashlib.sha256(payload).hexdigest(),
+            "0d7ecc5059d0d94d8cde9621d5358df1a9b89bf7dc27e93fd564668064aceb8a",
+        )
+        paths = air_item_paths(parse_nbt(payload))
+        self.assertEqual(
+            paths,
+            [
+                ("blocks", "92", "nbt", "Filter"),
+                ("blocks", "95", "nbt", "Inventory", "Compartments", "0"),
+            ],
+        )
 
 
 class ModMetadataFixtureTests(unittest.TestCase):
@@ -440,24 +630,82 @@ class ModMetadataFixtureTests(unittest.TestCase):
             "35298f1682567f63dc16658b04cee5498b30819f1c05f9712b4480d7f5eb17059db3b13ab14f81a05fe257149d11ced2cce2030d3727c1747edd8657c53e2a85",
         )
         self.assertEqual(metadata["update"]["modrinth"]["version"], "IY93YaEe")
+        self.assertEqual(
+            source_jar("terralith").name,
+            "Terralith_1.21.1_v2.6.2_Neoforge.jar",
+        )
 
     def test_lithostitched_is_installed_on_both_sides(self) -> None:
         metadata = tomllib.loads((ROOT / "mods" / "lithostitched.pw.toml").read_text())
         self.assertEqual(metadata["side"], "both")
+        self.assertEqual(source_jar("lithostitched").name, metadata["filename"])
+
+
+class JdtLifecycleFixtureTests(unittest.TestCase):
+    def test_warning_allowance_is_bound_to_reviewed_bytecode_and_runtime(self) -> None:
+        rc_hygiene.verify_jdt_evidence(ROOT, INSTALL_ROOT)
+
+    def test_no_broad_disable_or_custom_compensation_is_shipped(self) -> None:
+        supplementaries_config = (
+            INSTALL_ROOT / "config" / "supplementaries-common.toml"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(supplementaries_config.count("\tpancake = true"), 1)
+        self.assertEqual(supplementaries_config.count("\tdispensers = true"), 1)
+        scripts = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in (ROOT / "kubejs").rglob("*.js")
+        )
+        self.assertNotIn("justdirethings:fuel_canister", scripts)
+        self.assertNotIn("registerBehavior", scripts)
+        self.assertEqual(list((ROOT / "mods").glob("*.jar")), [])
 
 
 class CleanBootSignatureFixtureTests(unittest.TestCase):
     def test_clean_boot_has_no_repaired_signatures_and_exact_known_residuals(self) -> None:
         log_text = LATEST_LOG.read_text(encoding="utf-8", errors="replace")
-        self.assertIn("Done (", log_text)
+        nonce = (INSTALL_ROOT / "afterlight-audit-nonce.txt").read_text(
+            encoding="utf-8"
+        ).strip()
+        status_text = (INSTALL_ROOT / "afterlight-server-exit-status.txt").read_text(
+            encoding="utf-8"
+        ).strip()
+        self.assertRegex(status_text, r"^\d+$")
+        result = rc_hygiene.verify_boot_run(
+            ROOT, INSTALL_ROOT, nonce, int(status_text)
+        )
 
         for signature in REPAIRED_LOG_SIGNATURES:
             with self.subTest(repaired_signature=signature):
                 self.assertEqual(log_text.count(signature), 0)
 
-        for label, (signature, expected_count) in KNOWN_RESIDUALS.items():
-            with self.subTest(residual=label):
-                self.assertEqual(log_text.count(signature), expected_count)
+        self.assertEqual(
+            result["errors"],
+            {
+                "RuntimeDistCleaner client class errors": 12,
+                "Moonlight Fabric API detection error": 1,
+                "Fabric overlay metadata error": 1,
+                "IDAS underground camp air ItemStack errors": 2,
+            },
+        )
+        warnings = result["warnings"]
+        self.assertEqual(
+            sum(count for label, count in warnings.items() if label.startswith("Kaleidoscope carrier ")),
+            27,
+        )
+        self.assertEqual(warnings["Incendium smithing fallback"], 1)
+        self.assertEqual(
+            sum(
+                count
+                for label, count in warnings.items()
+                if label.startswith("EnderIO Malum inheritance ")
+            ),
+            9,
+        )
+        self.assertEqual(warnings["Apothic Enchanting stale data map type"], 1)
+        self.assertEqual(
+            warnings["Just Dire Things early pancake candidate scan"], 1
+        )
+        self.assertEqual(sum(warnings.values()), 39)
 
 
 if __name__ == "__main__":

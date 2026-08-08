@@ -1,89 +1,166 @@
 #!/usr/bin/env bash
 # Headless AFTERLIGHT server boot test. Pure JVM, no Docker required.
-# Exit 0 = server booted to "Done". Nonzero = failure; see server-test/logs/.
+# Exit 0 means the server reached Done, passed the audit, and shut down cleanly.
 # Exit codes: 1 boot failed | 2 missing tool | 3 download failed | 4 port in use
 #             5 serve not ready | 6 NeoForge install failed | 7 pack install failed
-#             8 quest item registry audit failed | 9 RC hygiene validation failed
+#             8 quest or boot oracle failed | 9 RC hygiene validation failed
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env
-[ -n "${PATH_EXTRA:-}" ] && export PATH="$PATH_EXTRA:$PATH"
+export PATH="$PATH_EXTRA:$PATH"
+
 JAVA_HOME=${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}
 JAVA="$JAVA_HOME/bin/java"
-# Resilience: if versions.env points at a JDK this runner doesn't have, fall back to
-# whatever java is on PATH rather than dying on a stale hardcoded path.
-[ -x "$JAVA" ] || { JAVA=$(command -v java); JAVA_HOME=$(cd "$(dirname "$JAVA")/.." && pwd); }
-# NeoForge's generated run.sh invokes bare `java`; put the pinned JDK first on PATH
-# (and export JAVA_HOME) so the server boots on the same JVM this script validates.
+if [ ! -x "$JAVA" ]; then
+  JAVA=$(command -v java)
+  JAVA_HOME=$(cd "$(dirname "$JAVA")/.." && pwd)
+fi
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
-TIMEOUT_BIN=$(command -v gtimeout || command -v timeout || true)
-[ -z "$TIMEOUT_BIN" ] && { echo "need coreutils: brew install coreutils"; exit 2; }
-command -v packwiz >/dev/null || { echo "need packwiz (go install github.com/packwiz/packwiz@latest)"; exit 2; }
-BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/latest/download/packwiz-installer-bootstrap.jar"
+
+if command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_BIN=$(command -v gtimeout)
+elif command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_BIN=$(command -v timeout)
+else
+  echo "need coreutils: brew install coreutils"
+  exit 2
+fi
+command -v packwiz >/dev/null || {
+  echo "need packwiz (go install github.com/packwiz/packwiz@latest)"
+  exit 2
+}
+
+BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v0.0.3/packwiz-installer-bootstrap.jar"
+BOOTSTRAP_SHA256="a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c"
 DIR=server-test
 BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
 SERVE_PORT=${SERVE_PORT:-8199}
+SERVE_PID=""
 
-# 1) Serve the working-dir pack locally
-# Refuse to run if something already owns the port. Otherwise packwiz stays alive
-# without binding and the installer would silently pull from the foreign server.
-# The guard and readiness poll need no scratch dir, so they run before the wipe:
-# an abort here leaves the previous run's logs intact for diagnosis.
+python3 tools/rc_hygiene.py verify-manifest --root .
+MANIFEST_STATE=$(shasum -a 256 pack.toml index.toml)
+
+assert_manifest_unchanged() {
+  local current_state
+  current_state=$(shasum -a 256 pack.toml index.toml)
+  if [ "$current_state" != "$MANIFEST_STATE" ]; then
+    echo "FAIL: pack.toml or index.toml changed during server verification"
+    exit 9
+  fi
+  python3 tools/rc_hygiene.py verify-manifest --root . >/dev/null
+}
+
+cleanup() {
+  if [ -n "$SERVE_PID" ] && kill -0 "$SERVE_PID" 2>/dev/null; then
+    if ! kill "$SERVE_PID"; then
+      :
+    fi
+    if ! wait "$SERVE_PID" 2>/dev/null; then
+      :
+    fi
+  fi
+}
+
 if curl -sf "http://localhost:${SERVE_PORT}/" >/dev/null 2>&1; then
-  echo "FAIL: port ${SERVE_PORT} already in use"; exit 4
+  echo "FAIL: port ${SERVE_PORT} already in use"
+  exit 4
 fi
-cleanup() { kill "$SERVE_PID" 2>/dev/null || true; }
-packwiz serve --port "$SERVE_PORT" & SERVE_PID=$!
+
+packwiz serve --refresh=false --port "$SERVE_PORT" &
+SERVE_PID=$!
 trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
+
 READY=0
 for _ in $(seq 1 20); do
-  if curl -sf "http://localhost:${SERVE_PORT}/pack.toml" >/dev/null 2>&1; then READY=1; break; fi
+  if curl -sf "http://localhost:${SERVE_PORT}/pack.toml" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
   sleep 0.5
 done
-[ "$READY" -eq 1 ] || { echo "FAIL: packwiz serve not ready on port ${SERVE_PORT}"; exit 5; }
+if [ "$READY" -ne 1 ]; then
+  echo "FAIL: packwiz serve not ready on port ${SERVE_PORT}"
+  exit 5
+fi
+assert_manifest_unchanged
 
-rm -rf "$DIR" && mkdir -p "$DIR"
+rm -rf "$DIR"
+mkdir -p "$DIR"
 AUDIT_NONCE="$(date +%s)-$$-${RANDOM}"
 printf '%s\n' "$AUDIT_NONCE" > "$DIR/afterlight-audit-nonce.txt"
 
-# 2) Install NeoForge server
 NEOFORGE_URL="https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/neoforge-${NEOFORGE_VERSION}-installer.jar"
-curl -sfL -o "$DIR/neoforge-installer.jar" "$NEOFORGE_URL" || { echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"; exit 3; }
-(cd "$DIR" && "$JAVA" -jar neoforge-installer.jar --install-server . > installer.log 2>&1) || { echo "FAIL: NeoForge server install"; tail -30 "$DIR/installer.log"; exit 6; }
+if ! curl -sfL -o "$DIR/neoforge-installer.jar" "$NEOFORGE_URL"; then
+  echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"
+  exit 3
+fi
+if ! (cd "$DIR" && "$JAVA" -jar neoforge-installer.jar --install-server . > installer.log 2>&1); then
+  echo "FAIL: NeoForge server install"
+  tail -30 "$DIR/installer.log"
+  exit 6
+fi
+assert_manifest_unchanged
 
-# 3) Install the pack's server side via packwiz-installer
-curl -sfL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL" || { echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"; exit 3; }
-(cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1) || { echo "FAIL: packwiz-installer server side"; tail -30 "$DIR/packwiz-install.log"; exit 7; }
+if ! curl -sfL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL"; then
+  echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"
+  exit 3
+fi
+ACTUAL_BOOTSTRAP_SHA256=$(shasum -a 256 "$DIR/packwiz-installer-bootstrap.jar" | awk '{print $1}')
+if [ "$ACTUAL_BOOTSTRAP_SHA256" != "$BOOTSTRAP_SHA256" ]; then
+  echo "FAIL: packwiz-installer-bootstrap SHA-256 mismatch"
+  echo "expected $BOOTSTRAP_SHA256"
+  echo "actual   $ACTUAL_BOOTSTRAP_SHA256"
+  exit 3
+fi
+if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1); then
+  echo "FAIL: packwiz-installer server side"
+  tail -30 "$DIR/packwiz-install.log"
+  exit 7
+fi
+assert_manifest_unchanged
+python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR"
+
 AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-[ -f "$AUDIT_SCRIPT" ] || { echo "FAIL: generated quest item audit script missing"; exit 7; }
+if [ ! -f "$AUDIT_SCRIPT" ]; then
+  echo "FAIL: generated quest item audit script missing"
+  exit 7
+fi
 awk -v nonce="$AUDIT_NONCE" '{ gsub(/__AFTERLIGHT_BOOT_NONCE__/, nonce); print }' "$AUDIT_SCRIPT" > "$AUDIT_SCRIPT.tmp"
 mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
 
-# 4) Boot headless with a watchdog, EULA accepted for local test only
 echo "eula=true" > "$DIR/eula.txt"
 cat > "$DIR/server.properties" <<'PROPS'
 level-seed=afterlight-ci
 server-port=25599
 PROPS
-(cd "$DIR" && (echo "stop" | "$TIMEOUT_BIN" "$BOOT_TIMEOUT" ./run.sh nogui > boot.log 2>&1 || true))
 
-# 5) Verdict
-if grep -q 'Done (' "$DIR"/boot.log || grep -rq 'Done (' "$DIR"/logs/ 2>/dev/null; then
-  if ! grep -rhF " $AUDIT_NONCE" "$DIR"/logs/ 2>/dev/null | grep -qF '[AFTERLIGHT QUEST ITEM AUDIT] OK '; then
-    echo "SERVER BOOT: FAILED: quest item registry audit did not pass for this boot"
-    grep -rhF '[AFTERLIGHT QUEST ITEM AUDIT]' "$DIR"/logs/ 2>/dev/null || true
-    exit 8
+set +e
+(cd "$DIR" && printf 'stop\n' | "$TIMEOUT_BIN" "$BOOT_TIMEOUT" ./run.sh nogui > boot.log 2>&1)
+SERVER_STATUS=$?
+set -e
+printf '%s\n' "$SERVER_STATUS" > "$DIR/afterlight-server-exit-status.txt"
+assert_manifest_unchanged
+
+if ! python3 tools/rc_hygiene.py verify-boot --root . --install "$DIR" --nonce "$AUDIT_NONCE" --status "$SERVER_STATUS"; then
+  echo "SERVER BOOT: FAILED: authoritative boot oracle did not pass"
+  if [ -f "$DIR/logs/latest.log" ]; then
+    tail -50 "$DIR/logs/latest.log"
+  elif [ -f "$DIR/boot.log" ]; then
+    tail -50 "$DIR/boot.log"
   fi
-  if ! python3 tools/tests/test_rc_hygiene.py; then
-    echo "SERVER BOOT: FAILED: RC hygiene validation did not pass"
-    exit 9
-  fi
-  echo "SERVER BOOT: OK"
-  exit 0
-else
-  echo "SERVER BOOT: FAILED: tail of boot.log:"
-  tail -50 "$DIR/boot.log" || true
-  exit 1
+  exit 8
 fi
+
+if ! python3 tools/tests/test_rc_hygiene_reliability.py; then
+  echo "SERVER BOOT: FAILED: RC hygiene reliability probes did not pass"
+  exit 9
+fi
+if ! python3 tools/tests/test_rc_hygiene.py; then
+  echo "SERVER BOOT: FAILED: RC hygiene fixture validation did not pass"
+  exit 9
+fi
+assert_manifest_unchanged
+
+echo "SERVER BOOT: OK"

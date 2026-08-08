@@ -290,7 +290,7 @@ hash = "93908ae9b367cccecc990d6be3c6d9baca81d88b833eb895a527e7d2dbd45a17"
 
 [[files]]
 file = "kubejs/data/afterlight_rc_hygiene.zip"
-hash = "933db51f818727eceb250d1bacdd72b21accf54cf5ab021fc1ab7c28958ec466"
+hash = "414a79bb450bdfb11fb18e51808c7baba2d87c0197d938ed82c7442b94746262"
 
 [[files]]
 file = "kubejs/data/cataclysm/tags/block/needs_black_steel_tool.json"
@@ -366,7 +366,7 @@ hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
 
 [[files]]
 file = "kubejs/data/create_enchantment_industry/data_maps/fluid/unit/experience.json"
-hash = "7dded361f1cf4d2fbc6395d8996f387665662a7564096f79fb34a7cc13086dda"
+hash = "d683ef2acd35f01e31ad04bbf7f9b85a8505de6bf752df4a1271b6bde9f9ae43"
 
 [[files]]
 file = "kubejs/data/dungeons_arise/advancement/find_fishing_hut.json"
@@ -381,6 +381,10 @@ file = "kubejs/data/extendedae/loot_table/blocks/ex_emc_interface.json"
 hash = "f2ef2d7bc8fa2d343b0a7dd834f0eb550f84937bc0ce41f37b2cbae81c945496"
 
 [[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bopmahogany_biomes.json"
+hash = "bef4d172fc1bfb34d342e79090726c4a0c272dd404783c3ea022b992e0e0415e"
+
+[[files]]
 file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bopmohogany_biomes.json"
 hash = "89d31941fc58f95d9db4c8253bc232d5866f340f3ff6aafa30e49f1937ef2b5f"
 
@@ -393,8 +397,16 @@ file = "kubejs/data/idas/tags/worldgen/biome/has_structure/byg_redwood_biomes.js
 hash = "522d21a0c7b0ec3f3afcb54c6767b153072df04cb0401af4aa2a5cfa57d87118"
 
 [[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bygmahogany_biomes.json"
+hash = "bef4d172fc1bfb34d342e79090726c4a0c272dd404783c3ea022b992e0e0415e"
+
+[[files]]
 file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bygmohogany_biomes.json"
 hash = "1ad4bb0736c80abcec524d98f702e7d5a175b2542ee0a5d66e7d8a8aea21fae2"
+
+[[files]]
+file = "kubejs/data/idas/tags/worldgen/biome/has_structure/bygredwood_biomes.json"
+hash = "bef4d172fc1bfb34d342e79090726c4a0c272dd404783c3ea022b992e0e0415e"
 
 [[files]]
 file = "kubejs/data/industrialforegoing/curios/entities/entities.json"

@@ -1,0 +1,72 @@
+{
+  "evidence": "Clean server generation on 2026-08-08 with the reviewed files absent",
+  "normalization": "Remove one final LF before SHA-256",
+  "configs": {
+    "jupiter.json": {
+      "generated_sha256": "ac6415cb504a1cd8d129435e67e718b0f139613f378127f0f8f21ee61ca4ffe7",
+      "reverse_replacements": []
+    },
+    "iceandfire/iaf-common.json": {
+      "generated_sha256": "a520e5e7909c9e50d1857874f853e6fafff8ac106fabff239868d5c57a57b546",
+      "reverse_replacements": []
+    },
+    "justdirethings-server.toml": {
+      "generated_sha256": "7605dc482ee04abd027f9180d1d215eb8acd4a00c95eab8e9f8ea77bd442e894",
+      "reverse_replacements": []
+    },
+    "mcjtylib-server.toml": {
+      "generated_sha256": "91eb6e4963efb985fe27bd7b0b70f03a3bc2bd15376649002812c4bb343e6582",
+      "reverse_replacements": []
+    },
+    "create_enchantment_industry-server.toml": {
+      "generated_sha256": "8434e2dcd11cb4c8098dc653e41dc06ec512f9cb3884c90ea19dcae604a256b1",
+      "reverse_replacements": []
+    },
+    "quark-common.toml": {
+      "generated_sha256": "eb3c4af7ed6c73f5b4413cce78e29d9835da75bebdd84ac6e1f781843e8fc5db",
+      "reverse_replacements": [
+        {
+          "reviewed": "[mobs.foxhound.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.foxhound.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = true"
+        },
+        {
+          "reviewed": "[mobs.foxhound.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.foxhound.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = [\"minecraft:nether_wastes\", \"minecraft:basalt_deltas\"]\n\t\t\t\t\t\"Is Blacklist\" = false"
+        },
+        {
+          "reviewed": "[mobs.foxhound.lesser_spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.foxhound.lesser_spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = true"
+        },
+        {
+          "reviewed": "[mobs.foxhound.lesser_spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.foxhound.lesser_spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = [\"minecraft:soul_sand_valley\"]\n\t\t\t\t\t\"Is Blacklist\" = false"
+        },
+        {
+          "reviewed": "[mobs.stonelings.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.stonelings.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = [\"c:is_void\", \"minecraft:is_nether\", \"minecraft:is_end\"]\n\t\t\t\t\t\"Is Blacklist\" = true"
+        },
+        {
+          "reviewed": "[mobs.stonelings.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.stonelings.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = true"
+        },
+        {
+          "reviewed": "[mobs.toretoise.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.toretoise.spawn_config.biomes.tags]\n\t\t\t\t\t\"Biome Tags\" = [\"c:is_void\", \"minecraft:is_nether\", \"minecraft:is_end\"]\n\t\t\t\t\t\"Is Blacklist\" = true"
+        },
+        {
+          "reviewed": "[mobs.toretoise.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = false",
+          "generated": "[mobs.toretoise.spawn_config.biomes.biomes]\n\t\t\t\t\tBiomes = []\n\t\t\t\t\t\"Is Blacklist\" = true"
+        }
+      ]
+    },
+    "alexsmobs-common.toml": {
+      "generated_sha256": "461e39caf7cbd872798cd3117fc922a625e1ce9ebed892297cce7076bb79be7d",
+      "reverse_replacements": [
+        {
+          "reviewed": "\tskreecherSpawnWeight = 0",
+          "generated": "\tskreecherSpawnWeight = 10"
+        }
+      ]
+    }
+  }
+}

@@ -138,4 +138,36 @@
 	chapter_group.51FF272F5030D2E6.title: "The Undercurrent"
 	chapter_group.4DEAD1F5F7AB4DA3.title: "The Deep Vault"
 	chapter_group.C8F8381D9519D002.title: "Atlas of the Broken World"
+	quest.718424A08FE06E9A.title: "The Scarlands"
+	quest.718424A08FE06E9A.quest_subtitle: "Where the map admits defeat."
+	quest.718424A08FE06E9A.quest_desc: [
+		"The Cascade did not spread evenly. It pooled. The scarlands are one of the pools."
+		"Stand in the wound and look around. Everything that grows here grows in spite."
+	]
+	quest.09C6E5E62A73BA93.title: "Veins of the Old World"
+	quest.09C6E5E62A73BA93.quest_subtitle: "Their mines run under everything."
+	quest.09C6E5E62A73BA93.quest_desc: [
+		"The Ascendancy mined this continent hollow before they ever looked up at the stars. Find one of their shafts."
+		"Mind the supports. Four hundred years is a long shift without maintenance."
+	]
+	quest.72240DF3C6A8E957.title: "Marksmen of Nothing"
+	quest.72240DF3C6A8E957.quest_subtitle: "Fifteen archers, retired."
+	quest.72240DF3C6A8E957.quest_desc: [
+		"Bone remembers posture. These remember guard duty. Whatever they are guarding now, it is not for you to inherit unchallenged."
+	]
+	quest.F2A8169F313D0624.title: "Pressure and Time"
+	quest.F2A8169F313D0624.quest_subtitle: "Five diamonds out of the deep dark."
+	quest.F2A8169F313D0624.quest_desc: [
+		"Carbon under pressure becomes the only currency the old world respected."
+		"You will need more than five, eventually. The Gate schematics I cannot fully read yet keep mentioning lattice cores. Start the habit."
+	]
+	quest.5413406A90BD2714.title: "Through the Scarred Door"
+	quest.5413406A90BD2714.quest_subtitle: "Memory fragment on the far side."
+	quest.5413406A90BD2714.quest_desc: [
+		"Going through, then. I will hold the connection as far as the portal threshold."
+		"&d[MEMORY FRAGMENT 02 RESTORED]&r"
+		"&7...evacuation routes C through F collapsed when the sky inverted. The Undercurrent was not coming FROM the breach. It was coming from everywhere. The breach was just where we finally noticed...&r"
+		"&8Take the cache. The Ascendancy stocked them for a return that never happened.&r"
+	]
+	chapter.F70DAD173D9C234B.title: "The Scarlands"
 }

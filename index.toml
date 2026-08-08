@@ -29,12 +29,20 @@ file = "config/ftbquests/quests/chapters/DB93C6934B230CFB.snbt"
 hash = "863baabad6fb4a404c58d4b044f52be7a1fdf47fd8fb6c158578a13d4feb0771"
 
 [[files]]
+file = "config/ftbquests/quests/chapters/F70DAD173D9C234B.snbt"
+hash = "48f6808cc000f2937917683d246221aed21f21190fdb5c434612901cdba437e7"
+
+[[files]]
 file = "config/ftbquests/quests/data.snbt"
 hash = "b89f337f070343c37f7bd400f963e85e482205dece7700af8c5209924bdef18a"
 
 [[files]]
 file = "config/ftbquests/quests/lang/en_us.snbt"
-hash = "a859272921fcf446cf9c8f3663c774614363761c61409a8aa7a8dd10bd4e4c0e"
+hash = "4743541512211e595b06c537be79a7ab483728417c41dbfe0fa6fea1b6008182"
+
+[[files]]
+file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"
+hash = "bef3020ef0c637a204e7d8fe761004da3e43bdef6e05646c5299d06caa58a279"
 
 [[files]]
 file = "kubejs/assets/kubejs/lang/en_us.json"

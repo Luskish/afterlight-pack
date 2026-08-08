@@ -1,0 +1,115 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "F70DAD173D9C234B"
+	group: "4525BB3160467FCB"
+	icon: { id: "minecraft:netherrack" }
+	id: "F70DAD173D9C234B"
+	images: [ ]
+	order_index: 2
+	quest_links: [ ]
+	quests: [
+		{
+			id: "718424A08FE06E9A"
+			dependencies: ["41BA8291D4F7DB22"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{ id: "5FB0B0F0A30213F0"
+				type: "biome"
+				biome: "#minecraft:is_badlands" }
+			]
+			rewards: [
+				{ id: "9B1628B3D65BC1A3"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "09C6E5E62A73BA93"
+			dependencies: ["718424A08FE06E9A"]
+			x: 2.0d
+			y: -1.0d
+			tasks: [
+				{ id: "ABA22E1556BC08DA"
+				type: "structure"
+				structure: "#minecraft:mineshaft" }
+			]
+			rewards: [
+				{ id: "D1C2BA63D5F16A67"
+				type: "item"
+				item: { count: 5, id: "kubejs:requisition_chit" }
+				count: 5 }
+				{ id: "3E2BDC4E35F06BB1"
+				type: "xp"
+				xp: 80 }
+			]
+		}
+		{
+			id: "72240DF3C6A8E957"
+			dependencies: ["718424A08FE06E9A"]
+			x: 2.0d
+			y: 1.0d
+			tasks: [
+				{ id: "2D81252A58B62A89"
+				type: "kill"
+				entity: "minecraft:skeleton"
+				value: 15L }
+			]
+			rewards: [
+				{ id: "FBE6BC074B638D96"
+				type: "item"
+				item: { count: 5, id: "kubejs:requisition_chit" }
+				count: 5 }
+			]
+		}
+		{
+			id: "F2A8169F313D0624"
+			dependencies: ["09C6E5E62A73BA93", "72240DF3C6A8E957"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{ id: "98E162671E1F06CA"
+				type: "item"
+				item: { count: 1, id: "minecraft:diamond" }
+				count: 5L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "7A66EB67A585F871"
+				type: "item"
+				item: { count: 8, id: "kubejs:requisition_chit" }
+				count: 8 }
+				{ id: "DD949EC2957648B5"
+				type: "xp"
+				xp: 120 }
+			]
+		}
+		{
+			id: "5413406A90BD2714"
+			dependencies: ["F2A8169F313D0624"]
+			x: 6.0d
+			y: 0.0d
+			shape: "hexagon"
+			size: 1.4d
+			tasks: [
+				{ id: "F2096192906FD89F"
+				type: "dimension"
+				dimension: "minecraft:the_nether" }
+			]
+			rewards: [
+				{ id: "ABC044D006D95B56"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "53338B119C28F5A3"
+				type: "item"
+				item: { count: 10, id: "kubejs:requisition_chit" }
+				count: 10 }
+				{ id: "E8B6AEDB869772F5"
+				type: "xp"
+				xp: 150 }
+			]
+		}
+	]
+}

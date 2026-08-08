@@ -7,8 +7,9 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Goal: finish all 20 story chapters, side groups, certifications, Gate finale, VPS package, v1.0 release, and full-project gauntlet.
 - Active plan: `docs/superpowers/plans/2026-08-08-afterlight-05-acts-ii-iii.md`.
 - Queued plans: `docs/superpowers/plans/2026-08-08-afterlight-06-finale.md` and `docs/superpowers/plans/2026-08-08-afterlight-07-launch.md`.
-- Current checkpoint before Plan 05 implementation: `dev` at `421e550`, clean tree before plan docs, 9 chapters and 56 quests, CI green.
-- Recovery instruction if interrupted: run `git status`, read this section and the three plan files, then resume at the first unchecked task. Do not rerun any retired `tools/gen-quests*.py` script.
+- Current checkpoint: Plan 05 Task 1 is complete on `dev`. The quest corpus has 9 chapters, 56 quests, 56 tasks, and 93 rewards. The deterministic compiler is now the source of truth for chapters added by Plan 05 Task 2 and later. Its catalog is intentionally empty until Task 2, so existing hand-authored chapters remain untouched.
+- Task 1 recovery state: `python3 tools/build-quests.py` writes only chapters declared in `tools/afterlight_quests/catalog.py` and preserves legacy localization through parse-and-merge. `python3 tools/validate-quests.py` checks IDs, graph closure, localization, forbidden punctuation, chapter filenames, jar item candidates, and item warnings from existing server logs. The invalid `sophisticated_backpacks:backpack` reference was corrected to runtime-verified `sophisticatedbackpacks:backpack` without changing quest or task IDs.
+- Recovery instruction if interrupted: run `git status`, read this section and the three plan files, then resume at Plan 05 Task 2. Do not rerun any retired `tools/gen-quests*.py` script. All four retired scripts are committed with mode `100644`, not executable.
 - Plan 07 audit correction: AutoModpack and empty-host recovery are mandatory; use one `/data` bind plus separate backups; never auto-restore a partially migrated world; pin packwiz-installer-bootstrap v0.0.3 and verify its SHA-256. Automated completion releases `0.9.0-rc1`; `1.0.0` waits for Shane's manual client, multiplayer, voice, AutoModpack, gameplay, and restore matrix.
 
 ## Current state (verified, not aspirational)

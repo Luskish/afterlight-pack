@@ -10,6 +10,8 @@ skills-lock.json
 .claude/**
 server-test/**
 .superpowers/**
+**/__pycache__/**
+**/*.pyc
 **/.gitkeep
 dist/**
 AGENTS.md

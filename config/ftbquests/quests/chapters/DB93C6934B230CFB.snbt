@@ -223,7 +223,7 @@
 			tasks: [
 				{ id: "5A4D1A25468127CA"
 				type: "item"
-				item: { count: 1, id: "sophisticated_backpacks:backpack" }
+				item: { count: 1, id: "sophisticatedbackpacks:backpack" }
 				count: 1L
 				consume_items: false }
 			]

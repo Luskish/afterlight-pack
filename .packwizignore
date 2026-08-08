@@ -11,3 +11,4 @@ skills-lock.json
 server-test/**
 .superpowers/**
 **/.gitkeep
+dist/**

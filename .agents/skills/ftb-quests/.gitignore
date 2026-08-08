@@ -1,0 +1,8 @@
+# Workspace and temp files
+ftb-quests-workspace/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

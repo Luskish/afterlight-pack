@@ -1,0 +1,45 @@
+{
+  "skill_name": "ftb-quests",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我在做一个科技整合包，需要在 FTB Quests 里新建一个叫「电力入门」的章节，里面有三个任务：第一个是提交 8 个铜锭，第二个依赖第一个、要求玩家合成一个发电机，第三个依赖第二个、奖励 500 经验值和一个命令奖励执行 /advancement grant @p only mymod:power_basics。请帮我写出完整的 chapter SNBT 文件和对应的 lang/zh_cn.snbt 条目。",
+      "expected_output": "A valid chapter .snbt file with 3 quests, correct dependency chain, item tasks with count, xp reward, command reward, and matching zh_cn.snbt localization entries",
+      "files": [],
+      "assertions": [
+        {"text": "Output contains a valid SNBT chapter file with id, filename, quests array", "type": "content"},
+        {"text": "Three quests exist with unique 16-char hex IDs", "type": "content"},
+        {"text": "Quest 2 depends on Quest 1 ID, Quest 3 depends on Quest 2 ID", "type": "content"},
+        {"text": "First quest has type item task for copper ingot with count 8", "type": "content"},
+        {"text": "Third quest has both xp reward (500) and command reward with /advancement grant", "type": "content"},
+        {"text": "zh_cn.snbt entries exist for chapter title and all quest titles", "type": "content"},
+        {"text": "SNBT syntax is correct (no commas between top-level fields, typed numbers)", "type": "content"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我整合包里已经有个 FTB Quests 章节文件，里面有一个提交钻石的任务（quest ID: 5A3B2C1D4E5F6A7B），我想给它加一个 KubeJS 自定义奖励：根据玩家当前等级给不同数量的绿宝石——10级以下给5个，10-30级给15个，30级以上给32个。帮我写出需要修改的 SNBT 奖励部分和对应的 kubejs server script。",
+      "expected_output": "SNBT reward object with type custom and a unique ID, plus a KubeJS script using FTBQuestsEvents.customReward with level-based conditional logic",
+      "files": [],
+      "assertions": [
+        {"text": "SNBT reward has type custom with a valid hex ID", "type": "content"},
+        {"text": "KubeJS script uses FTBQuestsEvents.customReward with the matching reward ID", "type": "content"},
+        {"text": "Script has three-tier conditional logic based on experienceLevel", "type": "content"},
+        {"text": "Script uses Item.of and event.player.give correctly", "type": "content"},
+        {"text": "Emerald counts match: 5, 15, 32", "type": "content"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我设计一个 FTB Quests 的主题样式文件 ftb_quests_theme.txt，要求：默认背景用深蓝色，已完成任务绿色，未开始任务灰色，依赖线用金色，粗度 2.0。另外我有一组标签叫 boss_quest 的任务，要求它们未开始时显示红色、图标用红色边框。",
+      "expected_output": "A valid ftb_quests_theme.txt with [*] defaults and [boss_quest] tag section",
+      "files": [],
+      "assertions": [
+        {"text": "File has [*] section with background, quest_completed_color, quest_not_started_color, dependency line colors and thickness", "type": "content"},
+        {"text": "Has [boss_quest] tag section with red quest_not_started_color", "type": "content"},
+        {"text": "dependency_line_thickness is 2.0", "type": "content"},
+        {"text": "Colors use valid hex format", "type": "content"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "ftb-quests": {
+      "source": "particleg/ftb-quests",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "49e813500d9cbe4f9ad475ed49c4651036de85f3b79ce229f619a87b81ebe7d0"
+    },
+    "kubejs-modding": {
+      "source": "siredvin/minecraft-modding-skills",
+      "sourceType": "github",
+      "skillPath": "skills/kubejs-modding/SKILL.md",
+      "computedHash": "1b2e786eb363c43aead7020ef1bf679ebb67cb9fb5559e7050cae8a15116e3ba"
+    },
+    "minecraft-modding": {
+      "source": "jahrome907/minecraft-codex-skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/minecraft-modding/SKILL.md",
+      "computedHash": "26481193c02c1dc8c74f4efea2404ea6635ad2086cf5460c65dde285fef2a454"
+    },
+    "minecraft-modpack-authoring": {
+      "source": "siredvin/minecraft-modding-skills",
+      "sourceType": "github",
+      "skillPath": "skills/minecraft-modpack-authoring/SKILL.md",
+      "computedHash": "ad72df795bdea3eb5192bf1d08531a382de7ea2e9d98656516f14c0e5f7ba6bb"
+    },
+    "modrinth-api": {
+      "source": "siredvin/minecraft-modding-skills",
+      "sourceType": "github",
+      "skillPath": "skills/modrinth-api/SKILL.md",
+      "computedHash": "11967d771c5c840e56e9152af30135c908cd12cad2d65efc98fe982781f7d9e1"
+    },
+    "neoforge-modding": {
+      "source": "siredvin/minecraft-modding-skills",
+      "sourceType": "github",
+      "skillPath": "skills/neoforge-modding/SKILL.md",
+      "computedHash": "1f68e863a9c0f2cd78ef93d402f56bc868ecf82f6d912fd564aadd7f61492af0"
+    }
+  }
+}

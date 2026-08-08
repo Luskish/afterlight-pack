@@ -13,6 +13,38 @@ file = "config/ftbessentials.snbt"
 hash = "6df887a625520c95935eb0457a1e505329f1a218691962d2fbca5e4c8901d790"
 
 [[files]]
+file = "kubejs/assets/kubejs/lang/en_us.json"
+hash = "9b136b8861a5f128a5541c56f0d8a3cd2135a915d18e06c8a3a4344ffba0a245"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/ascendancy_seal.png"
+hash = "43eb11bc860ab2d6dc54434f742e5489d2e6ece8b3fe7c8855f9342596bfd51b"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/requisition_chit.png"
+hash = "11d04aa3a49d1a25a89ad6640275cceb424fd38bd0fc9e79de34614798ff2e07"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/_constants.js"
+hash = "a34700297d3c06a70b01693dbb504c40e7630edd62d192359ca6df830866b708"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/bridges.js"
+hash = "d607e08e0ce073d33f495f14b9f8ab05bf2febf6eb0bbe3c7319d5c46602c9bc"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/gate_draconic.js"
+hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/loot_chits.js"
+hash = "0ec9ba2283507e330e865eb6b6706880c97b3890924a4537885fdb38b25f0dde"
+
+[[files]]
+file = "kubejs/startup_scripts/afterlight/registry.js"
+hash = "3060d1e06a4a19a4bcf575e338bdfd2842ad1e9a43a762b13283d6587f8dcefb"
+
+[[files]]
 file = "mods/advanced-loot-info.pw.toml"
 hash = "516ed4f0441c233d803038b3c888baa9ba62f2fb9929fe8bd1cdf59329251dcc"
 metafile = true

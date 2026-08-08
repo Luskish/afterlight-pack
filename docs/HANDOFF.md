@@ -11,7 +11,11 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Friend-facing artifact `dist/AFTERLIGHT-prism-instance.zip` is built but NOT yet distribution-approved: Shane must first do one manual Prism import + launch (client-side boot has never been exercised; needs a Microsoft account).
 - The design spec, the completed Plan 01 (with the Plan 02-07 roadmap table), and six committed project skills in `.agents/skills/` are all in this repo.
 
-## Plan 02 status: IN EXECUTION
+## Plan 03 status: CORE COMPLETE (2026-08-08)
+
+Plan doc: docs/superpowers/plans/2026-08-08-afterlight-03-integration.md. Delivered and boot-verified (10 recipes added, 0 kubejs errors): custom items requisition_chit + ascendancy_seal (textures + lang included), Draconic entry recipes seal-gated (exact-copy replacements from jar JSONs), Create crushing + IE crusher accept Mekanism raw ores (osmium/uranium/lead/tin, conservative yields), chit loot injection into five structure chest tables. LESSONS: .withChance() dead on 1.21, use CreateItem.of(item, chance); IE recipes via event.custom with jar-extracted schema; mekanism has NO raw_fluorite. Remaining Plan 03 scope folded forward: MMR Gate multiblocks land with Plan 06 (their consumer), more bridges with Plan 05.
+
+## Plan 02 status: COMPLETE (merged to main 2026-08-08)
 
 The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roster.md` (Task 0 hardening + Waves 1-13 + verification sweep + configs). Resume at the first wave below not marked complete, following the plan's Wave Pattern exactly.
 

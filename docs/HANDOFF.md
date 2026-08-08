@@ -28,7 +28,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W6 Dangerous world (MILESTONE) | COMPLETE | 101 mods, boot OK. Slugs: l_enders-cataclysm (underscore), bosses-of-mass-destruction-forge. CF: alexs-mobs-1-21-1-port (+Citadel port dep). LESSON: Modrinth dep metadata MISSES some required libs; boot revealed irons_lib + lodestonelib missing (wave 5 gap, fixed here). Slug lodestone = a datapack, the lib is lodestonelib. Non-milestone waves rely on CI boot for this class of catch. |
 | W7 Worldgen/structures | COMPLETE | 124 mods. IDAS slug is idas; it pulled Quark (W9 want, early), Supplementaries, Integrated API as required deps. All Modrinth-native. |
 | W8 Dimensions (MILESTONE) | COMPLETE | 134 mods, boot OK. Slugs: deeperdarker; Twilight Forest is CF-only (the-twilight-forest). LESSON: Stardust multi-version projects can resolve 26.x jars that PASS the API check but fail to load (filename says 26.2): Structory + Towers repinned to 1.21.x version URLs (MXU49bpN, lefqbuOP). Also fixed undeclared libs moonlight (Supplementaries) + zeta (Quark). Verify-pack improvement candidate: flag filenames with a different MC line than 1.21. |
-| W9 Storage/QoL 2 | pending | |
+| W9 Storage/QoL 2 | COMPLETE | 142 mods. quark+curios arrived early via deps in W5/W7. Inventory Sorter is CF-only (slug inventory-sorter); Modrinth veinminer-client is correctly side=client. |
 | W10 Food | pending | |
 | W11 Multiplayer | pending | |
 | W12 Story/scripting (MILESTONE) | pending | |

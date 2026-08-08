@@ -435,12 +435,12 @@ class QuestCompilerTests(unittest.TestCase):
     def test_repeatable_quest_fields_render_exact_ftb_schema(self) -> None:
         catalog = self.make_catalog()
         catalog[0].quests[0].can_repeat = True
-        catalog[0].quests[0].repeat_cooldown = 1200
+        catalog[0].quests[0].repeat_cooldown = 5
 
         rendered = self.quests.render_chapter(catalog[0])
 
         self.assertIn("\t\t\tcan_repeat: true", rendered)
-        self.assertIn("\t\t\trepeat_cooldown: 1200", rendered)
+        self.assertIn("\t\t\trepeat_cooldown: 5", rendered)
 
     def test_task_five_catalog_has_certifications_and_depot(self) -> None:
         catalog = self.quests.build_catalog()[11:]
@@ -516,6 +516,67 @@ class QuestCompilerTests(unittest.TestCase):
             ("6B876A865DE7A77A",),
         )
 
+    def test_task_five_ore_loop_uses_coherent_three_machine_path(self) -> None:
+        ore_loop = self.quests.build_catalog()[12]
+
+        self.assertEqual(
+            [quest.title for quest in ore_loop.quests],
+            [
+                "Enrichment Stage",
+                "Smelting Stage",
+                "Block Assembly",
+                "Measured Buffer",
+                "Energy Budget",
+                "32-Block Run",
+            ],
+        )
+        self.assertEqual(
+            [
+                quest.tasks[0].data.get("item", {}).get("id")
+                for quest in ore_loop.quests[:3]
+            ],
+            [
+                "mekanism:enrichment_chamber",
+                "mekanism:energized_smelter",
+                "mekanism:formulaic_assemblicator",
+            ],
+        )
+        finale_task = ore_loop.quests[-1].tasks[0]
+        self.assertEqual(finale_task.data["item"]["id"], "mekanism:block_osmium")
+        self.assertEqual(finale_task.data["count"], self.quests.SnbtLong(32))
+
+    def test_task_five_cross_mod_uses_bridge_coherent_machine_path(self) -> None:
+        cross_mod = self.quests.build_catalog()[14]
+
+        self.assertEqual(
+            [quest.title for quest in cross_mod.quests],
+            [
+                "Create Crushing",
+                "Mekanism Smelting",
+                "IE Conveyance",
+                "AE2 Stocking",
+                "Osmium Batch",
+                "Cross-System Recovery",
+            ],
+        )
+        expected_item_tasks = [
+            ("create:crushing_wheel", 2),
+            ("mekanism:energized_smelter", 1),
+            ("immersiveengineering:conveyor_basic", 8),
+            ("ae2:interface", 2),
+            ("mekanism:ingot_osmium", 256),
+        ]
+        self.assertEqual(
+            [
+                (
+                    quest.tasks[0].data["item"]["id"],
+                    quest.tasks[0].data["count"].value,
+                )
+                for quest in cross_mod.quests[:5]
+            ],
+            expected_item_tasks,
+        )
+
     def test_task_five_depot_consumes_chits_and_uses_choice_tables(self) -> None:
         depots = self.quests.build_catalog()[17:]
         expected = [
@@ -527,7 +588,7 @@ class QuestCompilerTests(unittest.TestCase):
         for chapter, (cost, table_id) in zip(depots, expected):
             exchange = chapter.quests[0]
             self.assertTrue(exchange.can_repeat)
-            self.assertEqual(exchange.repeat_cooldown, 1200)
+            self.assertEqual(exchange.repeat_cooldown, 5)
             self.assertEqual(len(exchange.tasks), 1)
             self.assertEqual(exchange.tasks[0].task_type, "item")
             self.assertEqual(exchange.tasks[0].data, {

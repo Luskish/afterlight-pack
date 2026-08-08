@@ -1078,40 +1078,40 @@ def _certification_logistics() -> ChapterSpec:
 
 
 def _certification_ore_loop(logistics_finale: str) -> ChapterSpec:
-    crusher = "certifications/ore-loop-i/crusher"
     enrichment = "certifications/ore-loop-i/enrichment"
     smelter = "certifications/ore-loop-i/smelter"
+    assemblicator = "certifications/ore-loop-i/assemblicator"
     buffer = "certifications/ore-loop-i/buffer"
     energy = "certifications/ore-loop-i/energy"
     finale = "certifications/ore-loop-i/throughput"
     quests = (
-        _certification_item_quest(crusher, "Crushing Stage", "First machine, first controlled reduction.", (
-            "Build a Mekanism Crusher and give it dedicated input and output buffers.",
-            "This certification tests a three-machine loop, not a shared machine pile.",
-        ), "mekanism:crusher", 1, (CHAPTER_FIVE_FINALE, logistics_finale), 0.0, 0.0),
-        _certification_item_quest(enrichment, "Enrichment Stage", "Intermediate material needs a named destination.", (
-            "Build an Enrichment Chamber and route the Crusher output into it.",
-            "Keep a bypass chest available while the line is being tuned.",
-        ), "mekanism:enrichment_chamber", 1, (crusher,), 2.0, 0.0),
-        _certification_item_quest(smelter, "Smelting Stage", "The third machine should finish, not improvise.", (
-            "Build an Energized Smelter and complete the processing chain.",
-            "Lock its input to the expected intermediate before unattended operation.",
-        ), "mekanism:energized_smelter", 1, (enrichment,), 4.0, 0.0),
+        _certification_item_quest(enrichment, "Enrichment Stage", "Raw ore becomes a measured dust stream.", (
+            "Build an Enrichment Chamber and route raw osmium into a dedicated input buffer.",
+            "Its native recipe converts three raw osmium into four dust. Record that ratio before continuing.",
+        ), "mekanism:enrichment_chamber", 1, (CHAPTER_FIVE_FINALE, logistics_finale), 0.0, 0.0),
+        _certification_item_quest(smelter, "Smelting Stage", "Dust becomes ingots without leaving the line.", (
+            "Build an Energized Smelter and route the osmium dust directly into it.",
+            "Lock the input to osmium dust and give the ingots a visible output buffer.",
+        ), "mekanism:energized_smelter", 1, (enrichment,), 2.0, 0.0),
+        _certification_item_quest(assemblicator, "Block Assembly", "Nine ingots become one countable proof.", (
+            "Build a Formulaic Assemblicator and encode the osmium storage-block recipe.",
+            "Feed it only from the smelter output. Manual ingot insertion invalidates the trial.",
+        ), "mekanism:formulaic_assemblicator", 1, (smelter,), 4.0, 0.0),
         _certification_item_quest(buffer, "Measured Buffer", "A bin makes congestion visible.", (
             "Build a Basic Bin as the final output buffer.",
             "Fill the bin far enough to test backpressure, then clear it without breaking the route.",
-        ), "mekanism:basic_bin", 1, (smelter,), 6.0, -1.0),
+        ), "mekanism:basic_bin", 1, (assemblicator,), 6.0, -1.0),
         _certification_quest(energy, "Energy Budget", "Five million FE, transferred deliberately.", (
             "Submit five million FE at no more than 100,000 FE per transfer.",
             "The limit catches lines that rely on one uncontrolled power spike.",
         ), "forge_energy", {
             "value": SnbtLong(5_000_000),
             "max_input": SnbtLong(100_000),
-        }, (smelter,), 6.0, 1.0),
-        _certification_item_quest(finale, "256-Ingot Run", "One stack is a sample. Four stacks are a process.", (
-            "Produce 256 Osmium Ingots through the complete loop.",
+        }, (assemblicator,), 6.0, 1.0),
+        _certification_item_quest(finale, "32-Block Run", "Thirty-two blocks prove every stage remained connected.", (
+            "Produce 32 Osmium Blocks through enrichment, smelting, and formulaic assembly.",
             "Inventory quantity is detectable. Observe the line long enough to verify recovery from a full output.",
-        ), "mekanism:ingot_osmium", 256, (buffer, energy), 8.0, 0.0,
+        ), "mekanism:block_osmium", 32, (buffer, energy), 8.0, 0.0,
             stage="afterlight_cert_ore_loop_i"),
     )
     return ChapterSpec(
@@ -1160,33 +1160,33 @@ def _certification_autocrafting(logistics_finale: str) -> ChapterSpec:
 
 
 def _certification_cross_mod(ore_finale: str, autocrafting_finale: str) -> ChapterSpec:
-    input_path = "certifications/cross-mod-i/create-input"
-    process = "certifications/cross-mod-i/mekanism-process"
-    output = "certifications/cross-mod-i/ie-output"
+    crushing = "certifications/cross-mod-i/create-input"
+    smelting = "certifications/cross-mod-i/mekanism-process"
+    conveyance = "certifications/cross-mod-i/ie-output"
     stocking = "certifications/cross-mod-i/ae2-stocking"
     batch = "certifications/cross-mod-i/steel-batch"
     finale = "certifications/cross-mod-i/recovery"
     quests = (
-        _certification_item_quest(input_path, "Create Input", "Mechanical delivery begins the chain.", (
-            "Produce eight Chutes and use Create to meter raw material into the process buffer.",
-            "A belt line should stop at the buffer when the downstream system is unavailable.",
-        ), "create:chute", 8, (ore_finale, autocrafting_finale), 0.0, 0.0),
-        _certification_item_quest(process, "Mekanism Process", "One ecosystem transforms what another delivers.", (
-            "Route the buffered input through a dedicated Mekanism Crusher.",
-            "Do not let direct insertion bypass the visible input buffer.",
-        ), "mekanism:crusher", 1, (input_path,), 2.0, 0.0),
-        _certification_item_quest(output, "IE Output", "Heavy machinery closes the material loop.", (
-            "Build an Immersive Engineering Metal Press as the final processing step.",
-            "Provide a separate output inventory so a full AE2 network cannot trap the press conveyor.",
-        ), "immersiveengineering:metal_press", 1, (process,), 4.0, 0.0),
+        _certification_item_quest(crushing, "Create Crushing", "A bridge recipe gives raw osmium a mechanical entrance.", (
+            "Build two Crushing Wheels and process Mekanism raw osmium through the AFTERLIGHT bridge recipe.",
+            "The wheels produce osmium dust. Keep their output visible before connecting the next machine.",
+        ), "create:crushing_wheel", 2, (ore_finale, autocrafting_finale), 0.0, 0.0),
+        _certification_item_quest(smelting, "Mekanism Smelting", "The bridged dust returns to its native ecosystem.", (
+            "Build an Energized Smelter and route the Create output into it.",
+            "The smelter must receive osmium dust and emit osmium ingots without manual transfer.",
+        ), "mekanism:energized_smelter", 1, (crushing,), 2.0, 0.0),
+        _certification_item_quest(conveyance, "IE Conveyance", "The output crosses another system without changing form.", (
+            "Produce eight basic Immersive Engineering Conveyors and carry the osmium ingots to storage.",
+            "Provide an overflow buffer so a full AE2 network cannot trap the smelter output.",
+        ), "immersiveengineering:conveyor_basic", 8, (smelting,), 4.0, 0.0),
         _certification_item_quest(stocking, "AE2 Stocking", "The lattice should request, not merely receive.", (
             "Build two ME Interfaces and configure one stocked output target.",
             "Test both replenishment and the behavior when the destination is already full.",
-        ), "ae2:interface", 2, (output,), 6.0, -1.0),
-        _certification_item_quest(batch, "Steel Batch", "Two hundred fifty-six units cross four systems.", (
-            "Produce 256 Steel Ingots through the connected chain.",
+        ), "ae2:interface", 2, (conveyance,), 6.0, -1.0),
+        _certification_item_quest(batch, "Osmium Batch", "Two hundred fifty-six ingots cross four systems.", (
+            "Produce 256 Osmium Ingots through the connected chain.",
             "The item count cannot prove the route. Watch the full batch and inspect every buffer afterward.",
-        ), "immersiveengineering:ingot_steel", 256, (stocking,), 8.0, -1.0),
+        ), "mekanism:ingot_osmium", 256, (stocking,), 8.0, -1.0),
         _certification_quest(finale, "Cross-System Recovery", "Disconnect one boundary and recover without item loss.", (
             "Break one transport boundary, allow the upstream buffer to fill, reconnect it, and submit the checkmark.",
             "Certification records recovery behavior, not merely a successful first pass.",
@@ -1194,7 +1194,7 @@ def _certification_cross_mod(ore_finale: str, autocrafting_finale: str) -> Chapt
     )
     return ChapterSpec(
         "certifications/cross-mod-i", "Cross-Mod I", CERTIFICATIONS,
-        "immersiveengineering:metal_press", 4, quests,
+        "immersiveengineering:conveyor_basic", 4, quests,
     )
 
 
@@ -1367,7 +1367,7 @@ def _depot_chapter(
             {"table_id": table_id},
         ),),
         can_repeat=True,
-        repeat_cooldown=1200,
+        repeat_cooldown=5,
     )
     return ChapterSpec(
         slug,

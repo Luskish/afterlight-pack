@@ -15,7 +15,7 @@
 			x: 0.0d
 			y: 0.0d
 			can_repeat: true
-			repeat_cooldown: 1200
+			repeat_cooldown: 5
 			tasks: [
 				{
 					id: "BC1B8F09A3A541D9"

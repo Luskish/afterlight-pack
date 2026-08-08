@@ -3,7 +3,7 @@
 	default_quest_shape: ""
 	filename: "98471B3E458EAB62"
 	group: "CA20F33642175B95"
-	icon: { id: "immersiveengineering:metal_press" }
+	icon: { id: "immersiveengineering:conveyor_basic" }
 	id: "98471B3E458EAB62"
 	images: [ ]
 	order_index: 4
@@ -18,8 +18,8 @@
 				{
 					id: "239AAFA3BE80706A"
 					type: "item"
-					item: { count: 1, id: "create:chute" }
-					count: 8L
+					item: { count: 1, id: "create:crushing_wheel" }
+					count: 2L
 					consume_items: false
 				}
 			]
@@ -41,7 +41,7 @@
 				{
 					id: "8FBA3062FEC0B421"
 					type: "item"
-					item: { count: 1, id: "mekanism:crusher" }
+					item: { count: 1, id: "mekanism:energized_smelter" }
 					count: 1L
 					consume_items: false
 				}
@@ -64,8 +64,8 @@
 				{
 					id: "689B4556402FAA78"
 					type: "item"
-					item: { count: 1, id: "immersiveengineering:metal_press" }
-					count: 1L
+					item: { count: 1, id: "immersiveengineering:conveyor_basic" }
+					count: 8L
 					consume_items: false
 				}
 			]
@@ -110,7 +110,7 @@
 				{
 					id: "4DBFE04EBC41F9CD"
 					type: "item"
-					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					item: { count: 1, id: "mekanism:ingot_osmium" }
 					count: 256L
 					consume_items: false
 				}

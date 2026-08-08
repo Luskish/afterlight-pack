@@ -104,9 +104,9 @@
 - Modify: `config/ftbquests/quests/lang/en_us.snbt`
 
 - [ ] Add Certification `Logistics I`: drawers, pipes, filters, round-robin routing, and overflow safety.
-- [ ] Add Certification `Ore Loop I`: three-machine Mekanism ore loop with energy and throughput checks.
+- [ ] Add Certification `Ore Loop I`: Enrichment Chamber to Energized Smelter to Formulaic Assemblicator, with energy checks and a 32 Osmium Block throughput finale.
 - [ ] Add Certification `Autocrafting I`: AE2 pattern provider, molecular assembler, CPU, and 256-item order.
-- [ ] Add Certification `Cross-Mod I`: Create input, Mekanism process, IE or EnderIO output, AE2 stocking.
+- [ ] Add Certification `Cross-Mod I`: Create Crushing Wheels process Mekanism raw osmium through the existing bridge, an Energized Smelter produces ingots, IE conveyors carry output, and AE2 interfaces stock it.
 - [ ] Add Certification `Power I`: generation, storage, priority, and emergency shutdown.
 - [ ] Add Certification `Infrastructure II`: bulk capstone proving unattended operation.
 - [ ] Award stable stages `afterlight_cert_kinetics_i`, `afterlight_cert_logistics_i`, `afterlight_cert_ore_loop_i`, `afterlight_cert_autocrafting_i`, `afterlight_cert_cross_mod_i`, `afterlight_cert_power_i`, and `afterlight_cert_infrastructure_ii` from certification finales.

@@ -24,6 +24,14 @@
 - Logistics I now follows installed Pipez 1.2.31 capabilities: Improved teaches distribution, then Advanced teaches filtering.
 - All frozen legacy Ascendancy Cache references were converted to signed Java long form without changing IDs.
 
+### Scoped Review Round 1
+
+- Retired Chapter 3, Chapter 4, and Chapter 5 generators can no longer compute unsigned reward-table longs. Each uses the shared `SnbtLong.from_hex` conversion and remains retired.
+- The generator regression now detects computed base-16 conversions instead of checking only known decimal literals.
+- Pipez coverage now asserts both missing graph edges around the existing Improved-to-Advanced capability sequence.
+- The optionality regression now compares every dependency from all sixteen Story chapter files against all 84 quest IDs in the twelve new side chapters, not only their finales.
+- The Deep Vault opener localization now explicitly directs the player to bring the recovered Deep Vault Key and a hammer while preserving every existing ID.
+
 ## Verification
 
 - `python3 -m unittest discover -s tools/tests -p 'test_*.py'`: 47 tests passed.
@@ -36,6 +44,16 @@
 - The runtime quest item audit passed all 219 item and icon references with fresh digest `b6b6935eafe173d8b382674ecfbe9f309b18d134c66c881a1c75ebe73d168d52`.
 - `python3 tools/validate-quests.py`: exact full corpus passed with the fresh runtime proof.
 - `./tools/verify-pack.sh`: `VERIFY: ALL GREEN`.
+
+### Scoped Review Round 1 Verification
+
+- Four focused regressions passed for retired generator conversion, the complete Pipez chain, all-side-quest optionality, and Deep Vault opener guidance.
+- `python3 -m unittest discover -s tools/tests -p 'test_*.py'`: 47 tests passed.
+- Two consecutive active compiler builds produced digest `064682eb6f79609a8ad87f12586df09c50d6e8ae4fbfbdc982ba7b538f25f170`.
+- Static and runtime validation both passed with 41 chapters, 283 quests, 307 tasks, and 393 rewards.
+- The fresh server boot printed `SERVER BOOT: OK`. FTB Quests loaded 6 groups, 41 chapters, 283 quests, and 6 reward tables with 0 FTB Quests warning or error lines.
+- KubeJS loaded 1/1 startup and 5/5 server scripts with 0 errors and 0 warnings. The runtime audit passed 219 references with digest `42007a6a63cb672d6ed8f17062c6d470eb30a8e2a9de00bc0f701ecb6b3dd7cf`.
+- `./tools/verify-pack.sh` printed `VERIFY: ALL GREEN`; its Packwiz refresh check was idempotent.
 
 ## Remaining Concerns
 

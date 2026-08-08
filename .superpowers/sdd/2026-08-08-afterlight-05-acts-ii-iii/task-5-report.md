@@ -36,6 +36,15 @@ Implemented six automation certification chapters and three Requisition Depot ch
 - Logistics I now follows Pipez 1.2.31 capabilities verified from the installed `Upgrade` bytecode. The Improved Upgrade teaches round-robin distribution first. The Advanced Upgrade follows and teaches filtering while retaining distribution controls.
 - Frozen quest IDs and reward table IDs remain unchanged. Retired quest generators were scanned for stale unsigned literals and were not rerun.
 
+### Scoped Review Round 1
+
+- The first regression only searched three known unsigned decimal literals. It did not detect computed base-16 conversions in retired generators.
+- `tools/gen-quests-ch3.py`, `tools/gen-quests-ch4.py`, and `tools/gen-quests-ch5.py` now route reward-table IDs through `SnbtLong.from_hex`. None of the retired generators were executed.
+- The strengthened AST regression rejects positional or keyword base-16 `int` conversions, oversized integer constants, and any reward-table generator that omits the shared signed conversion.
+- The Pipez regression now proves the full chain: Round-Robin Routing depends on Item Pipes, Filtered Route depends on Round-Robin Routing, and Overflow Safety depends on Filtered Route.
+- The integrated side-group regression compares every dependency in all sixteen Story chapter files against every quest ID in the twelve new side chapters.
+- The frozen Deep Vault opener now tells players to bring both the recovered Deep Vault Key and a hammer, matching its actual tasks.
+
 ## Depot
 
 - Early, mid, and late exchanges consume 8, 16, and 32 Requisition Chits.
@@ -62,7 +71,7 @@ Focused tests failed before implementation for missing repeatable quest renderin
 - `python3 tools/validate-quests.py`: exact full corpus passed with matching runtime proof.
 - `./tools/verify-pack.sh`: `VERIFY: ALL GREEN`.
 
-Post-review validation ran with Task 6 integration. All 47 quest tests passed, including exact Pipez capability order and signed reward-table resolution. Two deterministic builds produced digest `a469b227c0884afc55c7dd6c86f47f49a0a92f10b22c2697ebd2cdefcabf308e`. Static and runtime quest validation passed, the fresh server boot printed `SERVER BOOT: OK`, FTB Quests loaded all 6 reward tables, and `./tools/verify-pack.sh` printed `VERIFY: ALL GREEN`.
+Scoped-review validation ran with Task 6 integration. All 47 quest tests passed, including the complete Pipez dependency chain, computed unsigned-long rejection, and signed reward-table resolution. Two deterministic active compiler builds produced digest `064682eb6f79609a8ad87f12586df09c50d6e8ae4fbfbdc982ba7b538f25f170`. Static and runtime quest validation passed with 41 chapters, 283 quests, 307 tasks, and 393 rewards. The fresh server boot printed `SERVER BOOT: OK`; FTB Quests loaded 6 groups, 41 chapters, 283 quests, and 6 reward tables; KubeJS loaded 1/1 startup and 5/5 server scripts with 0 errors and 0 warnings; and the runtime item audit passed 219 references with digest `42007a6a63cb672d6ed8f17062c6d470eb30a8e2a9de00bc0f701ecb6b3dd7cf`. `./tools/verify-pack.sh` printed `VERIFY: ALL GREEN`.
 
 ## Residuals
 

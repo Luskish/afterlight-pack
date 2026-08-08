@@ -186,7 +186,7 @@ hash = "b89f337f070343c37f7bd400f963e85e482205dece7700af8c5209924bdef18a"
 
 [[files]]
 file = "config/ftbquests/quests/lang/en_us.snbt"
-hash = "817a39d47327d20237f1f211441d3eb33e83e77b7c0adc055e0ee2aba5a6254f"
+hash = "7c5f98259828cf7c35d6afd702f10b49683a7cb0d3683b8f633b3f26e3712edd"
 
 [[files]]
 file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"
@@ -274,7 +274,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "bcaf91af68f039786470e949fbfa23bc6e63cb40d7a7b51085c44e21c524b173"
+hash = "4e158996793a25552ae2adc84301f6b0ceecb52335e4a0603317019dfd8c9018"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"

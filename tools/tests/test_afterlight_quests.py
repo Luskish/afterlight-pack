@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib
 import os
@@ -570,6 +571,7 @@ class QuestCompilerTests(unittest.TestCase):
         ])
         round_robin = logistics.quests[3]
         filtered = logistics.quests[4]
+        overflow = logistics.quests[5]
         self.assertEqual(
             round_robin.tasks[0].data["item"]["id"],
             "pipez:improved_upgrade",
@@ -578,7 +580,9 @@ class QuestCompilerTests(unittest.TestCase):
             filtered.tasks[0].data["item"]["id"],
             "pipez:advanced_upgrade",
         )
+        self.assertEqual(round_robin.dependency_ids, (logistics.quests[2].id,))
         self.assertEqual(filtered.dependency_ids, (round_robin.id,))
+        self.assertEqual(overflow.dependency_ids, (filtered.id,))
         self.assertIn("distribution", " ".join(round_robin.description).lower())
         self.assertIn("filter", " ".join(filtered.description).lower())
 
@@ -871,19 +875,35 @@ class QuestCompilerTests(unittest.TestCase):
             [reward.get("stage") for reward in parsed["quests"][0]["rewards"] if reward["type"] == "gamestage"],
             ["afterlight_deep_vault"],
         )
+        localization_path = ROOT / "config/ftbquests/quests/lang/en_us.snbt"
+        localization = _parse_snbt(localization_path.read_text(encoding="utf-8"))
+        self.assertIn(
+            "Everything in this wing is optional. Nothing in this wing is small. "
+            "Bring the recovered Deep Vault Key and a hammer. "
+            "The key opens the way; honest metallurgy does the rest.",
+            localization["quest.96783315E0833B1D.quest_desc"],
+        )
 
     def test_task_six_side_graph_remains_optional_and_acyclic(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
         catalog = self.quests.build_catalog()
-        side_finales = {
-            chapter.quests[-1].id for chapter in catalog[20:]
+        story_group_id = catalog[0].group.resolved_id
+        side_quest_ids = {
+            quest.id
+            for chapter in catalog[20:]
+            for quest in chapter.quests
         }
         story_dependencies = {
             dependency
-            for chapter in catalog[:11]
-            for quest in chapter.quests
-            for dependency in quest.dependency_ids
+            for path in (ROOT / "config/ftbquests/quests/chapters").glob("*.snbt")
+            for chapter in [_parse_snbt(path.read_text(encoding="utf-8"))]
+            if chapter.get("group") == story_group_id
+            for quest in chapter["quests"]
+            for dependency in quest.get("dependencies", [])
         }
-        self.assertFalse(side_finales & story_dependencies)
+        self.assertEqual(len(side_quest_ids), 84)
+        self.assertFalse(side_quest_ids & story_dependencies)
 
         deep_vault = catalog[24:28]
         self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("F2CE68CEF727A313",))
@@ -996,19 +1016,55 @@ class QuestCompilerTests(unittest.TestCase):
             self.assertLessEqual(table_id, (1 << 63) - 1, (path, reward_type, table_id))
             self.assertIn(table_id, table_values, (path, reward_type, table_id))
 
-    def test_retired_generators_have_no_unsigned_reward_table_literals(self) -> None:
-        forbidden = {
-            "10622272618344871329L",
-            "11119284242278366677L",
-            "13373195924909545525L",
-        }
-        occurrences = []
+    def test_retired_generators_cannot_render_unsigned_reward_table_longs(self) -> None:
+        direct_base16_calls = []
+        unsigned_literals = []
+        missing_signed_conversion = []
         for path in ROOT.glob("tools/gen-quests*.py"):
             text = path.read_text(encoding="utf-8")
-            for literal in forbidden:
-                if literal in text:
-                    occurrences.append((path.name, literal))
-        self.assertEqual(occurrences, [])
+            if "table_id:" not in text:
+                continue
+            tree = ast.parse(text, filename=str(path))
+            signed_calls = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "from_hex"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "SnbtLong"
+            ]
+            if not signed_calls:
+                missing_signed_conversion.append(path.name)
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "int"
+                ):
+                    positional_base = (
+                        len(node.args) > 1
+                        and isinstance(node.args[1], ast.Constant)
+                        and node.args[1].value == 16
+                    )
+                    keyword_base = any(
+                        keyword.arg == "base"
+                        and isinstance(keyword.value, ast.Constant)
+                        and keyword.value.value == 16
+                        for keyword in node.keywords
+                    )
+                    if positional_base or keyword_base:
+                        direct_base16_calls.append((path.name, node.lineno))
+                if (
+                    isinstance(node, ast.Constant)
+                    and isinstance(node.value, int)
+                    and node.value > (1 << 63) - 1
+                ):
+                    unsigned_literals.append((path.name, node.lineno, node.value))
+
+        self.assertEqual(direct_base16_calls, [])
+        self.assertEqual(unsigned_literals, [])
+        self.assertEqual(missing_signed_conversion, [])
 
     def test_task_six_registry_targets_exist_in_installed_jars(self) -> None:
         targets = {

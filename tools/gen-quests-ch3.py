@@ -6,6 +6,8 @@ then retire; hand-edit the SNBT afterward.
 """
 import os, io
 
+from afterlight_quests import SnbtLong
+
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 STORY_GROUP = '4525BB3160467FCB'
 CH2_CAPSTONE_DEP = None  # chapter-level availability; ch3 quests depend on ch2's last quest id below
@@ -75,7 +77,7 @@ def r_xp(xp):
 
 def r_loot():
     i = hid()
-    return f'{{ id: "{i}"\n\t\t\t\ttype: "loot"\n\t\t\t\ttable_id: {int(table_id, 16)}L }}'
+    return f'{{ id: "{i}"\n\t\t\t\ttype: "loot"\n\t\t\t\ttable_id: {SnbtLong.from_hex(table_id).value}L }}'
 
 a = quest(0.0, 0.0, [CH2_LAST], [t_biome('#minecraft:is_badlands')], [r_item(CHIT, 4)],
     'The Scarlands',

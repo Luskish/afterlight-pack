@@ -3,9 +3,11 @@
 append-only pattern as gen-quests-ch3.py. Run once, then retire."""
 import os, io, re
 
+from afterlight_quests import SnbtLong
+
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 STORY_GROUP = '4525BB3160467FCB'
-CACHE_TABLE_INT = int('9369E4AACBCDF5A1', 16)
+CACHE_TABLE_INT = SnbtLong.from_hex('9369E4AACBCDF5A1').value
 LANG = []
 _used = set()
 

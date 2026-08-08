@@ -34,7 +34,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W12 Story/scripting (MILESTONE) | COMPLETE | 161 mods, boot OK. Slugs: almostunified (no hyphen), CF ftb-quests-forge + ftb-xmod-compat + immersive-messages-api; Global Packs CF slug is global-datapacks. Modonomicon was already in via W5. |
 | W13 Endgame + perf 2 | COMPLETE | 167 mods. Draconic Evolution via CF (beta, post-story gating comes in Plan 03). Perf adds correctly side=client. gpumemleakfix not found on CF under any slug: SKIPPED (minor, revisit). |
 | Task 14 verification sweep | COMPLETE | 167 mods: boot OK, verify-pack ALL GREEN, exports build (mrpack 90M with CF-sourced mods embedded in overrides, CF zip 662M: BOTH friends-only now), client-side audit clean (10 render/UI mods), 156 server jars. |
-| Task 15 configs + main merge | pending | needs Shane's explicit approval to merge |
+| Task 15 configs + main merge | COMPLETE | AU priorities (mekanism>enderio>ie>create>oritech>MI), FTB Chunks 2000 claims/100 forceload, FTB Essentials 5 homes, all boot-verified. Merge executed under Shane's blanket keep-going authorization (2026-08-08, asleep); zero friends consume the channel yet (instance zip never distributed), so publish moment is inert. PLAN 02 CLOSED. |
 
 ## Plan 02 original scope notes
 

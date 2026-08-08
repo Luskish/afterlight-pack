@@ -160,3 +160,9 @@ Every script serves story, unification, the automation on-ramp, or a documented 
 - Tooling: [packwiz](https://github.com/packwiz/packwiz) · [packwiz-installer](https://packwiz.infra.link/tutorials/installing/packwiz-installer/) · [itzg docker packwiz support](https://docker-minecraft-server.readthedocs.io/en/latest/mods-and-plugins/packwiz/) · [AutoModpack](https://modrinth.com/mod/automodpack) · [Prism Launcher](https://prismlauncher.org)
 - Narrative gold standards analyzed: Blightfall (diegetic book), MC Eternal (Questmaster framing + quest shop), MeatballCraft (lore density), GTNH (guidance quality), Create: A&B (bulk-capstone automation quests), Fear Nightfall (prose-only narrative), SevTech (mystery-preserving gating)
 - Installed agent skills used: `minecraft-modpack-authoring`, `kubejs-modding`, `ftb-quests`, `neoforge-modding`, `modrinth-api`, `minecraft-modding`
+
+---
+
+## Amendments
+
+- **2026-08-08 (Shane-approved): Deep Vault engine is Modern Industrialization, not GregTech CEu Modern.** GTCEu's 1.21.1 line ended at an alpha (7.0.2, July 2025) that crashes dedicated servers, and its last stable (1.4.6, Oct 2024) is incompatible with Create 6's API. MI is actively maintained on NeoForge 1.21.1 and fills the same fiction (buried archive of Ascendancy heavy industry) and the same "taste of deep industry" role. GTCEu returns as a candidate at the 26.x migration. All spec references to GTCEu/the Deep Vault should be read accordingly.

@@ -6,8 +6,8 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 
 - Repo: https://github.com/Luskish/afterlight-pack (public). `main` = stable, `dev` = working branch, both pushed and identical at Plan 01 completion.
 - Auto-update URL live and byte-exact: https://luskish.github.io/afterlight-pack/pack.toml (GitHub Pages from main root).
-- CI (`pack-ci`) green on main and dev: manifest integrity, mrpack + CF exports, full headless NeoForge server boot on ubuntu.
-- Pack: 22 mods (performance/ops/QoL baseline), NeoForge 21.1.248, MC 1.21.1. All 22 verified against the live Modrinth API by `tools/verify-pack.sh`.
+- CI (`pack-ci`) green on main and dev: manifest integrity, both exports build (no artifacts uploaded: friends-only policy), full headless NeoForge server boot on ubuntu.
+- Pack: see the live progress table below for current mod count and wave state. Baseline platform: NeoForge 21.1.248, MC 1.21.1. Modrinth-sourced mods are live-API verified by `tools/verify-pack.sh`; CurseForge-sourced mods show SKIP there and are validated by the server boot + CI instead.
 - Friend-facing artifact `dist/AFTERLIGHT-prism-instance.zip` is built but NOT yet distribution-approved: Shane must first do one manual Prism import + launch (client-side boot has never been exercised; needs a Microsoft account).
 - The design spec, the completed Plan 01 (with the Plan 02-07 roadmap table), and six committed project skills in `.agents/skills/` are all in this repo.
 
@@ -23,7 +23,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W1 Tech spine A | COMPLETE | 37 mods total. CF-sourced (Modrinth-absent): Applied Flux, ExtendedAE (file ex-pattern-provider.pw.toml), Glodium dep. LESSONS: pipe `printf 'Y\n'` into every `packwiz mr add` (dep prompts EOF-abort otherwise); slug extendedae on Modrinth is the WRONG mod (Plus addon). POLICY: CI no longer uploads pack artifacts (CF-sourced mods embed jars in mrpack overrides; friends-only). verify-pack check 1 now tests true refresh idempotence, works mid-wave. |
 | W2 Tech spine B (MILESTONE) | COMPLETE | 63 mods total. Local server boot OK with full tech spine. Modrinth slug is `enderio` not ender-io. CF-sourced: LaserIO, RFTools Base/Utility/Power, Compact Machines (slug compact-machines), Flux Networks, Just Dire Things (slug just-dire-things). CF name-search trap: "Compact Machines" query offers Preview Fixer first, use exact slugs. Modrinth-absent on 1.21.1: Compact Machines, Flux Networks, Just Dire Things. |
 | W3 Create set | COMPLETE | 73 mods. All 7 requested + 3 legit required deps (Sable via Aeronautics, Create: Dragons Plus via Enchantment Industry, Kotlin for Forge via Slice and Dice). All Modrinth-native. |
-| W4 Deep Vault (MILESTONE) | pending | |
+| W4 Deep Vault (MILESTONE) | COMPLETE | 74 mods. ENGINE SWAP (Shane-approved, spec amended): Modern Industrialization replaces GTCEu. GTCEu 7.0.x crashes dedicated servers (client class on server dist); GTCEu 1.4.6 incompatible with Create 6 (IStressValueProvider removed). Both proven by boot tests. MI 2.5.6 boots green. Revisit GTCEu at 26.x migration. |
 | W5 Undercurrent magic | pending | |
 | W6 Dangerous world (MILESTONE) | pending | |
 | W7 Worldgen/structures | pending | |
@@ -63,9 +63,9 @@ Before any action:
 2. Read docs/HANDOFF.md (current state), docs/superpowers/specs/2026-08-07-afterlight-modpack-design.md (the approved design), and the roadmap table in docs/superpowers/plans/2026-08-07-afterlight-01-foundation.md.
 3. Read the SKILL.md of each skill in .agents/skills/. Before each piece of work, re-read the relevant skill and follow it (packwiz work: minecraft-modpack-authoring; mod lookups: modrinth-api; later phases: ftb-quests, kubejs-modding).
 
-Then produce docs/superpowers/plans/2026-08-08-afterlight-02-roster.md: a Plan 02 implementation plan in the same task/step format as Plan 01, covering (a) the three mandated hardening commits listed in docs/HANDOFF.md, then (b) the full mod roster built in category waves per spec section 5 with the wave pattern from docs/HANDOFF.md, then (c) config normalization and AlmostUnified setup. Respect the spec's taste calibration: Create moderate, magic compact, GregTech as optional Deep Vault, generous on wow-factor. Every wave ends with tools/verify-pack.sh ALL GREEN and a commit; server-test green before any merge to main.
+Then: docs/superpowers/plans/2026-08-08-afterlight-02-roster.md already exists and is partially executed. Find the first wave in docs/HANDOFF.md's live progress table that is not COMPLETE and execute it per the plan's Wave Pattern (including the lessons recorded in completed waves' notes: printf 'Y\n' piped into every packwiz add, exact-slug discipline, side checks). Update the live progress table after every wave. If instead all Plan 02 tasks are complete, write the next plan per the roadmap table in the Plan 01 document and present it for approval before executing.
 
-Present the plan to me for approval before executing anything. When you hit a genuine ambiguity, ask me one question at a time with a recommended option.
+Respect the spec's taste calibration: Create moderate, magic compact, GregTech as optional Deep Vault, generous on wow-factor. Every wave ends with tools/verify-pack.sh ALL GREEN and a commit; server-test green at MILESTONE waves and before any merge to main. When you hit a genuine ambiguity, ask me one question at a time with a recommended option.
 ```
 
 ## Continuation Prompt (paste to resume in later sessions)

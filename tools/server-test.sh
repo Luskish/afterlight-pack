@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Headless AFTERLIGHT server boot test. Pure JVM — no Docker required.
+# Headless AFTERLIGHT server boot test. Pure JVM, no Docker required.
 # Exit 0 = server booted to "Done". Nonzero = failure; see server-test/logs/.
 # Exit codes: 1 boot failed | 2 missing tool | 3 download failed | 4 port in use
 #             5 serve not ready | 6 NeoForge install failed | 7 pack install failed
@@ -25,7 +25,7 @@ BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
 SERVE_PORT=${SERVE_PORT:-8199}
 
 # 1) Serve the working-dir pack locally
-# Refuse to run if something already owns the port — otherwise packwiz stays alive
+# Refuse to run if something already owns the port. Otherwise packwiz stays alive
 # without binding and the installer would silently pull from the foreign server.
 # The guard and readiness poll need no scratch dir, so they run before the wipe:
 # an abort here leaves the previous run's logs intact for diagnosis.
@@ -44,6 +44,8 @@ done
 [ "$READY" -eq 1 ] || { echo "FAIL: packwiz serve not ready on port ${SERVE_PORT}"; exit 5; }
 
 rm -rf "$DIR" && mkdir -p "$DIR"
+AUDIT_NONCE="$(date +%s)-$$-${RANDOM}"
+printf '%s\n' "$AUDIT_NONCE" > "$DIR/afterlight-audit-nonce.txt"
 
 # 2) Install NeoForge server
 NEOFORGE_URL="https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/neoforge-${NEOFORGE_VERSION}-installer.jar"
@@ -53,6 +55,10 @@ curl -sfL -o "$DIR/neoforge-installer.jar" "$NEOFORGE_URL" || { echo "FAIL: down
 # 3) Install the pack's server side via packwiz-installer
 curl -sfL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL" || { echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"; exit 3; }
 (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1) || { echo "FAIL: packwiz-installer server side"; tail -30 "$DIR/packwiz-install.log"; exit 7; }
+AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+[ -f "$AUDIT_SCRIPT" ] || { echo "FAIL: generated quest item audit script missing"; exit 7; }
+awk -v nonce="$AUDIT_NONCE" '{ gsub(/__AFTERLIGHT_BOOT_NONCE__/, nonce); print }' "$AUDIT_SCRIPT" > "$AUDIT_SCRIPT.tmp"
+mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
 
 # 4) Boot headless with a watchdog, EULA accepted for local test only
 echo "eula=true" > "$DIR/eula.txt"
@@ -64,10 +70,15 @@ PROPS
 
 # 5) Verdict
 if grep -q 'Done (' "$DIR"/boot.log || grep -rq 'Done (' "$DIR"/logs/ 2>/dev/null; then
+  if ! grep -rhF " $AUDIT_NONCE" "$DIR"/logs/ 2>/dev/null | grep -qF '[AFTERLIGHT QUEST ITEM AUDIT] OK '; then
+    echo "SERVER BOOT: FAILED: quest item registry audit did not pass for this boot"
+    grep -rhF '[AFTERLIGHT QUEST ITEM AUDIT]' "$DIR"/logs/ 2>/dev/null || true
+    exit 8
+  fi
   echo "SERVER BOOT: OK"
   exit 0
 else
-  echo "SERVER BOOT: FAILED — tail of boot.log:"
+  echo "SERVER BOOT: FAILED: tail of boot.log:"
   tail -50 "$DIR/boot.log" || true
   exit 1
 fi

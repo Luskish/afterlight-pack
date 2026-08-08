@@ -599,10 +599,17 @@ def _quest_item_ids(quest_root: Path) -> tuple[str, ...]:
     return tuple(sorted(_item_references_from_parsed(_parsed_quest_files(quest_root))))
 
 
-def _mod_manifest_digest(repo_root: Path) -> str:
+def _registry_input_digest(repo_root: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted((repo_root / "mods").glob("*.pw.toml")):
-        digest.update(path.name.encode("utf-8"))
+    paths = [
+        *sorted((repo_root / "mods").glob("*.pw.toml")),
+        *sorted((repo_root / "kubejs" / "startup_scripts").rglob("*")),
+        *sorted((repo_root / "config").rglob("*")),
+    ]
+    for path in paths:
+        if not path.is_file():
+            continue
+        digest.update(path.relative_to(repo_root).as_posix().encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
@@ -614,8 +621,8 @@ def quest_item_audit_digest(quest_root: Path) -> str:
     payload = json.dumps(
         {
             "items": _quest_item_ids(quest_root),
-            "mod_manifests": _mod_manifest_digest(repo_root),
-            "version": 2,
+            "registry_inputs": _registry_input_digest(repo_root),
+            "version": 3,
         },
         separators=(",", ":"),
         sort_keys=True,
@@ -632,13 +639,14 @@ def _render_quest_item_audit(quest_root: Path) -> str:
         f"const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '{digest}'\n"
         f"const AFTERLIGHT_QUEST_ITEM_IDS = {rendered_ids}\n\n"
         "ServerEvents.loaded(() => {\n"
+        "  const bootNonce = '__AFTERLIGHT_BOOT_NONCE__'\n"
         "  const invalid = AFTERLIGHT_QUEST_ITEM_IDS.filter(id => !Item.exists(id))\n"
         "  if (invalid.length > 0) {\n"
         "    invalid.forEach(id => console.error(`[AFTERLIGHT QUEST ITEM AUDIT] INVALID ${id}`))\n"
-        "    console.error(`[AFTERLIGHT QUEST ITEM AUDIT] FAILED ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST}`)\n"
+        "    console.error(`[AFTERLIGHT QUEST ITEM AUDIT] FAILED ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${bootNonce}`)\n"
         "    return\n"
         "  }\n"
-        "  console.info(`[AFTERLIGHT QUEST ITEM AUDIT] OK ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${AFTERLIGHT_QUEST_ITEM_IDS.length}`)\n"
+        "  console.info(`[AFTERLIGHT QUEST ITEM AUDIT] OK ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${AFTERLIGHT_QUEST_ITEM_IDS.length} ${bootNonce}`)\n"
         "})\n"
     )
 
@@ -863,9 +871,33 @@ def validate_quests(
     if require_runtime_audit:
         item_ids = tuple(sorted(item_references))
         digest = quest_item_audit_digest(quest_root)
-        available_logs = [path for path in runtime_logs if path.is_file()]
-        success_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {len(item_ids)}"
-        failure_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest}"
+        repo_root = quest_root.parents[2]
+        audit_script = (
+            repo_root
+            / "kubejs"
+            / "server_scripts"
+            / "afterlight"
+            / "generated_quest_item_audit.js"
+        )
+        nonce_path = repo_root / "server-test" / "afterlight-audit-nonce.txt"
+        try:
+            boot_nonce = nonce_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            boot_nonce = ""
+        if not re.fullmatch(r"[A-Za-z0-9_.:-]+", boot_nonce):
+            errors.append(f"runtime item audit missing or stale: invalid boot nonce {nonce_path}")
+            boot_nonce = "missing"
+        available_logs = [
+            path
+            for path in runtime_logs
+            if path.is_file()
+            and audit_script.is_file()
+            and path.stat().st_mtime >= audit_script.stat().st_mtime
+        ]
+        success_marker = (
+            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {len(item_ids)} {boot_nonce}"
+        )
+        failure_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest} {boot_nonce}"
         failed_logs = [
             path
             for path in available_logs
@@ -876,20 +908,7 @@ def validate_quests(
             for path in available_logs
             if success_marker in path.read_text(encoding="utf-8")
         ]
-        audit_script = (
-            quest_root.parents[2]
-            / "kubejs"
-            / "server_scripts"
-            / "afterlight"
-            / "generated_quest_item_audit.js"
-        )
-        fresh_success = bool(
-            audit_script.is_file()
-            and any(
-                path.stat().st_mtime >= audit_script.stat().st_mtime
-                for path in successful_logs
-            )
-        )
+        fresh_success = bool(successful_logs)
         if failed_logs:
             invalid_pattern = re.compile(r"\[AFTERLIGHT QUEST ITEM AUDIT\] INVALID ([^\s]+)")
             invalid_items = sorted(

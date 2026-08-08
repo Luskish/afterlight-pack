@@ -87,6 +87,12 @@ class QuestCompilerTests(unittest.TestCase):
         with zipfile.ZipFile(mods_dir / "example.jar", "w") as jar:
             jar.writestr(f"assets/{namespace}/models/item/{path}.json", "{}")
 
+    def write_runtime_nonce(self, base: Path, nonce: str = "test-boot-nonce") -> str:
+        nonce_path = base / "server-test" / "afterlight-audit-nonce.txt"
+        nonce_path.parent.mkdir(parents=True, exist_ok=True)
+        nonce_path.write_text(f"{nonce}\n", encoding="utf-8")
+        return nonce
+
     def test_stable_id_uses_truncated_uppercase_sha256(self) -> None:
         expected = hashlib.sha256(b"quest:story/test/widget").hexdigest()[:16].upper()
         self.assertEqual(
@@ -178,10 +184,11 @@ class QuestCompilerTests(unittest.TestCase):
             runtime_log = base / "debug.log"
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
+            nonce = self.write_runtime_nonce(base)
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
                 f"[AFTERLIGHT QUEST ITEM AUDIT] INVALID example:widget\n"
-                f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest}\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest} {nonce}\n",
                 encoding="utf-8",
             )
 
@@ -201,6 +208,7 @@ class QuestCompilerTests(unittest.TestCase):
             runtime_log = base / "server.log"
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
+            nonce = self.write_runtime_nonce(base)
 
             missing_errors = self.quests.validate_quests(
                 quest_root,
@@ -214,7 +222,7 @@ class QuestCompilerTests(unittest.TestCase):
 
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 {nonce}\n",
                 encoding="utf-8",
             )
             self.assertEqual(
@@ -235,9 +243,10 @@ class QuestCompilerTests(unittest.TestCase):
             runtime_log = base / "server.log"
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
+            nonce = self.write_runtime_nonce(base)
             digest = self.quests.quest_item_audit_digest(quest_root)
             runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1\n",
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 {nonce}\n",
                 encoding="utf-8",
             )
             audit_script = (
@@ -258,7 +267,7 @@ class QuestCompilerTests(unittest.TestCase):
             )
             self.assertTrue(any("runtime item audit missing or stale" in error for error in errors))
 
-    def test_item_audit_digest_changes_with_mod_manifests(self) -> None:
+    def test_item_audit_digest_changes_with_registry_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
             quest_root = self.make_quest_root(base)
@@ -266,13 +275,47 @@ class QuestCompilerTests(unittest.TestCase):
             manifest_dir.mkdir()
             manifest = manifest_dir / "example.pw.toml"
             manifest.write_text('name = "One"\n', encoding="utf-8")
+            startup_script = base / "kubejs" / "startup_scripts" / "registry.js"
+            startup_script.parent.mkdir(parents=True)
+            startup_script.write_text("// one\n", encoding="utf-8")
+            config = base / "config" / "registry-options.toml"
+            config.write_text("enabled = true\n", encoding="utf-8")
             self.quests.write_catalog(self.make_catalog(), quest_root)
             first = self.quests.quest_item_audit_digest(quest_root)
 
             manifest.write_text('name = "Two"\n', encoding="utf-8")
             second = self.quests.quest_item_audit_digest(quest_root)
+            startup_script.write_text("// two\n", encoding="utf-8")
+            third = self.quests.quest_item_audit_digest(quest_root)
+            config.write_text("enabled = false\n", encoding="utf-8")
+            fourth = self.quests.quest_item_audit_digest(quest_root)
 
             self.assertNotEqual(first, second)
+            self.assertNotEqual(second, third)
+            self.assertNotEqual(third, fourth)
+
+    def test_runtime_item_audit_rejects_nonce_from_prior_boot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            runtime_log = base / "server.log"
+            self.make_mod_jar(mods_dir)
+            self.quests.write_catalog(self.make_catalog(), quest_root)
+            self.write_runtime_nonce(base, "current-boot")
+            digest = self.quests.quest_item_audit_digest(quest_root)
+            runtime_log.write_text(
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1 prior-boot\n",
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(
+                quest_root,
+                mods_dir,
+                runtime_logs=(runtime_log,),
+                require_runtime_audit=True,
+            )
+            self.assertTrue(any("runtime item audit missing or stale" in error for error in errors))
 
     def test_static_validator_allows_items_without_asset_namespaces(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -26,7 +26,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W4 Deep Vault (MILESTONE) | COMPLETE | 74 mods. ENGINE SWAP (Shane-approved, spec amended): Modern Industrialization replaces GTCEu. GTCEu 7.0.x crashes dedicated servers (client class on server dist); GTCEu 1.4.6 incompatible with Create 6 (IStressValueProvider removed). Both proven by boot tests. MI 2.5.6 boots green. Revisit GTCEu at 26.x migration. |
 | W5 Undercurrent magic | COMPLETE | 81 mods. 4 requested + legit deps: curios (W9 want), modonomicon (W12 want), smartbrainlib. All Modrinth-native. |
 | W6 Dangerous world (MILESTONE) | COMPLETE | 101 mods, boot OK. Slugs: l_enders-cataclysm (underscore), bosses-of-mass-destruction-forge. CF: alexs-mobs-1-21-1-port (+Citadel port dep). LESSON: Modrinth dep metadata MISSES some required libs; boot revealed irons_lib + lodestonelib missing (wave 5 gap, fixed here). Slug lodestone = a datapack, the lib is lodestonelib. Non-milestone waves rely on CI boot for this class of catch. |
-| W7 Worldgen/structures | pending | |
+| W7 Worldgen/structures | COMPLETE | 124 mods. IDAS slug is idas; it pulled Quark (W9 want, early), Supplementaries, Integrated API as required deps. All Modrinth-native. |
 | W8 Dimensions (MILESTONE) | pending | |
 | W9 Storage/QoL 2 | pending | |
 | W10 Food | pending | |

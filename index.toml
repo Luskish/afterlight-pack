@@ -49,6 +49,14 @@ file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"
 hash = "bef3020ef0c637a204e7d8fe761004da3e43bdef6e05646c5299d06caa58a279"
 
 [[files]]
+file = "global_packs/required_resources/afterlight_theme/ftbquests/ftb_quests_theme.txt"
+hash = "8a941cd5fd9a67054e514c03d58dd277d1d3f79d48a2385fed228b428f9bd7f4"
+
+[[files]]
+file = "global_packs/required_resources/afterlight_theme/pack.mcmeta"
+hash = "75920c94189e08d8413f6c9e929011b5e60aed9253954d3c1db5ad6d080f8a29"
+
+[[files]]
 file = "kubejs/assets/kubejs/lang/en_us.json"
 hash = "9b136b8861a5f128a5541c56f0d8a3cd2135a915d18e06c8a3a4344ffba0a245"
 

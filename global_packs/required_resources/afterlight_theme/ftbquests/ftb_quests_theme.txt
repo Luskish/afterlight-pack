@@ -1,0 +1,10 @@
+[*]
+background: color:#070D14
+quest_completed_color: #FF40DCD6
+quest_started_color: #FF9C60EB
+quest_not_started_color: #FF5A6B7A
+quest_cant_start_color: #FF2A333D
+dependency_line_completed_color: #FF40DCD6
+dependency_line_uncompleted_color: #FF33424F
+dependency_line_thickness: 1.5
+widget_border_color: #FF40DCD6

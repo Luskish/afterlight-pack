@@ -19,8 +19,8 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 
 | Task | Status | Notes |
 |---|---|---|
-| Task 0 hardening (3 commits) | pending | |
-| W1 Tech spine A | pending | |
+| Task 0 hardening (3 commits) | COMPLETE | .nojekyll live, Pages verified 200 post-deploy, CI hardened + packwiz pinned (dfd8b68) |
+| W1 Tech spine A | COMPLETE | 37 mods total. CF-sourced (Modrinth-absent): Applied Flux, ExtendedAE (file ex-pattern-provider.pw.toml), Glodium dep. LESSONS: pipe `printf 'Y\n'` into every `packwiz mr add` (dep prompts EOF-abort otherwise); slug extendedae on Modrinth is the WRONG mod (Plus addon). POLICY: CI no longer uploads pack artifacts (CF-sourced mods embed jars in mrpack overrides; friends-only). verify-pack check 1 now tests true refresh idempotence, works mid-wave. |
 | W2 Tech spine B (MILESTONE) | pending | |
 | W3 Create set | pending | |
 | W4 Deep Vault (MILESTONE) | pending | |

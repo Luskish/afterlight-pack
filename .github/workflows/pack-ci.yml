@@ -29,13 +29,11 @@ jobs:
         run: ./tools/export.sh
       - name: Headless server boot smoke test
         run: BOOT_TIMEOUT=600 ./tools/server-test.sh
-      # Metadata only. The CurseForge zip embeds mod jars and is friends-only
-      # (docs/INSTALL.md): never publish it from a public run page.
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: afterlight-dist
-          path: dist/*.mrpack
+      # No pack artifacts are uploaded: both export formats can embed
+      # third-party jars once CurseForge-sourced mods exist in the pack
+      # (docs/INSTALL.md marks them friends-only). The export step above
+      # still proves the pipeline works; Shane builds share-files locally
+      # with tools/export.sh.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

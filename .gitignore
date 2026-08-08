@@ -6,3 +6,5 @@ server-test/
 .packwiz-cache/
 .superpowers/
 dist/
+**/__pycache__/
+**/*.pyc

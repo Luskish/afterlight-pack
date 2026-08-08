@@ -1,6 +1,14 @@
 # AFTERLIGHT Handoff Guide
 
-For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-08, after Plan 02 waves 0-14 (167 mods on dev). Only Task 15 (configs + approved merge) remains in Plan 02.
+For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-08 by Codex during the final autonomous build. Codex is executing Plans 05-07 on `dev`; the three executable plan files now exist under `docs/superpowers/plans/`.
+
+## Active completion run (Codex)
+
+- Goal: finish all 20 story chapters, side groups, certifications, Gate finale, VPS package, v1.0 release, and full-project gauntlet.
+- Active plan: `docs/superpowers/plans/2026-08-08-afterlight-05-acts-ii-iii.md`.
+- Queued plans: `docs/superpowers/plans/2026-08-08-afterlight-06-finale.md` and `docs/superpowers/plans/2026-08-08-afterlight-07-launch.md`.
+- Current checkpoint before Plan 05 implementation: `dev` at `421e550`, clean tree before plan docs, 9 chapters and 56 quests, CI green.
+- Recovery instruction if interrupted: run `git status`, read this section and the three plan files, then resume at the first unchecked task. Do not rerun any retired `tools/gen-quests*.py` script.
 
 ## Current state (verified, not aspirational)
 

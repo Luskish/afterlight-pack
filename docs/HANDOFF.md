@@ -1,6 +1,6 @@
 # AFTERLIGHT Handoff Guide
 
-For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-08, immediately after Plan 01 merged.
+For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-08, after Plan 02 waves 0-14 (167 mods on dev). Only Task 15 (configs + approved merge) remains in Plan 02.
 
 ## Current state (verified, not aspirational)
 
@@ -33,7 +33,7 @@ The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roste
 | W11 Multiplayer | COMPLETE | 151 mods. FTB suite is CF-only: slugs ftb-teams-forge/ftb-chunks-forge/ftb-ranks-forge (+ftb-library-forge dep) but plain ftb-essentials. SVC + LuckPerms Modrinth-native. W10 note: mynethersdelight not on Modrinth 1.21.1, skipped per plan.
 | W12 Story/scripting (MILESTONE) | COMPLETE | 161 mods, boot OK. Slugs: almostunified (no hyphen), CF ftb-quests-forge + ftb-xmod-compat + immersive-messages-api; Global Packs CF slug is global-datapacks. Modonomicon was already in via W5. |
 | W13 Endgame + perf 2 | COMPLETE | 167 mods. Draconic Evolution via CF (beta, post-story gating comes in Plan 03). Perf adds correctly side=client. gpumemleakfix not found on CF under any slug: SKIPPED (minor, revisit). |
-| Task 14 verification sweep | pending | |
+| Task 14 verification sweep | COMPLETE | 167 mods: boot OK, verify-pack ALL GREEN, exports build (mrpack 90M with CF-sourced mods embedded in overrides, CF zip 662M: BOTH friends-only now), client-side audit clean (10 render/UI mods), 156 server jars. |
 | Task 15 configs + main merge | pending | needs Shane's explicit approval to merge |
 
 ## Plan 02 original scope notes

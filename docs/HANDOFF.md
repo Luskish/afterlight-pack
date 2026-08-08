@@ -9,6 +9,7 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Queued plans: `docs/superpowers/plans/2026-08-08-afterlight-06-finale.md` and `docs/superpowers/plans/2026-08-08-afterlight-07-launch.md`.
 - Current checkpoint before Plan 05 implementation: `dev` at `421e550`, clean tree before plan docs, 9 chapters and 56 quests, CI green.
 - Recovery instruction if interrupted: run `git status`, read this section and the three plan files, then resume at the first unchecked task. Do not rerun any retired `tools/gen-quests*.py` script.
+- Plan 07 audit correction: AutoModpack and empty-host recovery are mandatory; use one `/data` bind plus separate backups; never auto-restore a partially migrated world; pin packwiz-installer-bootstrap v0.0.3 and verify its SHA-256. Automated completion releases `0.9.0-rc1`; `1.0.0` waits for Shane's manual client, multiplayer, voice, AutoModpack, gameplay, and restore matrix.
 
 ## Current state (verified, not aspirational)
 

@@ -313,4 +313,41 @@
 		"This is how the Deep Vault pays: slower to start, heavier at the end. The pattern holds all the way down to machines I am still not cleared to describe."
 	]
 	chapter.6B2D7DB791D992C3.title: "The Deep Vault"
+	quest.DDBA48B322065E95.title: "Expedition Log"
+	quest.DDBA48B322065E95.quest_subtitle: "The world is larger than its wound."
+	quest.DDBA48B322065E95.quest_desc: [
+		"The Atlas wing records every realm the Cascade touched, twisted, or spared."
+		"Each expedition below is optional and none of them are safe. File your findings; I am rebuilding cartography from your footsteps."
+	]
+	quest.4B24516D89E13CFF.title: "The Twilight Bleed"
+	quest.4B24516D89E13CFF.quest_subtitle: "A forest where the Cascade pooled and stayed."
+	quest.4B24516D89E13CFF.quest_desc: [
+		"The Undercurrent saturated this forest until dusk became a permanent installation."
+		"My sensors describe it as beautiful. I have flagged the sensor for maintenance."
+	]
+	quest.87475C3BA1A4143F.title: "The Unbroken Sky"
+	quest.87475C3BA1A4143F.quest_subtitle: "The one place the Cascade never touched."
+	quest.87475C3BA1A4143F.quest_desc: [
+		"The Aether. Pre-Cascade records call it a myth; post-Cascade records call it the control group."
+		"Nothing up there remembers the catastrophe. Walk carefully. You are the only artifact of the broken world present."
+	]
+	quest.3196EE02D5C5B413.title: "The Undergarden"
+	quest.3196EE02D5C5B413.quest_subtitle: "What grows when nobody harvests."
+	quest.3196EE02D5C5B413.quest_desc: [
+		"Below bedrock's polite fiction there is a garden four centuries overgrown."
+		"The Ascendancy seeded it as a biosphere reserve. Nobody has pruned it since. Bring shears and low expectations of the local wildlife."
+	]
+	quest.A21D817C56D680CA.title: "The Otherside"
+	quest.A21D817C56D680CA.quest_subtitle: "Where the sculk comes from."
+	quest.A21D817C56D680CA.quest_desc: [
+		"The wardens did not evolve. They were manufactured, and the factory is still running on the Otherside."
+		"Go quietly. Some of the Ascendancy's mistakes have excellent hearing."
+	]
+	quest.5A355ED3DE01DF28.title: "Starlight"
+	quest.5A355ED3DE01DF28.quest_subtitle: "The realm the survivors fled toward."
+	quest.5A355ED3DE01DF28.quest_desc: [
+		"Eternal Starlight. The evacuation fleets aimed here first, a waypoint on the road to wherever they are now."
+		"If any of my kind survived the journey, their beacons would sing in this sky. Listen for me, will you?"
+	]
+	chapter.98EE962791DE93A5.title: "Expedition Log"
 }

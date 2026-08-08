@@ -1,0 +1,145 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "98EE962791DE93A5"
+	group: "C8F8381D9519D002"
+	icon: { id: "minecraft:recovery_compass" }
+	id: "98EE962791DE93A5"
+	images: [ ]
+	order_index: 0
+	quest_links: [ ]
+	quests: [
+		{
+			id: "DDBA48B322065E95"
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{ id: "A7F2072AD4B63240"
+				type: "checkmark" }
+			]
+			rewards: [
+				{ id: "C9948B66D16EE24C"
+				type: "item"
+				item: { count: 2, id: "kubejs:requisition_chit" }
+				count: 2 }
+			]
+		}
+		{
+			id: "4B24516D89E13CFF"
+			dependencies: ["DDBA48B322065E95"]
+			x: 2.0d
+			y: -2.0d
+			tasks: [
+				{ id: "AE42CD8C0B29F885"
+				type: "dimension"
+				dimension: "twilightforest:twilight_forest" }
+			]
+			rewards: [
+				{ id: "BF12F0B68E053E44"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "C1663D5FAC0A588C"
+				type: "item"
+				item: { count: 8, id: "kubejs:requisition_chit" }
+				count: 8 }
+				{ id: "D3D39A136B88F2B3"
+				type: "xp"
+				xp: 150 }
+			]
+		}
+		{
+			id: "87475C3BA1A4143F"
+			dependencies: ["DDBA48B322065E95"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{ id: "B5DD660AF2614978"
+				type: "dimension"
+				dimension: "aether:the_aether" }
+			]
+			rewards: [
+				{ id: "05C60E9F6E386535"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "4E641BC8C37563CE"
+				type: "item"
+				item: { count: 8, id: "kubejs:requisition_chit" }
+				count: 8 }
+				{ id: "D09DCE4980B61F13"
+				type: "xp"
+				xp: 150 }
+			]
+		}
+		{
+			id: "3196EE02D5C5B413"
+			dependencies: ["DDBA48B322065E95"]
+			x: 2.0d
+			y: 2.0d
+			tasks: [
+				{ id: "DB6E7E670BDA6B5F"
+				type: "dimension"
+				dimension: "undergarden:undergarden" }
+			]
+			rewards: [
+				{ id: "EC8274DB118370E2"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "9737A9EF9FB9552E"
+				type: "item"
+				item: { count: 8, id: "kubejs:requisition_chit" }
+				count: 8 }
+				{ id: "BD8279B722413B99"
+				type: "xp"
+				xp: 150 }
+			]
+		}
+		{
+			id: "A21D817C56D680CA"
+			dependencies: ["4B24516D89E13CFF", "87475C3BA1A4143F"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{ id: "522093042FC6D981"
+				type: "dimension"
+				dimension: "deeperdarker:otherside" }
+			]
+			rewards: [
+				{ id: "0EAE210FC0046035"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "A4E6A811B540BB47"
+				type: "item"
+				item: { count: 10, id: "kubejs:requisition_chit" }
+				count: 10 }
+				{ id: "7BE1503C9DAC0CED"
+				type: "xp"
+				xp: 200 }
+			]
+		}
+		{
+			id: "5A355ED3DE01DF28"
+			dependencies: ["87475C3BA1A4143F", "3196EE02D5C5B413"]
+			x: 4.0d
+			y: 1.0d
+			shape: "hexagon"
+			size: 1.3d
+			tasks: [
+				{ id: "9951FBD58D735290"
+				type: "dimension"
+				dimension: "eternal_starlight:starlight" }
+			]
+			rewards: [
+				{ id: "5858BAA5AF0481E6"
+				type: "loot"
+				table_id: 10622272618344871329L }
+				{ id: "4F800E8131CC7370"
+				type: "item"
+				item: { count: 10, id: "kubejs:requisition_chit" }
+				count: 10 }
+				{ id: "AE78970BF91AD754"
+				type: "xp"
+				xp: 200 }
+			]
+		}
+	]
+}

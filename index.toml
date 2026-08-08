@@ -33,6 +33,10 @@ file = "config/ftbquests/quests/chapters/6B2D7DB791D992C3.snbt"
 hash = "f96dc8ef270dccf18bc1f2d80fb73e554564b054244b532ed45e767dc980b9f1"
 
 [[files]]
+file = "config/ftbquests/quests/chapters/98EE962791DE93A5.snbt"
+hash = "aaeda6e7c2d8f44d27e218443aab79f708658ff4295cee8a087e14f7d305c686"
+
+[[files]]
 file = "config/ftbquests/quests/chapters/C5491A24F6B8C192.snbt"
 hash = "b05ec23e4f3490991c3b9e4f3327101a6dc02cc31f8b57d64cad2724f142938b"
 
@@ -54,7 +58,7 @@ hash = "b89f337f070343c37f7bd400f963e85e482205dece7700af8c5209924bdef18a"
 
 [[files]]
 file = "config/ftbquests/quests/lang/en_us.snbt"
-hash = "ba41022b05b6d94440a01782e26821a33176a0ebc923b7953f9080778a6b5136"
+hash = "39955b5981990ef526d8abd370a467fd499ba374c6366c43c97341a70fe4e8ad"
 
 [[files]]
 file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"

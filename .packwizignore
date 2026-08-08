@@ -14,3 +14,4 @@ server-test/**
 dist/**
 AGENTS.md
 CLAUDE.md
+.nojekyll

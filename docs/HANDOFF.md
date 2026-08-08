@@ -11,6 +11,10 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Friend-facing artifact `dist/AFTERLIGHT-prism-instance.zip` is built but NOT yet distribution-approved: Shane must first do one manual Prism import + launch (client-side boot has never been exercised; needs a Microsoft account).
 - The design spec, the completed Plan 01 (with the Plan 02-07 roadmap table), and six committed project skills in `.agents/skills/` are all in this repo.
 
+## Plan 04 status: CORE COMPLETE (2026-08-08)
+
+Plan doc: docs/superpowers/plans/2026-08-08-afterlight-04-quests-act1.md. The quest book EXISTS and boot-loads clean (FTB Quests: 6 chapter groups, 3 chapters, 22 quests, translations OK). Delivered: data.snbt (flexible progression), 5 chapter groups (Story, Certifications, Undercurrent, Deep Vault, Atlas), Chapter 1 "Cold Boot" (12 quests, full ECHO voice, memory fragment 01, chit economy live), Chapter 2 "Scavenger's Creed" opening (5 quests), Certification: Kinetics I (6 quests, bulk capstone pattern). Chapter ids: ch1 DB93C6934B230CFB, ch2 4C01977EF77930A6, kinetics 23643435F7BE74AC. tools/gen-quests.py was a ONE-SHOT generator: NEVER re-run it (fresh ids would orphan the committed files + lang); hand-edit the SNBT or use the in-game editor from here on. Remaining Plan 04+: Act I ch3-4, reward tables/loot crates, book theming resource pack, remaining Certifications.
+
 ## Plan 03 status: CORE COMPLETE (2026-08-08)
 
 Plan doc: docs/superpowers/plans/2026-08-08-afterlight-03-integration.md. Delivered and boot-verified (10 recipes added, 0 kubejs errors): custom items requisition_chit + ascendancy_seal (textures + lang included), Draconic entry recipes seal-gated (exact-copy replacements from jar JSONs), Create crushing + IE crusher accept Mekanism raw ores (osmium/uranium/lead/tin, conservative yields), chit loot injection into five structure chest tables. LESSONS: .withChance() dead on 1.21, use CreateItem.of(item, chance); IE recipes via event.custom with jar-extracted schema; mekanism has NO raw_fluorite. Remaining Plan 03 scope folded forward: MMR Gate multiblocks land with Plan 06 (their consumer), more bridges with Plan 05.

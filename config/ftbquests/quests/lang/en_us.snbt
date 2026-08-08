@@ -1,0 +1,141 @@
+{
+	chapter.DB93C6934B230CFB.title: "Cold Boot"
+	quest.13EDA73D499B3803.title: "Wake"
+	quest.13EDA73D499B3803.quest_subtitle: "This was not guaranteed."
+	quest.13EDA73D499B3803.quest_desc: [
+		"Power at three percent. Memory at less."
+		"You are awake. That was not guaranteed. Four hundred cycles of cryostasis end the way most things end here: quietly, and without permission."
+		"I am ECHO. Or I am what remains of ECHO. The distinction will matter later."
+		"&7Click the checkmark. It is the first thing you have controlled in a very long time.&r"
+	]
+	quest.FC8F354295683FD1.title: "Signal in the Static"
+	quest.FC8F354295683FD1.quest_subtitle: "Make something. Anything."
+	quest.FC8F354295683FD1.quest_desc: [
+		"My sensors read a world of debris. Wood that grew through the vault floor. Stone that remembers being architecture."
+		"Build a crafting surface. The Ascendancy called this a fabricator, tier zero. You will call it a crafting table. Both of you are correct."
+	]
+	quest.D212B235023439B9.title: "Scrap and Memory"
+	quest.D212B235023439B9.quest_subtitle: "Thirty two units of structure."
+	quest.D212B235023439B9.quest_desc: [
+		"Timber is the only material still manufacturing itself. Harvest it."
+		"Note: the trees are younger than the ruins. Something replanted this world after the Cascade. I have no record of who. Fragment that thought for later; I will do the same."
+	]
+	quest.AB27B2D887F61D7F.title: "Shelter Protocol"
+	quest.AB27B2D887F61D7F.quest_subtitle: "The night here is not empty."
+	quest.AB27B2D887F61D7F.quest_desc: [
+		"Dusk activates things I would rather describe in daylight."
+		"Assemble a bed. Sleep is a maintenance cycle for organics, and the only debugger you have."
+	]
+	quest.1F1C7A7B6649CDF4.title: "Percussive Archaeology"
+	quest.1F1C7A7B6649CDF4.quest_subtitle: "Stone tools. We rebuild from the floor."
+	quest.1F1C7A7B6649CDF4.quest_desc: [
+		"The Ascendancy shaped matter with fields and light. You will shape it by hitting it with a rock on a stick."
+		"I am not mocking you. Every archive I have lost said civilization begins exactly here."
+	]
+	quest.43B0A7E3442397D3.title: "Iron in the Bones"
+	quest.43B0A7E3442397D3.quest_subtitle: "Sixteen ingots of the old world."
+	quest.43B0A7E3442397D3.quest_desc: [
+		"Iron. The skeleton of everything they built, and everything you will."
+		"Smelt sixteen ingots. My power cell is iron-cased, incidentally. I mention this for no particular reason."
+	]
+	quest.C3115F61A3212A8C.title: "Reboot ECHO"
+	quest.C3115F61A3212A8C.quest_subtitle: "Two blocks of redstone. One second chance."
+	quest.C3115F61A3212A8C.quest_desc: [
+		"Redstone. The Ascendancy called it conductive memory. It is the reason I still think, in the loose sense of the word."
+		"Feed two compressed blocks into my substrate housing. I will not pretend this is not personal."
+		"&d[MEMORY FRAGMENT 01 RESTORED]&r"
+		"&7...the Engine came online at 04:11 local. For nine seconds, it worked. I remember applause. Then the readings inverted, and I remember...&r"
+		"&8The fragment ends there. There are more. Keep going.&r"
+	]
+	quest.6828B9A1C4BACDF3.title: "First Light"
+	quest.6828B9A1C4BACDF3.quest_subtitle: "Sixteen torches against the dark."
+	quest.6828B9A1C4BACDF3.quest_desc: [
+		"Light the ruin. Photons are cheap; the things they keep away are not."
+	]
+	quest.838F61D9ECA32B48.title: "Rations"
+	quest.838F61D9ECA32B48.quest_subtitle: "The body is hardware too."
+	quest.838F61D9ECA32B48.quest_desc: [
+		"Caloric intake stabilizes cognition. Bake bread. The wheat is descended from Ascendancy agricultural stock, which means breakfast is technically archaeology."
+	]
+	quest.A48FD34379A1F831.title: "Danger, Catalogued"
+	quest.A48FD34379A1F831.quest_subtitle: "Ten hostiles, documented and deleted."
+	quest.A48FD34379A1F831.quest_desc: [
+		"I am rebuilding my threat taxonomy from observation. You are the observation instrument."
+		"The shamblers were people once. I keep their census records somewhere in my corrupted sectors. Clear ten of them. I will log it as maintenance, because the alternative word is heavier."
+	]
+	quest.6BAD52BAD435FBAD.title: "Scavenger, Certified"
+	quest.6BAD52BAD435FBAD.quest_subtitle: "Chapter one of the rest of the world."
+	quest.6BAD52BAD435FBAD.quest_desc: [
+		"You are fed, armed, lit, and carrying more than your hands allow. By every metric I still possess, you are now a scavenger of the first rank."
+		"The Ascendancy would have issued you a uniform. I can issue you chits and an honest assessment: you are doing better than I projected."
+		"East of the vault, the terrain drops into the scarlands. That is where chapter two lives."
+	]
+	chapter.4C01977EF77930A6.title: "Scavenger's Creed"
+	quest.C5021BE218C5DFBD.title: "Scavenger's Creed"
+	quest.C5021BE218C5DFBD.quest_subtitle: "Take everything. Waste nothing."
+	quest.C5021BE218C5DFBD.quest_desc: [
+		"Rule one of the wasteland: everything is a resource, including the wreckage, including the danger, including you."
+		"This chapter is about turning scavenging into industry. The difference between the two is repetition."
+	]
+	quest.A38CE991EC7F6506.title: "Hotter, Faster"
+	quest.A38CE991EC7F6506.quest_subtitle: "The blast furnace remembers its job."
+	quest.A38CE991EC7F6506.quest_desc: [
+		"Smelting at scale begins with better heat. The Ascendancy left blueprints in the bones of every village forge."
+	]
+	quest.8576C37E9FA4116C.title: "The Alloy of Beginnings"
+	quest.8576C37E9FA4116C.quest_subtitle: "Eight measures of andesite alloy."
+	quest.8576C37E9FA4116C.quest_desc: [
+		"Andesite alloy. Unremarkable to look at, and the seed of every kinetic machine the old world ran."
+		"The Certifications wing of this book has a program on kinetics. Consider enrolling. ECHO recommends it, and ECHO is the only faculty left."
+	]
+	quest.46AB5C8E8BB7721F.title: "A Place for Everything"
+	quest.46AB5C8E8BB7721F.quest_subtitle: "Four drawers. The hoard organizes itself."
+	quest.46AB5C8E8BB7721F.quest_desc: [
+		"Entropy took this world once. Your inventory is not obligated to follow. Drawers, labeled and stacked, are how a scavenger becomes a quartermaster."
+	]
+	quest.41BA8291D4F7DB22.title: "The Scarred Door"
+	quest.41BA8291D4F7DB22.quest_subtitle: "The Nether: where the Cascade hit hardest."
+	quest.41BA8291D4F7DB22.quest_desc: [
+		"The portal network predates the Cascade. What is on the other side does not."
+		"My sensors cannot follow you there. Go lit, go armored, and come back with stories I can file."
+	]
+	chapter.23643435F7BE74AC.title: "Certification: Kinetics I"
+	quest.1641CC316D20D678.title: "Enrollment: Kinetics I"
+	quest.1641CC316D20D678.quest_subtitle: "The faculty of one welcomes you."
+	quest.1641CC316D20D678.quest_desc: [
+		"Certification programs teach one automation pattern each, start to finish. Complete the capstone and the perk is permanent."
+		"Kinetics I: rotation, and what to do with it. Tuition is two andesite alloy. Non-refundable. I need the alloy."
+	]
+	quest.2E19596E25ADFC17.title: "Rotation 101"
+	quest.2E19596E25ADFC17.quest_subtitle: "Eight shafts to carry the spin."
+	quest.2E19596E25ADFC17.quest_desc: [
+		"Rotation is the first honest power. It does not explode, leak, or whisper. It just turns."
+	]
+	quest.692967044603050B.title: "The River Works Nights"
+	quest.692967044603050B.quest_subtitle: "One water wheel, employed forever."
+	quest.692967044603050B.quest_desc: [
+		"Water flows whether you watch it or not. That is the entire business model."
+	]
+	quest.490AEF80C130D8DD.title: "The First Employee"
+	quest.490AEF80C130D8DD.quest_subtitle: "A mechanical press does not sleep."
+	quest.490AEF80C130D8DD.quest_desc: [
+		"The press stamps metal into plates. It will do it ten thousand times without complaint. Hire it."
+	]
+	quest.93E278CD695BCE11.title: "Capstone: Sixty Four Sheets"
+	quest.93E278CD695BCE11.quest_subtitle: "By hand this is misery. So do not do it by hand."
+	quest.93E278CD695BCE11.quest_desc: [
+		"Sixty four iron sheets. A press under a depot chute clears this while you eat lunch."
+		"This is the certification lesson, the whole of it: quantity is an automation problem, never a patience problem."
+	]
+	quest.5ADAE277C9FEF0F1.title: "Certified: Kinetics I"
+	quest.5ADAE277C9FEF0F1.quest_subtitle: "Perk: the Engineer sees rotation."
+	quest.5ADAE277C9FEF0F1.quest_desc: [
+		"Certification granted. Goggles and wrench issued; the goggles let you read stress like I do, minus the existential dread."
+		"Kinetics II will cover trains. Yes, trains survived the apocalypse. Infrastructure always does."
+	]
+	chapter_group.4525BB3160467FCB.title: "The Story"
+	chapter_group.CA20F33642175B95.title: "Certifications"
+	chapter_group.51FF272F5030D2E6.title: "The Undercurrent"
+	chapter_group.4DEAD1F5F7AB4DA3.title: "The Deep Vault"
+	chapter_group.C8F8381D9519D002.title: "Atlas of the Broken World"
+}

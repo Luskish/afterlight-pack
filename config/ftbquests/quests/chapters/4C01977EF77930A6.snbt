@@ -1,0 +1,107 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "4C01977EF77930A6"
+	group: "4525BB3160467FCB"
+	icon: { id: "create:andesite_alloy" }
+	id: "4C01977EF77930A6"
+	images: [ ]
+	order_index: 1
+	quest_links: [ ]
+	quests: [
+		{
+			id: "C5021BE218C5DFBD"
+			dependencies: ["6BAD52BAD435FBAD"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{ id: "76774DC92E0FB952"
+				type: "checkmark" }
+			]
+			rewards: [
+				{ id: "2205489801B59B2A"
+				type: "item"
+				item: { count: 3, id: "kubejs:requisition_chit" }
+				count: 3 }
+			]
+		}
+		{
+			id: "A38CE991EC7F6506"
+			dependencies: ["C5021BE218C5DFBD"]
+			x: 2.0d
+			y: -1.0d
+			tasks: [
+				{ id: "9C7A164BC8A03D2F"
+				type: "item"
+				item: { count: 1, id: "minecraft:blast_furnace" }
+				count: 1L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "BE137DF09B04A2CB"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "8576C37E9FA4116C"
+			dependencies: ["C5021BE218C5DFBD"]
+			x: 2.0d
+			y: 1.0d
+			tasks: [
+				{ id: "6732CF8019C03794"
+				type: "item"
+				item: { count: 1, id: "create:andesite_alloy" }
+				count: 8L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "0852CFBFD55A021B"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "46AB5C8E8BB7721F"
+			dependencies: ["A38CE991EC7F6506", "8576C37E9FA4116C"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{ id: "706892DCA1BDC0F3"
+				type: "item"
+				item: { count: 1, id: "functionalstorage:oak_1" }
+				count: 4L
+				consume_items: false }
+			]
+			rewards: [
+				{ id: "2B7F956920C3935E"
+				type: "item"
+				item: { count: 4, id: "kubejs:requisition_chit" }
+				count: 4 }
+			]
+		}
+		{
+			id: "41BA8291D4F7DB22"
+			dependencies: ["46AB5C8E8BB7721F"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{ id: "F935841D7E68E8DD"
+				type: "advancement"
+				advancement: "minecraft:story/enter_the_nether"
+				criterion: "" }
+			]
+			rewards: [
+				{ id: "7819D34A87051A79"
+				type: "item"
+				item: { count: 8, id: "kubejs:requisition_chit" }
+				count: 8 }
+				{ id: "F7D0DF38E7BCB06B"
+				type: "xp"
+				xp: 120 }
+			]
+		}
+	]
+}

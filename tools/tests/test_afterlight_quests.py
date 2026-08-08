@@ -225,6 +225,34 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertIn('"enderio:conduit": "enderio:item"', rendered)
         self.assertEqual(rendered.count('match_components: "fuzzy"'), 2)
 
+    def test_act_two_ae2_onramp_uses_complete_compatible_targets(self) -> None:
+        quests = {
+            quest.title: quest
+            for chapter in self.quests.build_catalog()
+            for quest in chapter.quests
+        }
+
+        press_task = quests["Lost Presses"].tasks[0]
+        self.assertEqual(
+            press_task.data["item"]["id"],
+            "ae2:logic_processor_press",
+        )
+
+        autocraft_targets = {
+            task.data["item"]["id"]
+            for task in quests["First Autocraft"].tasks
+        }
+        self.assertEqual(
+            autocraft_targets,
+            {
+                "ae2:pattern_encoding_terminal",
+                "ae2:crafting_pattern",
+                "ae2:pattern_provider",
+                "ae2:molecular_assembler",
+                "ae2:1k_crafting_storage",
+            },
+        )
+
     def test_catalog_collision_detection_rejects_reused_id(self) -> None:
         catalog = self.make_catalog()
         duplicate = self.quests.QuestSpec(

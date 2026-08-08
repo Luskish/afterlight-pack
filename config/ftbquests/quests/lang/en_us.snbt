@@ -372,7 +372,7 @@
 	quest.62C5B40CEEBFF926.title: "Lost Presses"
 	quest.62C5B40CEEBFF926.quest_subtitle: "One recovered pattern is enough to begin."
 	quest.62C5B40CEEBFF926.quest_desc: [
-		"Recover an Engineering Processor Press from a meteorite."
+		"Recover a Logic Processor Press from a meteorite."
 		"The task can verify the press, not the search. Bring your own caution underground."
 	]
 	quest.24BF26A27CA5F0FB.title: "Processor Line"
@@ -406,10 +406,11 @@
 		"A lattice should index useful storage before replacing it."
 	]
 	quest.95746440BEE5E5A7.title: "First Autocraft"
-	quest.95746440BEE5E5A7.quest_subtitle: "Encode the intent. Verify the pattern."
+	quest.95746440BEE5E5A7.quest_subtitle: "Encode the intent. Build the execution path."
 	quest.95746440BEE5E5A7.quest_desc: [
-		"Encode a Crafting Pattern. The quest can verify the pattern item, not a completed job."
-		"Run the job yourself. I will monitor the network for hesitation."
+		"Connect a Pattern Encoding Terminal, Pattern Provider, Molecular Assembler, and crafting storage."
+		"Encode a Crafting Pattern, request one job, then verify the result returns to network storage."
+		"The tasks verify the complete minimum setup. You must still prove the job runs."
 		"&d[MEMORY FRAGMENT 05 RESTORED]&r"
 		"&7...the evacuation archive was not lost. It was deleted in ordered blocks before the first civilian convoy departed. I executed the deletion. My authorization record contains no requesting officer...&r"
 	]

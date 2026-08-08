@@ -87,7 +87,7 @@
 				{
 					id: "DDFAF292FB8EE4FD"
 					type: "item"
-					item: { count: 1, id: "ae2:engineering_processor_press" }
+					item: { count: 1, id: "ae2:logic_processor_press" }
 					count: 1L
 					consume_items: false
 				}
@@ -223,9 +223,37 @@
 			y: 0.0d
 			tasks: [
 				{
+					id: "0FAF346D3C8054DE"
+					type: "item"
+					item: { count: 1, id: "ae2:pattern_encoding_terminal" }
+					count: 1L
+					consume_items: false
+				}
+				{
 					id: "12E04D712451E358"
 					type: "item"
 					item: { count: 1, id: "ae2:crafting_pattern" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "6669122A850255AE"
+					type: "item"
+					item: { count: 1, id: "ae2:pattern_provider" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "6C024A531C4FC87F"
+					type: "item"
+					item: { count: 1, id: "ae2:molecular_assembler" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "5D81ECA1539C9E51"
+					type: "item"
+					item: { count: 1, id: "ae2:1k_crafting_storage" }
 					count: 1L
 					consume_items: false
 				}

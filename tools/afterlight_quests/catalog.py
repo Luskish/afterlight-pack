@@ -167,9 +167,9 @@ def _chapter_six() -> ChapterSpec:
             "The Ascendancy called this material consensus. Engineers remain dramatic.",
         ), "ae2:fluix_crystal", 16, (charged,), 4.0, 0.0),
         _item_quest(presses, "Lost Presses", "One recovered pattern is enough to begin.", (
-            "Recover an Engineering Processor Press from a meteorite.",
+            "Recover a Logic Processor Press from a meteorite.",
             "The task can verify the press, not the search. Bring your own caution underground.",
-        ), "ae2:engineering_processor_press", 1, (fluix,), 6.0, -1.0),
+        ), "ae2:logic_processor_press", 1, (fluix,), 6.0, -1.0),
         _item_quest(processors, "Processor Line", "Silicon, calculation, repetition.", (
             "Produce eight Logic Processors and automate the sequence when practical.",
             "A processor line is slower than thought and considerably easier to repair.",
@@ -190,12 +190,69 @@ def _chapter_six() -> ChapterSpec:
             "Build two Storage Buses and attach existing inventories to the network.",
             "A lattice should index useful storage before replacing it.",
         ), "ae2:storage_bus", 2, (terminal,), 14.0, 0.0),
-        _item_quest(finale, "First Autocraft", "Encode the intent. Verify the pattern.", (
-            "Encode a Crafting Pattern. The quest can verify the pattern item, not a completed job.",
-            "Run the job yourself. I will monitor the network for hesitation.",
-            "&d[MEMORY FRAGMENT 05 RESTORED]&r",
-            "&7...the evacuation archive was not lost. It was deleted in ordered blocks before the first civilian convoy departed. I executed the deletion. My authorization record contains no requesting officer...&r",
-        ), "ae2:crafting_pattern", 1, (external,), 16.0, 0.0, finale=(12, 250)),
+        QuestSpec(
+            slug=finale,
+            title="First Autocraft",
+            subtitle="Encode the intent. Build the execution path.",
+            description=(
+                "Connect a Pattern Encoding Terminal, Pattern Provider, Molecular Assembler, and crafting storage.",
+                "Encode a Crafting Pattern, request one job, then verify the result returns to network storage.",
+                "The tasks verify the complete minimum setup. You must still prove the job runs.",
+                "&d[MEMORY FRAGMENT 05 RESTORED]&r",
+                "&7...the evacuation archive was not lost. It was deleted in ordered blocks before the first civilian convoy departed. I executed the deletion. My authorization record contains no requesting officer...&r",
+            ),
+            x=16.0,
+            y=0.0,
+            dependencies=(external,),
+            tasks=(
+                TaskSpec(
+                    f"{finale}/task/encoding-terminal",
+                    "item",
+                    {
+                        "item": {"count": 1, "id": "ae2:pattern_encoding_terminal"},
+                        "count": SnbtLong(1),
+                        "consume_items": False,
+                    },
+                ),
+                TaskSpec(
+                    f"{finale}/task",
+                    "item",
+                    {
+                        "item": {"count": 1, "id": "ae2:crafting_pattern"},
+                        "count": SnbtLong(1),
+                        "consume_items": False,
+                    },
+                ),
+                TaskSpec(
+                    f"{finale}/task/pattern-provider",
+                    "item",
+                    {
+                        "item": {"count": 1, "id": "ae2:pattern_provider"},
+                        "count": SnbtLong(1),
+                        "consume_items": False,
+                    },
+                ),
+                TaskSpec(
+                    f"{finale}/task/molecular-assembler",
+                    "item",
+                    {
+                        "item": {"count": 1, "id": "ae2:molecular_assembler"},
+                        "count": SnbtLong(1),
+                        "consume_items": False,
+                    },
+                ),
+                TaskSpec(
+                    f"{finale}/task/crafting-storage",
+                    "item",
+                    {
+                        "item": {"count": 1, "id": "ae2:1k_crafting_storage"},
+                        "count": SnbtLong(1),
+                        "consume_items": False,
+                    },
+                ),
+            ),
+            rewards=_finale_rewards(finale, 12, 250),
+        ),
     )
     return ChapterSpec("story/06-lattice", "The Lattice", STORY, "ae2:crafting_monitor", 5, quests)
 

@@ -98,7 +98,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "ec7f7378c65232885e8e3da45f3e75d79803fcc03bf5454bdefa4adb384501cd"
+hash = "4b2ce891f94d53fd4ea180fa0631f8ca4a5888c0b4e35205835512b7d2bbc956"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import os
 import sys
 import tempfile
 import unittest
@@ -226,6 +227,65 @@ class QuestCompilerTests(unittest.TestCase):
                 [],
             )
 
+    def test_runtime_item_audit_rejects_log_older_than_generated_script(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            runtime_log = base / "server.log"
+            self.make_mod_jar(mods_dir)
+            self.quests.write_catalog(self.make_catalog(), quest_root)
+            digest = self.quests.quest_item_audit_digest(quest_root)
+            runtime_log.write_text(
+                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 1\n",
+                encoding="utf-8",
+            )
+            audit_script = (
+                base
+                / "kubejs"
+                / "server_scripts"
+                / "afterlight"
+                / "generated_quest_item_audit.js"
+            )
+            stale_time = audit_script.stat().st_mtime - 1
+            os.utime(runtime_log, (stale_time, stale_time))
+
+            errors = self.quests.validate_quests(
+                quest_root,
+                mods_dir,
+                runtime_logs=(runtime_log,),
+                require_runtime_audit=True,
+            )
+            self.assertTrue(any("runtime item audit missing or stale" in error for error in errors))
+
+    def test_item_audit_digest_changes_with_mod_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            manifest_dir = base / "mods"
+            manifest_dir.mkdir()
+            manifest = manifest_dir / "example.pw.toml"
+            manifest.write_text('name = "One"\n', encoding="utf-8")
+            self.quests.write_catalog(self.make_catalog(), quest_root)
+            first = self.quests.quest_item_audit_digest(quest_root)
+
+            manifest.write_text('name = "Two"\n', encoding="utf-8")
+            second = self.quests.quest_item_audit_digest(quest_root)
+
+            self.assertNotEqual(first, second)
+
+    def test_static_validator_allows_items_without_asset_namespaces(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            mods_dir.mkdir()
+            with zipfile.ZipFile(mods_dir / "dynamic.jar", "w") as jar:
+                jar.writestr("META-INF/neoforge.mods.toml", 'modId="dynamic"')
+            self.quests.write_catalog(self.make_catalog("dynamic:widget"), quest_root)
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+
     def test_count_quests_reports_actual_corpus_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
@@ -256,8 +316,8 @@ class QuestCompilerTests(unittest.TestCase):
             "filename/id mismatch": lambda text, chapter, quest: text.replace(
                 f'filename: "{chapter.id}"', 'filename: "AAAAAAAAAAAAAAAA"', 1
             ),
-            "impossible item": lambda text, chapter, quest: text.replace(
-                "example:widget", "missing_namespace:widget"
+            "malformed item ID": lambda text, chapter, quest: text.replace(
+                "example:widget", "Example:missing"
             ),
         }
 
@@ -296,6 +356,26 @@ class QuestCompilerTests(unittest.TestCase):
             chapter_path.write_text(
                 chapter_path.read_text(encoding="utf-8").replace(
                     f'id: "{task_id}"', 'id: "minecraft:diamond"', 1
+                ),
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(any("malformed IDs" in error for error in errors), errors)
+
+    def test_validator_rejects_non_string_ftb_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            task_id = catalog[0].quests[0].tasks[0].id
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").replace(
+                    f'id: "{task_id}"', "id: true", 1
                 ),
                 encoding="utf-8",
             )

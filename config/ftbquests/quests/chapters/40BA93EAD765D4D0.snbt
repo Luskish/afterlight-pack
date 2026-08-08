@@ -1,0 +1,252 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "40BA93EAD765D4D0"
+	group: "4525BB3160467FCB"
+	icon: { id: "cataclysm:mechanical_fusion_anvil" }
+	id: "40BA93EAD765D4D0"
+	images: [ ]
+	order_index: 12
+	quest_links: [ ]
+	quests: [
+		{
+			id: "90EEBFB30F143EC4"
+			dependencies: ["90EDD2BED35BE9E3"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "E76D94C208934ECA"
+					type: "structure"
+					structure: "cataclysm:ancient_factory"
+				}
+			]
+			rewards: [
+				{
+					id: "F2BBF5D68A2F9818"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "C8D1106DDC9D0D99"
+			dependencies: ["90EEBFB30F143EC4"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "E233C562A1880881"
+					type: "kill"
+					entity: "cataclysm:the_harbinger"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "A27985B93CEFE311"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "482B645F95CC1449"
+			dependencies: ["C8D1106DDC9D0D99"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "C964D41FB3BFFCA4"
+					type: "structure"
+					structure: "cataclysm:ruined_citadel"
+				}
+			]
+			rewards: [
+				{
+					id: "99CD400A4AEE91EB"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "267BA957E6C1AF30"
+			dependencies: ["482B645F95CC1449"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "5AE54F7D0DE92BE1"
+					type: "kill"
+					entity: "cataclysm:ender_guardian"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "62FF828C558A7C23"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "37CF3CD515859095"
+			dependencies: ["267BA957E6C1AF30"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "B13A4A62C16DB103"
+					type: "structure"
+					structure: "cataclysm:burning_arena"
+				}
+			]
+			rewards: [
+				{
+					id: "F6390DEEC88BFFEA"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "C4BD93D936125186"
+			dependencies: ["37CF3CD515859095"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "51189DA3FDF6268D"
+					type: "kill"
+					entity: "cataclysm:ignis"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "60E286CCA5167CC4"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D6AAEF2C6A9BD0A8"
+			dependencies: ["C4BD93D936125186"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "4A9E457509103A83"
+					type: "structure"
+					structure: "cataclysm:sunken_city"
+				}
+			]
+			rewards: [
+				{
+					id: "59F797DC4F61B8CD"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "9004CDB0D6831EEF"
+			dependencies: ["D6AAEF2C6A9BD0A8"]
+			x: 14.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "9D1C273E81D07834"
+					type: "kill"
+					entity: "cataclysm:the_leviathan"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "30E899E867DD1C24"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "087DC45AFD4CCAF1"
+			dependencies: ["9004CDB0D6831EEF"]
+			x: 16.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "44EBC7B25E0DD2DB"
+					type: "item"
+					item: { count: 1, id: "cataclysm:ancient_metal_ingot" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "FA29D5BDE3BC903C"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "752C3E53CA89C92D"
+			dependencies: ["087DC45AFD4CCAF1"]
+			x: 18.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "B5F768005306A99C"
+					type: "item"
+					item: { count: 1, id: "cataclysm:mechanical_fusion_anvil" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "28218DE80E1F76D5"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "641B8FBDFE056262"
+					type: "item"
+					item: { count: 30, id: "kubejs:requisition_chit" }
+					count: 30
+				}
+				{
+					id: "2559CB92043E72FB"
+					type: "xp"
+					xp: 600
+				}
+				{
+					id: "78CEF6E361063789"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_industrial_anchor" }
+					count: 1
+				}
+				{
+					id: "80B8BCF753C06980"
+					type: "gamestage"
+					stage: "afterlight:gate_ie"
+				}
+			]
+		}
+	]
+}

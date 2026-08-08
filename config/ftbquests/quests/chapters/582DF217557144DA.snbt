@@ -1,0 +1,257 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "582DF217557144DA"
+	group: "4525BB3160467FCB"
+	icon: { id: "ae2:quantum_entangled_singularity" }
+	id: "582DF217557144DA"
+	images: [ ]
+	order_index: 14
+	quest_links: [ ]
+	quests: [
+		{
+			id: "D57DC7BACD462EFE"
+			dependencies: ["A1A99D99B372916F"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "BEA453ACE70727D9"
+					type: "item"
+					item: { count: 1, id: "oritech:exo_jetpack" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "85119726F772D973"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "6770D80A33AA7CC7"
+			dependencies: ["D57DC7BACD462EFE"]
+			x: 2.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "83005E62D7F11D57"
+					type: "advancement"
+					advancement: "aeronautics:head_in_the_clouds"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "53FF4B38051FDA05"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "98A7CD636003AFE5"
+			dependencies: ["6770D80A33AA7CC7"]
+			x: 4.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "41D050DA1DB40290"
+					type: "advancement"
+					advancement: "aeronautics:in_thrust_we_trust"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "6DD24D6BFB73F2D4"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "06029069587D765F"
+			dependencies: ["98A7CD636003AFE5"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "43441C97186D13C4"
+					type: "item"
+					item: { count: 1, id: "oritech:large_storage_block" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "F7275C7C262A9638"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F1DD8E9040C4CBA3"
+			dependencies: ["06029069587D765F"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "B9C69BF4D90908A2"
+					type: "item"
+					item: { count: 1, id: "oritech:jetpack_elytra" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "AF6A9F220ECAB382"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "A3C08FB037E35BDE"
+			dependencies: ["F1DD8E9040C4CBA3"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "7C3C9A0122D94D02"
+					type: "dimension"
+					dimension: "eternal_starlight:starlight"
+				}
+			]
+			rewards: [
+				{
+					id: "7D90B20E1D1A84B8"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F9B4A2CBDDE45176"
+			dependencies: ["A3C08FB037E35BDE"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "EFED0CC0D7A39EBC"
+					type: "structure"
+					structure: "eternal_starlight:golem_forge"
+				}
+			]
+			rewards: [
+				{
+					id: "DEADB9933E1C8573"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "793ED9746DE25AD2"
+			dependencies: ["F9B4A2CBDDE45176"]
+			x: 14.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "EDBDAAFA6ACB3BFC"
+					type: "kill"
+					entity: "eternal_starlight:the_gatekeeper"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "5F02C5EBA6F8C900"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "FDEA80315CFDE8AA"
+			dependencies: ["793ED9746DE25AD2"]
+			x: 16.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "185EA5D4E6B607F9"
+					type: "item"
+					item: { count: 1, id: "ae2:quantum_link" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "79B88E29C833FBB0"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "3497EFDF016FAFD7"
+			dependencies: ["FDEA80315CFDE8AA"]
+			x: 18.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "6ECA9C1D0167DC3B"
+					type: "item"
+					item: { count: 1, id: "ae2:quantum_entangled_singularity" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "018D14893F6DE0CF"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "CC50616E9D9FAE02"
+					type: "item"
+					item: { count: 34, id: "kubejs:requisition_chit" }
+					count: 34
+				}
+				{
+					id: "0CB91427A91877D9"
+					type: "xp"
+					xp: 800
+				}
+				{
+					id: "AA8880D7E6C0A05B"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_lattice_matrix" }
+					count: 1
+				}
+				{
+					id: "A88082985A62A22A"
+					type: "gamestage"
+					stage: "afterlight:gate_ae2"
+				}
+			]
+		}
+	]
+}

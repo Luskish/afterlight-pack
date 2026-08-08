@@ -104,7 +104,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_act_two_catalog_has_exact_shape_and_dependency_chain(self) -> None:
-        catalog = self.quests.build_catalog()
+        catalog = self.quests.build_catalog()[:6]
         expected_quests = [
             [
                 "Certus Resonance", "Charged Matter", "Fluix", "Lost Presses",
@@ -164,7 +164,7 @@ class QuestCompilerTests(unittest.TestCase):
             )
 
     def test_act_two_finales_have_memory_cache_chits_and_xp(self) -> None:
-        catalog = self.quests.build_catalog()
+        catalog = self.quests.build_catalog()[:6]
 
         for fragment, chapter in enumerate(catalog, start=5):
             finale = chapter.quests[-1]
@@ -200,7 +200,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_act_two_uses_proven_energy_and_conduit_task_shapes(self) -> None:
-        catalog = self.quests.build_catalog()
+        catalog = self.quests.build_catalog()[:6]
         quests = {
             quest.title: quest
             for chapter in catalog
@@ -228,7 +228,7 @@ class QuestCompilerTests(unittest.TestCase):
     def test_act_two_ae2_onramp_uses_complete_compatible_targets(self) -> None:
         quests = {
             quest.title: quest
-            for chapter in self.quests.build_catalog()
+            for chapter in self.quests.build_catalog()[:6]
             for quest in chapter.quests
         }
 
@@ -251,6 +251,184 @@ class QuestCompilerTests(unittest.TestCase):
                 "ae2:molecular_assembler",
                 "ae2:1k_crafting_storage",
             },
+        )
+
+    def test_act_three_catalog_has_exact_shape_chain_and_finale_ids(self) -> None:
+        catalog = self.quests.build_catalog()[6:]
+        expected_quests = [
+            [
+                "Machine Core", "Pulverization", "Centrifuge", "Assembly",
+                "Foundry", "Laser Processing", "Jetpack", "Reactor Frontier",
+                "Prometheum", "Kinetic Schematic",
+            ],
+            [
+                "Ancient Factory", "Harbinger", "Ruined Citadel",
+                "Ender Guardian", "Burning Arena", "Ignis", "Sunken City",
+                "Leviathan", "War Salvage", "Industry Schematic",
+            ],
+            [
+                "Fission Assembly", "Fissile Fuel", "Turbine", "Polonium",
+                "Plutonium", "SPS", "Antimatter", "100M FE Proof",
+                "Isotope Schematic",
+            ],
+            [
+                "Flight Harness", "Aeronautics Trial", "Propulsion",
+                "Mobile Storage", "High-Altitude Trial", "Starlight",
+                "Golem Forge", "Gatekeeper Signal", "Relay Core",
+                "Lattice Schematic",
+            ],
+            [
+                "Four Keys", "Mega Storage", "256K Crafting CPU",
+                "Assembler Matrix", "Fusion Controller",
+                "Certified Bulk Quotas", "Ancient Remnant", "Gate Blueprint",
+            ],
+        ]
+
+        self.assertEqual([chapter.title for chapter in catalog], [
+            "Frontier Machines",
+            "The War Below",
+            "Quantum Weather",
+            "The Long Sky",
+            "Architect",
+        ])
+        self.assertEqual([len(chapter.quests) for chapter in catalog], [10, 10, 9, 10, 8])
+        self.assertEqual(
+            [[quest.title for quest in chapter.quests] for chapter in catalog],
+            expected_quests,
+        )
+        self.assertEqual([chapter.order_index for chapter in catalog], [11, 12, 13, 14, 15])
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("836D1C6E20B78461",))
+        for previous, current in zip(catalog, catalog[1:]):
+            self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
+        self.assertEqual(
+            [chapter.quests[-1].id for chapter in catalog],
+            [
+                "90EDD2BED35BE9E3",
+                "752C3E53CA89C92D",
+                "A1A99D99B372916F",
+                "3497EFDF016FAFD7",
+                "72446D404001B38D",
+            ],
+        )
+
+    def test_act_three_finales_have_exact_memories_progression_and_stages(self) -> None:
+        catalog = self.quests.build_catalog()[6:]
+        progression = [
+            ("kubejs:schematic_kinetic_frame", "afterlight:gate_create"),
+            ("kubejs:schematic_industrial_anchor", "afterlight:gate_ie"),
+            ("kubejs:schematic_isotopic_core", "afterlight:gate_mekanism"),
+            ("kubejs:schematic_lattice_matrix", "afterlight:gate_ae2"),
+            ("kubejs:gate_blueprint", "afterlight_act3_complete"),
+        ]
+
+        for fragment, chapter, (item_id, stage) in zip(
+            range(11, 16), catalog, progression
+        ):
+            finale = chapter.quests[-1]
+            self.assertIn(
+                f"MEMORY FRAGMENT {fragment:02d} RESTORED",
+                "\n".join(finale.description),
+            )
+            self.assertEqual(
+                [reward.reward_type for reward in finale.rewards],
+                ["loot", "item", "xp", "item", "gamestage"],
+            )
+            self.assertEqual(finale.rewards[3].data["item"]["id"], item_id)
+            self.assertEqual(finale.rewards[4].data, {"stage": stage})
+
+        progression_ids = {
+            item_id for item_id, _stage in progression
+        }
+        rewarded_progression = [
+            reward.data["item"]["id"]
+            for chapter in catalog
+            for quest in chapter.quests
+            for reward in quest.rewards
+            if reward.reward_type == "item"
+            and reward.data.get("item", {}).get("id") in progression_ids
+        ]
+        self.assertCountEqual(rewarded_progression, progression_ids)
+
+    def test_act_three_uses_exact_special_task_shapes(self) -> None:
+        catalog = self.quests.build_catalog()[6:]
+        quests = {
+            quest.title: quest
+            for chapter in catalog
+            for quest in chapter.quests
+        }
+
+        self.assertEqual(
+            quests["100M FE Proof"].tasks[0].data,
+            {
+                "value": self.quests.SnbtLong(100_000_000),
+                "max_input": self.quests.SnbtLong(1_000_000),
+            },
+        )
+        self.assertEqual(
+            [task.data["advancement"] for task in quests["Aeronautics Trial"].tasks
+             + quests["Propulsion"].tasks],
+            ["aeronautics:head_in_the_clouds", "aeronautics:in_thrust_we_trust"],
+        )
+        self.assertEqual(quests["Starlight"].tasks[0].data, {
+            "dimension": "eternal_starlight:starlight",
+        })
+        self.assertEqual(quests["Golem Forge"].tasks[0].data, {
+            "structure": "eternal_starlight:golem_forge",
+        })
+        self.assertEqual(quests["Gatekeeper Signal"].tasks[0].data, {
+            "entity": "eternal_starlight:the_gatekeeper",
+            "value": self.quests.SnbtLong(1),
+        })
+        self.assertEqual(
+            [task.data["stage"] for task in quests["Four Keys"].tasks],
+            [
+                "afterlight:gate_create",
+                "afterlight:gate_ie",
+                "afterlight:gate_mekanism",
+                "afterlight:gate_ae2",
+            ],
+        )
+        self.assertTrue(all(
+            task.task_type == "gamestage" for task in quests["Four Keys"].tasks
+        ))
+        self.assertEqual(
+            [task.data["stage"] for task in quests["Certified Bulk Quotas"].tasks],
+            [
+                "afterlight_cert_kinetics_i",
+                "afterlight_cert_logistics_i",
+                "afterlight_cert_ore_loop_i",
+                "afterlight_cert_autocrafting_i",
+                "afterlight_cert_cross_mod_i",
+                "afterlight_cert_power_i",
+                "afterlight_cert_infrastructure_ii",
+            ],
+        )
+        gate_blueprint = quests["Gate Blueprint"]
+        self.assertEqual(len(gate_blueprint.tasks), 1)
+        self.assertEqual(gate_blueprint.tasks[0].task_type, "checkmark")
+        self.assertEqual(gate_blueprint.tasks[0].data, {})
+        self.assertFalse(any(
+            "draconicevolution:" in str(task.data)
+            for chapter in catalog
+            for quest in chapter.quests
+            for task in quest.tasks
+        ))
+        self.assertEqual(
+            (
+                len(self.quests.build_catalog()),
+                sum(len(chapter.quests) for chapter in self.quests.build_catalog()),
+                sum(
+                    len(quest.tasks)
+                    for chapter in self.quests.build_catalog()
+                    for quest in chapter.quests
+                ),
+                sum(
+                    len(quest.rewards)
+                    for chapter in self.quests.build_catalog()
+                    for quest in chapter.quests
+                ),
+            ),
+            (11, 104, 117, 137),
         )
 
     def test_catalog_collision_detection_rejects_reused_id(self) -> None:

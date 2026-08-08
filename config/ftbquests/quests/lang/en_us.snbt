@@ -711,4 +711,304 @@
 		"&d[MEMORY FRAGMENT 10 RESTORED]&r"
 		"&7...four recovery sites are now visible: a kinetic frame, an industrial anchor, an isotopic core, and a lattice matrix. Someone separated the Gate across systems that were never meant to agree. The Deep Vault key was left beside the coordinates...&r"
 	]
+	chapter.AD7CB8E643BDC03B.title: "Frontier Machines"
+	quest.EA0FBE1789BEFD37.title: "Machine Core"
+	quest.EA0FBE1789BEFD37.quest_subtitle: "Oritech begins where ordinary frames stop."
+	quest.EA0FBE1789BEFD37.quest_desc: [
+		"Produce four Machine Cores. They anchor Oritech's first processing blocks."
+		"A frontier is simply a factory whose maintenance manual has not arrived yet."
+	]
+	quest.9722A64B05E8F748.title: "Pulverization"
+	quest.9722A64B05E8F748.quest_subtitle: "Reduce material before asking it to change."
+	quest.9722A64B05E8F748.quest_desc: [
+		"Build an Oritech Pulverizer and give its output a dedicated buffer."
+		"Grinding is simple. Preventing mixed output from becoming geology again is not."
+	]
+	quest.D3D1A5F68323B089.title: "Centrifuge"
+	quest.D3D1A5F68323B089.quest_subtitle: "Separation rewards controlled imbalance."
+	quest.D3D1A5F68323B089.quest_desc: [
+		"Build an Oritech Centrifuge and process one recipe from input to output."
+		"The task verifies the machine. Stable speed and clean routing remain yours to prove."
+	]
+	quest.2D3E39C0E15785D1.title: "Assembly"
+	quest.2D3E39C0E15785D1.quest_subtitle: "Parts become systems by repeatable placement."
+	quest.2D3E39C0E15785D1.quest_desc: [
+		"Build an Oritech Assembler and connect it to the processing line."
+		"Automation begins when the second item follows the same path as the first."
+	]
+	quest.EE83735A4CE6877B.title: "Foundry"
+	quest.EE83735A4CE6877B.quest_subtitle: "Heat is useful when given boundaries."
+	quest.EE83735A4CE6877B.quest_desc: [
+		"Build an Oritech Foundry and provide isolated input and output storage."
+		"The quest detects the block, not your heat policy. Keep one anyway."
+	]
+	quest.035F257B1640AD1D.title: "Laser Processing"
+	quest.035F257B1640AD1D.quest_subtitle: "Precision by concentrated inconvenience."
+	quest.035F257B1640AD1D.quest_desc: [
+		"Build a Laser Arm and reserve safe clearance around its work area."
+		"A beam does not become intelligent because its target was correct once."
+	]
+	quest.761A07B7BE2502DE.title: "Jetpack"
+	quest.761A07B7BE2502DE.quest_subtitle: "Vertical access changes every maintenance route."
+	quest.761A07B7BE2502DE.quest_desc: [
+		"Build an Oritech Jetpack and test its charge, control, and safe descent."
+		"Possession is detectable. Landing with dignity is not."
+	]
+	quest.4B68E6373A038832.title: "Reactor Frontier"
+	quest.4B68E6373A038832.quest_subtitle: "Compact power deserves expanded caution."
+	quest.4B68E6373A038832.quest_desc: [
+		"Build an Oritech Reactor Controller and inspect the complete reactor layout before startup."
+		"The controller proves access to the system. It does not prove the system is safe."
+	]
+	quest.5D88D33506B63870.title: "Prometheum"
+	quest.5D88D33506B63870.quest_subtitle: "A metal named for theft. Reassuring."
+	quest.5D88D33506B63870.quest_desc: [
+		"Produce sixteen Prometheum Ingots through the reactor-era processing chain."
+		"The recovered schematic checksum recognizes this alloy as its final material proof."
+	]
+	quest.90EDD2BED35BE9E3.title: "Kinetic Schematic"
+	quest.90EDD2BED35BE9E3.quest_subtitle: "The first Gate key was hidden inside computation."
+	quest.90EDD2BED35BE9E3.quest_desc: [
+		"Build an Advanced Computing Engine to decrypt the kinetic frame schematic."
+		"The item proves the required Oritech tier. The schematic is the actual Gate recipe lock."
+		"&d[MEMORY FRAGMENT 11 RESTORED]&r"
+		"&7...the four schematics were separated by design. No single division could assemble the Gate. My archive calls this mutual assurance. The casualty model calls it delay...&r"
+	]
+	chapter.40BA93EAD765D4D0.title: "The War Below"
+	quest.90EEBFB30F143EC4.title: "Ancient Factory"
+	quest.90EEBFB30F143EC4.quest_subtitle: "The machinery below is still defended."
+	quest.90EEBFB30F143EC4.quest_desc: [
+		"Locate the Ancient Factory. Bring repair supplies and a route home."
+		"Structure detection proves arrival, not survival. I recommend both."
+	]
+	quest.C8D1106DDC9D0D99.title: "Harbinger"
+	quest.C8D1106DDC9D0D99.quest_subtitle: "The factory's alarm learned to walk."
+	quest.C8D1106DDC9D0D99.quest_desc: [
+		"Defeat the Harbinger and inspect the arena before collecting salvage."
+		"Its attack cycle is information. Treat the first attempt as research."
+	]
+	quest.482B645F95CC1449.title: "Ruined Citadel"
+	quest.482B645F95CC1449.quest_subtitle: "A fortress built around one refusal."
+	quest.482B645F95CC1449.quest_desc: [
+		"Locate the Ruined Citadel and establish a recoverable approach."
+		"Ancient architecture is not consent to enter. It is merely difficult to ask."
+	]
+	quest.267BA957E6C1AF30.title: "Ender Guardian"
+	quest.267BA957E6C1AF30.quest_subtitle: "Stone, void, and practiced hostility."
+	quest.267BA957E6C1AF30.quest_desc: [
+		"Defeat the Ender Guardian. Use cover and respect the arena's vertical hazards."
+		"The schematic signal is stronger beneath its chamber."
+	]
+	quest.37CF3CD515859095.title: "Burning Arena"
+	quest.37CF3CD515859095.quest_subtitle: "Heat without industry is only weather."
+	quest.37CF3CD515859095.quest_desc: [
+		"Locate the Burning Arena and prepare fire resistance before engagement."
+		"The structure task verifies the threshold. It does not verify your supplies."
+	]
+	quest.C4BD93D936125186.title: "Ignis"
+	quest.C4BD93D936125186.quest_subtitle: "The furnace has a name and a sword."
+	quest.C4BD93D936125186.quest_desc: [
+		"Defeat Ignis. Observe the shield windows rather than forcing every opening."
+		"Efficiency includes knowing when not to attack."
+	]
+	quest.D6AAEF2C6A9BD0A8.title: "Sunken City"
+	quest.D6AAEF2C6A9BD0A8.quest_subtitle: "Pressure returns, now with architecture."
+	quest.D6AAEF2C6A9BD0A8.quest_desc: [
+		"Locate the Sunken City and mark an air-safe retreat path."
+		"The signal descends past the point where ordinary logistics remain convenient."
+	]
+	quest.9004CDB0D6831EEF.title: "Leviathan"
+	quest.9004CDB0D6831EEF.quest_subtitle: "The sea kept one of the old weapons."
+	quest.9004CDB0D6831EEF.quest_desc: [
+		"Defeat the Leviathan. Prepare for a fight where distance changes quickly."
+		"I can count the victory. I cannot retrieve your dropped equipment."
+	]
+	quest.087DC45AFD4CCAF1.title: "War Salvage"
+	quest.087DC45AFD4CCAF1.quest_subtitle: "Sixteen ingots survived their intended machine."
+	quest.087DC45AFD4CCAF1.quest_desc: [
+		"Recover sixteen Ancient Metal Ingots from Cataclysm's war sites."
+		"The alloy matches an Ascendancy industrial anchor specification."
+	]
+	quest.752C3E53CA89C92D.title: "Industry Schematic"
+	quest.752C3E53CA89C92D.quest_subtitle: "Fusion by impact. The old engineers lacked subtlety."
+	quest.752C3E53CA89C92D.quest_desc: [
+		"Build a Mechanical Fusion Anvil to decrypt the industrial anchor schematic."
+		"The anvil proves the recovered war industry tier. The schematic remains the recipe lock."
+		"&d[MEMORY FRAGMENT 12 RESTORED]&r"
+		"&7...the defense complexes were not protecting cities. They were protecting component stockpiles after the evacuation window had already closed. The machines followed their final orders perfectly...&r"
+	]
+	chapter.2FD06A1068D554E9.title: "Quantum Weather"
+	quest.19D5F09EADF78A32.title: "Fission Assembly"
+	quest.19D5F09EADF78A32.quest_subtitle: "Eight fuel columns begin a serious conversation."
+	quest.19D5F09EADF78A32.quest_desc: [
+		"Produce eight Fission Fuel Assemblies and design the reactor around safe access."
+		"Blocks are detectable. Cooling, containment, and judgment are not."
+	]
+	quest.BDC6929C3FE6C5A9.title: "Fissile Fuel"
+	quest.BDC6929C3FE6C5A9.quest_subtitle: "The chemical has no item form, so prove its machine."
+	quest.BDC6929C3FE6C5A9.quest_desc: [
+		"Build an Isotopic Centrifuge and establish the fissile fuel production path."
+		"FTB Quests cannot count the chemical directly. Running the line is your proof."
+	]
+	quest.F0D13539A75B7155.title: "Turbine"
+	quest.F0D13539A75B7155.quest_subtitle: "Waste heat should leave with useful work."
+	quest.F0D13539A75B7155.quest_desc: [
+		"Produce sixteen Turbine Casings and complete a turbine sized for the reactor."
+		"The task sees casing inventory, not multiblock formation or throughput."
+	]
+	quest.A6595C38412E0EB1.title: "Polonium"
+	quest.A6595C38412E0EB1.quest_subtitle: "Radiation made portable. Handle accordingly."
+	quest.A6595C38412E0EB1.quest_desc: [
+		"Produce eight Polonium Pellets through a contained nuclear chain."
+		"Keep waste handling independent from production convenience."
+	]
+	quest.22DDADBA060FC424.title: "Plutonium"
+	quest.22DDADBA060FC424.quest_subtitle: "A second isotope, not a second chance."
+	quest.22DDADBA060FC424.quest_desc: [
+		"Produce eight Plutonium Pellets and verify every waste buffer."
+		"Redundant containment is cheaper than an interesting landscape."
+	]
+	quest.C777D3E308D1D0FA.title: "SPS"
+	quest.C777D3E308D1D0FA.quest_subtitle: "Matter waits behind a very expensive acronym."
+	quest.C777D3E308D1D0FA.quest_desc: [
+		"Produce sixteen SPS Casings and form the Supercritical Phase Shifter."
+		"The quest verifies casing stock. Formation and rate remain live tests."
+	]
+	quest.A79459F43198BC50.title: "Antimatter"
+	quest.A79459F43198BC50.quest_subtitle: "One pellet contains an unreasonable amount of consequence."
+	quest.A79459F43198BC50.quest_desc: [
+		"Produce one Antimatter Pellet through the completed SPS chain."
+		"Store it where accidental crafting cannot become a design review."
+	]
+	quest.3C61013D8F8A10C5.title: "100M FE Proof"
+	quest.3C61013D8F8A10C5.quest_subtitle: "Submit one hundred million FE under a bounded input rate."
+	quest.3C61013D8F8A10C5.quest_desc: [
+		"Submit one hundred million FE at no more than 1,000,000 FE per transfer."
+		"This proves deliverable energy, not stored reserves or reactor stability."
+	]
+	quest.A1A99D99B372916F.title: "Isotope Schematic"
+	quest.A1A99D99B372916F.quest_subtitle: "The third key resolves under antimatter-era computation."
+	quest.A1A99D99B372916F.quest_desc: [
+		"Build an Antiprotonic Nucleosynthesizer to decrypt the isotopic core schematic."
+		"The machine proves the tier. Safe operation remains outside this task's reach."
+		"&d[MEMORY FRAGMENT 13 RESTORED]&r"
+		"&7...the Cascade was not a reactor failure. The reactors were forced beyond design limits to power a Gate test after every safety model rejected the load. I signed the override because my threat forecast ranked delay as worse...&r"
+	]
+	chapter.582DF217557144DA.title: "The Long Sky"
+	quest.D57DC7BACD462EFE.title: "Flight Harness"
+	quest.D57DC7BACD462EFE.quest_subtitle: "Leave the ground with a controlled return plan."
+	quest.D57DC7BACD462EFE.quest_desc: [
+		"Build an Exo Jetpack and test its charge cycle before crossing open terrain."
+		"Flight converts walls into floors and falls into scheduling problems."
+	]
+	quest.6770D80A33AA7CC7.title: "Aeronautics Trial"
+	quest.6770D80A33AA7CC7.quest_subtitle: "Prove lift with a machine larger than yourself."
+	quest.6770D80A33AA7CC7.quest_desc: [
+		"Complete Aeronautics' Head in the Clouds advancement by building a working balloon craft."
+		"The advancement proves the mechanic directly. Keep the first landing uncomplicated."
+	]
+	quest.98A7CD636003AFE5.title: "Propulsion"
+	quest.98A7CD636003AFE5.quest_subtitle: "Lift is access. Thrust is intent."
+	quest.98A7CD636003AFE5.quest_desc: [
+		"Complete Aeronautics' In Thrust We Trust advancement with powered propulsion."
+		"A craft that can move should also be able to stop near where you intended."
+	]
+	quest.06029069587D765F.title: "Mobile Storage"
+	quest.06029069587D765F.quest_subtitle: "Cargo changes flight from spectacle to infrastructure."
+	quest.06029069587D765F.quest_desc: [
+		"Build an Oritech Large Storage Block for mobile expedition supplies."
+		"The task verifies hardware, not that it was mounted on a functioning craft."
+	]
+	quest.F1DD8E9040C4CBA3.title: "High-Altitude Trial"
+	quest.F1DD8E9040C4CBA3.quest_subtitle: "Use a stable proxy where altitude is not headlessly measurable."
+	quest.F1DD8E9040C4CBA3.quest_desc: [
+		"Build an Oritech Jetpack Elytra and complete a controlled high-altitude flight."
+		"The item is the durable task proxy. Your flight log is the operational proof."
+	]
+	quest.A3C08FB037E35BDE.title: "Starlight"
+	quest.A3C08FB037E35BDE.quest_subtitle: "The sky continues through another boundary."
+	quest.A3C08FB037E35BDE.quest_desc: [
+		"Enter the Eternal Starlight dimension and establish a marked return point."
+		"Dimension detection confirms arrival. It does not guarantee the portal remains convenient."
+	]
+	quest.F9B4A2CBDDE45176.title: "Golem Forge"
+	quest.F9B4A2CBDDE45176.quest_subtitle: "A foundry built for hands larger than ours."
+	quest.F9B4A2CBDDE45176.quest_desc: [
+		"Locate the Golem Forge and secure the route before entering its center."
+		"The lattice signal is reflected through the structure's old machinery."
+	]
+	quest.793ED9746DE25AD2.title: "Gatekeeper Signal"
+	quest.793ED9746DE25AD2.quest_subtitle: "The relay has appointed its own custodian."
+	quest.793ED9746DE25AD2.quest_desc: [
+		"Defeat the Gatekeeper and isolate the signal source beneath the forge."
+		"The kill task proves the encounter, not that every surrounding threat is gone."
+	]
+	quest.FDEA80315CFDE8AA.title: "Relay Core"
+	quest.FDEA80315CFDE8AA.quest_subtitle: "Entanglement gives distance fewer excuses."
+	quest.FDEA80315CFDE8AA.quest_desc: [
+		"Build an ME Quantum Link as the recovered relay's network core."
+		"Keep both ends powered. A quantum bridge can still fail for ordinary reasons."
+	]
+	quest.3497EFDF016FAFD7.title: "Lattice Schematic"
+	quest.3497EFDF016FAFD7.quest_subtitle: "Two singularities agree on one final key."
+	quest.3497EFDF016FAFD7.quest_desc: [
+		"Produce a Quantum Entangled Singularity to decrypt the lattice matrix schematic."
+		"The item proves the AE2 tier. The schematic remains the physical recipe lock."
+		"&d[MEMORY FRAGMENT 14 RESTORED]&r"
+		"&7...the first Gate opened for eleven seconds. The transit log shows no outbound mass. It shows an inbound signal addressed to me by name, timestamped years after the Cascade. I concealed the result...&r"
+	]
+	chapter.C402713763771CFA.title: "Architect"
+	quest.F1B2919DF12C6845.title: "Four Keys"
+	quest.F1B2919DF12C6845.quest_subtitle: "Possession is insufficient. Recovery must be recorded."
+	quest.F1B2919DF12C6845.quest_desc: [
+		"Complete all four schematic recoveries and claim their progression stages."
+		"The stages prove the recovery chain. Keep the physical schematics for Gate crafting."
+	]
+	quest.D4A6AF60824B79F1.title: "Mega Storage"
+	quest.D4A6AF60824B79F1.quest_subtitle: "Four cells make capacity visible."
+	quest.D4A6AF60824B79F1.quest_desc: [
+		"Build four 256K Item Storage Cells and distribute them across protected drives."
+		"Capacity is not redundancy. Back up what cannot be reconstructed."
+	]
+	quest.D08AB7065AFAC232.title: "256K Crafting CPU"
+	quest.D08AB7065AFAC232.quest_subtitle: "Large jobs need somewhere to become unfinished."
+	quest.D08AB7065AFAC232.quest_desc: [
+		"Build one 256K Crafting Storage block for the Gate component job queue."
+		"Crafting memory is working space, not permanent storage."
+	]
+	quest.8CE6F6160F721A8A.title: "Assembler Matrix"
+	quest.8CE6F6160F721A8A.quest_subtitle: "Sixteen workers, one explicit pattern set."
+	quest.8CE6F6160F721A8A.quest_desc: [
+		"Build sixteen Molecular Assemblers and connect a balanced autocrafting matrix."
+		"The task sees assemblers. Channel balance and pattern placement remain your proof."
+	]
+	quest.98EABED18B5B2ECF.title: "Fusion Controller"
+	quest.98EABED18B5B2ECF.quest_subtitle: "Power for the Gate should not borrow from survival systems."
+	quest.98EABED18B5B2ECF.quest_desc: [
+		"Build a Fusion Reactor Controller and reserve a separate Gate power path."
+		"The controller proves access. A formed, fueled, stable reactor is still required."
+	]
+	quest.AD6ACF1CCBC7B4F2.title: "Certified Bulk Quotas"
+	quest.AD6ACF1CCBC7B4F2.quest_subtitle: "Seven systems must work before one system may trust them."
+	quest.AD6ACF1CCBC7B4F2.quest_desc: [
+		"Complete all seven automation certification capstones."
+		"These stages prove the certification quests, not your current inventory quantities."
+		"If a line cannot recover from a full output, it is not ready for Gate duty."
+	]
+	quest.D97DA51D265858DD.title: "Ancient Remnant"
+	quest.D97DA51D265858DD.quest_subtitle: "One guardian remains between proof and plan."
+	quest.D97DA51D265858DD.quest_desc: [
+		"Defeat the Ancient Remnant after the automation certifications are complete."
+		"Bring a tested loadout. Certification does not make sandstone less violent."
+	]
+	quest.72446D404001B38D.title: "Gate Blueprint"
+	quest.72446D404001B38D.quest_subtitle: "Four schematics resolve into one construction contract."
+	quest.72446D404001B38D.quest_desc: [
+		"Confirm that the four recovered schematics are secured and the automation certifications are complete."
+		"I can now compile their shared constraints into the Gate Blueprint. A checkmark records your readiness."
+		"The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20."
+		"The Deep Vault and Undercurrent still contain the components this plan cannot replace."
+		"&d[MEMORY FRAGMENT 15 RESTORED]&r"
+		"&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
+	]
 }

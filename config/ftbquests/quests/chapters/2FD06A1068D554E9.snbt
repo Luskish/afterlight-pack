@@ -1,0 +1,240 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "2FD06A1068D554E9"
+	group: "4525BB3160467FCB"
+	icon: { id: "mekanism:pellet_antimatter" }
+	id: "2FD06A1068D554E9"
+	images: [ ]
+	order_index: 13
+	quest_links: [ ]
+	quests: [
+		{
+			id: "19D5F09EADF78A32"
+			dependencies: ["752C3E53CA89C92D"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "0021A844D74BF4C8"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:fission_fuel_assembly" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "416F217E75FD7A78"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "BDC6929C3FE6C5A9"
+			dependencies: ["19D5F09EADF78A32"]
+			x: 2.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "A8CD14A24ACC2205"
+					type: "item"
+					item: { count: 1, id: "mekanism:isotopic_centrifuge" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6C29990F467050EF"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "F0D13539A75B7155"
+			dependencies: ["19D5F09EADF78A32"]
+			x: 2.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "4F033D9A92013B09"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:turbine_casing" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "AE3C56AB3BB47DF8"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "A6595C38412E0EB1"
+			dependencies: ["BDC6929C3FE6C5A9"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "6541783226B9AF4F"
+					type: "item"
+					item: { count: 1, id: "mekanism:pellet_polonium" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "9AD9829A1555C084"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "22DDADBA060FC424"
+			dependencies: ["BDC6929C3FE6C5A9"]
+			x: 4.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "78A80A386E538375"
+					type: "item"
+					item: { count: 1, id: "mekanism:pellet_plutonium" }
+					count: 8L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "2A9429A2E4495C30"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "C777D3E308D1D0FA"
+			dependencies: ["A6595C38412E0EB1", "22DDADBA060FC424"]
+			x: 6.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "4E1F06D1E7A514CA"
+					type: "item"
+					item: { count: 1, id: "mekanism:sps_casing" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "5CC61E1DC7BFB265"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "A79459F43198BC50"
+			dependencies: ["C777D3E308D1D0FA"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "275B887D6E8EC53C"
+					type: "item"
+					item: { count: 1, id: "mekanism:pellet_antimatter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "76AE7F724B171564"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "3C61013D8F8A10C5"
+			dependencies: ["A79459F43198BC50"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "39001D9EEF274B41"
+					type: "forge_energy"
+					value: 100000000L
+					max_input: 1000000L
+				}
+			]
+			rewards: [
+				{
+					id: "212F526C568B80B4"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "A1A99D99B372916F"
+			dependencies: ["3C61013D8F8A10C5"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "BC62E106DEF52096"
+					type: "item"
+					item: { count: 1, id: "mekanism:antiprotonic_nucleosynthesizer" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "BD14B05DE66D64DF"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "FD67103C05E1048D"
+					type: "item"
+					item: { count: 32, id: "kubejs:requisition_chit" }
+					count: 32
+				}
+				{
+					id: "1266CA345688469B"
+					type: "xp"
+					xp: 700
+				}
+				{
+					id: "5FD4E696B4DC86BC"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_isotopic_core" }
+					count: 1
+				}
+				{
+					id: "E397B0C901D3E1B5"
+					type: "gamestage"
+					stage: "afterlight:gate_mekanism"
+				}
+			]
+		}
+	]
+}

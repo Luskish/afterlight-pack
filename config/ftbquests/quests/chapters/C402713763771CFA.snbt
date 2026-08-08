@@ -1,0 +1,255 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "C402713763771CFA"
+	group: "4525BB3160467FCB"
+	icon: { id: "kubejs:gate_blueprint" }
+	id: "C402713763771CFA"
+	images: [ ]
+	order_index: 15
+	quest_links: [ ]
+	quests: [
+		{
+			id: "F1B2919DF12C6845"
+			dependencies: ["3497EFDF016FAFD7"]
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "BA12D2169F1CB1B8"
+					type: "gamestage"
+					stage: "afterlight:gate_create"
+				}
+				{
+					id: "F4435064B9C0A86F"
+					type: "gamestage"
+					stage: "afterlight:gate_ie"
+				}
+				{
+					id: "830D638C9452FB47"
+					type: "gamestage"
+					stage: "afterlight:gate_mekanism"
+				}
+				{
+					id: "23F46A9140462F95"
+					type: "gamestage"
+					stage: "afterlight:gate_ae2"
+				}
+			]
+			rewards: [
+				{
+					id: "A69F0EB353F72E1C"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D4A6AF60824B79F1"
+			dependencies: ["F1B2919DF12C6845"]
+			x: 2.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "E25E908AFE60F7D5"
+					type: "item"
+					item: { count: 1, id: "ae2:item_storage_cell_256k" }
+					count: 4L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "E4BFE4E0252F924D"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D08AB7065AFAC232"
+			dependencies: ["D4A6AF60824B79F1"]
+			x: 4.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "BC577E8B70D05A21"
+					type: "item"
+					item: { count: 1, id: "ae2:256k_crafting_storage" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "456CC2479208137E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "8CE6F6160F721A8A"
+			dependencies: ["D08AB7065AFAC232"]
+			x: 6.0d
+			y: -1.0d
+			tasks: [
+				{
+					id: "A22156588AFD8CF6"
+					type: "item"
+					item: { count: 1, id: "ae2:molecular_assembler" }
+					count: 16L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "D41E8710F192371E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "98EABED18B5B2ECF"
+			dependencies: ["F1B2919DF12C6845"]
+			x: 2.0d
+			y: 1.0d
+			tasks: [
+				{
+					id: "7B65EF5F70FEB88A"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:fusion_reactor_controller" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "2F3E864C58501DAD"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "AD6ACF1CCBC7B4F2"
+			dependencies: ["8CE6F6160F721A8A", "98EABED18B5B2ECF"]
+			x: 8.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "5AD3830A7DD1F943"
+					type: "gamestage"
+					stage: "afterlight_cert_kinetics_i"
+				}
+				{
+					id: "04249E8717B0A828"
+					type: "gamestage"
+					stage: "afterlight_cert_logistics_i"
+				}
+				{
+					id: "28AFECBE517FC867"
+					type: "gamestage"
+					stage: "afterlight_cert_ore_loop_i"
+				}
+				{
+					id: "B11D2F585E820BAA"
+					type: "gamestage"
+					stage: "afterlight_cert_autocrafting_i"
+				}
+				{
+					id: "E12D224AF80DEB43"
+					type: "gamestage"
+					stage: "afterlight_cert_cross_mod_i"
+				}
+				{
+					id: "18FD587FB0F22679"
+					type: "gamestage"
+					stage: "afterlight_cert_power_i"
+				}
+				{
+					id: "D80ED81C1E55BE49"
+					type: "gamestage"
+					stage: "afterlight_cert_infrastructure_ii"
+				}
+			]
+			rewards: [
+				{
+					id: "4D60203D0EFC93BB"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "D97DA51D265858DD"
+			dependencies: ["AD6ACF1CCBC7B4F2"]
+			x: 10.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "E1AA0836232AFC4A"
+					type: "kill"
+					entity: "cataclysm:ancient_remnant"
+					value: 1L
+				}
+			]
+			rewards: [
+				{
+					id: "8AA11BD0125BAD36"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "72446D404001B38D"
+			dependencies: ["D97DA51D265858DD"]
+			x: 12.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "591C85BE8339F065"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "0E25A149AE9479DA"
+					type: "loot"
+					table_id: 10622272618344871329L
+				}
+				{
+					id: "317B696A6A9BD708"
+					type: "item"
+					item: { count: 40, id: "kubejs:requisition_chit" }
+					count: 40
+				}
+				{
+					id: "199C4E4632300A1D"
+					type: "xp"
+					xp: 1000
+				}
+				{
+					id: "244BF5026CB3FD40"
+					type: "item"
+					item: { count: 1, id: "kubejs:gate_blueprint" }
+					count: 1
+				}
+				{
+					id: "1D7817503FF7507A"
+					type: "gamestage"
+					stage: "afterlight_act3_complete"
+				}
+			]
+		}
+	]
+}

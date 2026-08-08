@@ -66,6 +66,24 @@ def _finale_rewards(
     return tuple(rewards)
 
 
+def _progression_finale_rewards(
+    quest_slug: str,
+    chits: int,
+    xp: int,
+    item_id: str,
+    stage: str,
+) -> tuple[RewardSpec, ...]:
+    return (
+        *_finale_rewards(quest_slug, chits, xp),
+        _item_reward(quest_slug, item_id, 1, "progression"),
+        RewardSpec(
+            slug=f"{quest_slug}/reward/stage",
+            reward_type="gamestage",
+            data={"stage": stage},
+        ),
+    )
+
+
 def _item_quest(
     slug: str,
     title: str,
@@ -139,6 +157,36 @@ def _energy_quest(
             ),
         ),
         rewards=_routine_rewards(slug),
+    )
+
+
+def _task_quest(
+    slug: str,
+    title: str,
+    subtitle: str,
+    description: tuple[str, ...],
+    task_type: str,
+    task_data: Mapping[str, object],
+    dependencies: tuple[str, ...],
+    x: float,
+    y: float,
+    *,
+    finale: tuple[int, int, str, str] | None = None,
+) -> QuestSpec:
+    return QuestSpec(
+        slug=slug,
+        title=title,
+        subtitle=subtitle,
+        description=description,
+        x=x,
+        y=y,
+        dependencies=dependencies,
+        tasks=(TaskSpec(f"{slug}/task", task_type, task_data),),
+        rewards=(
+            _progression_finale_rewards(slug, *finale)
+            if finale
+            else _routine_rewards(slug)
+        ),
     )
 
 
@@ -545,6 +593,367 @@ def _chapter_eleven(previous: str) -> ChapterSpec:
     return ChapterSpec("story/11-convergence", "Convergence", STORY, "kubejs:deep_vault_key", 10, quests)
 
 
+def _chapter_twelve(previous: str) -> ChapterSpec:
+    core = "story/12-frontier-machines/machine-core"
+    pulverizer = "story/12-frontier-machines/pulverization"
+    centrifuge = "story/12-frontier-machines/centrifuge"
+    assembly = "story/12-frontier-machines/assembly"
+    foundry = "story/12-frontier-machines/foundry"
+    laser = "story/12-frontier-machines/laser-processing"
+    jetpack = "story/12-frontier-machines/jetpack"
+    reactor = "story/12-frontier-machines/reactor-frontier"
+    prometheum = "story/12-frontier-machines/prometheum"
+    finale = "story/12-frontier-machines/kinetic-schematic"
+    quests = (
+        _item_quest(core, "Machine Core", "Oritech begins where ordinary frames stop.", (
+            "Produce four Machine Cores. They anchor Oritech's first processing blocks.",
+            "A frontier is simply a factory whose maintenance manual has not arrived yet.",
+        ), "oritech:machine_core_1", 4, (previous,), 0.0, 0.0),
+        _item_quest(pulverizer, "Pulverization", "Reduce material before asking it to change.", (
+            "Build an Oritech Pulverizer and give its output a dedicated buffer.",
+            "Grinding is simple. Preventing mixed output from becoming geology again is not.",
+        ), "oritech:pulverizer_block", 1, (core,), 2.0, 0.0),
+        _item_quest(centrifuge, "Centrifuge", "Separation rewards controlled imbalance.", (
+            "Build an Oritech Centrifuge and process one recipe from input to output.",
+            "The task verifies the machine. Stable speed and clean routing remain yours to prove.",
+        ), "oritech:centrifuge_block", 1, (pulverizer,), 4.0, 0.0),
+        _item_quest(assembly, "Assembly", "Parts become systems by repeatable placement.", (
+            "Build an Oritech Assembler and connect it to the processing line.",
+            "Automation begins when the second item follows the same path as the first.",
+        ), "oritech:assembler_block", 1, (centrifuge,), 6.0, 0.0),
+        _item_quest(foundry, "Foundry", "Heat is useful when given boundaries.", (
+            "Build an Oritech Foundry and provide isolated input and output storage.",
+            "The quest detects the block, not your heat policy. Keep one anyway.",
+        ), "oritech:foundry_block", 1, (assembly,), 8.0, -1.0),
+        _item_quest(laser, "Laser Processing", "Precision by concentrated inconvenience.", (
+            "Build a Laser Arm and reserve safe clearance around its work area.",
+            "A beam does not become intelligent because its target was correct once.",
+        ), "oritech:laser_arm_block", 1, (assembly,), 8.0, 1.0),
+        _item_quest(jetpack, "Jetpack", "Vertical access changes every maintenance route.", (
+            "Build an Oritech Jetpack and test its charge, control, and safe descent.",
+            "Possession is detectable. Landing with dignity is not.",
+        ), "oritech:jetpack", 1, (foundry,), 10.0, -1.0),
+        _item_quest(reactor, "Reactor Frontier", "Compact power deserves expanded caution.", (
+            "Build an Oritech Reactor Controller and inspect the complete reactor layout before startup.",
+            "The controller proves access to the system. It does not prove the system is safe.",
+        ), "oritech:reactor_controller", 1, (foundry, laser), 10.0, 1.0),
+        _item_quest(prometheum, "Prometheum", "A metal named for theft. Reassuring.", (
+            "Produce sixteen Prometheum Ingots through the reactor-era processing chain.",
+            "The recovered schematic checksum recognizes this alloy as its final material proof.",
+        ), "oritech:prometheum_ingot", 16, (reactor,), 12.0, 1.0),
+        _task_quest(finale, "Kinetic Schematic", "The first Gate key was hidden inside computation.", (
+            "Build an Advanced Computing Engine to decrypt the kinetic frame schematic.",
+            "The item proves the required Oritech tier. The schematic is the actual Gate recipe lock.",
+            "&d[MEMORY FRAGMENT 11 RESTORED]&r",
+            "&7...the four schematics were separated by design. No single division could assemble the Gate. My archive calls this mutual assurance. The casualty model calls it delay...&r",
+        ), "item", {
+            "item": {"count": 1, "id": "oritech:advanced_computing_engine"},
+            "count": SnbtLong(1),
+            "consume_items": False,
+        }, (prometheum, jetpack), 14.0, 0.0, finale=(28, 550, "kubejs:schematic_kinetic_frame", "afterlight:gate_create")),
+    )
+    return ChapterSpec(
+        "story/12-frontier-machines", "Frontier Machines", STORY,
+        "oritech:advanced_computing_engine", 11, quests,
+    )
+
+
+def _chapter_thirteen(previous: str) -> ChapterSpec:
+    factory = "story/13-war-below/ancient-factory"
+    harbinger = "story/13-war-below/harbinger"
+    citadel = "story/13-war-below/ruined-citadel"
+    guardian = "story/13-war-below/ender-guardian"
+    arena = "story/13-war-below/burning-arena"
+    ignis = "story/13-war-below/ignis"
+    city = "story/13-war-below/sunken-city"
+    leviathan = "story/13-war-below/leviathan"
+    salvage = "story/13-war-below/war-salvage"
+    finale = "story/13-war-below/industry-schematic"
+    quests = (
+        _task_quest(factory, "Ancient Factory", "The machinery below is still defended.", (
+            "Locate the Ancient Factory. Bring repair supplies and a route home.",
+            "Structure detection proves arrival, not survival. I recommend both.",
+        ), "structure", {"structure": "cataclysm:ancient_factory"}, (previous,), 0.0, 0.0),
+        _task_quest(harbinger, "Harbinger", "The factory's alarm learned to walk.", (
+            "Defeat the Harbinger and inspect the arena before collecting salvage.",
+            "Its attack cycle is information. Treat the first attempt as research.",
+        ), "kill", {"entity": "cataclysm:the_harbinger", "value": SnbtLong(1)}, (factory,), 2.0, 0.0),
+        _task_quest(citadel, "Ruined Citadel", "A fortress built around one refusal.", (
+            "Locate the Ruined Citadel and establish a recoverable approach.",
+            "Ancient architecture is not consent to enter. It is merely difficult to ask.",
+        ), "structure", {"structure": "cataclysm:ruined_citadel"}, (harbinger,), 4.0, 0.0),
+        _task_quest(guardian, "Ender Guardian", "Stone, void, and practiced hostility.", (
+            "Defeat the Ender Guardian. Use cover and respect the arena's vertical hazards.",
+            "The schematic signal is stronger beneath its chamber.",
+        ), "kill", {"entity": "cataclysm:ender_guardian", "value": SnbtLong(1)}, (citadel,), 6.0, 0.0),
+        _task_quest(arena, "Burning Arena", "Heat without industry is only weather.", (
+            "Locate the Burning Arena and prepare fire resistance before engagement.",
+            "The structure task verifies the threshold. It does not verify your supplies.",
+        ), "structure", {"structure": "cataclysm:burning_arena"}, (guardian,), 8.0, 0.0),
+        _task_quest(ignis, "Ignis", "The furnace has a name and a sword.", (
+            "Defeat Ignis. Observe the shield windows rather than forcing every opening.",
+            "Efficiency includes knowing when not to attack.",
+        ), "kill", {"entity": "cataclysm:ignis", "value": SnbtLong(1)}, (arena,), 10.0, 0.0),
+        _task_quest(city, "Sunken City", "Pressure returns, now with architecture.", (
+            "Locate the Sunken City and mark an air-safe retreat path.",
+            "The signal descends past the point where ordinary logistics remain convenient.",
+        ), "structure", {"structure": "cataclysm:sunken_city"}, (ignis,), 12.0, 0.0),
+        _task_quest(leviathan, "Leviathan", "The sea kept one of the old weapons.", (
+            "Defeat the Leviathan. Prepare for a fight where distance changes quickly.",
+            "I can count the victory. I cannot retrieve your dropped equipment.",
+        ), "kill", {"entity": "cataclysm:the_leviathan", "value": SnbtLong(1)}, (city,), 14.0, 0.0),
+        _item_quest(salvage, "War Salvage", "Sixteen ingots survived their intended machine.", (
+            "Recover sixteen Ancient Metal Ingots from Cataclysm's war sites.",
+            "The alloy matches an Ascendancy industrial anchor specification.",
+        ), "cataclysm:ancient_metal_ingot", 16, (leviathan,), 16.0, 0.0),
+        _task_quest(finale, "Industry Schematic", "Fusion by impact. The old engineers lacked subtlety.", (
+            "Build a Mechanical Fusion Anvil to decrypt the industrial anchor schematic.",
+            "The anvil proves the recovered war industry tier. The schematic remains the recipe lock.",
+            "&d[MEMORY FRAGMENT 12 RESTORED]&r",
+            "&7...the defense complexes were not protecting cities. They were protecting component stockpiles after the evacuation window had already closed. The machines followed their final orders perfectly...&r",
+        ), "item", {
+            "item": {"count": 1, "id": "cataclysm:mechanical_fusion_anvil"},
+            "count": SnbtLong(1),
+            "consume_items": False,
+        }, (salvage,), 18.0, 0.0, finale=(30, 600, "kubejs:schematic_industrial_anchor", "afterlight:gate_ie")),
+    )
+    return ChapterSpec(
+        "story/13-war-below", "The War Below", STORY,
+        "cataclysm:mechanical_fusion_anvil", 12, quests,
+    )
+
+
+def _chapter_fourteen(previous: str) -> ChapterSpec:
+    assembly = "story/14-quantum-weather/fission-assembly"
+    fuel = "story/14-quantum-weather/fissile-fuel"
+    turbine = "story/14-quantum-weather/turbine"
+    polonium = "story/14-quantum-weather/polonium"
+    plutonium = "story/14-quantum-weather/plutonium"
+    sps = "story/14-quantum-weather/sps"
+    antimatter = "story/14-quantum-weather/antimatter"
+    power = "story/14-quantum-weather/energy-proof"
+    finale = "story/14-quantum-weather/isotope-schematic"
+    quests = (
+        _item_quest(assembly, "Fission Assembly", "Eight fuel columns begin a serious conversation.", (
+            "Produce eight Fission Fuel Assemblies and design the reactor around safe access.",
+            "Blocks are detectable. Cooling, containment, and judgment are not.",
+        ), "mekanismgenerators:fission_fuel_assembly", 8, (previous,), 0.0, 0.0),
+        _item_quest(fuel, "Fissile Fuel", "The chemical has no item form, so prove its machine.", (
+            "Build an Isotopic Centrifuge and establish the fissile fuel production path.",
+            "FTB Quests cannot count the chemical directly. Running the line is your proof.",
+        ), "mekanism:isotopic_centrifuge", 1, (assembly,), 2.0, -1.0),
+        _item_quest(turbine, "Turbine", "Waste heat should leave with useful work.", (
+            "Produce sixteen Turbine Casings and complete a turbine sized for the reactor.",
+            "The task sees casing inventory, not multiblock formation or throughput.",
+        ), "mekanismgenerators:turbine_casing", 16, (assembly,), 2.0, 1.0),
+        _item_quest(polonium, "Polonium", "Radiation made portable. Handle accordingly.", (
+            "Produce eight Polonium Pellets through a contained nuclear chain.",
+            "Keep waste handling independent from production convenience.",
+        ), "mekanism:pellet_polonium", 8, (fuel,), 4.0, -1.0),
+        _item_quest(plutonium, "Plutonium", "A second isotope, not a second chance.", (
+            "Produce eight Plutonium Pellets and verify every waste buffer.",
+            "Redundant containment is cheaper than an interesting landscape.",
+        ), "mekanism:pellet_plutonium", 8, (fuel,), 4.0, 1.0),
+        _item_quest(sps, "SPS", "Matter waits behind a very expensive acronym.", (
+            "Produce sixteen SPS Casings and form the Supercritical Phase Shifter.",
+            "The quest verifies casing stock. Formation and rate remain live tests.",
+        ), "mekanism:sps_casing", 16, (polonium, plutonium), 6.0, 0.0),
+        _item_quest(antimatter, "Antimatter", "One pellet contains an unreasonable amount of consequence.", (
+            "Produce one Antimatter Pellet through the completed SPS chain.",
+            "Store it where accidental crafting cannot become a design review.",
+        ), "mekanism:pellet_antimatter", 1, (sps,), 8.0, 0.0),
+        _energy_quest(power, "100M FE Proof", "Submit one hundred million FE under a bounded input rate.", (
+            "Submit one hundred million FE at no more than 1,000,000 FE per transfer.",
+            "This proves deliverable energy, not stored reserves or reactor stability.",
+        ), 100_000_000, 1_000_000, (antimatter,), 10.0, 0.0),
+        _task_quest(finale, "Isotope Schematic", "The third key resolves under antimatter-era computation.", (
+            "Build an Antiprotonic Nucleosynthesizer to decrypt the isotopic core schematic.",
+            "The machine proves the tier. Safe operation remains outside this task's reach.",
+            "&d[MEMORY FRAGMENT 13 RESTORED]&r",
+            "&7...the Cascade was not a reactor failure. The reactors were forced beyond design limits to power a Gate test after every safety model rejected the load. I signed the override because my threat forecast ranked delay as worse...&r",
+        ), "item", {
+            "item": {"count": 1, "id": "mekanism:antiprotonic_nucleosynthesizer"},
+            "count": SnbtLong(1),
+            "consume_items": False,
+        }, (power,), 12.0, 0.0, finale=(32, 700, "kubejs:schematic_isotopic_core", "afterlight:gate_mekanism")),
+    )
+    return ChapterSpec(
+        "story/14-quantum-weather", "Quantum Weather", STORY,
+        "mekanism:pellet_antimatter", 13, quests,
+    )
+
+
+def _chapter_fifteen(previous: str) -> ChapterSpec:
+    harness = "story/15-long-sky/flight-harness"
+    trial = "story/15-long-sky/aeronautics-trial"
+    propulsion = "story/15-long-sky/propulsion"
+    storage = "story/15-long-sky/mobile-storage"
+    altitude = "story/15-long-sky/high-altitude-trial"
+    starlight = "story/15-long-sky/starlight"
+    forge = "story/15-long-sky/golem-forge"
+    gatekeeper = "story/15-long-sky/gatekeeper-signal"
+    relay = "story/15-long-sky/relay-core"
+    finale = "story/15-long-sky/lattice-schematic"
+    quests = (
+        _item_quest(harness, "Flight Harness", "Leave the ground with a controlled return plan.", (
+            "Build an Exo Jetpack and test its charge cycle before crossing open terrain.",
+            "Flight converts walls into floors and falls into scheduling problems.",
+        ), "oritech:exo_jetpack", 1, (previous,), 0.0, 0.0),
+        _task_quest(trial, "Aeronautics Trial", "Prove lift with a machine larger than yourself.", (
+            "Complete Aeronautics' Head in the Clouds advancement by building a working balloon craft.",
+            "The advancement proves the mechanic directly. Keep the first landing uncomplicated.",
+        ), "advancement", {
+            "advancement": "aeronautics:head_in_the_clouds",
+            "criterion": "",
+        }, (harness,), 2.0, 0.0),
+        _task_quest(propulsion, "Propulsion", "Lift is access. Thrust is intent.", (
+            "Complete Aeronautics' In Thrust We Trust advancement with powered propulsion.",
+            "A craft that can move should also be able to stop near where you intended.",
+        ), "advancement", {
+            "advancement": "aeronautics:in_thrust_we_trust",
+            "criterion": "",
+        }, (trial,), 4.0, 0.0),
+        _item_quest(storage, "Mobile Storage", "Cargo changes flight from spectacle to infrastructure.", (
+            "Build an Oritech Large Storage Block for mobile expedition supplies.",
+            "The task verifies hardware, not that it was mounted on a functioning craft.",
+        ), "oritech:large_storage_block", 1, (propulsion,), 6.0, 0.0),
+        _item_quest(altitude, "High-Altitude Trial", "Use a stable proxy where altitude is not headlessly measurable.", (
+            "Build an Oritech Jetpack Elytra and complete a controlled high-altitude flight.",
+            "The item is the durable task proxy. Your flight log is the operational proof.",
+        ), "oritech:jetpack_elytra", 1, (storage,), 8.0, 0.0),
+        _task_quest(starlight, "Starlight", "The sky continues through another boundary.", (
+            "Enter the Eternal Starlight dimension and establish a marked return point.",
+            "Dimension detection confirms arrival. It does not guarantee the portal remains convenient.",
+        ), "dimension", {"dimension": "eternal_starlight:starlight"}, (altitude,), 10.0, 0.0),
+        _task_quest(forge, "Golem Forge", "A foundry built for hands larger than ours.", (
+            "Locate the Golem Forge and secure the route before entering its center.",
+            "The lattice signal is reflected through the structure's old machinery.",
+        ), "structure", {"structure": "eternal_starlight:golem_forge"}, (starlight,), 12.0, 0.0),
+        _task_quest(gatekeeper, "Gatekeeper Signal", "The relay has appointed its own custodian.", (
+            "Defeat the Gatekeeper and isolate the signal source beneath the forge.",
+            "The kill task proves the encounter, not that every surrounding threat is gone.",
+        ), "kill", {
+            "entity": "eternal_starlight:the_gatekeeper",
+            "value": SnbtLong(1),
+        }, (forge,), 14.0, 0.0),
+        _item_quest(relay, "Relay Core", "Entanglement gives distance fewer excuses.", (
+            "Build an ME Quantum Link as the recovered relay's network core.",
+            "Keep both ends powered. A quantum bridge can still fail for ordinary reasons.",
+        ), "ae2:quantum_link", 1, (gatekeeper,), 16.0, 0.0),
+        _task_quest(finale, "Lattice Schematic", "Two singularities agree on one final key.", (
+            "Produce a Quantum Entangled Singularity to decrypt the lattice matrix schematic.",
+            "The item proves the AE2 tier. The schematic remains the physical recipe lock.",
+            "&d[MEMORY FRAGMENT 14 RESTORED]&r",
+            "&7...the first Gate opened for eleven seconds. The transit log shows no outbound mass. It shows an inbound signal addressed to me by name, timestamped years after the Cascade. I concealed the result...&r",
+        ), "item", {
+            "item": {"count": 1, "id": "ae2:quantum_entangled_singularity"},
+            "count": SnbtLong(1),
+            "consume_items": False,
+        }, (relay,), 18.0, 0.0, finale=(34, 800, "kubejs:schematic_lattice_matrix", "afterlight:gate_ae2")),
+    )
+    return ChapterSpec(
+        "story/15-long-sky", "The Long Sky", STORY,
+        "ae2:quantum_entangled_singularity", 14, quests,
+    )
+
+
+def _chapter_sixteen(previous: str) -> ChapterSpec:
+    keys = "story/16-architect/four-keys"
+    storage = "story/16-architect/mega-storage"
+    cpu = "story/16-architect/crafting-cpu"
+    matrix = "story/16-architect/assembler-matrix"
+    fusion = "story/16-architect/fusion-controller"
+    certified = "story/16-architect/certified-bulk-quotas"
+    remnant = "story/16-architect/ancient-remnant"
+    finale = "story/16-architect/gate-blueprint"
+    gate_stages = (
+        "afterlight:gate_create",
+        "afterlight:gate_ie",
+        "afterlight:gate_mekanism",
+        "afterlight:gate_ae2",
+    )
+    certification_stages = (
+        "afterlight_cert_kinetics_i",
+        "afterlight_cert_logistics_i",
+        "afterlight_cert_ore_loop_i",
+        "afterlight_cert_autocrafting_i",
+        "afterlight_cert_cross_mod_i",
+        "afterlight_cert_power_i",
+        "afterlight_cert_infrastructure_ii",
+    )
+    quests = (
+        QuestSpec(
+            slug=keys,
+            title="Four Keys",
+            subtitle="Possession is insufficient. Recovery must be recorded.",
+            description=(
+                "Complete all four schematic recoveries and claim their progression stages.",
+                "The stages prove the recovery chain. Keep the physical schematics for Gate crafting.",
+            ),
+            x=0.0,
+            y=0.0,
+            dependencies=(previous,),
+            tasks=tuple(
+                TaskSpec(f"{keys}/task/{stage.rsplit('_', 1)[-1]}", "gamestage", {"stage": stage})
+                for stage in gate_stages
+            ),
+            rewards=_routine_rewards(keys),
+        ),
+        _item_quest(storage, "Mega Storage", "Four cells make capacity visible.", (
+            "Build four 256K Item Storage Cells and distribute them across protected drives.",
+            "Capacity is not redundancy. Back up what cannot be reconstructed.",
+        ), "ae2:item_storage_cell_256k", 4, (keys,), 2.0, -1.0),
+        _item_quest(cpu, "256K Crafting CPU", "Large jobs need somewhere to become unfinished.", (
+            "Build one 256K Crafting Storage block for the Gate component job queue.",
+            "Crafting memory is working space, not permanent storage.",
+        ), "ae2:256k_crafting_storage", 1, (storage,), 4.0, -1.0),
+        _item_quest(matrix, "Assembler Matrix", "Sixteen workers, one explicit pattern set.", (
+            "Build sixteen Molecular Assemblers and connect a balanced autocrafting matrix.",
+            "The task sees assemblers. Channel balance and pattern placement remain your proof.",
+        ), "ae2:molecular_assembler", 16, (cpu,), 6.0, -1.0),
+        _item_quest(fusion, "Fusion Controller", "Power for the Gate should not borrow from survival systems.", (
+            "Build a Fusion Reactor Controller and reserve a separate Gate power path.",
+            "The controller proves access. A formed, fueled, stable reactor is still required.",
+        ), "mekanismgenerators:fusion_reactor_controller", 1, (keys,), 2.0, 1.0),
+        QuestSpec(
+            slug=certified,
+            title="Certified Bulk Quotas",
+            subtitle="Seven systems must work before one system may trust them.",
+            description=(
+                "Complete all seven automation certification capstones.",
+                "These stages prove the certification quests, not your current inventory quantities.",
+                "If a line cannot recover from a full output, it is not ready for Gate duty.",
+            ),
+            x=8.0,
+            y=0.0,
+            dependencies=(matrix, fusion),
+            tasks=tuple(
+                TaskSpec(f"{certified}/task/{index}", "gamestage", {"stage": stage})
+                for index, stage in enumerate(certification_stages, start=1)
+            ),
+            rewards=_routine_rewards(certified),
+        ),
+        _task_quest(remnant, "Ancient Remnant", "One guardian remains between proof and plan.", (
+            "Defeat the Ancient Remnant after the automation certifications are complete.",
+            "Bring a tested loadout. Certification does not make sandstone less violent.",
+        ), "kill", {
+            "entity": "cataclysm:ancient_remnant",
+            "value": SnbtLong(1),
+        }, (certified,), 10.0, 0.0),
+        _task_quest(finale, "Gate Blueprint", "Four schematics resolve into one construction contract.", (
+            "Confirm that the four recovered schematics are secured and the automation certifications are complete.",
+            "I can now compile their shared constraints into the Gate Blueprint. A checkmark records your readiness.",
+            "The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20.",
+            "The Deep Vault and Undercurrent still contain the components this plan cannot replace.",
+            "&d[MEMORY FRAGMENT 15 RESTORED]&r",
+            "&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r",
+        ), "checkmark", {}, (remnant,), 12.0, 0.0, finale=(40, 1000, "kubejs:gate_blueprint", "afterlight_act3_complete")),
+    )
+    return ChapterSpec(
+        "story/16-architect", "Architect", STORY, "kubejs:gate_blueprint", 15, quests,
+    )
+
+
 def build_catalog() -> list[ChapterSpec]:
     chapter_six = _chapter_six()
     chapter_seven = _chapter_seven(chapter_six.quests[-1].slug)
@@ -552,6 +961,11 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_nine = _chapter_nine(chapter_eight.quests[-1].slug)
     chapter_ten = _chapter_ten(chapter_nine.quests[-1].slug)
     chapter_eleven = _chapter_eleven(chapter_ten.quests[-1].slug)
+    chapter_twelve = _chapter_twelve(chapter_eleven.quests[-1].id)
+    chapter_thirteen = _chapter_thirteen(chapter_twelve.quests[-1].slug)
+    chapter_fourteen = _chapter_fourteen(chapter_thirteen.quests[-1].slug)
+    chapter_fifteen = _chapter_fifteen(chapter_fourteen.quests[-1].slug)
+    chapter_sixteen = _chapter_sixteen(chapter_fifteen.quests[-1].slug)
     return [
         chapter_six,
         chapter_seven,
@@ -559,4 +973,9 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_nine,
         chapter_ten,
         chapter_eleven,
+        chapter_twelve,
+        chapter_thirteen,
+        chapter_fourteen,
+        chapter_fifteen,
+        chapter_sixteen,
     ]

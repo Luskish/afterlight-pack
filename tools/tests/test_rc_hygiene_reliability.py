@@ -2006,7 +2006,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 291)
+        self.assertEqual(len(indexed), 297)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -2961,8 +2961,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "f2ac0534ecf9f6a31c2d2099d3bd6fa67e719433d560697d51c69bb3a599be67",
-                219,
+                "8c34353a17012a764096ba853d9f19351cfd15a9569b2c56978a79965017faea",
+                225,
             ),
         )
 

@@ -11,29 +11,38 @@
 	quests: [
 		{
 			id: "F1B2919DF12C6845"
-			dependencies: ["3497EFDF016FAFD7"]
+			dependencies: ["90EDD2BED35BE9E3", "752C3E53CA89C92D", "A1A99D99B372916F", "3497EFDF016FAFD7"]
+			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
 					id: "BA12D2169F1CB1B8"
-					type: "gamestage"
-					stage: "afterlight:gate_create"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_kinetic_frame" }
+					count: 1L
+					consume_items: false
 				}
 				{
 					id: "F4435064B9C0A86F"
-					type: "gamestage"
-					stage: "afterlight:gate_ie"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_industrial_anchor" }
+					count: 1L
+					consume_items: false
 				}
 				{
 					id: "830D638C9452FB47"
-					type: "gamestage"
-					stage: "afterlight:gate_mekanism"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_isotopic_core" }
+					count: 1L
+					consume_items: false
 				}
 				{
 					id: "23F46A9140462F95"
-					type: "gamestage"
-					stage: "afterlight:gate_ae2"
+					type: "item"
+					item: { count: 1, id: "kubejs:schematic_lattice_matrix" }
+					count: 1L
+					consume_items: false
 				}
 			]
 			rewards: [
@@ -48,6 +57,7 @@
 		{
 			id: "D4A6AF60824B79F1"
 			dependencies: ["F1B2919DF12C6845"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: -1.0d
 			tasks: [
@@ -71,6 +81,7 @@
 		{
 			id: "D08AB7065AFAC232"
 			dependencies: ["D4A6AF60824B79F1"]
+			progression_mode: "linear"
 			x: 4.0d
 			y: -1.0d
 			tasks: [
@@ -94,6 +105,7 @@
 		{
 			id: "8CE6F6160F721A8A"
 			dependencies: ["D08AB7065AFAC232"]
+			progression_mode: "linear"
 			x: 6.0d
 			y: -1.0d
 			tasks: [
@@ -117,6 +129,7 @@
 		{
 			id: "98EABED18B5B2ECF"
 			dependencies: ["F1B2919DF12C6845"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: 1.0d
 			tasks: [
@@ -139,44 +152,14 @@
 		}
 		{
 			id: "AD6ACF1CCBC7B4F2"
-			dependencies: ["8CE6F6160F721A8A", "98EABED18B5B2ECF"]
+			dependencies: ["8CE6F6160F721A8A", "98EABED18B5B2ECF", "5ADAE277C9FEF0F1", "B107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "E1F5D15817ED5EFD", "FC9EA276C2D84333", "E524EE78235F0942"]
+			progression_mode: "linear"
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "5AD3830A7DD1F943"
-					type: "gamestage"
-					stage: "afterlight_cert_kinetics_i"
-				}
-				{
-					id: "04249E8717B0A828"
-					type: "gamestage"
-					stage: "afterlight_cert_logistics_i"
-				}
-				{
-					id: "28AFECBE517FC867"
-					type: "gamestage"
-					stage: "afterlight_cert_ore_loop_i"
-				}
-				{
-					id: "B11D2F585E820BAA"
-					type: "gamestage"
-					stage: "afterlight_cert_autocrafting_i"
-				}
-				{
-					id: "E12D224AF80DEB43"
-					type: "gamestage"
-					stage: "afterlight_cert_cross_mod_i"
-				}
-				{
-					id: "18FD587FB0F22679"
-					type: "gamestage"
-					stage: "afterlight_cert_power_i"
-				}
-				{
-					id: "D80ED81C1E55BE49"
-					type: "gamestage"
-					stage: "afterlight_cert_infrastructure_ii"
+					id: "BBFA32444B48A6A0"
+					type: "checkmark"
 				}
 			]
 			rewards: [
@@ -191,6 +174,7 @@
 		{
 			id: "D97DA51D265858DD"
 			dependencies: ["AD6ACF1CCBC7B4F2"]
+			progression_mode: "linear"
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -213,6 +197,7 @@
 		{
 			id: "72446D404001B38D"
 			dependencies: ["D97DA51D265858DD"]
+			progression_mode: "linear"
 			x: 12.0d
 			y: 0.0d
 			tasks: [

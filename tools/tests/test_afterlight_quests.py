@@ -3,11 +3,15 @@ from __future__ import annotations
 import ast
 import hashlib
 import importlib
+import json
 import os
+import re
+import struct
 import sys
 import tempfile
 import unittest
 import zipfile
+from dataclasses import fields
 from pathlib import Path
 
 
@@ -20,6 +24,251 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from live_install_support import requires_live_install
+
+
+class Plan06GateDependencyTests(unittest.TestCase):
+    GATE_ITEMS = {
+        "GATE_KINETIC": ("kubejs:gate_kinetic_frame", "Kinetic Frame"),
+        "GATE_INDUSTRIAL": ("kubejs:gate_industrial_anchor", "Industrial Anchor"),
+        "GATE_ISOTOPIC": ("kubejs:gate_isotopic_core", "Isotopic Core"),
+        "GATE_LATTICE": ("kubejs:gate_lattice_matrix", "Lattice Matrix"),
+        "STABILIZER": ("kubejs:undercurrent_stabilizer", "Undercurrent Stabilizer"),
+        "GATE_CORE": ("kubejs:gate_of_return_core", "Gate of Return Core"),
+    }
+    CERTIFICATION_FINALES = (
+        "5ADAE277C9FEF0F1",
+        "B107D8813D59B2FF",
+        "66CDE7B061D8DA5C",
+        "42EE25F560AE65CD",
+        "E1F5D15817ED5EFD",
+        "FC9EA276C2D84333",
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.catalog = cls.quests.build_catalog()
+        cls.quests_by_id = {
+            quest.id: quest
+            for chapter in cls.catalog
+            for quest in chapter.quests
+        }
+
+    def test_gate_items_are_registered_named_and_stack_one(self) -> None:
+        registry = (
+            ROOT / "kubejs" / "startup_scripts" / "afterlight" / "registry.js"
+        ).read_text(encoding="utf-8")
+        language = json.loads(
+            (ROOT / "kubejs" / "assets" / "kubejs" / "lang" / "en_us.json")
+            .read_text(encoding="utf-8")
+        )
+
+        for constant, (item_id, display_name) in self.GATE_ITEMS.items():
+            path = item_id.split(":", 1)[1]
+            with self.subTest(item_id=item_id):
+                registration = re.search(
+                    rf"event\.create\('{re.escape(path)}'\)(.*?)(?=\n\s*event\.create|\n\}}\))",
+                    registry,
+                    re.DOTALL,
+                )
+                self.assertIsNotNone(registration, f"missing registry entry for {item_id}")
+                self.assertIn(".rarity('epic')", registration.group(1))
+                self.assertIn(".maxStackSize(1)", registration.group(1))
+                language_key = f"item.kubejs.{path}"
+                self.assertIn(language_key, language)
+                self.assertEqual(language[f"item.kubejs.{path}"], display_name)
+
+        gate_core = re.search(
+            r"event\.create\('gate_of_return_core'\)(.*?)(?=\n\s*event\.create|\n\}\))",
+            registry,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(gate_core)
+        self.assertIn(".glow(true)", gate_core.group(1))
+
+    def test_gate_items_are_constants(self) -> None:
+        constants = (
+            ROOT / "kubejs" / "server_scripts" / "afterlight" / "_constants.js"
+        ).read_text(encoding="utf-8")
+        for constant, (item_id, _display_name) in self.GATE_ITEMS.items():
+            with self.subTest(item_id=item_id):
+                self.assertRegex(
+                    constants,
+                    rf"\b{constant}:\s*'{re.escape(item_id)}'",
+                )
+
+    def test_gate_items_are_allowlisted(self) -> None:
+        for _constant, (item_id, _display_name) in self.GATE_ITEMS.items():
+            with self.subTest(item_id=item_id):
+                self.assertIn(item_id, self.quests.KUBEJS_ITEM_ALLOWLIST)
+
+    def test_ascendancy_seal_stacks_to_one(self) -> None:
+        registry = (
+            ROOT / "kubejs" / "startup_scripts" / "afterlight" / "registry.js"
+        ).read_text(encoding="utf-8")
+        seal = re.search(
+            r"event\.create\('ascendancy_seal'\)(.*?)(?=\n\s*event\.create|\n\}\))",
+            registry,
+            re.DOTALL,
+        )
+        self.assertIn(".maxStackSize(1)", seal.group(1))
+
+    def test_gate_sprites_are_unique_transparent_32_by_32_pngs(self) -> None:
+        texture_root = ROOT / "kubejs" / "assets" / "kubejs" / "textures" / "item"
+        sprite_bytes = []
+        for item_id, _display_name in self.GATE_ITEMS.values():
+            path = texture_root / f"{item_id.split(':', 1)[1]}.png"
+            with self.subTest(path=path.name):
+                self.assertTrue(path.is_file(), f"missing Gate sprite {path.name}")
+                data = path.read_bytes()
+                self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+                self.assertEqual(data[12:16], b"IHDR")
+                width, height, bit_depth, color_type = struct.unpack(">IIBB", data[16:26])
+                self.assertEqual((width, height), (32, 32))
+                self.assertEqual(bit_depth, 8)
+                self.assertIn(color_type, (4, 6), "sprite PNG must include alpha")
+                sprite_bytes.append(data)
+        self.assertEqual(len(set(sprite_bytes)), len(self.GATE_ITEMS))
+
+    def test_quest_spec_progression_mode_is_validated_and_rendered(self) -> None:
+        self.assertIn(
+            "progression_mode",
+            {field.name for field in fields(self.quests.QuestSpec)},
+        )
+        quest = self.quests.QuestSpec(
+            slug="story/test/linear",
+            title="Linear",
+            description=("Linear progression fixture.",),
+            x=0.0,
+            y=0.0,
+            progression_mode="linear",
+        )
+        chapter = self.quests.ChapterSpec(
+            slug="story/test-linear",
+            title="Linear Test",
+            group=self.quests.GroupSpec("test", "Test", "AAAAAAAAAAAAAAAA"),
+            icon="minecraft:stone_pickaxe",
+            order_index=0,
+            quests=(quest,),
+        )
+
+        self.assertIn('progression_mode: "linear"', self.quests.render_chapter(chapter))
+        with self.assertRaisesRegex(ValueError, "progression mode"):
+            self.quests.QuestSpec(
+                slug="story/test/invalid-progression",
+                title="Invalid",
+                description=("Invalid progression fixture.",),
+                x=0.0,
+                y=0.0,
+                progression_mode="inherited",
+            )
+
+    def test_authoritative_gate_quests_use_exact_dependencies_and_tasks(self) -> None:
+        expected = {
+            "7CB2D7D361BEA4C4": (
+                self.CERTIFICATION_FINALES,
+                (("74AB10F5C91F1022", "checkmark", {}),),
+            ),
+            "F1B2919DF12C6845": (
+                (
+                    "90EDD2BED35BE9E3",
+                    "752C3E53CA89C92D",
+                    "A1A99D99B372916F",
+                    "3497EFDF016FAFD7",
+                ),
+                (
+                    ("BA12D2169F1CB1B8", "item", "kubejs:schematic_kinetic_frame"),
+                    ("F4435064B9C0A86F", "item", "kubejs:schematic_industrial_anchor"),
+                    ("830D638C9452FB47", "item", "kubejs:schematic_isotopic_core"),
+                    ("23F46A9140462F95", "item", "kubejs:schematic_lattice_matrix"),
+                ),
+            ),
+            "AD6ACF1CCBC7B4F2": (
+                (
+                    "8CE6F6160F721A8A",
+                    "98EABED18B5B2ECF",
+                    *self.CERTIFICATION_FINALES,
+                    "E524EE78235F0942",
+                ),
+                (("BBFA32444B48A6A0", "checkmark", {}),),
+            ),
+        }
+
+        for quest_id, (dependencies, tasks) in expected.items():
+            quest = self.quests_by_id[quest_id]
+            with self.subTest(quest_id=quest_id):
+                self.assertEqual(quest.dependency_ids, dependencies)
+                self.assertFalse(any(task.task_type == "gamestage" for task in quest.tasks))
+                actual_tasks = tuple(
+                    (
+                        task.id,
+                        task.task_type,
+                        task.data if task.task_type == "checkmark" else task.data["item"]["id"],
+                    )
+                    for task in quest.tasks
+                )
+                self.assertEqual(actual_tasks, tasks)
+                self.assertNotIn("team_reward", self.quests.render_chapter(
+                    next(chapter for chapter in self.catalog if quest in chapter.quests)
+                ))
+                self.assertNotIn("team_stage", self.quests.render_chapter(
+                    next(chapter for chapter in self.catalog if quest in chapter.quests)
+                ))
+
+        four_keys = self.quests_by_id["F1B2919DF12C6845"]
+        for task in four_keys.tasks:
+            with self.subTest(four_keys_task=task.id):
+                self.assertIn("count", task.data)
+                self.assertEqual(task.data["count"], self.quests.SnbtLong(1))
+                self.assertFalse(task.data["consume_items"])
+
+    def test_infrastructure_and_architect_quests_are_explicitly_linear(self) -> None:
+        chapters = {
+            chapter.id: chapter
+            for chapter in self.catalog
+        }
+        infrastructure = chapters["D070DE6E2B300F4B"]
+        architect = chapters["C402713763771CFA"]
+
+        for chapter in (infrastructure, architect):
+            for quest in chapter.quests:
+                with self.subTest(chapter=chapter.title, quest=quest.id):
+                    self.assertEqual(getattr(quest, "progression_mode", None), "linear")
+                    self.assertIn(
+                        'progression_mode: "linear"',
+                        self.quests.render_chapter(chapter),
+                    )
+
+        self.assertEqual(
+            getattr(self.quests_by_id["E524EE78235F0942"], "progression_mode", None),
+            "linear",
+        )
+        self.assertEqual(
+            getattr(self.quests_by_id["72446D404001B38D"], "progression_mode", None),
+            "linear",
+        )
+
+    def test_task_one_counts_and_generated_audit_are_exact(self) -> None:
+        quest_root = ROOT / "config" / "ftbquests" / "quests"
+        counts = self.quests.count_quests(quest_root)
+        reward_tables = tuple(
+            (ROOT / "config" / "ftbquests" / "quests" / "reward_tables").glob("*.snbt")
+        )
+        audit = (
+            ROOT
+            / "kubejs"
+            / "server_scripts"
+            / "afterlight"
+            / "generated_quest_item_audit.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(
+            (counts.chapters, counts.quests, counts.tasks, counts.rewards),
+            (41, 283, 296, 393),
+        )
+        self.assertEqual(len(reward_tables), 6)
+        for item_id, _display_name in self.GATE_ITEMS.values():
+            self.assertIn(f'  "{item_id}"', audit)
 
 
 class QuestCompilerTests(unittest.TestCase):
@@ -328,8 +577,17 @@ class QuestCompilerTests(unittest.TestCase):
         )
         self.assertEqual([chapter.order_index for chapter in catalog], [11, 12, 13, 14, 15])
         self.assertEqual(catalog[0].quests[0].dependency_ids, ("836D1C6E20B78461",))
-        for previous, current in zip(catalog, catalog[1:]):
+        for previous, current in zip(catalog[:-1], catalog[1:-1]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
+        self.assertEqual(
+            catalog[-1].quests[0].dependency_ids,
+            (
+                "90EDD2BED35BE9E3",
+                "752C3E53CA89C92D",
+                "A1A99D99B372916F",
+                "3497EFDF016FAFD7",
+            ),
+        )
         self.assertEqual(
             [chapter.quests[-1].id for chapter in catalog],
             [
@@ -411,29 +669,24 @@ class QuestCompilerTests(unittest.TestCase):
             "value": self.quests.SnbtLong(1),
         })
         self.assertEqual(
-            [task.data["stage"] for task in quests["Four Keys"].tasks],
+            [task.data["item"]["id"] for task in quests["Four Keys"].tasks],
             [
-                "afterlight:gate_create",
-                "afterlight:gate_ie",
-                "afterlight:gate_mekanism",
-                "afterlight:gate_ae2",
+                "kubejs:schematic_kinetic_frame",
+                "kubejs:schematic_industrial_anchor",
+                "kubejs:schematic_isotopic_core",
+                "kubejs:schematic_lattice_matrix",
             ],
         )
         self.assertTrue(all(
-            task.task_type == "gamestage" for task in quests["Four Keys"].tasks
+            task.task_type == "item"
+            and task.data["count"] == self.quests.SnbtLong(1)
+            and task.data["consume_items"] is False
+            for task in quests["Four Keys"].tasks
         ))
-        self.assertEqual(
-            [task.data["stage"] for task in quests["Certified Bulk Quotas"].tasks],
-            [
-                "afterlight_cert_kinetics_i",
-                "afterlight_cert_logistics_i",
-                "afterlight_cert_ore_loop_i",
-                "afterlight_cert_autocrafting_i",
-                "afterlight_cert_cross_mod_i",
-                "afterlight_cert_power_i",
-                "afterlight_cert_infrastructure_ii",
-            ],
-        )
+        certified = quests["Certified Bulk Quotas"]
+        self.assertEqual(len(certified.tasks), 1)
+        self.assertEqual(certified.tasks[0].task_type, "checkmark")
+        self.assertEqual(certified.tasks[0].data, {})
         gate_blueprint = quests["Gate Blueprint"]
         self.assertEqual(len(gate_blueprint.tasks), 1)
         self.assertEqual(gate_blueprint.tasks[0].task_type, "checkmark")
@@ -459,7 +712,7 @@ class QuestCompilerTests(unittest.TestCase):
                     for quest in chapter.quests
                 ),
             ),
-            (11, 104, 117, 137),
+            (11, 104, 111, 137),
         )
 
     def test_repeatable_quest_fields_render_exact_ftb_schema(self) -> None:
@@ -517,7 +770,7 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in task_five_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in task_five_catalog for quest in chapter.quests),
             ),
-            (20, 143, 162, 188),
+            (20, 143, 151, 188),
         )
 
     def test_task_five_certification_finales_award_exact_stages(self) -> None:
@@ -541,19 +794,19 @@ class QuestCompilerTests(unittest.TestCase):
 
         infrastructure_proof = certifications[-1].quests[0]
         self.assertEqual(
-            [task.data["stage"] for task in infrastructure_proof.tasks],
-            [
-                "afterlight_cert_kinetics_i",
-                "afterlight_cert_logistics_i",
-                "afterlight_cert_ore_loop_i",
-                "afterlight_cert_autocrafting_i",
-                "afterlight_cert_cross_mod_i",
-                "afterlight_cert_power_i",
-            ],
+            infrastructure_proof.dependency_ids,
+            (
+                "5ADAE277C9FEF0F1",
+                "B107D8813D59B2FF",
+                "66CDE7B061D8DA5C",
+                "42EE25F560AE65CD",
+                "E1F5D15817ED5EFD",
+                "FC9EA276C2D84333",
+            ),
         )
-        self.assertTrue(all(
-            task.task_type == "gamestage" for task in infrastructure_proof.tasks
-        ))
+        self.assertEqual(len(infrastructure_proof.tasks), 1)
+        self.assertEqual(infrastructure_proof.tasks[0].task_type, "checkmark")
+        self.assertEqual(infrastructure_proof.tasks[0].data, {})
 
     def test_task_five_power_certification_uses_real_grid_finale(self) -> None:
         power = self.quests.build_catalog()[15]
@@ -791,7 +1044,7 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
             ),
-            (32, 227, 250, 298),
+            (32, 227, 239, 298),
         )
 
     def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:

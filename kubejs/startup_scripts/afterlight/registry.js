@@ -12,7 +12,7 @@ StartupEvents.registry('item', event => {
   event.create('ascendancy_seal')
     .displayName('Ascendancy Seal')
     .rarity('epic')
-    .maxStackSize(16)
+    .maxStackSize(1)
     .glow(true)
 
   event.create('deep_vault_key')
@@ -41,6 +41,37 @@ StartupEvents.registry('item', event => {
 
   event.create('schematic_lattice_matrix')
     .displayName('Lattice Matrix Schematic')
+    .rarity('epic')
+    .maxStackSize(1)
+    .glow(true)
+
+  event.create('gate_kinetic_frame')
+    .displayName('Kinetic Frame')
+    .rarity('epic')
+    .maxStackSize(1)
+
+  event.create('gate_industrial_anchor')
+    .displayName('Industrial Anchor')
+    .rarity('epic')
+    .maxStackSize(1)
+
+  event.create('gate_isotopic_core')
+    .displayName('Isotopic Core')
+    .rarity('epic')
+    .maxStackSize(1)
+
+  event.create('gate_lattice_matrix')
+    .displayName('Lattice Matrix')
+    .rarity('epic')
+    .maxStackSize(1)
+
+  event.create('undercurrent_stabilizer')
+    .displayName('Undercurrent Stabilizer')
+    .rarity('epic')
+    .maxStackSize(1)
+
+  event.create('gate_of_return_core')
+    .displayName('Gate of Return Core')
     .rarity('epic')
     .maxStackSize(1)
     .glow(true)

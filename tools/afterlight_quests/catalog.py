@@ -29,6 +29,21 @@ DEPOT_EARLY_TABLE = SnbtLong.from_hex("17E69C9CFEA907D4")
 DEPOT_MID_TABLE = SnbtLong.from_hex("182578C414DC8A45")
 DEPOT_LATE_TABLE = SnbtLong.from_hex("B99722D6E7EF5835")
 CHAPTER_FIVE_FINALE = "DA407B47132C07C6"
+SCHEMATIC_FINALES = (
+    "90EDD2BED35BE9E3",
+    "752C3E53CA89C92D",
+    "A1A99D99B372916F",
+    "3497EFDF016FAFD7",
+)
+CERTIFICATION_FINALES = (
+    "5ADAE277C9FEF0F1",
+    "B107D8813D59B2FF",
+    "66CDE7B061D8DA5C",
+    "42EE25F560AE65CD",
+    "E1F5D15817ED5EFD",
+    "FC9EA276C2D84333",
+)
+INFRASTRUCTURE_FINALE = "E524EE78235F0942"
 
 
 def _item_reward(quest_slug: str, item_id: str, count: int, name: str) -> RewardSpec:
@@ -942,7 +957,7 @@ def _chapter_fifteen(previous: str) -> ChapterSpec:
     )
 
 
-def _chapter_sixteen(previous: str) -> ChapterSpec:
+def _chapter_sixteen() -> ChapterSpec:
     keys = "story/16-architect/four-keys"
     storage = "story/16-architect/mega-storage"
     cpu = "story/16-architect/crafting-cpu"
@@ -951,36 +966,30 @@ def _chapter_sixteen(previous: str) -> ChapterSpec:
     certified = "story/16-architect/certified-bulk-quotas"
     remnant = "story/16-architect/ancient-remnant"
     finale = "story/16-architect/gate-blueprint"
-    gate_stages = (
-        "afterlight:gate_create",
-        "afterlight:gate_ie",
-        "afterlight:gate_mekanism",
-        "afterlight:gate_ae2",
-    )
-    certification_stages = (
-        "afterlight_cert_kinetics_i",
-        "afterlight_cert_logistics_i",
-        "afterlight_cert_ore_loop_i",
-        "afterlight_cert_autocrafting_i",
-        "afterlight_cert_cross_mod_i",
-        "afterlight_cert_power_i",
-        "afterlight_cert_infrastructure_ii",
-    )
     quests = (
         QuestSpec(
             slug=keys,
             title="Four Keys",
-            subtitle="Possession is insufficient. Recovery must be recorded.",
+            subtitle="Four recoveries become one physical proof.",
             description=(
-                "Complete all four schematic recoveries and claim their progression stages.",
-                "The stages prove the recovery chain. Keep the physical schematics for Gate crafting.",
+                "Complete all four schematic recoveries and secure each physical schematic.",
+                "The tasks verify possession without consuming the schematics needed for Gate crafting.",
             ),
             x=0.0,
             y=0.0,
-            dependencies=(previous,),
+            dependencies=SCHEMATIC_FINALES,
             tasks=tuple(
-                TaskSpec(f"{keys}/task/{stage.rsplit('_', 1)[-1]}", "gamestage", {"stage": stage})
-                for stage in gate_stages
+                TaskSpec(f"{keys}/task/{name}", "item", {
+                    "item": {"count": 1, "id": item_id},
+                    "count": SnbtLong(1),
+                    "consume_items": False,
+                })
+                for name, item_id in (
+                    ("create", "kubejs:schematic_kinetic_frame"),
+                    ("ie", "kubejs:schematic_industrial_anchor"),
+                    ("mekanism", "kubejs:schematic_isotopic_core"),
+                    ("ae2", "kubejs:schematic_lattice_matrix"),
+                )
             ),
             rewards=_routine_rewards(keys),
         ),
@@ -1006,16 +1015,13 @@ def _chapter_sixteen(previous: str) -> ChapterSpec:
             subtitle="Seven systems must work before one system may trust them.",
             description=(
                 "Complete all seven automation certification capstones.",
-                "These stages prove the certification quests, not your current inventory quantities.",
+                "The dependency graph proves the certification quests. The checkmark records your review.",
                 "If a line cannot recover from a full output, it is not ready for Gate duty.",
             ),
             x=8.0,
             y=0.0,
-            dependencies=(matrix, fusion),
-            tasks=tuple(
-                TaskSpec(f"{certified}/task/{index}", "gamestage", {"stage": stage})
-                for index, stage in enumerate(certification_stages, start=1)
-            ),
+            dependencies=(matrix, fusion, *CERTIFICATION_FINALES, INFRASTRUCTURE_FINALE),
+            tasks=(TaskSpec(f"{certified}/task/checkmark", "checkmark"),),
             rewards=_routine_rewards(certified),
         ),
         _task_quest(remnant, "Ancient Remnant", "One guardian remains between proof and plan.", (
@@ -1034,6 +1040,8 @@ def _chapter_sixteen(previous: str) -> ChapterSpec:
             "&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r",
         ), "checkmark", {}, (remnant,), 12.0, 0.0, finale=(40, 1000, "kubejs:gate_blueprint", "afterlight_act3_complete")),
     )
+    for quest in quests:
+        quest.progression_mode = "linear"
     return ChapterSpec(
         "story/16-architect", "Architect", STORY, "kubejs:gate_blueprint", 15, quests,
     )
@@ -1263,27 +1271,13 @@ def _certification_power() -> ChapterSpec:
     )
 
 
-def _certification_infrastructure(
-    logistics_finale: str,
-    ore_finale: str,
-    autocrafting_finale: str,
-    cross_mod_finale: str,
-    power_finale: str,
-) -> ChapterSpec:
+def _certification_infrastructure() -> ChapterSpec:
     proof = "certifications/infrastructure-ii/stage-proof"
     sheets = "certifications/infrastructure-ii/sheets"
     processors = "certifications/infrastructure-ii/processors"
     circuits = "certifications/infrastructure-ii/circuits"
     steel = "certifications/infrastructure-ii/steel"
     finale = "certifications/infrastructure-ii/unattended"
-    stages = (
-        "afterlight_cert_kinetics_i",
-        "afterlight_cert_logistics_i",
-        "afterlight_cert_ore_loop_i",
-        "afterlight_cert_autocrafting_i",
-        "afterlight_cert_cross_mod_i",
-        "afterlight_cert_power_i",
-    )
     quests = (
         QuestSpec(
             slug=proof,
@@ -1291,21 +1285,12 @@ def _certification_infrastructure(
             subtitle="Separate proofs become one operating standard.",
             description=(
                 "Complete Kinetics, Logistics, Ore Loop, Autocrafting, Cross-Mod, and Power certifications.",
-                "The stage tasks verify claimed certificates before the bulk trial begins.",
+                "The dependency graph verifies every certificate. Confirm the combined standard before the bulk trial begins.",
             ),
             x=0.0,
             y=0.0,
-            dependencies=(
-                logistics_finale,
-                ore_finale,
-                autocrafting_finale,
-                cross_mod_finale,
-                power_finale,
-            ),
-            tasks=tuple(
-                TaskSpec(f"{proof}/task/{index}", "gamestage", {"stage": stage})
-                for index, stage in enumerate(stages, start=1)
-            ),
+            dependencies=CERTIFICATION_FINALES,
+            tasks=(TaskSpec(f"{proof}/task/checkmark", "checkmark"),),
             rewards=_routine_rewards(proof),
         ),
         _certification_item_quest(sheets, "Kinetic Quota", "One thousand twenty-four sheets without hand feeding.", (
@@ -1330,6 +1315,8 @@ def _certification_infrastructure(
         ), "checkmark", {}, (sheets, processors, circuits, steel), 5.0, 0.0,
             stage="afterlight_cert_infrastructure_ii"),
     )
+    for quest in quests:
+        quest.progression_mode = "linear"
     return ChapterSpec(
         "certifications/infrastructure-ii", "Infrastructure II", CERTIFICATIONS,
         "ae2:logic_processor", 6, quests,
@@ -1799,7 +1786,7 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_thirteen = _chapter_thirteen(chapter_twelve.quests[-1].slug)
     chapter_fourteen = _chapter_fourteen(chapter_thirteen.quests[-1].slug)
     chapter_fifteen = _chapter_fifteen(chapter_fourteen.quests[-1].slug)
-    chapter_sixteen = _chapter_sixteen(chapter_fifteen.quests[-1].slug)
+    chapter_sixteen = _chapter_sixteen()
     logistics = _certification_logistics()
     ore_loop = _certification_ore_loop(logistics.quests[-1].slug)
     autocrafting = _certification_autocrafting(logistics.quests[-1].slug)
@@ -1808,13 +1795,7 @@ def build_catalog() -> list[ChapterSpec]:
         autocrafting.quests[-1].slug,
     )
     power = _certification_power()
-    infrastructure = _certification_infrastructure(
-        logistics.quests[-1].slug,
-        ore_loop.quests[-1].slug,
-        autocrafting.quests[-1].slug,
-        cross_mod.quests[-1].slug,
-        power.quests[-1].slug,
-    )
+    infrastructure = _certification_infrastructure()
     depot_early = _depot_chapter(
         "Early", 20, 8, DEPOT_EARLY_TABLE, "minecraft:iron_ingot",
     )

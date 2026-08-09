@@ -142,7 +142,7 @@ hash = "e31d1eabc727b6714bf88d446129048e6dbb13d805b653477114ee808912524e"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/C402713763771CFA.snbt"
-hash = "bcedbcc9b4330f2bc2a45c3076b1f1a5b531d0aefdf0eae2b7488ada14654cb5"
+hash = "e4f52beebeb361465cf886942e82871f4659b732c41bca76970c1e8f7672e258"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/C5491A24F6B8C192.snbt"
@@ -150,7 +150,7 @@ hash = "408bfec74edb5bc50713509bb107cbca553312186cba755025d80ad3576b7fa0"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/D070DE6E2B300F4B.snbt"
-hash = "5072ee8cbc500f3a8cd7390fa212619f14062e82467ab7840301b39811be6a23"
+hash = "cc05e1d47069862b1691f62104c829de8c096f6198310b75604445060e0e68c9"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/D538973B3F8B1C72.snbt"
@@ -198,7 +198,7 @@ hash = "b89f337f070343c37f7bd400f963e85e482205dece7700af8c5209924bdef18a"
 
 [[files]]
 file = "config/ftbquests/quests/lang/en_us.snbt"
-hash = "7c5f98259828cf7c35d6afd702f10b49683a7cb0d3683b8f633b3f26e3712edd"
+hash = "73459338f7b5b435de9c9a773c345b20d8a5d8f799d4b53599234b773fa4b6ef"
 
 [[files]]
 file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"
@@ -254,7 +254,7 @@ hash = "75920c94189e08d8413f6c9e929011b5e60aed9253954d3c1db5ad6d080f8a29"
 
 [[files]]
 file = "kubejs/assets/kubejs/lang/en_us.json"
-hash = "8b6c673a7625f160727f48a2541a3541f13d3c4075a0a0428fa748f8652a1fda"
+hash = "27d589f35b9dfd0be029f95de224b4250651a90b40d4500efeb02be00a849960"
 
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/ascendancy_seal.png"
@@ -267,6 +267,26 @@ hash = "558b634e0c1472828e8f4da06a9c9c0cd5e16fbc51c7ab877aad7d60c8f99ade"
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/gate_blueprint.png"
 hash = "125e6e99f8945e6a514054946b07fe6d6321279d18db02a69e3b105318490fef"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_industrial_anchor.png"
+hash = "c9bef5531f7561a5966a7bccfe7e75cba6169d83734af4e9ee7eefbccc361e16"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_isotopic_core.png"
+hash = "da0d9cce87e422d5cbf311611024b6d185e3380ea97e9ce451131d58698d0df3"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_kinetic_frame.png"
+hash = "684275083c6fecba1ce4dfe6568196198179b0618e95256f5e068bb2c2dd6e28"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_lattice_matrix.png"
+hash = "4a64960cf8b663318c63240c2a3a78322cd9a48b476a55973f5555eb6f07f66e"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/gate_of_return_core.png"
+hash = "5e607bc1fd6e69076297f78817e1b9fd57f29a159252f4b7a7590a48b3127cde"
 
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/requisition_chit.png"
@@ -287,6 +307,10 @@ hash = "dfedac9bb808184aff219f0d92284a90964873df1c40eafbda4814b9d82035dd"
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/schematic_lattice_matrix.png"
 hash = "bf2b4a85cccb0e5fead4b2cce7a8445248acaa3e6bc1076741520b1a8ec94a71"
+
+[[files]]
+file = "kubejs/assets/kubejs/textures/item/undercurrent_stabilizer.png"
+hash = "388b0da408d82b659205e2a8c1466dff89e3fd0accaefb7feca0b98d0a6fa8fe"
 
 [[files]]
 file = "kubejs/assets/kubejs/textures/item/undercurrent_stabilizer_precursor.png"
@@ -474,7 +498,7 @@ hash = "b7004448b6f4d83403cabdbd31948911839fad136f528668777b855809efdf99"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/_constants.js"
-hash = "a34700297d3c06a70b01693dbb504c40e7630edd62d192359ca6df830866b708"
+hash = "96eb84e71031286e0792d0d5eccba73c486e7263168f580a6265daf1582a9849"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/bridges.js"
@@ -486,7 +510,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "aca1fe59f9ab40cc1853a0ad96cc595fb952d4083a7079c93899eadb6fab124e"
+hash = "76b46fb82f00b075c6d5bce39e8911fc1ce7f80bed289a2a9757be2d5930e3ae"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -494,7 +518,7 @@ hash = "0ec9ba2283507e330e865eb6b6706880c97b3890924a4537885fdb38b25f0dde"
 
 [[files]]
 file = "kubejs/startup_scripts/afterlight/registry.js"
-hash = "3fa38a1c174acfa8af0f19950bfdc4150a3b028ec21ba8188dbd7b5aabd2b88f"
+hash = "35e5b71c4e28a08ffc2a160737719415b191a117a05e35f83666a4963e82be0e"
 
 [[files]]
 file = "mods/advanced-loot-info.pw.toml"

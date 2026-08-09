@@ -6,6 +6,12 @@
   "item.kubejs.schematic_industrial_anchor": "Industrial Anchor Schematic",
   "item.kubejs.schematic_isotopic_core": "Isotopic Core Schematic",
   "item.kubejs.schematic_lattice_matrix": "Lattice Matrix Schematic",
+  "item.kubejs.gate_kinetic_frame": "Kinetic Frame",
+  "item.kubejs.gate_industrial_anchor": "Industrial Anchor",
+  "item.kubejs.gate_isotopic_core": "Isotopic Core",
+  "item.kubejs.gate_lattice_matrix": "Lattice Matrix",
+  "item.kubejs.undercurrent_stabilizer": "Undercurrent Stabilizer",
+  "item.kubejs.gate_of_return_core": "Gate of Return Core",
   "item.kubejs.gate_blueprint": "Gate Blueprint",
   "item.kubejs.undercurrent_stabilizer_precursor": "Undercurrent Stabilizer Precursor"
 }

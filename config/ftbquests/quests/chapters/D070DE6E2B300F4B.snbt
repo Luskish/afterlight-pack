@@ -11,39 +11,14 @@
 	quests: [
 		{
 			id: "7CB2D7D361BEA4C4"
-			dependencies: ["B107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "E1F5D15817ED5EFD", "FC9EA276C2D84333"]
+			dependencies: ["5ADAE277C9FEF0F1", "B107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "E1F5D15817ED5EFD", "FC9EA276C2D84333"]
+			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "43E614C7900CAC9B"
-					type: "gamestage"
-					stage: "afterlight_cert_kinetics_i"
-				}
-				{
-					id: "0EE35DF02B88A918"
-					type: "gamestage"
-					stage: "afterlight_cert_logistics_i"
-				}
-				{
-					id: "D8E060EBA4D857B7"
-					type: "gamestage"
-					stage: "afterlight_cert_ore_loop_i"
-				}
-				{
-					id: "0E714D06D9F64870"
-					type: "gamestage"
-					stage: "afterlight_cert_autocrafting_i"
-				}
-				{
-					id: "93234178ED1BF454"
-					type: "gamestage"
-					stage: "afterlight_cert_cross_mod_i"
-				}
-				{
-					id: "EFC030CEDC471D36"
-					type: "gamestage"
-					stage: "afterlight_cert_power_i"
+					id: "74AB10F5C91F1022"
+					type: "checkmark"
 				}
 			]
 			rewards: [
@@ -58,6 +33,7 @@
 		{
 			id: "0880A01ABFC1FAB0"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: -2.0d
 			tasks: [
@@ -81,6 +57,7 @@
 		{
 			id: "C4FEE3F4874BF144"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: -0.5d
 			tasks: [
@@ -104,6 +81,7 @@
 		{
 			id: "6957697A48020CDB"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: 1.0d
 			tasks: [
@@ -127,6 +105,7 @@
 		{
 			id: "F92E405CE058FD1A"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			progression_mode: "linear"
 			x: 2.0d
 			y: 2.5d
 			tasks: [
@@ -150,6 +129,7 @@
 		{
 			id: "E524EE78235F0942"
 			dependencies: ["0880A01ABFC1FAB0", "C4FEE3F4874BF144", "6957697A48020CDB", "F92E405CE058FD1A"]
+			progression_mode: "linear"
 			x: 5.0d
 			y: 0.0d
 			tasks: [

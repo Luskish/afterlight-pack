@@ -959,10 +959,10 @@
 	]
 	chapter.C402713763771CFA.title: "Architect"
 	quest.F1B2919DF12C6845.title: "Four Keys"
-	quest.F1B2919DF12C6845.quest_subtitle: "Possession is insufficient. Recovery must be recorded."
+	quest.F1B2919DF12C6845.quest_subtitle: "Four recoveries become one physical proof."
 	quest.F1B2919DF12C6845.quest_desc: [
-		"Complete all four schematic recoveries and claim their progression stages."
-		"The stages prove the recovery chain. Keep the physical schematics for Gate crafting."
+		"Complete all four schematic recoveries and secure each physical schematic."
+		"The tasks verify possession without consuming the schematics needed for Gate crafting."
 	]
 	quest.D4A6AF60824B79F1.title: "Mega Storage"
 	quest.D4A6AF60824B79F1.quest_subtitle: "Four cells make capacity visible."
@@ -992,7 +992,7 @@
 	quest.AD6ACF1CCBC7B4F2.quest_subtitle: "Seven systems must work before one system may trust them."
 	quest.AD6ACF1CCBC7B4F2.quest_desc: [
 		"Complete all seven automation certification capstones."
-		"These stages prove the certification quests, not your current inventory quantities."
+		"The dependency graph proves the certification quests. The checkmark records your review."
 		"If a line cannot recover from a full output, it is not ready for Gate duty."
 	]
 	quest.D97DA51D265858DD.title: "Ancient Remnant"
@@ -1195,7 +1195,7 @@
 	quest.7CB2D7D361BEA4C4.quest_subtitle: "Separate proofs become one operating standard."
 	quest.7CB2D7D361BEA4C4.quest_desc: [
 		"Complete Kinetics, Logistics, Ore Loop, Autocrafting, Cross-Mod, and Power certifications."
-		"The stage tasks verify claimed certificates before the bulk trial begins."
+		"The dependency graph verifies every certificate. Confirm the combined standard before the bulk trial begins."
 	]
 	quest.0880A01ABFC1FAB0.title: "Kinetic Quota"
 	quest.0880A01ABFC1FAB0.quest_subtitle: "One thousand twenty-four sheets without hand feeding."

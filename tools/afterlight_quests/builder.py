@@ -18,6 +18,7 @@ MANAGED_STATE_NAME = ".afterlight-managed.json"
 DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
+PROGRESSION_MODES = frozenset({"linear", "flexible"})
 
 VANILLA_ITEM_ALLOWLIST = frozenset(
     {
@@ -51,11 +52,17 @@ KUBEJS_ITEM_ALLOWLIST = frozenset(
         "kubejs:ascendancy_seal",
         "kubejs:deep_vault_key",
         "kubejs:gate_blueprint",
+        "kubejs:gate_industrial_anchor",
+        "kubejs:gate_isotopic_core",
+        "kubejs:gate_kinetic_frame",
+        "kubejs:gate_lattice_matrix",
+        "kubejs:gate_of_return_core",
         "kubejs:requisition_chit",
         "kubejs:schematic_industrial_anchor",
         "kubejs:schematic_isotopic_core",
         "kubejs:schematic_kinetic_frame",
         "kubejs:schematic_lattice_matrix",
+        "kubejs:undercurrent_stabilizer",
         "kubejs:undercurrent_stabilizer_precursor",
     }
 )
@@ -141,6 +148,7 @@ class QuestSpec:
     subtitle: str = ""
     dependencies: tuple[str, ...] = ()
     dependency_requirement: str | None = None
+    progression_mode: str | None = None
     tasks: tuple[TaskSpec, ...] = ()
     rewards: tuple[RewardSpec, ...] = ()
     shape: str = ""
@@ -157,6 +165,11 @@ class QuestSpec:
             raise ValueError(
                 f"unsupported dependency requirement: {self.dependency_requirement}"
             )
+        if (
+            self.progression_mode is not None
+            and self.progression_mode not in PROGRESSION_MODES
+        ):
+            raise ValueError(f"unsupported progression mode: {self.progression_mode}")
 
     @property
     def id(self) -> str:
@@ -281,6 +294,8 @@ def render_chapter(chapter: ChapterSpec) -> str:
             quest_fields.append(("dependencies", quest.dependency_ids))
         if quest.dependency_requirement is not None:
             quest_fields.append(("dependency_requirement", quest.dependency_requirement))
+        if quest.progression_mode is not None:
+            quest_fields.append(("progression_mode", quest.progression_mode))
         quest_fields.extend((("x", quest.x), ("y", quest.y)))
         if quest.shape:
             quest_fields.append(("shape", quest.shape))
@@ -874,6 +889,11 @@ def validate_quests(
                 errors.append(
                     f"invalid dependency requirement in {path}: "
                     f"{dependency_requirement!r}"
+                )
+            progression_mode = quest.get("progression_mode")
+            if progression_mode is not None and progression_mode not in PROGRESSION_MODES:
+                errors.append(
+                    f"invalid progression mode in {path}: {progression_mode!r}"
                 )
 
     for identifier, paths in all_ids.items():

@@ -8,11 +8,20 @@ import json
 import re
 import sys
 import tomllib
+import warnings
 import zipfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Sequence
+
+try:
+    from afterlight_quests.builder import _quest_item_ids, quest_item_audit_digest
+except ModuleNotFoundError:
+    from tools.afterlight_quests.builder import (
+        _quest_item_ids,
+        quest_item_audit_digest,
+    )
 
 
 class VerificationError(RuntimeError):
@@ -139,6 +148,7 @@ SABLE_TOP_LEVEL_ARTIFACT_COUNT = 157
 SABLE_ARCHIVE_SCOPE_COUNT = 305
 SABLE_MIXIN_CONFIG_COUNT = 261
 SABLE_COMMON_MIXIN_COUNT = 2286
+SABLE_SERVER_MIXIN_COUNT = 5
 SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
 SABLE_STACK_SHA256 = {
     "prepare": "bae3607214c9f8b88f6bd73e309b99f58eb926a2baae5d8515d3feba85efc7ca",
@@ -297,7 +307,68 @@ LOG_HEADER = re.compile(
     r"\[(?P<logger>[^\]]+)\]: (?P<message>.*)$"
 )
 ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
-SEVERE_HEADER_LIKE = re.compile(r"/(?:ERROR|FATAL)(?:\]|\s|$)")
+SGR_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+HEADER_LEVEL_LIKE = re.compile(
+    r"\[[^\]\r\n]+/(?:TRACE|DEBUG|INFO|WARN|ERROR|FATAL)(?:\]|\s|$)"
+)
+
+PACK_SHIPPING_ROOTS = frozenset(
+    {
+        "config",
+        "defaultconfigs",
+        "global_packs",
+        "kubejs",
+        "mods",
+        "resourcepacks",
+        "shaderpacks",
+    }
+)
+FORBIDDEN_SHIPPING_PARTS = frozenset(
+    {
+        ".agents",
+        ".claude",
+        ".git",
+        ".github",
+        ".superpowers",
+        "dist",
+        "docs",
+        "server-test",
+        "tools",
+    }
+)
+FORBIDDEN_SHIPPING_SUFFIXES = frozenset(
+    {".env", ".jar", ".key", ".nbt", ".p12", ".pem"}
+)
+SENSITIVE_SHIPPING_PART = re.compile(
+    r"(?:^|[._-])(?:credential|credentials|secret|secrets|token|tokens)(?:[._-]|$)",
+    re.IGNORECASE,
+)
+
+YUNGS_VOLATILE_WORKER_WARNINGS = frozenset(
+    {
+        "Discarding @Unique public method getEnhancedJunctionIterator in "
+        "yungsapi.mixins.json:BeardifierMixin from mod yungsapi because it already "
+        "exists in net.minecraft.world.level.levelgen.Beardifier",
+        "Discarding @Unique public method setEnhancedJunctionIterator in "
+        "yungsapi.mixins.json:BeardifierMixin from mod yungsapi because it already "
+        "exists in net.minecraft.world.level.levelgen.Beardifier",
+    }
+)
+REVIEWED_WARNING_TOTAL = 478
+REVIEWED_WARNING_UNIQUE = 384
+REVIEWED_WARNING_MULTISET_SHA256 = (
+    "e47a762c90a3009cce022e9cface034373a3430fd5b230740fc4135bfa82ccc4"
+)
+REVIEWED_DUPLICATE_ZIP_MEMBERS = {
+    ("mods/ars-nouveau.pw.toml", "META-INF/LICENSE.txt"): (
+        6,
+        "a2521407b3209df7dcebfc12cd6d732b24bfa2fe44982ef613e269666482521d",
+    ),
+    ("mods/ars-nouveau.pw.toml", "META-INF/NOTICE.txt"): (
+        6,
+        "a5b67acba0dd6a28db1c36f4d9cf8052979b59c36dba0a9119cf03c8e5365fb0",
+    ),
+}
 
 
 def _hash_bytes(payload: bytes, hash_format: str) -> str:
@@ -336,9 +407,65 @@ def _safe_relative_path(value: str, label: str) -> PurePosixPath:
     return path
 
 
-def verify_manifest(root: Path | str) -> dict[str, str]:
+def _verified_regular_file(
+    root: Path, relative: PurePosixPath, label: str
+) -> Path:
+    target = root
+    for part in relative.parts:
+        target /= part
+        if target.is_symlink():
+            raise VerificationError(
+                f"symlink in {label} path: {relative.as_posix()}"
+            )
+    try:
+        resolved = target.resolve(strict=True)
+    except OSError as error:
+        raise VerificationError(
+            f"cannot resolve {label} path {relative.as_posix()}: {error}"
+        ) from error
+    try:
+        resolved.relative_to(root)
+    except ValueError as error:
+        raise VerificationError(
+            f"{label} path escapes pack root: {relative.as_posix()}"
+        ) from error
+    if not resolved.is_file():
+        raise VerificationError(f"{label} is missing: {relative.as_posix()}")
+    return resolved
+
+
+def _enforce_shipping_policy(relative: PurePosixPath) -> None:
+    lowered_parts = tuple(part.lower() for part in relative.parts)
+    if lowered_parts[0] not in PACK_SHIPPING_ROOTS:
+        raise VerificationError(
+            f"shipping policy rejects root leakage: {relative.as_posix()}"
+        )
+    forbidden = sorted(set(lowered_parts) & FORBIDDEN_SHIPPING_PARTS)
+    if forbidden:
+        raise VerificationError(
+            "shipping policy rejects forbidden path component "
+            f"{forbidden[0]} in {relative.as_posix()}"
+        )
+    sensitive = next(
+        (part for part in relative.parts if SENSITIVE_SHIPPING_PART.search(part)),
+        None,
+    )
+    if sensitive is not None:
+        raise VerificationError(
+            "shipping policy rejects sensitive path component "
+            f"{sensitive} in {relative.as_posix()}"
+        )
+    if relative.suffix.lower() in FORBIDDEN_SHIPPING_SUFFIXES:
+        raise VerificationError(
+            f"shipping policy rejects forbidden extension: {relative.as_posix()}"
+        )
+
+
+def verify_manifest(root: Path | str) -> dict[str, object]:
     root_path = Path(root).resolve()
-    pack_path = root_path / "pack.toml"
+    pack_path = _verified_regular_file(
+        root_path, PurePosixPath("pack.toml"), "pack manifest"
+    )
     pack_bytes = pack_path.read_bytes()
     pack = _read_toml(pack_path)
     index_config = pack.get("index")
@@ -346,9 +473,11 @@ def verify_manifest(root: Path | str) -> dict[str, str]:
         raise VerificationError("pack.toml has no index table")
 
     index_relative = _safe_relative_path(str(index_config.get("file", "")), "index")
-    index_path = root_path.joinpath(*index_relative.parts)
-    index_bytes = index_path.read_bytes()
     index_hash_format = str(index_config.get("hash-format", ""))
+    if index_hash_format != "sha256":
+        raise VerificationError("pack.toml index hash-format must remain sha256")
+    index_path = _verified_regular_file(root_path, index_relative, "pack index")
+    index_bytes = index_path.read_bytes()
     expected_index_hash = str(index_config.get("hash", ""))
     actual_index_hash = _hash_bytes(index_bytes, index_hash_format)
     if actual_index_hash != expected_index_hash:
@@ -358,21 +487,28 @@ def verify_manifest(root: Path | str) -> dict[str, str]:
 
     index = _read_toml(index_path)
     file_hash_format = str(index.get("hash-format", ""))
+    if file_hash_format != "sha256":
+        raise VerificationError("index.toml hash-format must remain sha256")
     entries = index.get("files")
     if not isinstance(entries, list):
         raise VerificationError("index.toml has no files array")
 
     indexed_hashes: dict[str, str] = {}
+    indexed_entries: dict[str, dict[str, object]] = {}
     for entry in entries:
         if not isinstance(entry, dict):
             raise VerificationError("index.toml contains a non-table file entry")
         relative_text = str(entry.get("file", ""))
         relative = _safe_relative_path(relative_text, "indexed file")
+        _enforce_shipping_policy(relative)
         if relative_text in indexed_hashes:
             raise VerificationError(f"duplicate index entry {relative_text}")
-        target = root_path.joinpath(*relative.parts)
-        if not target.is_file():
-            raise VerificationError(f"indexed file is missing: {relative_text}")
+        metafile = entry.get("metafile", False)
+        if not isinstance(metafile, bool):
+            raise VerificationError(
+                f"index entry metafile flag is not boolean: {relative_text}"
+            )
+        target = _verified_regular_file(root_path, relative, "indexed file")
         expected_hash = str(entry.get("hash", ""))
         actual_hash = _hash_file(target, file_hash_format)
         if actual_hash != expected_hash:
@@ -380,6 +516,10 @@ def verify_manifest(root: Path | str) -> dict[str, str]:
                 f"indexed file hash mismatch for {relative_text}: expected {expected_hash}, got {actual_hash}"
             )
         indexed_hashes[relative_text] = expected_hash
+        indexed_entries[relative_text] = {
+            "hash": expected_hash,
+            "metafile": metafile,
+        }
 
     return {
         "pack_hash": _hash_bytes(pack_bytes, "sha256"),
@@ -387,10 +527,13 @@ def verify_manifest(root: Path | str) -> dict[str, str]:
         "index_hash_format": index_hash_format,
         "file_hash_format": file_hash_format,
         "indexed_hashes": indexed_hashes,
+        "indexed_entries": indexed_entries,
     }
 
 
-def verify_install_provenance(root: Path | str, install: Path | str) -> dict:
+def verify_install_provenance(
+    root: Path | str, install: Path | str, verify_files: bool = True
+) -> dict:
     root_path = Path(root).resolve()
     install_path = Path(install).resolve()
     manifest = verify_manifest(root_path)
@@ -411,8 +554,115 @@ def verify_install_provenance(root: Path | str, install: Path | str) -> dict:
         raise VerificationError("installed index provenance does not match current index.toml")
     if provenance.get("cachedSide") != "server":
         raise VerificationError("installer provenance is not for server side")
-    if not isinstance(provenance.get("cachedFiles"), dict):
+    cached_files = provenance.get("cachedFiles")
+    if not isinstance(cached_files, dict):
         raise VerificationError("installer provenance has no cachedFiles map")
+
+    indexed_entries = manifest["indexed_entries"]
+    if not isinstance(indexed_entries, dict):
+        raise VerificationError("authenticated manifest has no indexed entry map")
+    file_hash_format = str(manifest["file_hash_format"])
+    expected_cached_files: dict[str, dict[str, object]] = {}
+    for relative_text, indexed in indexed_entries.items():
+        if not isinstance(relative_text, str) or not isinstance(indexed, dict):
+            raise VerificationError("authenticated manifest entry is malformed")
+        indexed_hash = str(indexed.get("hash", ""))
+        if not indexed.get("metafile", False):
+            expected_cached_files[relative_text] = {
+                "hash": {"type": file_hash_format, "value": indexed_hash},
+                "cachedLocation": relative_text,
+                "optionValue": True,
+            }
+            continue
+
+        metadata_path = root_path.joinpath(
+            *_safe_relative_path(relative_text, "metadata").parts
+        )
+        metadata = _read_toml(metadata_path)
+        side = metadata.get("side")
+        if side not in ("client", "server", "both"):
+            raise VerificationError(
+                f"metadata has no deliberate side value: {relative_text}"
+            )
+        if side == "client":
+            expected_cached_files[relative_text] = {
+                "optionValue": True,
+                "onlyOtherSide": True,
+            }
+            continue
+
+        filename = _safe_relative_path(
+            str(metadata.get("filename", "")), "metadata filename"
+        )
+        if len(filename.parts) != 1:
+            raise VerificationError(
+                f"metadata filename must be a basename: {relative_text}"
+            )
+        download = metadata.get("download")
+        if not isinstance(download, dict):
+            raise VerificationError(f"metadata has no download table: {relative_text}")
+        linked_hash_format = str(download.get("hash-format", ""))
+        linked_hash = str(download.get("hash", ""))
+        _hash_bytes(b"", linked_hash_format)
+        if not re.fullmatch(r"[0-9a-f]+", linked_hash):
+            raise VerificationError(
+                f"metadata download hash is malformed: {relative_text}"
+            )
+        cached_location = (
+            PurePosixPath(relative_text).parent / filename
+        ).as_posix()
+        expected_cached_files[relative_text] = {
+            "hash": {"type": file_hash_format, "value": indexed_hash},
+            "linkedFileHash": {
+                "type": linked_hash_format,
+                "value": linked_hash,
+            },
+            "cachedLocation": cached_location,
+            "optionValue": True,
+        }
+
+    if cached_files != expected_cached_files:
+        actual_keys = set(cached_files)
+        expected_keys = set(expected_cached_files)
+        missing = sorted(expected_keys - actual_keys)
+        extra = sorted(actual_keys - expected_keys)
+        changed = sorted(
+            key
+            for key in actual_keys & expected_keys
+            if cached_files[key] != expected_cached_files[key]
+        )
+        raise VerificationError(
+            "installed cachedFiles payload differs from authenticated server pack: "
+            f"missing={missing} extra={extra} changed={changed}"
+        )
+
+    if not verify_files:
+        return provenance
+
+    for relative_text, cached in expected_cached_files.items():
+        cached_location = cached.get("cachedLocation")
+        if not isinstance(cached_location, str):
+            continue
+        installed_relative = _safe_relative_path(
+            cached_location, f"installed location for {relative_text}"
+        )
+        installed_path = install_path.joinpath(*installed_relative.parts)
+        if not installed_path.is_file():
+            raise VerificationError(
+                f"installed pack file is missing: {cached_location}"
+            )
+        hash_spec = cached.get("linkedFileHash", cached.get("hash"))
+        if not isinstance(hash_spec, dict):
+            raise VerificationError(
+                f"installed pack file has no authenticated hash: {cached_location}"
+            )
+        expected_hash = str(hash_spec.get("value", ""))
+        actual_hash = _hash_file(installed_path, str(hash_spec.get("type", "")))
+        if actual_hash != expected_hash:
+            raise VerificationError(
+                "installed file hash mismatch for "
+                f"{cached_location}: expected {expected_hash}, got {actual_hash}"
+            )
     return provenance
 
 
@@ -485,7 +735,9 @@ def resolve_source_jars(
     root_path = Path(root).resolve()
     install_path = Path(install).resolve()
     manifest = verify_manifest(root_path)
-    provenance = verify_install_provenance(root_path, install_path)
+    provenance = verify_install_provenance(
+        root_path, install_path, verify_files=False
+    )
     return {
         metadata_relative: _resolve_source_jar(
             root_path,
@@ -773,7 +1025,29 @@ def _scan_mixin_archive(
     try:
         archive_source = payload if isinstance(payload, Path) else io.BytesIO(payload)
         with zipfile.ZipFile(archive_source) as archive:
-            names = set(archive.namelist())
+            member_infos = archive.infolist()
+            member_counts = Counter(info.filename for info in member_infos)
+            for name, count in sorted(member_counts.items()):
+                if count == 1:
+                    continue
+                infos = tuple(info for info in member_infos if info.filename == name)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    payload_hashes = tuple(
+                        _hash_bytes(archive.read(info), "sha256") for info in infos
+                    )
+                reviewed = REVIEWED_DUPLICATE_ZIP_MEMBERS.get((label, name))
+                if (
+                    reviewed is None
+                    or reviewed[0] != count
+                    or set(payload_hashes) != {reviewed[1]}
+                ):
+                    raise VerificationError(
+                        "duplicate ZIP member is not an exact reviewed third-party "
+                        f"exception: {label}!/{name} count={count} "
+                        f"hashes={payload_hashes}"
+                    )
+            names = set(member_counts)
             result["archive_scopes"] = int(result["archive_scopes"]) + 1
             for resource in _declared_mixin_configs(archive, names):
                 if resource not in names:
@@ -807,44 +1081,57 @@ def _scan_mixin_archive(
                     continue
                 config_hashes[identity] = config_hash
                 result["mixin_configs"] = int(result["mixin_configs"]) + 1
-                common = config.get("mixins", [])
-                if not isinstance(common, list):
-                    raise VerificationError(f"invalid common mixin list in {label}!/{resource}")
                 package = config["package"].replace(".", "/")
-                for mixin_name in common:
-                    if not isinstance(mixin_name, str):
-                        raise VerificationError(f"invalid common mixin entry in {label}!/{resource}")
-                    result["common_mixins"] = int(result["common_mixins"]) + 1
-                    class_resource = f"{package}/{mixin_name.replace('.', '/')}.class"
-                    if class_resource not in names:
+                for list_key, counter_key in (
+                    ("mixins", "common_mixins"),
+                    ("server", "server_mixins"),
+                ):
+                    entries = config.get(list_key, [])
+                    if not isinstance(entries, list):
                         raise VerificationError(
-                            f"missing common mixin class {label}!/{class_resource}"
+                            f"invalid {list_key} mixin list in {label}!/{resource}"
                         )
-                    class_payload = archive.read(class_resource)
-                    pseudo, has_mixin, target_form, targets = _mixin_targets(
-                        class_payload
-                    )
-                    if has_mixin and (
-                        "Lnet/minecraft/client/multiplayer/ClientLevel;" in targets
-                    ):
-                        result["annotation_clientlevel_mixins"] = (
-                            int(result["annotation_clientlevel_mixins"]) + 1
-                        )
-                        if pseudo:
-                            candidates = result["pseudo_clientlevel_candidates"]
-                            if not isinstance(candidates, list):
-                                raise VerificationError("invalid candidate accumulator")
-                            candidates.append(
-                                (
-                                    label,
-                                    resource,
-                                    mixin_name,
-                                    class_resource,
-                                    _hash_bytes(class_payload, "sha256"),
-                                    target_form,
-                                    targets,
-                                )
+                    for mixin_name in entries:
+                        if not isinstance(mixin_name, str):
+                            raise VerificationError(
+                                f"invalid {list_key} mixin entry in {label}!/{resource}"
                             )
+                        result[counter_key] = int(result[counter_key]) + 1
+                        class_resource = (
+                            f"{package}/{mixin_name.replace('.', '/')}.class"
+                        )
+                        if class_resource not in names:
+                            raise VerificationError(
+                                "missing dedicated-server mixin class "
+                                f"{label}!/{class_resource}"
+                            )
+                        class_payload = archive.read(class_resource)
+                        pseudo, has_mixin, target_form, targets = _mixin_targets(
+                            class_payload
+                        )
+                        if has_mixin and (
+                            "Lnet/minecraft/client/multiplayer/ClientLevel;" in targets
+                        ):
+                            result["annotation_clientlevel_mixins"] = (
+                                int(result["annotation_clientlevel_mixins"]) + 1
+                            )
+                            if pseudo:
+                                candidates = result["pseudo_clientlevel_candidates"]
+                                if not isinstance(candidates, list):
+                                    raise VerificationError(
+                                        "invalid candidate accumulator"
+                                    )
+                                candidates.append(
+                                    (
+                                        label,
+                                        resource,
+                                        mixin_name,
+                                        class_resource,
+                                        _hash_bytes(class_payload, "sha256"),
+                                        target_form,
+                                        targets,
+                                    )
+                                )
             for nested in sorted(name for name in names if name.lower().endswith(".jar")):
                 try:
                     nested_payload = archive.read(nested)
@@ -866,7 +1153,9 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
     root_path = Path(root).resolve()
     install_path = Path(install).resolve()
     manifest = verify_manifest(root_path)
-    provenance = verify_install_provenance(root_path, install_path)
+    provenance = verify_install_provenance(
+        root_path, install_path, verify_files=False
+    )
     metadata_relatives = _enabled_server_metadata(root_path, manifest, provenance)
     if len(metadata_relatives) != SABLE_ENABLED_METADATA_COUNT:
         raise VerificationError(
@@ -973,6 +1262,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": 0,
         "mixin_configs": 0,
         "common_mixins": 0,
+        "server_mixins": 0,
         "annotation_clientlevel_mixins": 0,
         "pseudo_clientlevel_candidates": [],
         "mixin_config_hashes": {},
@@ -992,6 +1282,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": SABLE_ARCHIVE_SCOPE_COUNT,
         "mixin_configs": SABLE_MIXIN_CONFIG_COUNT,
         "common_mixins": SABLE_COMMON_MIXIN_COUNT,
+        "server_mixins": SABLE_SERVER_MIXIN_COUNT,
         "annotation_clientlevel_mixins": SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT,
     }
     for key, expected in expected_counts.items():
@@ -1017,6 +1308,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "archive_scopes": int(scan["archive_scopes"]),
         "mixin_configs": int(scan["mixin_configs"]),
         "common_mixins": int(scan["common_mixins"]),
+        "server_mixins": int(scan["server_mixins"]),
         "annotation_clientlevel_mixins": int(
             scan["annotation_clientlevel_mixins"]
         ),
@@ -1166,6 +1458,25 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
     }
 
 
+def _strip_boundary_ansi(raw_line: str, line_number: int) -> str:
+    if "\x1b" not in raw_line:
+        return raw_line
+    line = raw_line
+    while True:
+        prefix = SGR_ESCAPE.match(line)
+        if prefix is None:
+            break
+        line = line[prefix.end() :]
+    suffix = re.search(r"(?:\x1b\[[0-9;]*m)+$", line)
+    if suffix is not None:
+        line = line[: suffix.start()]
+    if "\x1b" in line:
+        raise VerificationError(
+            f"unsupported interior ANSI escape in log line {line_number}"
+        )
+    return line
+
+
 def parse_log_records(log_text: str) -> tuple[LogRecord, ...]:
     records: list[LogRecord] = []
     current_match: re.Match[str] | None = None
@@ -1188,24 +1499,16 @@ def parse_log_records(log_text: str) -> tuple[LogRecord, ...]:
         )
 
     for line_number, raw_line in enumerate(log_text.splitlines(), start=1):
-        line = ANSI_ESCAPE.sub("", raw_line)
-        if "\x1b" in line:
-            raise VerificationError(
-                f"unsupported ANSI escape in log line {line_number}"
-            )
+        line = _strip_boundary_ansi(raw_line, line_number)
         match = LOG_HEADER.match(line)
         if match:
             finish_record()
             current_match = match
             current_lines = [line]
             continue
-        if line.startswith("[") and SEVERE_HEADER_LIKE.search(line):
+        if HEADER_LEVEL_LIKE.search(line):
             raise VerificationError(
-                f"malformed ERROR/FATAL log header at line {line_number}: {line}"
-            )
-        if line.startswith("[") and re.match(r"^\[\d{2}[A-Z][a-z]{2}\d{4}", line):
-            raise VerificationError(
-                f"malformed anchored log header at line {line_number}: {line}"
+                f"malformed or relocated log header at line {line_number}: {line}"
             )
         if current_match is None:
             raise VerificationError(
@@ -1239,6 +1542,13 @@ def _normalized_record_thread(record: LogRecord) -> str:
             return "Worker-Main-N"
         if re.fullmatch(r"modloading-worker-\d+", record.thread):
             return "modloading-worker-N"
+    if (
+        record.logger == "mixin/"
+        and record.level == "WARN"
+        and record.message in YUNGS_VOLATILE_WORKER_WARNINGS
+        and re.fullmatch(r"Worker-Main-\d+", record.thread)
+    ):
+        return "Worker-Main-N"
     return record.thread
 
 
@@ -1249,6 +1559,35 @@ def _normalize_continuation_line(line: str) -> str:
     )
 
 
+def _normalize_record_message(record: LogRecord) -> str:
+    if (
+        record.level == "WARN"
+        and record.logger == "net.neoforged.jarjar.selection.JarSelector/"
+    ):
+        return re.sub(
+            r"(?<=Mod File: )/.*?/server-test/mods/",
+            "<INSTALL>/mods/",
+            record.message,
+        )
+    if (
+        record.level == "WARN"
+        and record.logger == "com.yanny.aci.manager.ManagedRegistry/"
+    ):
+        return re.sub(
+            r"\$\$Lambda/0x[0-9a-fA-F]+",
+            "$$Lambda/0x<ADDR>",
+            record.message,
+        )
+    if record.level == "WARN" and record.logger == "ModernFix/":
+        if re.fullmatch(r"Initial datapack load took \d+\.\d+ s", record.message):
+            return "Initial datapack load took <SECONDS> s"
+        if re.fullmatch(
+            r"Dedicated server took \d+\.\d+ seconds to load", record.message
+        ):
+            return "Dedicated server took <SECONDS> seconds to load"
+    return record.message
+
+
 def canonical_record_tuple(
     record: LogRecord,
 ) -> tuple[str, str, str, str, tuple[str, ...]]:
@@ -1256,9 +1595,44 @@ def canonical_record_tuple(
         _normalized_record_thread(record),
         record.level,
         record.logger,
-        record.message,
+        _normalize_record_message(record),
         tuple(_normalize_continuation_line(line) for line in record.continuations),
     )
+
+
+def warning_multiset_evidence(
+    records: Sequence[LogRecord],
+) -> tuple[str, int, int]:
+    fingerprints = Counter(
+        canonical_record_fingerprint(record)
+        for record in records
+        if record.level == "WARN"
+    )
+    payload = json.dumps(
+        sorted(fingerprints.items()),
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return (
+        hashlib.sha256(payload).hexdigest(),
+        sum(fingerprints.values()),
+        len(fingerprints),
+    )
+
+
+def _validate_reviewed_warning_multiset(
+    records: Sequence[LogRecord], label: str
+) -> None:
+    actual = warning_multiset_evidence(records)
+    expected = (
+        REVIEWED_WARNING_MULTISET_SHA256,
+        REVIEWED_WARNING_TOTAL,
+        REVIEWED_WARNING_UNIQUE,
+    )
+    if actual != expected:
+        raise VerificationError(
+            f"{label} complete WARN fingerprint multiset changed: "
+            f"expected={expected} actual={actual}"
+        )
 
 
 def _canonical_fields_tuple(
@@ -1673,6 +2047,8 @@ def _validate_canonical_log_pair(
             "latest.log and debug.log canonical ERROR/FATAL identities differ"
         )
 
+    _validate_reviewed_warning_multiset(latest_records, "latest.log")
+    _validate_reviewed_warning_multiset(debug_records, "debug.log")
     warning_allowances = project_warning_allowances()
     warning_identities = {
         (allowance.level, allowance.logger, allowance.message)
@@ -2120,10 +2496,10 @@ def verify_jdt_evidence(root: Path | str, install: Path | str) -> None:
 
 def verify_boot_run(
     root: Path | str, install: Path | str, nonce: str, status: int
-) -> dict[str, Counter[str]]:
+) -> dict[str, object]:
     root_path = Path(root).resolve()
     install_path = Path(install).resolve()
-    verify_install_provenance(root_path, install_path)
+    verify_install_provenance(root_path, install_path, verify_files=False)
     verify_jdt_evidence(root_path, install_path)
     log_path = install_path / "logs" / "latest.log"
     debug_path = install_path / "logs" / "debug.log"
@@ -2158,12 +2534,18 @@ def verify_boot_run(
         )
     if errors[sable.label] != len(sable.latest_record_indices):
         raise VerificationError("Sable canonical error count differs from source proof")
-    return {"errors": errors, "warnings": warnings, "audits": audits}
+    return {
+        "errors": errors,
+        "warnings": warnings,
+        "warning_records": REVIEWED_WARNING_TOTAL,
+        "audits": audits,
+    }
 
 
 def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
+    root_path = Path(root).resolve()
     script_path = (
-        Path(root).resolve()
+        root_path
         / "kubejs"
         / "server_scripts"
         / "afterlight"
@@ -2211,7 +2593,15 @@ def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
     )
     if script.count(success_line) != 1:
         raise VerificationError("generated quest audit success emitter changed")
-    return digest_matches[0], len(items)
+    quest_root = root_path / "config" / "ftbquests" / "quests"
+    source_items = _quest_item_ids(quest_root)
+    source_digest = quest_item_audit_digest(quest_root)
+    if tuple(items) != source_items or digest_matches[0] != source_digest:
+        raise VerificationError(
+            "quest audit source mismatch: generated array and digest must match "
+            "the authenticated quest compiler inputs"
+        )
+    return source_digest, len(source_items)
 
 
 def validate_boot_markers(
@@ -2450,7 +2840,8 @@ def _cli_verify_boot(args: argparse.Namespace) -> None:
     print(
         "BOOT ORACLE: OK "
         f"errors={sum(result['errors'].values())} "
-        f"known-warnings={sum(result['warnings'].values())}"
+        f"warnings={result['warning_records']} "
+        f"named-residuals={sum(result['warnings'].values())}"
     )
 
 

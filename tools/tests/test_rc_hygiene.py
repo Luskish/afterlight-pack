@@ -326,6 +326,21 @@ class ReviewedConfigFixtureTests(unittest.TestCase):
         self.assertEqual(text.count("\tskreecherSpawnWeight = 0"), 1)
         self.assertEqual(text.count("\tskreecherSpawnRolls = 1"), 1)
 
+    def test_better_strongholds_ore_weights_preserve_distribution_without_overflow(self) -> None:
+        config = load_json(
+            ROOT
+            / "config"
+            / "betterstrongholds"
+            / "neoforge-1_21"
+            / "ores.json"
+        )
+        chances = config["oreChances"]
+        entries = chances["entries"]
+        self.assertEqual(chances["defaultBlock"], "minecraft:coal_ore")
+        self.assertEqual(entries["minecraft:coal_ore"], 0.19)
+        self.assertEqual(entries["minecraft:gold_ore"], 0.2)
+        self.assertLess(sum(entries.values()), 1.0)
+
 
 class JarOverrideFixtureTests(unittest.TestCase):
     def test_oritech_turbofuel_changes_only_fluid_ingredient_serializer(self) -> None:
@@ -475,7 +490,9 @@ class JarOverrideFixtureTests(unittest.TestCase):
             },
         )
         block = metadata["filter"]["block"][0]
-        provenance = rc_hygiene.verify_install_provenance(ROOT, INSTALL_ROOT)
+        provenance = rc_hygiene.verify_install_provenance(
+            ROOT, INSTALL_ROOT, verify_files=False
+        )
         metadata_paths = sorted(
             relative
             for relative, cached in provenance["cachedFiles"].items()

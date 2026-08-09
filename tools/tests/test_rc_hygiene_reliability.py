@@ -5,10 +5,12 @@ import importlib
 import io
 import json
 import re
+import shutil
 import struct
 import sys
 import tempfile
 import unittest
+import warnings
 import zipfile
 from unittest import mock
 from pathlib import Path
@@ -101,26 +103,55 @@ def write_provenance_fixture(
 
     jar_path = install / "mods" / "fixture.jar"
     jar_path.write_bytes(jar_bytes)
+    cached_record = (
+        {"optionValue": True, "onlyOtherSide": True}
+        if side == "client"
+        else {
+            "hash": {"type": "sha256", "value": sha256_bytes(metadata)},
+            "linkedFileHash": {"type": "sha256", "value": jar_hash},
+            "cachedLocation": "mods/fixture.jar",
+            "optionValue": True,
+        }
+    )
     provenance = {
         "packFileHash": {"type": "sha256", "value": sha256_bytes(pack)},
         "indexFileHash": {"type": "sha256", "value": sha256_bytes(index)},
-        "cachedFiles": {
-            "mods/fixture.pw.toml": {
-                "hash": {"type": "sha256", "value": sha256_bytes(metadata)},
-                "linkedFileHash": {"type": "sha256", "value": jar_hash},
-                "cachedLocation": "mods/fixture.jar",
-                "optionValue": True,
-            }
-        },
+        "cachedFiles": {"mods/fixture.pw.toml": cached_record},
         "cachedSide": "server",
     }
     (install / "packwiz.json").write_text(json.dumps(provenance), encoding="utf-8")
     return root, install, jar_path
 
 
+def write_manifest_entry_fixture(
+    base: Path, relative: str, payload: bytes = b"fixture"
+) -> Path:
+    root = base / "pack"
+    target = root / Path(relative)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+    index = (
+        'hash-format = "sha256"\n\n'
+        '[[files]]\n'
+        f'file = "{relative}"\n'
+        f'hash = "{sha256_bytes(payload)}"\n'
+    ).encode()
+    (root / "index.toml").write_bytes(index)
+    pack = (
+        'name = "Fixture"\n'
+        'pack-format = "packwiz:1.1.0"\n\n'
+        '[index]\n'
+        'file = "index.toml"\n'
+        'hash-format = "sha256"\n'
+        f'hash = "{sha256_bytes(index)}"\n'
+    ).encode()
+    (root / "pack.toml").write_bytes(pack)
+    return root
+
+
 def valid_boot_log(nonce: str) -> str:
     hygiene = hygiene_module()
-    digest = "8428e54a802bb23013ff5d79c80592bec7b295351330ef4570458ac32f33fecd"
+    digest = "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df"
     return "\n".join(
         (
             "[08Aug2026 11:59:58.000] [modloading-worker-0/INFO] "
@@ -188,6 +219,13 @@ def insert_after_line(log_text: str, marker: str, added: str) -> str:
     lines = log_text.splitlines()
     index = next(index for index, line in enumerate(lines) if marker in line)
     lines.insert(index + 1, added)
+    return "\n".join(lines) + "\n"
+
+
+def replace_first_warning(log_text: str, replacement: str) -> str:
+    lines = log_text.splitlines()
+    index = next(index for index, line in enumerate(lines) if "/WARN]" in line)
+    lines[index] = replacement
     return "\n".join(lines) + "\n"
 
 
@@ -329,6 +367,7 @@ def empty_mixin_scan() -> dict[str, object]:
         "archive_scopes": 0,
         "mixin_configs": 0,
         "common_mixins": 0,
+        "server_mixins": 0,
         "annotation_clientlevel_mixins": 0,
         "direct_clientlevel_mixins": 0,
         "pseudo_clientlevel_candidates": [],
@@ -361,7 +400,42 @@ class StrictLogParserNegativeTests(unittest.TestCase):
         for line in variants:
             with self.subTest(line=line):
                 with self.assertRaisesRegex(
-                    hygiene.VerificationError, "malformed ERROR/FATAL"
+                    hygiene.VerificationError, "malformed or relocated log header"
+                ):
+                    hygiene.parse_log_records(line + "\n")
+
+    def test_relocated_headers_for_every_severity_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        prefix = (
+            "[08Aug2026 11:59:59.000] [main/INFO] "
+            "[fixture.Anchor/SOURCE]: anchor\n"
+        )
+        for severity in ("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"):
+            header = (
+                "[08Aug2026 12:00:00.000] "
+                f"[main/{severity}] [fixture.Hidden/SOURCE]: injected"
+            )
+            for relocated in (f" {header}", f"prefix {header}"):
+                with self.subTest(severity=severity, relocated=relocated):
+                    with self.assertRaisesRegex(
+                        hygiene.VerificationError, "malformed or relocated log header"
+                    ):
+                        hygiene.parse_log_records(prefix + relocated + "\n")
+
+    def test_interior_ansi_cannot_construct_a_header(self) -> None:
+        hygiene = hygiene_module()
+        variants = (
+            "[08Aug2026 12:00:00.000] [main/ER\x1b[0mROR] "
+            "[fixture.Hidden/SOURCE]: injected",
+            "[08Aug2026 12:00:00.000] [ma\x1b[31min/WARN] "
+            "[fixture.Hidden/SOURCE]: injected",
+            "[08Aug2026 12:00:00.000] [main/FATAL] "
+            "[fixture.Hid\x1b[0mden/SOURCE]: injected",
+        )
+        for line in variants:
+            with self.subTest(line=line):
+                with self.assertRaisesRegex(
+                    hygiene.VerificationError, "unsupported interior ANSI"
                 ):
                     hygiene.parse_log_records(line + "\n")
 
@@ -489,12 +563,82 @@ class MixinCorpusNegativeTests(unittest.TestCase):
             tuple(scans[1]["pseudo_clientlevel_candidates"])[0][-2],
         )
 
+    def test_server_listed_clientlevel_mixin_is_scanned(self) -> None:
+        hygiene = hygiene_module()
+        output = io.BytesIO()
+        config = json.dumps(
+            {
+                "required": True,
+                "package": "fixture",
+                "server": ["ServerLevelsMixin"],
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+        with zipfile.ZipFile(output, "w") as archive:
+            archive.writestr(
+                "META-INF/neoforge.mods.toml",
+                '[[mixins]]\nconfig = "fixture.mixins.json"\n',
+            )
+            archive.writestr("fixture.mixins.json", config)
+            archive.writestr(
+                "fixture/ServerLevelsMixin.class",
+                mixin_class_bytes(value_targets=(self.client_descriptor,)),
+            )
+        scan = empty_mixin_scan()
+        hygiene._scan_mixin_archive("mods/server.pw.toml", output.getvalue(), scan)
+        self.assertEqual(scan["server_mixins"], 1)
+        self.assertEqual(scan["annotation_clientlevel_mixins"], 1)
+
+    def test_duplicate_config_and_class_members_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        output = io.BytesIO()
+        first_config = json.dumps(
+            {"package": "fixture", "mixins": ["LevelsMixin"]}, sort_keys=True
+        ).encode("utf-8")
+        second_config = json.dumps(
+            {"package": "fixture", "server": ["LevelsMixin"]}, sort_keys=True
+        ).encode("utf-8")
+        first_class = mixin_class_bytes(value_targets=(self.server_descriptor,))
+        second_class = mixin_class_bytes(value_targets=(self.client_descriptor,))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            with zipfile.ZipFile(output, "w") as archive:
+                archive.writestr(
+                    "META-INF/neoforge.mods.toml",
+                    '[[mixins]]\nconfig = "fixture.mixins.json"\n',
+                )
+                archive.writestr("fixture.mixins.json", first_config)
+                archive.writestr("fixture.mixins.json", second_config)
+                archive.writestr("fixture/LevelsMixin.class", first_class)
+                archive.writestr("fixture/LevelsMixin.class", second_class)
+        with self.assertRaisesRegex(hygiene.VerificationError, "duplicate ZIP member"):
+            hygiene._scan_mixin_archive(
+                "mods/duplicate.pw.toml", output.getvalue(), empty_mixin_scan()
+            )
+
+    def test_duplicate_members_in_nested_archive_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        nested = io.BytesIO()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            with zipfile.ZipFile(nested, "w") as archive:
+                archive.writestr("duplicate.txt", b"first")
+                archive.writestr("duplicate.txt", b"second")
+        outer = io.BytesIO()
+        with zipfile.ZipFile(outer, "w") as archive:
+            archive.writestr("META-INF/jarjar/nested.jar", nested.getvalue())
+        with self.assertRaisesRegex(hygiene.VerificationError, "duplicate ZIP member"):
+            hygiene._scan_mixin_archive(
+                "mods/outer.pw.toml", outer.getvalue(), empty_mixin_scan()
+            )
+
     def test_real_corpus_processes_every_mixin_scope(self) -> None:
         hygiene = hygiene_module()
         evidence = hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
         self.assertEqual(evidence["archive_scopes"], 305)
         self.assertEqual(evidence["mixin_configs"], 261)
         self.assertEqual(evidence["common_mixins"], 2286)
+        self.assertEqual(evidence["server_mixins"], 5)
         self.assertEqual(evidence["annotation_clientlevel_mixins"], 3)
         self.assertEqual(len(evidence["pseudo_clientlevel_candidates"]), 3)
         terrablender = tuple(
@@ -807,6 +951,53 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             with self.assertRaisesRegex(hygiene.VerificationError, "index hash"):
                 hygiene.verify_manifest(root)
 
+    def test_manifest_rejects_hash_format_downgrades(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            pack_root = write_manifest_entry_fixture(
+                base / "pack-format", "config/fixture.json"
+            )
+            index_bytes = (pack_root / "index.toml").read_bytes()
+            (pack_root / "pack.toml").write_text(
+                'name = "Fixture"\n'
+                'pack-format = "packwiz:1.1.0"\n\n'
+                '[index]\n'
+                'file = "index.toml"\n'
+                'hash-format = "sha1"\n'
+                f'hash = "{hashlib.sha1(index_bytes).hexdigest()}"\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "pack.toml index hash-format"
+            ):
+                hygiene.verify_manifest(pack_root)
+
+            index_root = write_manifest_entry_fixture(
+                base / "index-format", "config/fixture.json"
+            )
+            payload = (index_root / "config" / "fixture.json").read_bytes()
+            downgraded_index = (
+                'hash-format = "sha1"\n\n'
+                '[[files]]\n'
+                'file = "config/fixture.json"\n'
+                f'hash = "{hashlib.sha1(payload).hexdigest()}"\n'
+            ).encode()
+            (index_root / "index.toml").write_bytes(downgraded_index)
+            (index_root / "pack.toml").write_text(
+                'name = "Fixture"\n'
+                'pack-format = "packwiz:1.1.0"\n\n'
+                '[index]\n'
+                'file = "index.toml"\n'
+                'hash-format = "sha256"\n'
+                f'hash = "{sha256_bytes(downgraded_index)}"\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "index.toml hash-format"
+            ):
+                hygiene.verify_manifest(index_root)
+
     def test_modified_source_jar_is_rejected(self) -> None:
         hygiene = hygiene_module()
         with tempfile.TemporaryDirectory() as temporary:
@@ -823,6 +1014,119 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                 pack_file.write(b"\n")
             with self.assertRaisesRegex(hygiene.VerificationError, "installed pack provenance"):
                 hygiene.verify_install_provenance(root, install)
+
+    def test_missing_cached_pack_file_is_rejected(self) -> None:
+        hygiene = hygiene_module()
+        provenance = json.loads(
+            (ROOT / "server-test" / "packwiz.json").read_text(encoding="utf-8")
+        )
+        removed = provenance["cachedFiles"].pop(
+            "kubejs/server_scripts/afterlight/gate_draconic.js"
+        )
+        self.assertIsNotNone(removed)
+        with tempfile.TemporaryDirectory() as temporary:
+            install = Path(temporary)
+            (install / "packwiz.json").write_text(
+                json.dumps(provenance), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "cachedFiles payload"
+            ):
+                hygiene.verify_install_provenance(ROOT, install)
+
+    def test_extra_cached_pack_file_is_rejected(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install, _ = write_provenance_fixture(Path(temporary))
+            provenance_path = install / "packwiz.json"
+            provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+            provenance["cachedFiles"]["config/extra-secret.txt"] = {
+                "hash": {"type": "sha256", "value": "0" * 64},
+                "cachedLocation": "config/extra-secret.txt",
+                "optionValue": True,
+            }
+            provenance_path.write_text(json.dumps(provenance), encoding="utf-8")
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "cachedFiles payload"
+            ):
+                hygiene.verify_install_provenance(root, install)
+
+    def test_changed_installed_pack_file_is_rejected_by_provenance(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install, jar_path = write_provenance_fixture(Path(temporary))
+            jar_path.write_bytes(b"changed installed content")
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "installed file hash mismatch"
+            ):
+                hygiene.verify_install_provenance(root, install)
+
+    def test_shipping_policy_rejects_forbidden_and_root_leakage(self) -> None:
+        hygiene = hygiene_module()
+        forbidden = (
+            "server-test/credentials.txt",
+            "config/Server-Test/allowed.toml",
+            "dist/export.zip",
+            "docs/guide.txt",
+            "tools/check.py",
+            ".Git/config",
+            ".superpowers/report.md",
+            "config/private/Client-Token.json",
+            "config/private/CREDENTIALS.txt",
+            "mods/forbidden.JAR",
+            "kubejs/data/structure.NBT",
+            "README.md",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            for index, relative in enumerate(forbidden):
+                with self.subTest(relative=relative):
+                    root = write_manifest_entry_fixture(
+                        base / str(index), relative
+                    )
+                    with self.assertRaisesRegex(
+                        hygiene.VerificationError, "shipping policy"
+                    ):
+                        hygiene.verify_manifest(root)
+
+    def test_manifest_rejects_indexed_file_and_parent_symlinks(self) -> None:
+        hygiene = hygiene_module()
+        payload = b"external secret"
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            file_root = write_manifest_entry_fixture(
+                base / "file-link", "config/payload.json", payload
+            )
+            external_file = base / "external-payload.json"
+            external_file.write_bytes(payload)
+            indexed_file = file_root / "config" / "payload.json"
+            indexed_file.unlink()
+            indexed_file.symlink_to(external_file)
+            with self.assertRaisesRegex(hygiene.VerificationError, "symlink"):
+                hygiene.verify_manifest(file_root)
+
+            parent_root = write_manifest_entry_fixture(
+                base / "parent-link", "config/linked/payload.json", payload
+            )
+            external_directory = base / "external-config"
+            external_directory.mkdir()
+            (external_directory / "payload.json").write_bytes(payload)
+            linked_directory = parent_root / "config" / "linked"
+            (linked_directory / "payload.json").unlink()
+            linked_directory.rmdir()
+            linked_directory.symlink_to(external_directory, target_is_directory=True)
+            with self.assertRaisesRegex(hygiene.VerificationError, "symlink"):
+                hygiene.verify_manifest(parent_root)
+
+    def test_current_manifest_has_exact_reviewed_shipping_roots(self) -> None:
+        hygiene = hygiene_module()
+        manifest = hygiene.verify_manifest(ROOT)
+        indexed = manifest["indexed_hashes"]
+        self.assertEqual(len(indexed), 292)
+        self.assertEqual(
+            {relative.split("/", 1)[0] for relative in indexed},
+            {"config", "global_packs", "kubejs", "mods"},
+        )
 
     def test_metadata_fragment_is_rejected(self) -> None:
         hygiene = hygiene_module()
@@ -1164,6 +1468,9 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         with self.assertRaises(self.hygiene.VerificationError):
             self.verify_pair(latest, debug)
 
+    def inject_after_ignored_info(self, log_text: str, added: str) -> str:
+        return insert_after_line(log_text, "ModLauncher running: args", added)
+
     def test_current_log_pair_is_accepted(self) -> None:
         result = self.verify_pair(self.latest, self.debug)
         self.assertEqual(sum(result["errors"].values()), 14)
@@ -1182,6 +1489,187 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
                     self.latest + line + "\n", self.debug + line + "\n"
                 )
 
+    def test_relocated_severe_headers_fail_in_each_log_projection(self) -> None:
+        header = (
+            " [08Aug2026 12:00:00.000] [main/ERROR] "
+            "[fixture.Hidden/SOURCE]: injected"
+        )
+        latest_changed = self.inject_after_ignored_info(self.latest, header)
+        debug_changed = self.inject_after_ignored_info(self.debug, header)
+        variants = (
+            (latest_changed, debug_changed),
+            (latest_changed, self.debug),
+            (self.latest, debug_changed),
+        )
+        for latest, debug in variants:
+            with self.subTest(
+                latest_changed=latest is latest_changed,
+                debug_changed=debug is debug_changed,
+            ):
+                self.assert_pair_rejected(latest, debug)
+
+    def test_complete_warning_fingerprint_corpus_rejects_all_mutations(self) -> None:
+        unknown = (
+            "[08Aug2026 12:00:00.000] [main/WARN] "
+            "[fixture.Hidden/SOURCE]: injected"
+        )
+        first_warning = next(
+            line for line in self.latest.splitlines() if "/WARN]" in line
+        )
+        debug_first_warning = next(
+            line for line in self.debug.splitlines() if "/WARN]" in line
+        )
+        changed_thread_latest = self.latest.replace(
+            first_warning,
+            re.sub(r"\[[^\]]+/WARN\]", "[Relocated-Worker/WARN]", first_warning),
+            1,
+        )
+        changed_thread_debug = self.debug.replace(
+            debug_first_warning,
+            re.sub(
+                r"\[[^\]]+/WARN\]",
+                "[Relocated-Worker/WARN]",
+                debug_first_warning,
+            ),
+            1,
+        )
+        replacement = (
+            "[08Aug2026 12:00:00.000] [main/WARN] "
+            "[fixture.Substitute/SOURCE]: same count substitution"
+        )
+        version_marker = "Failed to process update information"
+        mutations = (
+            (
+                self.inject_after_ignored_info(self.latest, unknown),
+                self.inject_after_ignored_info(self.debug, unknown),
+            ),
+            (self.inject_after_ignored_info(self.latest, unknown), self.debug),
+            (self.latest, self.inject_after_ignored_info(self.debug, unknown)),
+            (
+                self.latest.replace(first_warning + "\n", "", 1),
+                self.debug.replace(debug_first_warning + "\n", "", 1),
+            ),
+            (changed_thread_latest, changed_thread_debug),
+            (
+                insert_after_line(
+                    self.latest, version_marker, "Caused by: fixture.ChangedWarning"
+                ),
+                insert_after_line(
+                    self.debug, version_marker, "Caused by: fixture.ChangedWarning"
+                ),
+            ),
+            (
+                replace_first_warning(self.latest, replacement),
+                replace_first_warning(self.debug, replacement),
+            ),
+        )
+        for index, (latest, debug) in enumerate(mutations):
+            with self.subTest(index=index):
+                self.assert_pair_rejected(latest, debug)
+
+    def test_warning_volatile_normalization_is_explicit_and_narrow(self) -> None:
+        record = self.hygiene.LogRecord
+        jar_message = (
+            "Attempted to select a dependency jar for JarJar which was passed in as "
+            "source: architectury. Using Mod File: "
+            "/Users/example/project/server-test/mods/architectury.jar"
+        )
+        ci_message = jar_message.replace(
+            "/Users/example/project", "/home/runner/work/afterlight"
+        )
+        local = record(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "WARN",
+            "net.neoforged.jarjar.selection.JarSelector/",
+            jar_message,
+            (),
+            "",
+        )
+        ci = record(
+            "08Aug2026 12:00:01.000",
+            "main",
+            "WARN",
+            "net.neoforged.jarjar.selection.JarSelector/",
+            ci_message,
+            (),
+            "",
+        )
+        self.assertEqual(
+            self.hygiene.canonical_record_fingerprint(local),
+            self.hygiene.canonical_record_fingerprint(ci),
+        )
+
+        yungs_message = (
+            "Discarding @Unique public method getEnhancedJunctionIterator in "
+            "yungsapi.mixins.json:BeardifierMixin from mod yungsapi because it "
+            "already exists in net.minecraft.world.level.levelgen.Beardifier"
+        )
+        workers = tuple(
+            record(
+                "08Aug2026 12:00:00.000",
+                thread,
+                "WARN",
+                "mixin/",
+                yungs_message,
+                (),
+                "",
+            )
+            for thread in ("Worker-Main-5", "Worker-Main-19")
+        )
+        self.assertEqual(
+            self.hygiene.canonical_record_fingerprint(workers[0]),
+            self.hygiene.canonical_record_fingerprint(workers[1]),
+        )
+        unrelated = record(
+            "08Aug2026 12:00:00.000",
+            "Worker-Main-19",
+            "WARN",
+            "mixin/",
+            "unreviewed warning",
+            (),
+            "",
+        )
+        self.assertNotEqual(
+            self.hygiene.canonical_record_fingerprint(workers[0]),
+            self.hygiene.canonical_record_fingerprint(unrelated),
+        )
+
+        lambda_records = tuple(
+            record(
+                "08Aug2026 12:00:00.000",
+                "Server thread",
+                "WARN",
+                "com.yanny.aci.manager.ManagedRegistry/",
+                "Missing trade item listings for fixture.Trade$$Lambda/0x"
+                f"{address}",
+                (),
+                "",
+            )
+            for address in ("00000070074cc500", "000000e8074e3538")
+        )
+        self.assertEqual(
+            self.hygiene.canonical_record_fingerprint(lambda_records[0]),
+            self.hygiene.canonical_record_fingerprint(lambda_records[1]),
+        )
+
+        modernfix_records = tuple(
+            record(
+                "08Aug2026 12:00:00.000",
+                "main",
+                "WARN",
+                "ModernFix/",
+                f"Initial datapack load took {seconds} s",
+                (),
+                "",
+            )
+            for seconds in ("6.126", "6.975")
+        )
+        self.assertEqual(
+            self.hygiene.canonical_record_fingerprint(modernfix_records[0]),
+            self.hygiene.canonical_record_fingerprint(modernfix_records[1]),
+        )
+
     def test_latest_only_sable_thread_relocation_is_rejected(self) -> None:
         original = (
             "[main/ERROR] "
@@ -1191,6 +1679,24 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         changed = original.replace("[main/ERROR]", "[Unrelated-Worker/ERROR]")
         self.assert_pair_rejected(
             self.latest.replace(original, changed, 1), self.debug
+        )
+
+    def test_modernfix_dedicated_timing_normalization_is_explicit(self) -> None:
+        records = tuple(
+            self.hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                "Server thread",
+                "WARN",
+                "ModernFix/",
+                f"Dedicated server took {seconds} seconds to load",
+                (),
+                "",
+            )
+            for seconds in ("64.226", "68.709")
+        )
+        self.assertEqual(
+            self.hygiene.canonical_record_fingerprint(records[0]),
+            self.hygiene.canonical_record_fingerprint(records[1]),
         )
 
     def test_cross_log_error_continuation_disagreement_is_rejected(self) -> None:
@@ -1243,14 +1749,61 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "8428e54a802bb23013ff5d79c80592bec7b295351330ef4570458ac32f33fecd",
+                "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df",
                 219,
             ),
         )
 
+    def test_quest_digest_and_items_are_recomputed_from_source(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(ROOT / "config", root / "config")
+            shutil.copytree(ROOT / "mods", root / "mods")
+            shutil.copytree(
+                ROOT / "kubejs" / "startup_scripts",
+                root / "kubejs" / "startup_scripts",
+            )
+            script_dir = root / "kubejs" / "server_scripts" / "afterlight"
+            script_dir.mkdir(parents=True)
+            source = (
+                ROOT
+                / "kubejs"
+                / "server_scripts"
+                / "afterlight"
+                / "generated_quest_item_audit.js"
+            ).read_text(encoding="utf-8")
+            script_path = script_dir / "generated_quest_item_audit.js"
+            digest = re.search(
+                r"AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '([0-9a-f]{64})'", source
+            ).group(1)
+            for label, changed in (
+                ("digest", source.replace(digest, "f" * 64, 1)),
+                (
+                    "items",
+                    source.replace(
+                        '  "ae2:1k_crafting_storage",\n', "", 1
+                    ),
+                ),
+                (
+                    "same_count_substitution",
+                    source.replace(
+                        '  "ae2:1k_crafting_storage",\n',
+                        '  "minecraft:stone",\n',
+                        1,
+                    ),
+                ),
+            ):
+                with self.subTest(label=label):
+                    script_path.write_text(changed, encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        hygiene.VerificationError, "quest audit source mismatch"
+                    ):
+                        hygiene.quest_audit_expectation(root)
+
     def test_zero_and_mutated_quest_digests_are_rejected(self) -> None:
         digest = (
-            "8428e54a802bb23013ff5d79c80592bec7b295351330ef4570458ac32f33fecd"
+            "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df"
         )
         for replacement in ("0" * 64, "1" + digest[1:]):
             with self.subTest(replacement=replacement):
@@ -1376,6 +1929,39 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
         run_lines = [line for line in script.splitlines() if "./run.sh nogui" in line]
         self.assertEqual(len(run_lines), 1)
         self.assertNotIn("|| true", run_lines[0])
+
+    def test_ci_and_neoforge_installer_executables_are_immutable(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "pack-ci.yml").read_text(
+            encoding="utf-8"
+        )
+        uses = re.findall(
+            r"^\s*- uses: ([^\s]+)(?:\s+#.*)?$", workflow, flags=re.MULTILINE
+        )
+        expected_actions = {
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961",
+            "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+            "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        }
+        self.assertEqual(set(uses), expected_actions)
+        for action in uses:
+            with self.subTest(action=action):
+                self.assertRegex(action, r"^[^@]+@[0-9a-f]{40}$")
+        self.assertNotIn("go-version: stable", workflow)
+        self.assertIn('go-version: "1.26.5"', workflow)
+
+        versions = (ROOT / "tools" / "versions.env").read_text(encoding="utf-8")
+        self.assertRegex(
+            versions,
+            r"NEOFORGE_INSTALLER_SHA256=\$\{NEOFORGE_INSTALLER_SHA256:-[0-9a-f]{64}\}",
+        )
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn("NEOFORGE_INSTALLER_CACHE", script)
+        self.assertIn("ACTUAL_NEOFORGE_SHA256", script)
+        checksum_index = script.index("ACTUAL_NEOFORGE_SHA256")
+        execute_index = script.index("-jar neoforge-installer.jar")
+        self.assertLess(checksum_index, execute_index)
+        self.assertIn("NEOFORGE_INSTALLER_SHA256 mismatch", script)
 
 
 if __name__ == "__main__":

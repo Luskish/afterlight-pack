@@ -36,6 +36,8 @@ BOOTSTRAP_SHA256="a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d11
 DIR=server-test
 BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
 SERVE_PORT=${SERVE_PORT:-8199}
+AFTERLIGHT_CACHE_DIR=${AFTERLIGHT_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/afterlight}
+NEOFORGE_INSTALLER_CACHE="$AFTERLIGHT_CACHE_DIR/neoforge-${NEOFORGE_VERSION}-installer.jar"
 SERVE_PID=""
 
 python3 tools/rc_hygiene.py verify-manifest --root .
@@ -92,8 +94,30 @@ AUDIT_NONCE="$(date +%s)-$$-${RANDOM}"
 printf '%s\n' "$AUDIT_NONCE" > "$DIR/afterlight-audit-nonce.txt"
 
 NEOFORGE_URL="https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/neoforge-${NEOFORGE_VERSION}-installer.jar"
-if ! curl -sfL -o "$DIR/neoforge-installer.jar" "$NEOFORGE_URL"; then
-  echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"
+mkdir -p "$AFTERLIGHT_CACHE_DIR"
+if [ ! -f "$NEOFORGE_INSTALLER_CACHE" ]; then
+  NEOFORGE_INSTALLER_TMP="${NEOFORGE_INSTALLER_CACHE}.tmp.$$"
+  if ! curl -sfL -o "$NEOFORGE_INSTALLER_TMP" "$NEOFORGE_URL"; then
+    rm -f "$NEOFORGE_INSTALLER_TMP"
+    echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"
+    exit 3
+  fi
+  mv "$NEOFORGE_INSTALLER_TMP" "$NEOFORGE_INSTALLER_CACHE"
+fi
+ACTUAL_NEOFORGE_SHA256=$(shasum -a 256 "$NEOFORGE_INSTALLER_CACHE" | awk '{print $1}')
+if [ "$ACTUAL_NEOFORGE_SHA256" != "$NEOFORGE_INSTALLER_SHA256" ]; then
+  rm -f "$NEOFORGE_INSTALLER_CACHE"
+  echo "FAIL: NEOFORGE_INSTALLER_SHA256 mismatch"
+  echo "expected $NEOFORGE_INSTALLER_SHA256"
+  echo "actual   $ACTUAL_NEOFORGE_SHA256"
+  exit 3
+fi
+cp "$NEOFORGE_INSTALLER_CACHE" "$DIR/neoforge-installer.jar"
+ACTUAL_NEOFORGE_SHA256=$(shasum -a 256 "$DIR/neoforge-installer.jar" | awk '{print $1}')
+if [ "$ACTUAL_NEOFORGE_SHA256" != "$NEOFORGE_INSTALLER_SHA256" ]; then
+  echo "FAIL: NEOFORGE_INSTALLER_SHA256 mismatch after cache copy"
+  echo "expected $NEOFORGE_INSTALLER_SHA256"
+  echo "actual   $ACTUAL_NEOFORGE_SHA256"
   exit 3
 fi
 if ! (cd "$DIR" && "$JAVA" -jar neoforge-installer.jar --install-server . > installer.log 2>&1); then

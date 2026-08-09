@@ -9,6 +9,10 @@ file = "config/almostunified/unification/materials.json"
 hash = "c6436bdbdab9d6321fbe208f0048e18bf5c2511e0d11170c4a6e86302c144a97"
 
 [[files]]
+file = "config/betterstrongholds/neoforge-1_21/ores.json"
+hash = "49591bc0ee176703fb33c38bf8ef93e610345a4e768d16e43b2bf8749ba2779e"
+
+[[files]]
 file = "config/create_enchantment_industry-server.toml"
 hash = "74d6bf333342576057cb0da6252a0aa836191090ec30d75d5e100de2b1fb6f68"
 
@@ -482,7 +486,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "3c902850d434dc205497ba95fe978416284323acd347c77b0633ec49bdff450c"
+hash = "7730ba71ef60d98231bb0901a4cabb250fa7103724374f5a6c5cc48a14aea7a1"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"

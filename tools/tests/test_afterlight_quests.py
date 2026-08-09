@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import re
+import shutil
 import struct
 import sys
 import tempfile
@@ -221,6 +222,131 @@ class Plan06GateDependencyTests(unittest.TestCase):
                 self.assertIn("count", task.data)
                 self.assertEqual(task.data["count"], self.quests.SnbtLong(1))
                 self.assertFalse(task.data["consume_items"])
+
+    def assert_generated_authoritative_gate_graph(self, quest_root: Path) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        quests = {}
+        for path in sorted((quest_root / "chapters").glob("*.snbt")):
+            chapter = _parse_snbt(path.read_text(encoding="utf-8"))
+            quests.update({quest["id"]: quest for quest in chapter["quests"]})
+
+        expected = {
+            "7CB2D7D361BEA4C4": {
+                "dependencies": self.CERTIFICATION_FINALES,
+                "progression_mode": "linear",
+                "tasks": (
+                    {"id": "74AB10F5C91F1022", "type": "checkmark"},
+                ),
+            },
+            "F1B2919DF12C6845": {
+                "dependencies": (
+                    "90EDD2BED35BE9E3",
+                    "752C3E53CA89C92D",
+                    "A1A99D99B372916F",
+                    "3497EFDF016FAFD7",
+                ),
+                "progression_mode": "linear",
+                "tasks": (
+                    {
+                        "id": "BA12D2169F1CB1B8",
+                        "type": "item",
+                        "item": {
+                            "count": "1",
+                            "id": "kubejs:schematic_kinetic_frame",
+                        },
+                        "count": "1L",
+                        "consume_items": False,
+                    },
+                    {
+                        "id": "F4435064B9C0A86F",
+                        "type": "item",
+                        "item": {
+                            "count": "1",
+                            "id": "kubejs:schematic_industrial_anchor",
+                        },
+                        "count": "1L",
+                        "consume_items": False,
+                    },
+                    {
+                        "id": "830D638C9452FB47",
+                        "type": "item",
+                        "item": {
+                            "count": "1",
+                            "id": "kubejs:schematic_isotopic_core",
+                        },
+                        "count": "1L",
+                        "consume_items": False,
+                    },
+                    {
+                        "id": "23F46A9140462F95",
+                        "type": "item",
+                        "item": {
+                            "count": "1",
+                            "id": "kubejs:schematic_lattice_matrix",
+                        },
+                        "count": "1L",
+                        "consume_items": False,
+                    },
+                ),
+            },
+            "AD6ACF1CCBC7B4F2": {
+                "dependencies": (
+                    "8CE6F6160F721A8A",
+                    "98EABED18B5B2ECF",
+                    *self.CERTIFICATION_FINALES,
+                    "E524EE78235F0942",
+                ),
+                "progression_mode": "linear",
+                "tasks": (
+                    {"id": "BBFA32444B48A6A0", "type": "checkmark"},
+                ),
+            },
+        }
+
+        for quest_id, fields in expected.items():
+            quest = quests[quest_id]
+            self.assertEqual(
+                tuple(quest["dependencies"]),
+                fields["dependencies"],
+                f"generated dependencies differ for {quest_id}",
+            )
+            self.assertEqual(
+                quest.get("progression_mode"),
+                fields["progression_mode"],
+                f"generated progression mode differs for {quest_id}",
+            )
+            self.assertEqual(
+                tuple(quest["tasks"]),
+                fields["tasks"],
+                f"generated tasks differ for {quest_id}",
+            )
+
+    def test_generated_authoritative_gate_graph_is_exact(self) -> None:
+        self.assert_generated_authoritative_gate_graph(
+            ROOT / "config" / "ftbquests" / "quests"
+        )
+
+    def test_generated_authoritative_gate_graph_rejects_dependency_mutation(self) -> None:
+        source_root = ROOT / "config" / "ftbquests" / "quests"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = Path(temp_dir) / "quests"
+            shutil.copytree(source_root, quest_root)
+            chapter_path = quest_root / "chapters" / "C402713763771CFA.snbt"
+            original = chapter_path.read_text(encoding="utf-8")
+            mutated = original.replace(
+                '"90EDD2BED35BE9E3"',
+                '"0000000000000000"',
+                1,
+            )
+            self.assertNotEqual(mutated, original)
+            chapter_path.write_text(mutated, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                AssertionError,
+                "generated dependencies differ for F1B2919DF12C6845",
+            ):
+                self.assert_generated_authoritative_gate_graph(quest_root)
 
     def test_infrastructure_and_architect_quests_are_explicitly_linear(self) -> None:
         chapters = {
@@ -1527,6 +1653,34 @@ class QuestCompilerTests(unittest.TestCase):
             self.quests.write_catalog(self.make_catalog(), quest_root)
 
             self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+
+    def test_validator_rejects_non_string_progression_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            catalog[0].quests[0].progression_mode = "linear"
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            original = chapter_path.read_text(encoding="utf-8")
+            malformed = original.replace(
+                'progression_mode: "linear"',
+                "progression_mode: []",
+                1,
+            )
+            self.assertNotEqual(malformed, original)
+            chapter_path.write_text(malformed, encoding="utf-8")
+
+            try:
+                errors = self.quests.validate_quests(quest_root, mods_dir)
+            except TypeError as error:
+                self.fail(f"validate_quests raised TypeError: {error}")
+            self.assertTrue(
+                any("invalid progression mode" in error for error in errors),
+                errors,
+            )
 
     def test_validator_rejects_runtime_failed_item_audit(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

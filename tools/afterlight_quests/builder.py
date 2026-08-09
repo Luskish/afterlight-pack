@@ -891,7 +891,10 @@ def validate_quests(
                     f"{dependency_requirement!r}"
                 )
             progression_mode = quest.get("progression_mode")
-            if progression_mode is not None and progression_mode not in PROGRESSION_MODES:
+            if progression_mode is not None and (
+                not isinstance(progression_mode, str)
+                or progression_mode not in PROGRESSION_MODES
+            ):
                 errors.append(
                     f"invalid progression mode in {path}: {progression_mode!r}"
                 )

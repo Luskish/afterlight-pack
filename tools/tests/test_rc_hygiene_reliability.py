@@ -193,7 +193,7 @@ def valid_boot_log(nonce: str) -> str:
             "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
             f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}",
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -234,7 +234,7 @@ def valid_gate_boot_log(nonce: str, *, gate_first: bool = True) -> str:
             'Done (12.345s)! For help, type "help"',
             *audits,
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -2050,7 +2050,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 300)
+        self.assertEqual(len(indexed), 304)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -3031,8 +3031,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "8c34353a17012a764096ba853d9f19351cfd15a9569b2c56978a79965017faea",
-                225,
+                "80d6d4212497f1e019706a9183b4c2092b8678279bddfcffd7cdd640ee972365",
+                227,
             ),
         )
 
@@ -3167,7 +3167,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "DedicatedServer/]: Done (",
             "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
             "[AFTERLIGHT GATE RECIPE AUDIT] OK ",
-            "FTB Quests/]: Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
+            "FTB Quests/]: Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
             "MinecraftServer/]: Stopping server",
             "MinecraftServer/]: Saving players",
             "MinecraftServer/]: Saving worlds",
@@ -3193,7 +3193,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             ("DedicatedServer/]: Done (", "[AFTERLIGHT QUEST ITEM AUDIT] OK "),
             (
                 "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
-                "FTB Quests/]: Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
+                "FTB Quests/]: Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
             ),
             ("MinecraftServer/]: Saving players", "MinecraftServer/]: Saving worlds"),
         )
@@ -3367,12 +3367,15 @@ class GateRecipeAuditNegativeTests(unittest.TestCase):
             return
         for gate_first in (True, False):
             with self.subTest(gate_first=gate_first):
-                projection = self.hygiene.validate_boot_markers(
-                    valid_gate_boot_log("fresh", gate_first=gate_first),
-                    "fresh",
-                    0,
-                    ROOT,
-                )
+                try:
+                    projection = self.hygiene.validate_boot_markers(
+                        valid_gate_boot_log("fresh", gate_first=gate_first),
+                        "fresh",
+                        0,
+                        ROOT,
+                    )
+                except self.hygiene.VerificationError as error:
+                    self.fail(str(error))
                 labels = tuple(label for label, _record in projection)
                 self.assertIn("Gate audit", labels)
                 self.assertIn("quest audit", labels)

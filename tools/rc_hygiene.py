@@ -3887,7 +3887,7 @@ def validate_boot_markers(
     gate_message = (
         f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
-    ftb_message = "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables"
+    ftb_message = "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables"
 
     def exact_single(
         record: LogRecord,

@@ -57,6 +57,10 @@ file = "config/ftbquests/quests/chapters/23643435F7BE74AC.snbt"
 hash = "dd0e2fcc620fad1a106da84762f521430da6bb42fcd3460c2a9a6d7e95817d86"
 
 [[files]]
+file = "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
+hash = "208652bd8c44219a519120e609b0b870fbd1124b5bae7920e195cf1197b325f4"
+
+[[files]]
 file = "config/ftbquests/quests/chapters/2FD06A1068D554E9.snbt"
 hash = "24c7821bfbb702d40c617fa14106c486482267fddfc8e97234781deccc6e740c"
 
@@ -97,12 +101,20 @@ file = "config/ftbquests/quests/chapters/584A7E77CC881049.snbt"
 hash = "a3c84bb98d57c54b6e571e719ea2a38febb6d9e0dad4612c46852e9e390f31d1"
 
 [[files]]
+file = "config/ftbquests/quests/chapters/6671EBE257F914CB.snbt"
+hash = "a84b32d05d4d8ea5d1f67d7e3bab434809618edc7ea1312aa0648a0e988dd9e1"
+
+[[files]]
 file = "config/ftbquests/quests/chapters/6A433C07EC56210B.snbt"
 hash = "161065a89659c0d5990e1801bb1b99254bfbfc51edfcb1ff0efa38ec0c75f64c"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/6B2D7DB791D992C3.snbt"
 hash = "74ceb209359465193227cf77446e25cee678f46832a9641c6b45f8cc64a90cd6"
+
+[[files]]
+file = "config/ftbquests/quests/chapters/6C4AE5CE13773438.snbt"
+hash = "f8ead417b9bc09d4b7f177570851269f0dd5ab4230a8bd1fa413f272507a96fa"
 
 [[files]]
 file = "config/ftbquests/quests/chapters/738C49C0D9F98BBC.snbt"
@@ -193,12 +205,16 @@ file = "config/ftbquests/quests/chapters/FC611E8A94BC5CE5.snbt"
 hash = "159a00ed167a7e2a10a38ccb5c0e743e334021e42c48d9e8d72e665a78780dde"
 
 [[files]]
+file = "config/ftbquests/quests/chapters/FE9B015A32C6D980.snbt"
+hash = "f6978f0c91716986eda0dcb01e56160fcbb180ff53bc44060673a26d8f3acad2"
+
+[[files]]
 file = "config/ftbquests/quests/data.snbt"
 hash = "b89f337f070343c37f7bd400f963e85e482205dece7700af8c5209924bdef18a"
 
 [[files]]
 file = "config/ftbquests/quests/lang/en_us.snbt"
-hash = "73459338f7b5b435de9c9a773c345b20d8a5d8f799d4b53599234b773fa4b6ef"
+hash = "fdc2e5d23cf04da109ca9b8dfc9d7f65116ba1db1232513333f6ab799069cde8"
 
 [[files]]
 file = "config/ftbquests/quests/reward_tables/ascendancy_cache.snbt"
@@ -522,7 +538,7 @@ hash = "58e1a9dd7d192fedbb80b2e7665e28b59d6b3ab2f85a9c49af61b79efe76fa84"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "76b46fb82f00b075c6d5bce39e8911fc1ce7f80bed289a2a9757be2d5930e3ae"
+hash = "e75bc67e70661c68d2ac212efc00b69793d8cf914201132c707a728fbecd5fe1"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"

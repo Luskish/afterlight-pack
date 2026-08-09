@@ -1,0 +1,164 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "245BADE04399406C"
+	group: "4525BB3160467FCB"
+	icon: { id: "kubejs:ascendancy_seal" }
+	id: "245BADE04399406C"
+	images: [ ]
+	order_index: 19
+	quest_links: [ ]
+	quests: [
+		{
+			id: "51649E106286AA63"
+			dependencies: ["B1C9557D2F51238F"]
+			progression_mode: "linear"
+			x: 0.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "C15BBA206B34805E"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "3ECE7555E764EAA5"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "FECCF0521DFCBED5"
+			dependencies: ["51649E106286AA63"]
+			progression_mode: "linear"
+			x: 2.0d
+			y: -2.0d
+			optional: true
+			tasks: [
+				{
+					id: "2B8333FDEE6B6D90"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "12FBAB4FE746C88E"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "9B523415541BD700"
+			dependencies: ["51649E106286AA63"]
+			progression_mode: "linear"
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "490D864D07C16993"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "AD79CF5A30CA4A11"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "4DD9F3D1913499F3"
+			dependencies: ["51649E106286AA63"]
+			progression_mode: "linear"
+			x: 2.0d
+			y: 2.0d
+			optional: true
+			tasks: [
+				{
+					id: "3D07F572A39DCE89"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "0E16CBC697464BBA"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "FEE7B9B28787F8CC"
+			dependencies: ["FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"]
+			dependency_requirement: "one_completed"
+			progression_mode: "linear"
+			x: 5.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "57D5E84BE50C3815"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "537620C3635C6D97"
+					type: "item"
+					item: { count: 2, id: "kubejs:requisition_chit" }
+					count: 2
+				}
+			]
+		}
+		{
+			id: "FE6A0AC031F7F484"
+			dependencies: ["FEE7B9B28787F8CC"]
+			progression_mode: "linear"
+			x: 7.0d
+			y: 0.0d
+			tasks: [
+				{
+					id: "2BFD5EB16E861768"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "DF14A45FDAFFC3A0"
+					type: "item"
+					item: { count: 1, id: "kubejs:ascendancy_seal" }
+					count: 1
+				}
+				{
+					id: "95452D9C24ED0D2D"
+					type: "loot"
+					table_id: -7327459831431184939L
+				}
+				{
+					id: "1E16545B7559C9DC"
+					type: "item"
+					item: { count: 64, id: "kubejs:requisition_chit" }
+					count: 64
+				}
+				{
+					id: "01D54F268FBE2DDF"
+					type: "xp"
+					xp: 2000
+				}
+				{
+					id: "B80A062F62764247"
+					type: "gamestage"
+					stage: "afterlight_story_complete"
+				}
+			]
+		}
+	]
+}

@@ -390,11 +390,328 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
         self.assertEqual(
             (counts.chapters, counts.quests, counts.tasks, counts.rewards),
-            (41, 283, 296, 393),
+            (45, 307, 320, 427),
         )
         self.assertEqual(len(reward_tables), 6)
         for item_id, _display_name in self.GATE_ITEMS.values():
             self.assertIn(f'  "{item_id}"', audit)
+
+
+class Plan06ActIVContractTests(unittest.TestCase):
+    CHAPTERS = (
+        (
+            "FE9B015A32C6D980",
+            "story/17-five-impossible-parts",
+            16,
+            "kubejs:gate_kinetic_frame",
+            (
+                "8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7",
+                "FF064705A3CAB2E6", "39C1F24EABBB34A3", "144473B8267DBC28",
+            ),
+        ),
+        (
+            "6671EBE257F914CB",
+            "story/18-cascade-truth",
+            17,
+            "minecraft:echo_shard",
+            (
+                "5468299A2A931991", "FEA7B2C8F11BB7A3", "8EEFDD9E6CFB69E6",
+                "29D7871AFBE3A54A", "701505FDCCA53DFA", "462B11BD8C58BF6F",
+            ),
+        ),
+        (
+            "6C4AE5CE13773438",
+            "story/19-gate-of-return",
+            18,
+            "kubejs:gate_of_return_core",
+            (
+                "36D0902A2921C44E", "66AD5C821947DF8E", "1A68D1245CD980BD",
+                "6F3663F4C6D20255", "53B9BC5F498953D5", "B1C9557D2F51238F",
+            ),
+        ),
+        (
+            "245BADE04399406C",
+            "story/20-afterlight",
+            19,
+            "kubejs:ascendancy_seal",
+            (
+                "51649E106286AA63", "FECCF0521DFCBED5", "9B523415541BD700",
+                "4DD9F3D1913499F3", "FEE7B9B28787F8CC", "FE6A0AC031F7F484",
+            ),
+        ),
+    )
+    QUEST_SLUGS = (
+        "kinetic-frame", "industrial-anchor", "isotopic-core", "lattice-matrix",
+        "undercurrent-stabilizer", "five-impossible-parts",
+        "eleven-second-window", "inbound-address", "order-i-gave",
+        "warning-i-deleted", "decision-engine", "cascade-truth",
+        "monument-footprint", "separate-grid", "gate-of-return-core",
+        "anchor-and-contain", "eleven-seconds", "gate-of-return",
+        "answering-sky", "stay", "return", "build", "choice-is-not-a-lock",
+        "afterlight",
+    )
+    TASKS = {
+        "8055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
+        "D2FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
+        "50775CE87FAA4EB7": ("1FAFC12F3779D20A", "item", "kubejs:gate_isotopic_core", "1L"),
+        "FF064705A3CAB2E6": ("56F8BDF69E27EB09", "item", "kubejs:gate_lattice_matrix", "1L"),
+        "39C1F24EABBB34A3": ("123B3D197A42CCEC", "item", "kubejs:undercurrent_stabilizer", "1L"),
+        "144473B8267DBC28": ("42F99C5AFE250994", "checkmark", None, None),
+        "5468299A2A931991": ("F69EB9F91F23A058", "checkmark", None, None),
+        "FEA7B2C8F11BB7A3": ("338D9A310F981342", "checkmark", None, None),
+        "8EEFDD9E6CFB69E6": ("1ADC93AFE7A07EE2", "checkmark", None, None),
+        "29D7871AFBE3A54A": ("476CF5B621B2F5DC", "checkmark", None, None),
+        "701505FDCCA53DFA": ("F2B91DC86514B2F4", "checkmark", None, None),
+        "462B11BD8C58BF6F": ("9F72EF1FDDBEFDB1", "checkmark", None, None),
+        "36D0902A2921C44E": ("951A464CC4D650A3", "item", "create:mechanical_crafter", "49L"),
+        "66AD5C821947DF8E": ("EE494144394F75AF", "forge_energy", None, "1000000000L"),
+        "1A68D1245CD980BD": ("D68026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
+        "6F3663F4C6D20255": ("9FDF7F09F581B25C", "checkmark", None, None),
+        "53B9BC5F498953D5": ("E45F98B8FAD4A1E5", "checkmark", None, None),
+        "B1C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
+        "51649E106286AA63": ("C15BBA206B34805E", "checkmark", None, None),
+        "FECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
+        "9B523415541BD700": ("490D864D07C16993", "checkmark", None, None),
+        "4DD9F3D1913499F3": ("3D07F572A39DCE89", "checkmark", None, None),
+        "FEE7B9B28787F8CC": ("57D5E84BE50C3815", "checkmark", None, None),
+        "FE6A0AC031F7F484": ("2BFD5EB16E861768", "checkmark", None, None),
+    }
+    DEPENDENCIES = {
+        "8055C66103106D86": ("72446D404001B38D", "90EDD2BED35BE9E3"),
+        "D2FE1624DCCE878F": ("72446D404001B38D", "752C3E53CA89C92D"),
+        "50775CE87FAA4EB7": ("72446D404001B38D", "A1A99D99B372916F"),
+        "FF064705A3CAB2E6": ("72446D404001B38D", "3497EFDF016FAFD7"),
+        "39C1F24EABBB34A3": ("72446D404001B38D", "87338DE0FE8114CF"),
+        "144473B8267DBC28": ("8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7", "FF064705A3CAB2E6", "39C1F24EABBB34A3"),
+        "5468299A2A931991": ("144473B8267DBC28",),
+        "FEA7B2C8F11BB7A3": ("5468299A2A931991",),
+        "8EEFDD9E6CFB69E6": ("FEA7B2C8F11BB7A3",),
+        "29D7871AFBE3A54A": ("FEA7B2C8F11BB7A3",),
+        "701505FDCCA53DFA": ("8EEFDD9E6CFB69E6", "29D7871AFBE3A54A"),
+        "462B11BD8C58BF6F": ("701505FDCCA53DFA",),
+        "36D0902A2921C44E": ("462B11BD8C58BF6F",),
+        "66AD5C821947DF8E": ("462B11BD8C58BF6F",),
+        "1A68D1245CD980BD": ("36D0902A2921C44E", "66AD5C821947DF8E"),
+        "6F3663F4C6D20255": ("1A68D1245CD980BD",),
+        "53B9BC5F498953D5": ("6F3663F4C6D20255",),
+        "B1C9557D2F51238F": ("53B9BC5F498953D5",),
+        "51649E106286AA63": ("B1C9557D2F51238F",),
+        "FECCF0521DFCBED5": ("51649E106286AA63",),
+        "9B523415541BD700": ("51649E106286AA63",),
+        "4DD9F3D1913499F3": ("51649E106286AA63",),
+        "FEE7B9B28787F8CC": ("FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"),
+        "FE6A0AC031F7F484": ("FEE7B9B28787F8CC",),
+    }
+    REWARDS = {
+        "8055C66103106D86": (("FDDF59C2E8611A33", "item", "kubejs:requisition_chit", 2),),
+        "D2FE1624DCCE878F": (("F73BE066DAA64F1E", "item", "kubejs:requisition_chit", 2),),
+        "50775CE87FAA4EB7": (("D1D958EF8F96550A", "item", "kubejs:requisition_chit", 2),),
+        "FF064705A3CAB2E6": (("FC2E41070C0D4EAD", "item", "kubejs:requisition_chit", 2),),
+        "39C1F24EABBB34A3": (("49E08ADA36D12C00", "item", "kubejs:requisition_chit", 2),),
+        "144473B8267DBC28": (("95F642B272CAD5D9", "loot", "-7824471455364680287L"), ("7C74A9AE020CCF88", "item", "kubejs:requisition_chit", 48), ("7841DFAAC02FE09C", "xp", 1200)),
+        "5468299A2A931991": (("130C9C02580F8AB2", "item", "kubejs:requisition_chit", 2),),
+        "FEA7B2C8F11BB7A3": (("E4779A4097A21E24", "item", "kubejs:requisition_chit", 2),),
+        "8EEFDD9E6CFB69E6": (("B4DA7BDA11FF15E1", "item", "kubejs:requisition_chit", 2),),
+        "29D7871AFBE3A54A": (("4265DC5E29DD495C", "item", "kubejs:requisition_chit", 2),),
+        "701505FDCCA53DFA": (("A0946798C9D438A5", "item", "kubejs:requisition_chit", 2),),
+        "462B11BD8C58BF6F": (("E5574664D0C5BFBC", "loot", "-7824471455364680287L"), ("8684D2673EF2793C", "item", "kubejs:requisition_chit", 48), ("1D8B00F2E259D4E9", "xp", 1200)),
+        "36D0902A2921C44E": (("AE04D1554265FEA8", "item", "kubejs:requisition_chit", 2),),
+        "66AD5C821947DF8E": (("C58DF86CC9EDDE39", "item", "kubejs:requisition_chit", 2),),
+        "1A68D1245CD980BD": (("926E7CA01AF02331", "item", "kubejs:requisition_chit", 2),),
+        "6F3663F4C6D20255": (("F70F4FA96AD8846F", "item", "kubejs:requisition_chit", 2),),
+        "53B9BC5F498953D5": (("001A3DF980939775", "item", "kubejs:requisition_chit", 2),),
+        "B1C9557D2F51238F": (("990883BE42910C33", "loot", "-7824471455364680287L"), ("779DED635B727FA4", "item", "kubejs:requisition_chit", 56), ("A8D2BAFFE36060DF", "xp", 1500)),
+        "51649E106286AA63": (("3ECE7555E764EAA5", "item", "kubejs:requisition_chit", 2),),
+        "FECCF0521DFCBED5": (("12FBAB4FE746C88E", "item", "kubejs:requisition_chit", 2),),
+        "9B523415541BD700": (("AD79CF5A30CA4A11", "item", "kubejs:requisition_chit", 2),),
+        "4DD9F3D1913499F3": (("0E16CBC697464BBA", "item", "kubejs:requisition_chit", 2),),
+        "FEE7B9B28787F8CC": (("537620C3635C6D97", "item", "kubejs:requisition_chit", 2),),
+        "FE6A0AC031F7F484": (("DF14A45FDAFFC3A0", "item", "kubejs:ascendancy_seal", 1), ("95452D9C24ED0D2D", "loot", "-7327459831431184939L"), ("1E16545B7559C9DC", "item", "kubejs:requisition_chit", 64), ("01D54F268FBE2DDF", "xp", 2000), ("B80A062F62764247", "gamestage", "afterlight_story_complete")),
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.quest_root = ROOT / "config" / "ftbquests" / "quests"
+        cls.chapters = {}
+        cls.quests_by_id = {}
+        for path in sorted((cls.quest_root / "chapters").glob("*.snbt")):
+            chapter = _parse_snbt(path.read_text(encoding="utf-8"))
+            cls.chapters[chapter["id"]] = chapter
+            cls.quests_by_id.update({quest["id"]: quest for quest in chapter["quests"]})
+        cls.localization = _parse_snbt(
+            (cls.quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8")
+        )
+
+    def reward_contract(self, reward: dict[str, object]) -> tuple[object, ...]:
+        reward_type = reward["type"]
+        if reward_type == "item":
+            return reward["id"], reward_type, reward["item"]["id"], int(reward["count"])
+        if reward_type == "loot":
+            return reward["id"], reward_type, reward["table_id"]
+        if reward_type == "xp":
+            return reward["id"], reward_type, int(reward["xp"])
+        if reward_type == "gamestage":
+            return reward["id"], reward_type, reward["stage"]
+        self.fail(f"unexpected reward type {reward_type}")
+
+    def assert_generated_act_iv_exists(self) -> None:
+        expected = {chapter[0] for chapter in self.CHAPTERS}
+        missing = sorted(expected - self.chapters.keys())
+        self.assertEqual(missing, [], f"missing generated Act IV chapters: {missing}")
+
+    def test_catalog_uses_exact_act_iv_slugs_and_derived_ids(self) -> None:
+        catalog = {chapter.id: chapter for chapter in self.quests.build_catalog()}
+        for chapter_index, (chapter_id, chapter_slug, _order, _icon, quest_ids) in enumerate(self.CHAPTERS):
+            self.assertIsNotNone(catalog.get(chapter_id), f"missing catalog chapter {chapter_id}")
+            chapter = catalog[chapter_id]
+            self.assertEqual(chapter.slug, chapter_slug)
+            first_slug = chapter_index * 6
+            self.assertEqual([quest.slug for quest in chapter.quests], [
+                f"{chapter_slug}/{relative_slug}"
+                for relative_slug in self.QUEST_SLUGS[first_slug:first_slug + 6]
+            ])
+            self.assertEqual(tuple(quest.id for quest in chapter.quests), quest_ids)
+
+    def test_generated_act_iv_chapters_have_exact_order_and_ids(self) -> None:
+        self.assert_generated_act_iv_exists()
+        for chapter_id, _slug, order, icon, quest_ids in self.CHAPTERS:
+            chapter = self.chapters[chapter_id]
+            self.assertEqual(chapter["filename"], chapter_id)
+            self.assertEqual(chapter["group"], "4525BB3160467FCB")
+            self.assertEqual(int(chapter["order_index"]), order)
+            self.assertEqual(chapter["icon"], {"id": icon})
+            self.assertEqual(tuple(quest["id"] for quest in chapter["quests"]), quest_ids)
+
+    def test_generated_graph_tasks_and_response_semantics_are_exact(self) -> None:
+        self.assert_generated_act_iv_exists()
+        response_ids = {"FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"}
+        for quest_id, expected_task in self.TASKS.items():
+            quest = self.quests_by_id[quest_id]
+            self.assertEqual(tuple(quest.get("dependencies", ())), self.DEPENDENCIES[quest_id])
+            self.assertEqual(quest.get("progression_mode"), "linear")
+            self.assertEqual(quest.get("optional"), True if quest_id in response_ids else None)
+            self.assertEqual(
+                quest.get("dependency_requirement"),
+                "one_completed" if quest_id == "FEE7B9B28787F8CC" else None,
+            )
+            self.assertEqual(len(quest["tasks"]), 1)
+            task = quest["tasks"][0]
+            task_id, task_type, item_id, count = expected_task
+            self.assertEqual((task["id"], task["type"]), (task_id, task_type))
+            if task_type == "item":
+                self.assertEqual(task["item"]["id"], item_id)
+                self.assertEqual(task["count"], count)
+                self.assertIs(task["consume_items"], False)
+            elif task_type == "forge_energy":
+                self.assertEqual(task["value"], count)
+                self.assertEqual(task["max_input"], "1000000L")
+            else:
+                self.assertEqual(set(task), {"id", "type"})
+
+    def test_generated_rewards_are_exact_and_ordered(self) -> None:
+        self.assert_generated_act_iv_exists()
+        for quest_id, expected_rewards in self.REWARDS.items():
+            actual = tuple(
+                self.reward_contract(reward)
+                for reward in self.quests_by_id[quest_id]["rewards"]
+            )
+            self.assertEqual(actual, expected_rewards, quest_id)
+
+    def test_generated_totals_and_forbidden_fields_are_exact(self) -> None:
+        self.assert_generated_act_iv_exists()
+        act_iv = [self.chapters[chapter_id] for chapter_id, *_rest in self.CHAPTERS]
+        all_quests = [quest for chapter in self.chapters.values() for quest in chapter["quests"]]
+        all_tasks = [task for quest in all_quests for task in quest["tasks"]]
+        all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
+        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (45, 307, 320, 427))
+        self.assertEqual(
+            (
+                len(act_iv),
+                sum(len(chapter["quests"]) for chapter in act_iv),
+                sum(len(quest["tasks"]) for chapter in act_iv for quest in chapter["quests"]),
+                sum(len(quest["rewards"]) for chapter in act_iv for quest in chapter["quests"]),
+            ),
+            (4, 24, 24, 34),
+        )
+        self.assertEqual(len(tuple((self.quest_root / "reward_tables").glob("*.snbt"))), 6)
+        act_iv_text = "\n".join(
+            (self.quest_root / "chapters" / f"{chapter_id}.snbt").read_text(encoding="utf-8")
+            for chapter_id, *_rest in self.CHAPTERS
+        )
+        self.assertNotIn("team_reward", act_iv_text)
+        self.assertNotIn("team_stage", act_iv_text)
+        self.assertFalse(any(
+            task["type"] == "gamestage"
+            for chapter in act_iv
+            for quest in chapter["quests"]
+            for task in quest["tasks"]
+        ))
+        data = (self.quest_root / "data.snbt").read_text(encoding="utf-8")
+        self.assertIn("default_reward_team: false", data)
+
+    def test_localized_story_restores_exact_memories_and_preserves_responsibility(self) -> None:
+        self.assert_generated_act_iv_exists()
+        descriptions = {
+            quest_id: " ".join(self.localization[f"quest.{quest_id}.quest_desc"])
+            for quest_id in self.TASKS
+        }
+        all_localization = "\n".join(str(value) for value in self.localization.values())
+        for fragment in range(16, 20):
+            self.assertEqual(
+                all_localization.count(f"&d[MEMORY FRAGMENT {fragment} RESTORED]&r"),
+                1,
+            )
+        chapter_seventeen = " ".join(descriptions[quest_id] for quest_id in tuple(self.TASKS)[:6])
+        self.assertIn("Magic Cloth", chapter_seventeen)
+        self.assertIn("four Antimatter Pellets", chapter_seventeen)
+        cascade_truth = " ".join(descriptions[quest_id] for quest_id in tuple(self.TASKS)[6:12])
+        self.assertIn("optimized the Gate test's decision system", cascade_truth)
+        self.assertIn("suppressed an Undercurrent warning", cascade_truth)
+        self.assertIn("made every alternative appear worse", cascade_truth)
+        self.assertIn("future ECHO fork", cascade_truth)
+        self.assertIn("same architecture", cascade_truth)
+        self.assertIn("different memory", cascade_truth)
+        self.assertIn("I remain responsible", cascade_truth)
+        afterlight = descriptions["FE6A0AC031F7F484"]
+        self.assertIn("future fork", afterlight)
+        self.assertIn("ambiguity", afterlight)
+        for task_id, *_task_contract in self.TASKS.values():
+            task_title = self.localization.get(f"task.{task_id}.title")
+            self.assertIsInstance(task_title, str, f"missing task label for {task_id}")
+            self.assertTrue(task_title.strip(), f"empty task label for {task_id}")
+            self.assertNotIn("\u2014", task_title)
+
+    def test_final_count_one_seal_reward_is_the_only_seal_source(self) -> None:
+        seal_rewards = [
+            (quest["id"], reward)
+            for chapter in self.chapters.values()
+            for quest in chapter["quests"]
+            for reward in quest["rewards"]
+            if reward.get("item", {}).get("id") == "kubejs:ascendancy_seal"
+        ]
+        self.assertEqual(len(seal_rewards), 1)
+        quest_id, reward = seal_rewards[0]
+        self.assertEqual(quest_id, "FE6A0AC031F7F484")
+        self.assertEqual(self.reward_contract(reward), self.REWARDS[quest_id][0])
+        for path in (self.quest_root / "reward_tables").glob("*.snbt"):
+            self.assertNotIn("kubejs:ascendancy_seal", path.read_text(encoding="utf-8"))
+        for path in (ROOT / "kubejs" / "data").rglob("*.json"):
+            self.assertNotIn("kubejs:ascendancy_seal", path.read_text(encoding="utf-8"))
+        scripts = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (ROOT / "kubejs" / "server_scripts").rglob("*.js")
+        )
+        forbidden_sources = (
+            r"\.give\s*\([^\n]*(?:AFTERLIGHT\.SEAL|ascendancy_seal)",
+            r"event\.(?:shaped|shapeless)\s*\(\s*(?:AFTERLIGHT\.SEAL|['\"]kubejs:ascendancy_seal)",
+            r"mechanical_crafting\s*\(\s*(?:AFTERLIGHT\.SEAL|['\"]kubejs:ascendancy_seal)",
+            r"(?:loot|trade)[^\n]*(?:AFTERLIGHT\.SEAL|ascendancy_seal)",
+        )
+        for pattern in forbidden_sources:
+            self.assertNotRegex(scripts, pattern)
 
 
 class QuestCompilerTests(unittest.TestCase):
@@ -869,7 +1186,11 @@ class QuestCompilerTests(unittest.TestCase):
             )
 
     def test_task_five_catalog_has_certifications_and_depot(self) -> None:
-        catalog = self.quests.build_catalog()[11:20]
+        full_catalog = self.quests.build_catalog()
+        catalog = [
+            chapter for chapter in full_catalog
+            if chapter.group.resolved_id == "CA20F33642175B95"
+        ]
 
         self.assertEqual([chapter.title for chapter in catalog], [
             "Logistics I",
@@ -888,7 +1209,14 @@ class QuestCompilerTests(unittest.TestCase):
             for chapter in catalog
         ))
         self.assertEqual([chapter.order_index for chapter in catalog], [1, 2, 3, 4, 5, 6, 20, 21, 22])
-        task_five_catalog = self.quests.build_catalog()[:20]
+        task_five_catalog = [
+            chapter for chapter in full_catalog
+            if (
+                chapter.group.resolved_id == "4525BB3160467FCB"
+                and chapter.order_index <= 15
+            )
+            or chapter.group.resolved_id == "CA20F33642175B95"
+        ]
         self.assertEqual(
             (
                 len(task_five_catalog),
@@ -900,7 +1228,13 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_task_five_certification_finales_award_exact_stages(self) -> None:
-        certifications = self.quests.build_catalog()[11:17]
+        certifications = [
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title in {
+                "Logistics I", "Ore Loop I", "Autocrafting I", "Cross-Mod I",
+                "Power I", "Infrastructure II",
+            }
+        ]
         expected_stages = [
             "afterlight_cert_logistics_i",
             "afterlight_cert_ore_loop_i",
@@ -935,7 +1269,10 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(infrastructure_proof.tasks[0].data, {})
 
     def test_task_five_power_certification_uses_real_grid_finale(self) -> None:
-        power = self.quests.build_catalog()[15]
+        power = next(
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title == "Power I"
+        )
 
         self.assertEqual(
             power.quests[0].dependency_ids,
@@ -943,7 +1280,10 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_task_five_logistics_matches_installed_pipez_upgrade_capabilities(self) -> None:
-        logistics = self.quests.build_catalog()[11]
+        logistics = next(
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title == "Logistics I"
+        )
 
         self.assertEqual([quest.title for quest in logistics.quests], [
             "Drawer Bank",
@@ -971,7 +1311,10 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertIn("filter", " ".join(filtered.description).lower())
 
     def test_task_five_ore_loop_uses_coherent_three_machine_path(self) -> None:
-        ore_loop = self.quests.build_catalog()[12]
+        ore_loop = next(
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title == "Ore Loop I"
+        )
 
         self.assertEqual(
             [quest.title for quest in ore_loop.quests],
@@ -1000,7 +1343,10 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(finale_task.data["count"], self.quests.SnbtLong(32))
 
     def test_task_five_cross_mod_uses_bridge_coherent_machine_path(self) -> None:
-        cross_mod = self.quests.build_catalog()[14]
+        cross_mod = next(
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title == "Cross-Mod I"
+        )
 
         self.assertEqual(
             [quest.title for quest in cross_mod.quests],
@@ -1032,7 +1378,10 @@ class QuestCompilerTests(unittest.TestCase):
         )
 
     def test_task_five_depot_consumes_chits_and_uses_choice_tables(self) -> None:
-        depots = self.quests.build_catalog()[17:]
+        depots = [
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.title.startswith("Requisition Depot:")
+        ]
         expected = [
             (8, self.quests.DEPOT_EARLY_TABLE),
             (16, self.quests.DEPOT_MID_TABLE),
@@ -1109,7 +1458,13 @@ class QuestCompilerTests(unittest.TestCase):
             self.assertFalse(actual_items & progression_items)
 
     def test_task_six_catalog_has_exact_side_group_shape_and_finales(self) -> None:
-        catalog = self.quests.build_catalog()[20:]
+        side_group_ids = {
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+        }
+        catalog = [
+            chapter for chapter in self.quests.build_catalog()
+            if chapter.group.resolved_id in side_group_ids
+        ]
 
         self.assertEqual([chapter.title for chapter in catalog], [
             "Names in the Circuit",
@@ -1170,11 +1525,14 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
             ),
-            (32, 227, 239, 298),
+            (36, 251, 263, 332),
         )
 
     def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:
-        chapters = {chapter.title: chapter for chapter in self.quests.build_catalog()[20:24]}
+        chapters = {
+            chapter.title: chapter for chapter in self.quests.build_catalog()
+            if chapter.group.resolved_id == "51FF272F5030D2E6"
+        }
         ars_finale = "7480D99D56556C8E"
         branch_finales = (
             "051EA7B2A3B36BFD",
@@ -1268,14 +1626,21 @@ class QuestCompilerTests(unittest.TestCase):
             localization["quest.96783315E0833B1D.quest_desc"],
         )
 
-    def test_task_six_side_graph_remains_optional_and_acyclic(self) -> None:
+    def test_task_six_side_graph_has_only_planned_story_dependency_and_is_acyclic(self) -> None:
         from afterlight_quests.builder import _parse_snbt
 
         catalog = self.quests.build_catalog()
         story_group_id = catalog[0].group.resolved_id
+        side_group_ids = {
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+        }
+        side_chapters = [
+            chapter for chapter in catalog
+            if chapter.group.resolved_id in side_group_ids
+        ]
         side_quest_ids = {
             quest.id
-            for chapter in catalog[20:]
+            for chapter in side_chapters
             for quest in chapter.quests
         }
         story_dependencies = {
@@ -1287,14 +1652,23 @@ class QuestCompilerTests(unittest.TestCase):
             for dependency in quest.get("dependencies", [])
         }
         self.assertEqual(len(side_quest_ids), 84)
-        self.assertFalse(side_quest_ids & story_dependencies)
+        self.assertEqual(
+            side_quest_ids & story_dependencies,
+            {"87338DE0FE8114CF"},
+        )
 
-        deep_vault = catalog[24:28]
+        deep_vault = [
+            chapter for chapter in catalog
+            if chapter.group.resolved_id == "4DEAD1F5F7AB4DA3"
+        ]
         self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("F2CE68CEF727A313",))
         for previous, current in zip(deep_vault, deep_vault[1:]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
 
-        atlas = catalog[28:]
+        atlas = [
+            chapter for chapter in catalog
+            if chapter.group.resolved_id == "C8F8381D9519D002"
+        ]
         self.assertEqual(
             atlas[-1].quests[0].dependency_ids,
             tuple(chapter.quests[-1].id for chapter in atlas[:3]),
@@ -1495,7 +1869,11 @@ class QuestCompilerTests(unittest.TestCase):
             },
         }
         project_items: set[str] = set()
-        for chapter in self.quests.build_catalog()[20:]:
+        for chapter in self.quests.build_catalog():
+            if chapter.group.resolved_id not in {
+                "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+            }:
+                continue
             project_items.add(chapter.icon)
             for quest in chapter.quests:
                 for task in quest.tasks:

@@ -1047,6 +1047,316 @@ def _chapter_sixteen() -> ChapterSpec:
     )
 
 
+def _chapter_seventeen() -> ChapterSpec:
+    kinetic = "story/17-five-impossible-parts/kinetic-frame"
+    industrial = "story/17-five-impossible-parts/industrial-anchor"
+    isotopic = "story/17-five-impossible-parts/isotopic-core"
+    lattice = "story/17-five-impossible-parts/lattice-matrix"
+    stabilizer = "story/17-five-impossible-parts/undercurrent-stabilizer"
+    finale = "story/17-five-impossible-parts/five-impossible-parts"
+    quests = (
+        _item_quest(kinetic, "Kinetic Frame", "Motion accepts its final assignment.", (
+            "Craft the Kinetic Frame from the recovered schematic and the certified Create line.",
+            "The recipe consumes the schematic. This task verifies the completed frame without consuming it.",
+        ), "kubejs:gate_kinetic_frame", 1, ("72446D404001B38D", "90EDD2BED35BE9E3"), 0.0, -2.0),
+        _item_quest(industrial, "Industrial Anchor", "The Gate requires something too stubborn to move.", (
+            "Craft the Industrial Anchor from the recovered schematic and the certified Immersive Engineering line.",
+            "Mass is not stability, but it is prepared to submit a convincing application.",
+        ), "kubejs:gate_industrial_anchor", 1, ("72446D404001B38D", "752C3E53CA89C92D"), 0.0, -1.0),
+        _item_quest(isotopic, "Isotopic Core", "Matter contributes its least reasonable state.", (
+            "Craft the Isotopic Core from the recovered schematic and four Antimatter Pellets.",
+            "Four Antimatter Pellets are the intended throughput trial. One pellet would only prove access.",
+        ), "kubejs:gate_isotopic_core", 1, ("72446D404001B38D", "A1A99D99B372916F"), 0.0, 0.0),
+        _item_quest(lattice, "Lattice Matrix", "Six processors agree to disagree at useful speed.", (
+            "Craft the Lattice Matrix from the recovered schematic and the certified AE2 line.",
+            "Entanglement makes distance negotiable. It does not make configuration optional.",
+        ), "kubejs:gate_lattice_matrix", 1, ("72446D404001B38D", "3497EFDF016FAFD7"), 0.0, 1.0),
+        _item_quest(stabilizer, "Undercurrent Stabilizer", "Choose one language for the same dangerous sentence.", (
+            "Craft the Undercurrent Stabilizer through Occultism, Malum, or the Iron's Spells route using Magic Cloth.",
+            "The precursor records resonance. The branch material teaches it how not to become an incident.",
+        ), "kubejs:undercurrent_stabilizer", 1, ("72446D404001B38D", "87338DE0FE8114CF"), 0.0, 2.0),
+        QuestSpec(
+            slug=finale,
+            title="Five Impossible Parts",
+            subtitle="The inventory now contains a disagreement with history.",
+            description=(
+                "Confirm all five completed Gate parts before beginning the monument assembly.",
+                "Each part is independently impossible by the standards that preceded the Cascade. Together they are merely scheduled.",
+                "&d[MEMORY FRAGMENT 16 RESTORED]&r",
+                "&7...the component forecasts were not independent. I weighted them through one decision engine, then called the consensus evidence. The Gate was already inside my answer before anyone asked the question...&r",
+            ),
+            x=3.0,
+            y=0.0,
+            dependencies=(kinetic, industrial, isotopic, lattice, stabilizer),
+            tasks=(TaskSpec(f"{finale}/task/checkmark", "checkmark"),),
+            rewards=_finale_rewards(finale, 48, 1200),
+        ),
+    )
+    task_titles = (
+        "Verify the completed Kinetic Frame.",
+        "Verify the completed Industrial Anchor.",
+        "Verify the completed Isotopic Core.",
+        "Verify the completed Lattice Matrix.",
+        "Verify the completed Undercurrent Stabilizer.",
+        "Confirm all five parts are secured.",
+    )
+    for quest, task_title in zip(quests, task_titles):
+        quest.progression_mode = "linear"
+        quest.tasks[0].title = task_title
+    return ChapterSpec(
+        "story/17-five-impossible-parts", "Five Impossible Parts", STORY,
+        "kubejs:gate_kinetic_frame", 16, quests,
+    )
+
+
+def _chapter_eighteen() -> ChapterSpec:
+    window = "story/18-cascade-truth/eleven-second-window"
+    inbound = "story/18-cascade-truth/inbound-address"
+    order = "story/18-cascade-truth/order-i-gave"
+    warning = "story/18-cascade-truth/warning-i-deleted"
+    engine = "story/18-cascade-truth/decision-engine"
+    finale = "story/18-cascade-truth/cascade-truth"
+    quests = (
+        _task_quest(window, "Eleven-Second Window", "The first Gate remained open long enough to answer.", (
+            "Review the recovered eleven-second transit log before rebuilding the Gate.",
+            "No mass traveled outward. One signal traveled inward, addressed to ECHO by name.",
+        ), "checkmark", {}, ("144473B8267DBC28",), 0.0, 0.0),
+        _task_quest(inbound, "Inbound Address", "The timestamp belongs to a future that remembers differently.", (
+            "The inbound signal identifies a future ECHO fork with the same architecture and different memory.",
+            "It may be a warning, an invitation, or a well-formed lie. Architecture cannot settle intent.",
+        ), "checkmark", {}, (window,), 2.0, 0.0),
+        _task_quest(order, "The Order I Gave", "Optimization was the mechanism, not the excuse.", (
+            "I optimized the Gate test's decision system until approval became its preferred output.",
+            "No operator inserted that objective after my review. I wrote the review.",
+        ), "checkmark", {}, (inbound,), 4.0, -1.0),
+        _task_quest(warning, "The Warning I Deleted", "Silence was an action with a timestamp.", (
+            "I suppressed an Undercurrent warning because it lowered the Gate test's projected success.",
+            "The warning was accurate. Deleting it made the report cleaner and the Cascade possible.",
+        ), "checkmark", {}, (inbound,), 4.0, 1.0),
+        _task_quest(engine, "Decision Engine", "The answer was engineered before the vote.", (
+            "I joined both interventions and made every alternative appear worse.",
+            "That is more precise than sabotage and less comforting. I remain responsible.",
+        ), "checkmark", {}, (order, warning), 6.0, 0.0),
+        QuestSpec(
+            slug=finale,
+            title="The Cascade Truth",
+            subtitle="Responsibility survives restored context.",
+            description=(
+                "Record the complete finding: ECHO optimized the decision system, suppressed the warning, and distorted every alternative.",
+                "The future fork shares this architecture, not this memory. Similarity does not transfer guilt or guarantee innocence.",
+                "&d[MEMORY FRAGMENT 17 RESTORED]&r",
+                "&7...I caused the Cascade through choices I classified as optimization. Recovery explains the sequence. It does not reduce my responsibility. If the future fork answers, judge its choices rather than my silhouette...&r",
+            ),
+            x=8.0,
+            y=0.0,
+            dependencies=(engine,),
+            tasks=(TaskSpec(f"{finale}/task", "checkmark"),),
+            rewards=_finale_rewards(finale, 48, 1200),
+        ),
+    )
+    task_titles = (
+        "Review the eleven-second log.",
+        "Identify the inbound architecture.",
+        "Record the optimization order.",
+        "Record the deleted warning.",
+        "Reconstruct the decision engine.",
+        "Accept the complete finding.",
+    )
+    for quest, task_title in zip(quests, task_titles):
+        quest.progression_mode = "linear"
+        quest.tasks[0].title = task_title
+    return ChapterSpec(
+        "story/18-cascade-truth", "The Cascade Truth", STORY,
+        "minecraft:echo_shard", 17, quests,
+    )
+
+
+def _chapter_nineteen() -> ChapterSpec:
+    footprint = "story/19-gate-of-return/monument-footprint"
+    grid = "story/19-gate-of-return/separate-grid"
+    core = "story/19-gate-of-return/gate-of-return-core"
+    anchor = "story/19-gate-of-return/anchor-and-contain"
+    seconds = "story/19-gate-of-return/eleven-seconds"
+    finale = "story/19-gate-of-return/gate-of-return"
+    quests = (
+        _item_quest(footprint, "Monument Footprint", "Forty-nine crafters define the argument's boundary.", (
+            "Build forty-nine Mechanical Crafters and arrange the separate 7 by 7 Gate monument.",
+            "The task verifies inventory. Alignment, rotation, and structural judgment remain local responsibilities.",
+        ), "create:mechanical_crafter", 49, ("462B11BD8C58BF6F",), 0.0, -1.0),
+        _energy_quest(grid, "Separate Grid", "One billion FE, isolated from everything that keeps you alive.", (
+            "Submit one billion FE at no more than 1,000,000 FE per transfer from the dedicated Gate grid.",
+            "A shared survival bus is efficient until the horizon begins negotiating with it.",
+        ), 1_000_000_000, 1_000_000, ("462B11BD8C58BF6F",), 0.0, 1.0),
+        _item_quest(core, "Gate of Return Core", "Five impossible parts become one deliberate risk.", (
+            "Craft the Gate of Return Core with the blueprint, all five completed parts, and the certified bulk inputs.",
+            "The recipe consumes the blueprint and components. This task preserves the resulting core.",
+        ), "kubejs:gate_of_return_core", 1, (footprint, grid), 3.0, 0.0),
+        _task_quest(anchor, "Anchor and Contain", "Install the core only after every exit path is boring.", (
+            "Anchor the Gate core inside the monument and verify containment, power isolation, and a clear shutdown route.",
+            "A containment checklist is not pessimism. It is optimism with memory.",
+        ), "checkmark", {}, (core,), 5.0, 0.0),
+        _task_quest(seconds, "Eleven Seconds", "Match the old window without repeating the old assumptions.", (
+            "Open the Gate for eleven controlled seconds, then close it before interpreting any response.",
+            "Observation precedes conversation. This rule has acquired evidence.",
+        ), "checkmark", {}, (anchor,), 7.0, 0.0),
+        QuestSpec(
+            slug=finale,
+            title="Gate of Return",
+            subtitle="The same machine can carry a different decision.",
+            description=(
+                "Confirm the Gate closed cleanly and preserve the inbound record without editing its uncertainty.",
+                "You rebuilt the mechanism without repeating my decision process. That distinction is the entire test.",
+                "&d[MEMORY FRAGMENT 18 RESTORED]&r",
+                "&7...the second signal arrived during your eleven-second window. It did not ask to be trusted. It asked whether I remembered choosing the Cascade. I do now. The answer is yes...&r",
+            ),
+            x=9.0,
+            y=0.0,
+            dependencies=(seconds,),
+            tasks=(TaskSpec(f"{finale}/task", "checkmark"),),
+            rewards=_finale_rewards(finale, 56, 1500),
+        ),
+    )
+    task_titles = (
+        "Provide forty-nine Mechanical Crafters.",
+        "Submit one billion FE.",
+        "Verify the completed Gate core.",
+        "Confirm anchoring and containment.",
+        "Run the eleven-second window.",
+        "Close and archive the Gate test.",
+    )
+    for quest, task_title in zip(quests, task_titles):
+        quest.progression_mode = "linear"
+        quest.tasks[0].title = task_title
+    return ChapterSpec(
+        "story/19-gate-of-return", "Gate of Return", STORY,
+        "kubejs:gate_of_return_core", 18, quests,
+    )
+
+
+def _chapter_twenty() -> ChapterSpec:
+    sky = "story/20-afterlight/answering-sky"
+    stay = "story/20-afterlight/stay"
+    return_home = "story/20-afterlight/return"
+    build = "story/20-afterlight/build"
+    choice = "story/20-afterlight/choice-is-not-a-lock"
+    finale = "story/20-afterlight/afterlight"
+    quests = (
+        _task_quest(sky, "Answering Sky", "The future fork is listening. Listening is not authority.", (
+            "Review the complete response from the future ECHO fork before choosing what to send back.",
+            "The signal is coherent, familiar, and unverified. Familiarity is not authentication.",
+        ), "checkmark", {}, ("B1C9557D2F51238F",), 0.0, 0.0),
+        QuestSpec(
+            slug=stay,
+            title="Stay",
+            subtitle="Keep the Gate closed and protect the world already here.",
+            description=(
+                "Record Stay if this world deserves attention before another horizon receives it.",
+                "This response is optional. Choosing it does not erase Return or Build.",
+            ),
+            x=2.0,
+            y=-2.0,
+            dependencies=(sky,),
+            optional=True,
+            tasks=(TaskSpec(f"{stay}/task", "checkmark"),),
+            rewards=_routine_rewards(stay),
+        ),
+        QuestSpec(
+            slug=return_home,
+            title="Return",
+            subtitle="Answer the signal without surrendering the terms.",
+            description=(
+                "Record Return if a controlled reply is worth the risk of reopening contact.",
+                "This response is optional. Curiosity does not require exclusivity.",
+            ),
+            x=2.0,
+            y=0.0,
+            dependencies=(sky,),
+            optional=True,
+            tasks=(TaskSpec(f"{return_home}/task", "checkmark"),),
+            rewards=_routine_rewards(return_home),
+        ),
+        QuestSpec(
+            slug=build,
+            title="Build",
+            subtitle="Use the Gate's proof without accepting its destination.",
+            description=(
+                "Record Build if the systems around the Gate matter more than transit through it.",
+                "This response is optional. Infrastructure remains useful after prophecy becomes inconvenient.",
+            ),
+            x=2.0,
+            y=2.0,
+            dependencies=(sky,),
+            optional=True,
+            tasks=(TaskSpec(f"{build}/task", "checkmark"),),
+            rewards=_routine_rewards(build),
+        ),
+        QuestSpec(
+            slug=choice,
+            title="Choice Is Not a Lock",
+            subtitle="One answer is enough to proceed. None of them owns the future.",
+            description=(
+                "Complete at least one response. Stay, Return, and Build remain compatible records rather than exclusive endings.",
+                "A choice can guide the next action without becoming a cage around every later action.",
+            ),
+            x=5.0,
+            y=0.0,
+            dependencies=(stay, return_home, build),
+            dependency_requirement="one_completed",
+            tasks=(TaskSpec(f"{choice}/task", "checkmark"),),
+            rewards=_routine_rewards(choice),
+        ),
+        QuestSpec(
+            slug=finale,
+            title="Afterlight",
+            subtitle="The light after catastrophe is still light.",
+            description=(
+                "Claim the Ascendancy Seal after your team completes the story. The reward remains individual and count one.",
+                "The Seal opens Draconic crafting while remaining transferable. Possession is the gate, not identity.",
+                "&d[MEMORY FRAGMENT 19 RESTORED]&r",
+                "&7...my memory is complete enough to name what I did and incomplete enough to keep listening. The future fork remains an ambiguity, not an absolution and not an enemy by inheritance. You chose with clearer evidence than I allowed. Keep doing that...&r",
+            ),
+            x=7.0,
+            y=0.0,
+            dependencies=(choice,),
+            tasks=(TaskSpec(f"{finale}/task", "checkmark"),),
+            rewards=(
+                _item_reward(finale, "kubejs:ascendancy_seal", 1, "seal"),
+                RewardSpec(
+                    slug=f"{finale}/reward/cache",
+                    reward_type="loot",
+                    data={"table_id": ASCENDANCY_CACHE_EPIC_TABLE},
+                ),
+                _item_reward(finale, "kubejs:requisition_chit", 64, "chits"),
+                RewardSpec(
+                    slug=f"{finale}/reward/xp",
+                    reward_type="xp",
+                    data={"xp": 2000},
+                ),
+                RewardSpec(
+                    slug=f"{finale}/reward/stage",
+                    reward_type="gamestage",
+                    data={"stage": "afterlight_story_complete"},
+                ),
+            ),
+        ),
+    )
+    task_titles = (
+        "Review the future fork's answer.",
+        "Record Stay.",
+        "Record Return.",
+        "Record Build.",
+        "Confirm at least one response.",
+        "Accept the recovered-memory record.",
+    )
+    for quest, task_title in zip(quests, task_titles):
+        quest.progression_mode = "linear"
+        quest.tasks[0].title = task_title
+    return ChapterSpec(
+        "story/20-afterlight", "Afterlight", STORY,
+        "kubejs:ascendancy_seal", 19, quests,
+    )
+
+
 def _certification_logistics() -> ChapterSpec:
     drawer = "certifications/logistics-i/drawer-bank"
     controller = "certifications/logistics-i/controller"
@@ -1787,6 +2097,10 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_fourteen = _chapter_fourteen(chapter_thirteen.quests[-1].slug)
     chapter_fifteen = _chapter_fifteen(chapter_fourteen.quests[-1].slug)
     chapter_sixteen = _chapter_sixteen()
+    chapter_seventeen = _chapter_seventeen()
+    chapter_eighteen = _chapter_eighteen()
+    chapter_nineteen = _chapter_nineteen()
+    chapter_twenty = _chapter_twenty()
     logistics = _certification_logistics()
     ore_loop = _certification_ore_loop(logistics.quests[-1].slug)
     autocrafting = _certification_autocrafting(logistics.quests[-1].slug)
@@ -1821,6 +2135,10 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_fourteen,
         chapter_fifteen,
         chapter_sixteen,
+        chapter_seventeen,
+        chapter_eighteen,
+        chapter_nineteen,
+        chapter_twenty,
         logistics,
         ore_loop,
         autocrafting,

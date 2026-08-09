@@ -29,6 +29,7 @@ VANILLA_ITEM_ALLOWLIST = frozenset(
         "minecraft:copper_ingot",
         "minecraft:crafting_table",
         "minecraft:diamond",
+        "minecraft:echo_shard",
         "minecraft:enchanted_golden_apple",
         "minecraft:experience_bottle",
         "minecraft:golden_apple",

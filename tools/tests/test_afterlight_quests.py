@@ -7,7 +7,9 @@ import json
 import os
 import re
 import shutil
+import stat
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -1234,6 +1236,20 @@ class QuestCompilerTests(unittest.TestCase):
         except ModuleNotFoundError as error:
             raise AssertionError("afterlight_quests package must exist") from error
 
+    def setUp(self) -> None:
+        self.migration_state = tempfile.TemporaryDirectory()
+        self.migration_environment = mock.patch.dict(
+            os.environ,
+            {
+                "AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": self.migration_state.name
+            },
+        )
+        self.migration_environment.start()
+
+    def tearDown(self) -> None:
+        self.migration_environment.stop()
+        self.migration_state.cleanup()
+
     def make_catalog(self, item_id: str = "example:widget", dependency: str = ""):
         group = self.quests.GroupSpec(
             slug="story",
@@ -1608,6 +1624,381 @@ class QuestCompilerTests(unittest.TestCase):
             self.assertFalse(transaction.exists())
             self.assertFalse(unsafe_chapter.exists())
             self.assertTrue(migrated_chapter.is_file())
+
+    def test_signed_id_migration_covers_complete_ftb_identity_schema(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            source = unsafe_chapter.read_text(encoding="utf-8")
+            source = source.replace(
+                '\tgroup: "4525BB3160467FCB"\n',
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tautofocus_id: "EEDCBA9876543210"\n'
+                '\tdep_control_pts: { EEDCBA9876543210: [{ x: 1.0d, y: 2.0d }] }\n'
+                '\timages: [{ id: "A222222222222222", image: "example:test" }]\n'
+                '\tquest_links: [{ id: "B111111111111111", linked_quest: "EEDCBA9876543210" }]\n'
+                '\tprose_map: { FEDCBA9876543210: "authored compound key" }\n',
+                1,
+            )
+            unsafe_chapter.write_text(source, encoding="utf-8")
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            migrated_path = quest_root / "chapters/7EDCBA9876543210.snbt"
+            migrated_text = migrated_path.read_text(encoding="utf-8")
+            migrated = builder._parse_snbt(migrated_text)
+            self.assertEqual(migrated["autofocus_id"], "6EDCBA9876543210")
+            self.assertEqual(migrated["quest_links"][0]["id"], "3111111111111111")
+            self.assertEqual(
+                migrated["quest_links"][0]["linked_quest"],
+                "6EDCBA9876543210",
+            )
+            self.assertEqual(migrated["images"][0]["id"], "2222222222222222")
+            self.assertIn("6EDCBA9876543210", migrated["dep_control_pts"])
+            self.assertIn(
+                'prose_map: { FEDCBA9876543210: "authored compound key" }',
+                migrated_text,
+            )
+
+    def test_signed_id_validator_is_independent_from_rewrite_classifier(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            chapter = quest_root / "chapters/1234567890ABCDEF.snbt"
+            chapter.write_text(
+                "{\n"
+                '\tfilename: "1234567890ABCDEF"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tid: "1234567890ABCDEF"\n'
+                '\timages: [ ]\n'
+                '\tquest_links: [{ id: "F111111111111111", linked_quest: "234567890ABCDEF0" }]\n'
+                '\tquests: [{ id: "234567890ABCDEF0", tasks: [ ], rewards: [ ] }]\n'
+                "}\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(builder, "_migration_snbt_role", return_value=None):
+                with self.assertRaisesRegex(ValueError, "signed-safe FTB identity"):
+                    builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migration_preflights_all_payloads_before_repository_changes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            snapshots = {
+                write["target"]: (quest_root / write["target"]).read_bytes()
+                for write in journal["writes"]
+            }
+            final_write = journal["writes"][-1]
+            payload = transaction / "stage" / final_write["payload"]
+            payload.write_bytes(payload.read_bytes() + b"corrupt")
+            backup_payload = (
+                transaction
+                / builder.MIGRATION_STAGE_BACKUP_NAME
+                / final_write["payload"]
+            )
+            if backup_payload.exists():
+                backup_payload.write_bytes(b"corrupt backup payload")
+
+            with self.assertRaisesRegex(ValueError, "staged FTB ID migration payload"):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertEqual(
+                {
+                    target: (quest_root / target).read_bytes()
+                    for target in snapshots
+                },
+                snapshots,
+            )
+
+    def test_migration_rehashes_repaired_stage_before_repository_changes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            snapshots = {
+                write["target"]: (quest_root / write["target"]).read_bytes()
+                for write in journal["writes"]
+            }
+            final_write = journal["writes"][-1]
+            repaired_stage = transaction / "stage" / final_write["payload"]
+            repaired_stage.write_bytes(b"force repair from authenticated backup")
+            real_copy = builder._durable_copy_file
+
+            def corrupt_repaired_copy(source: Path, target: Path, mode: int) -> None:
+                real_copy(source, target, mode)
+                if target == repaired_stage:
+                    target.write_bytes(target.read_bytes() + b"corrupt after repair")
+
+            with mock.patch.object(
+                builder,
+                "_durable_copy_file",
+                side_effect=corrupt_repaired_copy,
+            ), self.assertRaisesRegex(
+                ValueError,
+                "staged FTB ID migration payload",
+            ):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertEqual(
+                {
+                    target: (quest_root / target).read_bytes()
+                    for target in snapshots
+                },
+                snapshots,
+            )
+
+    def test_migration_state_root_is_durable_and_checkout_independent(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            state_root = base / "state"
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base / "checkout"
+            )
+            with mock.patch.dict(
+                os.environ,
+                {"AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": str(state_root)},
+            ):
+                original = builder._migration_transaction_directory(quest_root)
+                relocated_base = base / "relocated"
+                (base / "checkout").rename(relocated_base)
+                relocated = relocated_base / "config/ftbquests/quests"
+                moved = builder._migration_transaction_directory(relocated)
+
+            self.assertTrue(original.is_relative_to(state_root))
+            self.assertEqual(moved, original)
+
+    def test_migration_recovers_truncated_journal_and_corrupt_stage(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            for fault in ("journal", "stage"):
+                with self.subTest(fault=fault):
+                    case = base / fault
+                    quest_root, mods_dir, _unsafe_chapter = (
+                        self.make_unsafe_migration_corpus(case)
+                    )
+                    transaction = case / "state/transaction"
+                    self.assertTrue(
+                        builder._migration_build_transaction(quest_root, transaction)
+                    )
+                    if fault == "journal":
+                        (transaction / builder.MIGRATION_JOURNAL_NAME).write_bytes(
+                            b'{"version":'
+                        )
+                    else:
+                        journal = json.loads(
+                            (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                                encoding="utf-8"
+                            )
+                        )
+                        payload = transaction / "stage" / journal["writes"][-1]["payload"]
+                        payload.write_bytes(b"corrupt staged payload")
+
+                    try:
+                        builder._migration_apply_transaction(quest_root, transaction)
+                    except ValueError as error:
+                        self.fail(f"migration recovery failed: {error}")
+
+                    self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+                    self.assertFalse(transaction.exists())
+
+    def test_migration_recovers_missing_target_and_cleans_orphan_temp(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            write = next(
+                item
+                for item in journal["writes"]
+                if item["target"] == item["payload"]
+            )
+            target = quest_root / write["target"]
+            target.unlink()
+            orphan = target.parent / f".{target.name}.orphan.migration"
+            orphan.write_bytes(b"orphan")
+
+            try:
+                builder._migration_apply_transaction(quest_root, transaction)
+            except ValueError as error:
+                self.fail(f"missing-target recovery failed: {error}")
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(orphan.exists())
+            self.assertFalse(transaction.exists())
+
+    def test_migration_detects_stage_change_after_preflight(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            real_replace = builder._replace_migration_file
+            mutated = False
+
+            def mutate_after_preflight(
+                source: Path,
+                target: Path,
+                mode: int,
+                expected_sha256: str | None = None,
+            ):
+                nonlocal mutated
+                if not mutated and source.name == builder.MANAGED_STATE_NAME:
+                    payload = json.loads(source.read_text(encoding="utf-8"))
+                    payload["unrelated_probe"] = True
+                    source.write_text(
+                        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                if expected_sha256 is None:
+                    return real_replace(source, target, mode)
+                return real_replace(source, target, mode, expected_sha256)
+
+            with mock.patch.object(
+                builder,
+                "_replace_migration_file",
+                side_effect=mutate_after_preflight,
+            ), self.assertRaisesRegex(ValueError, "staged.*changed|payload.*hash"):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertTrue(mutated)
+            self.assertTrue(transaction.exists())
+
+    def test_migration_process_death_recovers_after_checkout_relocation(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            checkout = base / "checkout"
+            state_root = base / "state"
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                checkout
+            )
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(TOOLS)
+            environment["AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT"] = str(state_root)
+            with mock.patch.dict(os.environ, environment, clear=True):
+                transaction = builder._migration_transaction_directory(quest_root)
+            interrupt = (
+                "import os\n"
+                "from pathlib import Path\n"
+                "from afterlight_quests import builder\n"
+                f"root = Path({str(quest_root)!r})\n"
+                "real_replace = builder.os.replace\n"
+                "published = 0\n"
+                "def terminate(source, target):\n"
+                "    global published\n"
+                "    result = real_replace(source, target)\n"
+                "    try:\n"
+                "        Path(target).relative_to(root)\n"
+                "    except ValueError:\n"
+                "        return result\n"
+                "    published += 1\n"
+                "    if published == 1:\n"
+                "        os._exit(73)\n"
+                "    return result\n"
+                "builder.os.replace = terminate\n"
+                "builder.normalize_quest_corpus_ids(root)\n"
+            )
+            try:
+                interrupted = subprocess.run(
+                    [sys.executable, "-c", interrupt],
+                    cwd=ROOT,
+                    env=environment,
+                    check=False,
+                )
+                self.assertEqual(interrupted.returncode, 73)
+                self.assertTrue(transaction.exists())
+
+                relocated_checkout = base / "relocated"
+                checkout.rename(relocated_checkout)
+                relocated_root = relocated_checkout / "config/ftbquests/quests"
+                resumed = subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "from pathlib import Path; "
+                        "from afterlight_quests import builder; "
+                        f"builder.normalize_quest_corpus_ids(Path({str(relocated_root)!r}))",
+                    ],
+                    cwd=ROOT,
+                    env=environment,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(resumed.returncode, 0, resumed.stderr)
+                self.assertEqual(
+                    self.quests.validate_quests(
+                        relocated_root,
+                        relocated_checkout / "mods",
+                    ),
+                    [],
+                )
+                self.assertFalse(transaction.exists())
+            finally:
+                shutil.rmtree(transaction, ignore_errors=True)
+
+    def test_migration_fsyncs_state_and_target_directories(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            state_root = base / "state"
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base / "checkout"
+            )
+            real_fsync = builder.os.fsync
+            directory_fsyncs: list[tuple[int, int]] = []
+
+            def record_fsync(descriptor: int):
+                descriptor_stat = os.fstat(descriptor)
+                if stat.S_ISDIR(descriptor_stat.st_mode):
+                    directory_fsyncs.append(
+                        (descriptor_stat.st_dev, descriptor_stat.st_ino)
+                    )
+                return real_fsync(descriptor)
+
+            with mock.patch.dict(
+                os.environ,
+                {"AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": str(state_root)},
+            ), mock.patch.object(builder.os, "fsync", side_effect=record_fsync):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertGreaterEqual(len(set(directory_fsyncs)), 2)
 
     def test_snbt_long_converts_hex_ids_to_signed_java_longs(self) -> None:
         self.assertEqual(

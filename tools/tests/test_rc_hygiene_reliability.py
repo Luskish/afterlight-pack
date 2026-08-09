@@ -4441,6 +4441,276 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             ):
                 self.hygiene._seal_occurrences(root, "fixture")
 
+    def test_seal_code_corpus_has_per_file_and_aggregate_byte_limits(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            oversized_root = base / "oversized"
+            oversized = oversized_root / "kubejs/oversized.js"
+            oversized.parent.mkdir(parents=True)
+            with oversized.open("wb") as handle:
+                handle.truncate(4 * 1024 * 1024 + 1)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "code file size",
+            ):
+                self.hygiene._seal_code_inventory(oversized_root, "fixture")
+
+            aggregate_root = base / "aggregate"
+            aggregate_code = aggregate_root / "kubejs"
+            aggregate_code.mkdir(parents=True)
+            for position in range(3):
+                with (aggregate_code / f"source-{position}.js").open("wb") as handle:
+                    handle.truncate(3 * 1024 * 1024)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "aggregate code bytes",
+            ):
+                self.hygiene._seal_code_inventory(aggregate_root, "fixture")
+
+    def test_seal_code_corpus_never_uses_path_read_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            code = root / "kubejs/source.js"
+            code.parent.mkdir(parents=True)
+            code.write_text("const safe = true\n", encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            read_paths: list[Path] = []
+
+            def record_read_bytes(path: Path) -> bytes:
+                read_paths.append(path)
+                return real_read_bytes(path)
+
+            with mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=record_read_bytes,
+            ):
+                inventory = self.hygiene._seal_code_inventory(root, "fixture")
+
+            self.assertEqual(inventory, {"kubejs/source.js": b"const safe = true\n"})
+            self.assertNotIn(code, read_paths)
+
+    def test_seal_zip_metadata_is_preflighted_before_zipfile(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mods = root / "mods"
+            mods.mkdir()
+            original_buffer = io.BytesIO()
+            with zipfile.ZipFile(original_buffer, "w") as archive:
+                archive.writestr("safe.txt", b"safe")
+            original = original_buffer.getvalue()
+            eocd = original.rfind(b"PK\x05\x06")
+            self.assertGreaterEqual(eocd, 0)
+
+            inconsistent_count = bytearray(original)
+            struct.pack_into("<H", inconsistent_count, eocd + 8, 2)
+            struct.pack_into("<H", inconsistent_count, eocd + 10, 2)
+
+            oversized_directory = bytearray(original)
+            struct.pack_into("<I", oversized_directory, eocd + 12, 0x7FFFFFFF)
+
+            missing_zip64 = bytearray(original)
+            struct.pack_into("<H", missing_zip64, eocd + 8, 0xFFFF)
+            struct.pack_into("<H", missing_zip64, eocd + 10, 0xFFFF)
+
+            duplicate_first = bytearray(original)
+            struct.pack_into(
+                "<H",
+                duplicate_first,
+                eocd + 20,
+                len(original) - eocd,
+            )
+            duplicate_eocd = bytes(duplicate_first) + original[eocd:]
+
+            impossible_disk = bytearray(original)
+            struct.pack_into("<H", impossible_disk, eocd + 4, 1)
+
+            cases = (
+                ("inconsistent-count", bytes(inconsistent_count)),
+                ("oversized-directory", bytes(oversized_directory)),
+                ("missing-zip64", bytes(missing_zip64)),
+                ("duplicate-eocd", duplicate_eocd),
+                ("impossible-disk", bytes(impossible_disk)),
+                ("truncated", original[:-1]),
+            )
+            real_zipfile = self.hygiene.zipfile.ZipFile
+            for name, payload in cases:
+                with self.subTest(name=name):
+                    archive_path = mods / f"{name}.jar"
+                    archive_path.write_bytes(payload)
+                    try:
+                        constructions: list[object] = []
+
+                        class TrackingZipFile(real_zipfile):
+                            def __init__(self, *args, **kwargs):
+                                constructions.append(args[0] if args else None)
+                                super().__init__(*args, **kwargs)
+
+                        error = None
+                        with mock.patch.object(
+                            self.hygiene.zipfile,
+                            "ZipFile",
+                            TrackingZipFile,
+                        ):
+                            try:
+                                self.hygiene._seal_occurrences(root, "fixture")
+                            except self.hygiene.VerificationError as caught:
+                                error = caught
+                        self.assertIsNotNone(error)
+                        self.assertEqual(constructions, [])
+                    finally:
+                        archive_path.unlink(missing_ok=True)
+
+            (
+                _signature,
+                _disk,
+                _central_disk,
+                _entries_on_disk,
+                entries,
+                central_size,
+                central_offset,
+                _comment_length,
+            ) = struct.unpack_from("<4s4H2LH", original, eocd)
+            zip64_end = struct.pack(
+                "<4sQ2H2L4Q",
+                b"PK\x06\x06",
+                44,
+                45,
+                45,
+                0,
+                0,
+                entries,
+                entries,
+                central_size,
+                central_offset,
+            )
+            zip64_locator = struct.pack(
+                "<4sLQL",
+                b"PK\x06\x07",
+                0,
+                eocd,
+                1,
+            )
+            zip64_classic = struct.pack(
+                "<4s4H2LH",
+                b"PK\x05\x06",
+                0,
+                0,
+                0xFFFF,
+                0xFFFF,
+                0xFFFFFFFF,
+                0xFFFFFFFF,
+                0,
+            )
+            valid_zip64 = original[:eocd] + zip64_end + zip64_locator + zip64_classic
+            zip64_path = mods / "valid-zip64.jar"
+            zip64_path.write_bytes(valid_zip64)
+            self.assertEqual(self.hygiene._seal_occurrences(root, "fixture"), ())
+            zip64_path.unlink()
+
+            inconsistent_zip64 = bytearray(valid_zip64)
+            locator_offset = eocd + len(zip64_end)
+            struct.pack_into("<Q", inconsistent_zip64, locator_offset + 8, eocd + 1)
+            zip64_path.write_bytes(inconsistent_zip64)
+            constructions: list[object] = []
+
+            class Zip64TrackingZipFile(real_zipfile):
+                def __init__(self, *args, **kwargs):
+                    constructions.append(args[0] if args else None)
+                    super().__init__(*args, **kwargs)
+
+            try:
+                with mock.patch.object(
+                    self.hygiene.zipfile,
+                    "ZipFile",
+                    Zip64TrackingZipFile,
+                ), self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "ZIP64",
+                ):
+                    self.hygiene._seal_occurrences(root, "fixture")
+                self.assertEqual(constructions, [])
+            finally:
+                zip64_path.unlink(missing_ok=True)
+
+    def test_seal_scan_rejects_same_size_and_identity_races(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            for race in ("same-size", "identity", "symlink"):
+                with self.subTest(race=race):
+                    root = base / race
+                    source = root / "config/race.snbt"
+                    source.parent.mkdir(parents=True)
+                    original = (
+                        '{ value: "kubejs:ascendancy_seal" note: "AAAA" }\n'
+                    )
+                    source.write_text(original, encoding="utf-8")
+                    external = base / f"{race}-external.snbt"
+                    external.write_text(original, encoding="utf-8")
+                    real_parse = self.hygiene._parse_snbt
+                    mutated = False
+
+                    def mutate_during_scan(text: str):
+                        nonlocal mutated
+                        if not mutated:
+                            mutated = True
+                            if race == "same-size":
+                                source.write_text(
+                                    original.replace("AAAA", "BBBB"),
+                                    encoding="utf-8",
+                                )
+                            elif race == "identity":
+                                replacement = source.with_suffix(".replacement")
+                                replacement.write_text(original, encoding="utf-8")
+                                os.replace(replacement, source)
+                            else:
+                                source.unlink()
+                                source.symlink_to(external)
+                        return real_parse(text)
+
+                    with mock.patch.object(
+                        self.hygiene,
+                        "_parse_snbt",
+                        side_effect=mutate_during_scan,
+                    ), self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "changed during|symlink",
+                    ):
+                        self.hygiene._seal_occurrences(root, "fixture")
+                    self.assertTrue(mutated)
+
+    def test_seal_occurrence_inventory_has_a_global_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "config/many-references.bin"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"ascendancy_seal " * 100_001)
+
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "occurrence count",
+            ):
+                self.hygiene._seal_occurrences(root, "fixture")
+
+    def test_seal_semantic_occurrences_are_lazy_and_globally_bounded(self) -> None:
+        hygiene = self.hygiene
+
+        class LazyJsonObject(hygiene._JsonObject):
+            def __iter__(self):
+                yield "first", "ascendancy_seal"
+                raise AssertionError("JSON occurrence traversal was eager")
+
+        class LazySnbt(dict):
+            def items(self):
+                yield "first", "ascendancy_seal"
+                raise AssertionError("SNBT occurrence traversal was eager")
+
+        json_occurrences = iter(hygiene._json_seal_occurrences(LazyJsonObject()))
+        self.assertEqual(next(json_occurrences), "json:$.first=ascendancy_seal")
+        snbt_occurrences = iter(hygiene._snbt_seal_occurrences(LazySnbt()))
+        self.assertEqual(next(snbt_occurrences), "snbt:$.first=ascendancy_seal")
+
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
@@ -4584,6 +4854,30 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             root, install = self.copy_quest_corpus(Path(temporary))
             quest_root = install / "config/ftbquests/quests"
 
+            data = quest_root / "data.snbt"
+            data_text = data.read_text(encoding="utf-8")
+            data_text = data_text.replace(
+                "\tgrid_scale: 0.5d\n",
+                '\tfallback_locale: ""\n\tgrid_scale: 0.5d\n',
+                1,
+            )
+            data_text = data_text.replace(
+                '\tprogression_mode: "flexible"\n',
+                '\tpresets: {\n'
+                '\t\tgoal: { shape: "hexagon", size: 2.0d }\n'
+                '\t\tinfo: { shape: "gear", size: 1.0d }\n'
+                '\t\tnormal: { shape: "square", size: 1.0d }\n'
+                '\t}\n'
+                '\tprogression_mode: "flexible"\n',
+                1,
+            )
+            data_text = data_text.replace(
+                "\tversion: 13\n",
+                "\tverify_on_load: false\n\tversion: 13\n",
+                1,
+            )
+            data.write_text(data_text, encoding="utf-8")
+
             postgame = quest_root / "chapters/3FF4AF7B0C73F058.snbt"
             postgame_text = postgame.read_text(encoding="utf-8")
             postgame_text = postgame_text.replace(
@@ -4649,6 +4943,239 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             result = verifier(root, install)
 
             self.assertEqual(result["root"], result["install"])
+
+    def test_quest_identity_binds_data_and_localization_semantics(self) -> None:
+        cases = (
+            (
+                "data value",
+                lambda quest_root: (
+                    quest_root / "data.snbt"
+                ).write_text(
+                    (quest_root / "data.snbt")
+                    .read_text(encoding="utf-8")
+                    .replace(
+                        "default_reward_team: false",
+                        "default_reward_team: true",
+                        1,
+                    ),
+                    encoding="utf-8",
+                ),
+            ),
+            (
+                "missing localization corpus",
+                lambda quest_root: shutil.rmtree(quest_root / "lang"),
+            ),
+            (
+                "localization path",
+                lambda quest_root: (quest_root / "lang/en_us.snbt").rename(
+                    quest_root / "lang/en_gb.snbt"
+                ),
+            ),
+            (
+                "localization key",
+                lambda quest_root: (quest_root / "lang/en_us.snbt").write_text(
+                    (quest_root / "lang/en_us.snbt")
+                    .read_text(encoding="utf-8")
+                    .replace(
+                        "chapter.5B93C6934B230CFB.title",
+                        "chapter.5B93C6934B230CFB.changed",
+                        1,
+                    ),
+                    encoding="utf-8",
+                ),
+            ),
+            (
+                "localization scalar",
+                lambda quest_root: (quest_root / "lang/en_us.snbt").write_text(
+                    (quest_root / "lang/en_us.snbt")
+                    .read_text(encoding="utf-8")
+                    .replace('"Cold Boot"', '"Warm Boot"', 1),
+                    encoding="utf-8",
+                ),
+            ),
+            (
+                "localization array position",
+                lambda quest_root: (quest_root / "lang/en_us.snbt").write_text(
+                    (quest_root / "lang/en_us.snbt")
+                    .read_text(encoding="utf-8")
+                    .replace(
+                        '\t\t"Power at three percent. Memory at less."\n'
+                        '\t\t"You are awake. That was not guaranteed. Four hundred cycles of cryostasis end the way most things end here: quietly, and without permission."',
+                        '\t\t"You are awake. That was not guaranteed. Four hundred cycles of cryostasis end the way most things end here: quietly, and without permission."\n'
+                        '\t\t"Power at three percent. Memory at less."',
+                        1,
+                    ),
+                    encoding="utf-8",
+                ),
+            ),
+            (
+                "localization array text",
+                lambda quest_root: (quest_root / "lang/en_us.snbt").write_text(
+                    (quest_root / "lang/en_us.snbt")
+                    .read_text(encoding="utf-8")
+                    .replace(
+                        '"Power at three percent. Memory at less."',
+                        '"Power at four percent. Memory at less."',
+                        1,
+                    ),
+                    encoding="utf-8",
+                ),
+            ),
+        )
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root, install = self.copy_quest_corpus(Path(temporary))
+                mutate(install / "config/ftbquests/quests")
+                with self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "quest identity corpus",
+                ):
+                    self.hygiene.verify_quest_identity_stability(root, install)
+
+    def test_quest_identity_rejects_nonexact_save_normalizations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            install_quests = install / "config/ftbquests/quests"
+            for relative, compacted, replacement in (
+                ("chapters/758F5AEF697F7EFD.snbt", 20, 70),
+                ("chapters/7C611E8A94BC5CE5.snbt", 21, 80),
+                ("chapters/099200314296766A.snbt", 22, 90),
+                ("reward_tables/depot_early.snbt", 10, 30),
+                ("reward_tables/depot_mid.snbt", 11, 40),
+                ("reward_tables/depot_late.snbt", 12, 50),
+            ):
+                path = install_quests / relative
+                source = path.read_text(encoding="utf-8")
+                changed = source.replace(
+                    f"order_index: {compacted}",
+                    f"order_index: {replacement}",
+                    1,
+                )
+                self.assertNotEqual(changed, source)
+                path.write_text(changed, encoding="utf-8")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "quest identity corpus",
+            ):
+                self.hygiene.verify_quest_identity_stability(root, install)
+
+        reviewed_tables = {
+            "ascendancy_cache.snbt": ("ascendancy_cache", "Ascendancy Cache"),
+            "ascendancy_cache_rare.snbt": (
+                "ascendancy_cache_rare",
+                "Ascendancy Cache: Rare",
+            ),
+            "ascendancy_cache_epic.snbt": (
+                "ascendancy_cache_epic",
+                "Ascendancy Cache: Epic",
+            ),
+            "depot_early.snbt": ("depot_early", "Requisition Depot: Early"),
+            "depot_mid.snbt": ("depot_mid", "Requisition Depot: Mid"),
+            "depot_late.snbt": ("depot_late", "Requisition Depot: Late"),
+        }
+        for relative, (filename, title) in reviewed_tables.items():
+            for location in ("repository", "installed"):
+                with self.subTest(table=relative, location=location), tempfile.TemporaryDirectory() as temporary:
+                    root, install = self.copy_quest_corpus(Path(temporary))
+                    corpus = root if location == "repository" else install
+                    path = corpus / "config/ftbquests/quests/reward_tables" / relative
+                    source = path.read_text(encoding="utf-8")
+                    changed = source.replace(
+                        f'filename: "{filename}"',
+                        'filename: "arbitrary"',
+                        1,
+                    ).replace(
+                        f'title: "{title}"',
+                        'title: "Arbitrary"',
+                        1,
+                    )
+                    self.assertNotEqual(changed, source)
+                    path.write_text(changed, encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "quest identity corpus|reviewed reward table",
+                    ):
+                        self.hygiene.verify_quest_identity_stability(root, install)
+
+        data_mutations = (
+            ('fallback_locale: ""', 'fallback_locale: "fr_fr"'),
+            ("verify_on_load: false", "verify_on_load: true"),
+            ('shape: "hexagon"', 'shape: "circle"'),
+            ("size: 2.0d", "size: 3.0d"),
+        )
+        for old, new in data_mutations:
+            with self.subTest(data_default=old), tempfile.TemporaryDirectory() as temporary:
+                root, install = self.copy_quest_corpus(Path(temporary))
+                data = install / "config/ftbquests/quests/data.snbt"
+                source = data.read_text(encoding="utf-8")
+                if old not in source:
+                    source = source.replace(
+                        "\tversion: 13\n",
+                        '\tfallback_locale: ""\n'
+                        '\tpresets: { goal: { shape: "hexagon", size: 2.0d } }\n'
+                        '\tverify_on_load: false\n'
+                        "\tversion: 13\n",
+                        1,
+                    )
+                changed = source.replace(old, new, 1)
+                self.assertNotEqual(changed, source)
+                data.write_text(changed, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "quest identity corpus",
+                ):
+                    self.hygiene.verify_quest_identity_stability(root, install)
+
+    def test_quest_identity_save_defaults_are_directional(self) -> None:
+        cases = (
+            (
+                "item task count",
+                "chapters/3FF4AF7B0C73F058.snbt",
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }\n'
+                "\t\t\t\t\tcount: 1L",
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+            ),
+            (
+                "table item type",
+                "reward_tables/ascendancy_cache.snbt",
+                '\n\t\t\ttype: "item"',
+                "",
+            ),
+            (
+                "table default weight",
+                "reward_tables/depot_early.snbt",
+                "\n\t\t\tweight: 1.0f",
+                "",
+            ),
+            (
+                "spell component",
+                "chapters/11D0B654D6E9B714.snbt",
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book" }',
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book", '
+                'components: { "irons_spellbooks:spell_container": { data: [], '
+                'maxSpells: 5, mustEquip: 1b, spellWheel: 1b } } }',
+            ),
+            (
+                "glow encoding",
+                "reward_tables/ascendancy_cache.snbt",
+                "glow: true",
+                "glow: 1b",
+            ),
+        )
+        for label, relative, old, new in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root, install = self.copy_quest_corpus(Path(temporary))
+                for corpus in (root, install):
+                    path = corpus / "config/ftbquests/quests" / relative
+                    source = path.read_text(encoding="utf-8")
+                    changed = source.replace(old, new, 1)
+                    self.assertNotEqual(changed, source)
+                    path.write_text(changed, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "quest identity corpus|repository",
+                ):
+                    self.hygiene.verify_quest_identity_stability(root, install)
 
     def test_quest_identity_rejects_every_gameplay_semantic_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

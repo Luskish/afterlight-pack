@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df` has the complete local gate recorded below. Exact-head independent review, two detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
+Status: review round 2 is based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501b918` and has the fresh offline gate recorded below. A live boot on the exact review-fix commit, exact-head independent review, two detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
 
 ## Delivered Scope
 
@@ -16,10 +16,10 @@ Status: candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df` has the comp
 - The existing authenticated Gate listener and marker now prove every empty and occupied mechanical slot, wrong schematic or special item, mirror, rotation, producer cardinality, Draconic Seal position, exact output, exact remainder, and Seal stack contract.
 - Runtime helper self-tests and exact assertion cardinality bind the executable control flow to 14 positive checks, 368 negative checks, 54 remainder-slot checks, and 6 Seal-slot checks before marker emission.
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
-- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits.
-- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
-- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler stages and validates the complete migration before replacement, journals outside shipped pack content, resumes interrupted writes and chapter moves, and rewrites only FTB identity fields, dependency references, table references, managed-state IDs, and FTB localization-key ID segments.
-- The post-shutdown quest-identity oracle compares 1,525 canonical gameplay records across repository and installed corpora. It binds chapter-group order, relative chapter and reward-table order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Its only save normalizations are 130 omitted item-task outer `count: 1L` fields, 14 omitted item-reward `count: 1` fields, omitted item type on 43 reward-table entries, omitted default weight on 15 depot entries, one exact Iron's Spells spell-book component, omitted reward-table filename and title, numeric glow encoding, three chapter and three reward-table order-index compactions that preserve relative order, and SNBT formatting.
+- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits. ZIP and ZIP64 member counts plus central-directory sizes are preflighted before `ZipFile` construction. Every scanned outer file uses one stable descriptor with link rejection, bounded reads, initial and final hashes, and device, inode, size, mtime, and ctime checks.
+- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. JavaScript and TypeScript reads are limited to 4 MiB per file and 8 MiB in aggregate, and the complete Seal occurrence inventory is capped at 100,000 records. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler covers known IDs in quest links, linked quests, images, autofocus, dependency control points, managed state, table references, and localization keys while preserving unrelated ID-shaped authored values. An independent validator checks the known identity containers. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
+- The post-shutdown quest-identity oracle compares 3,135 canonical semantic records across repository and installed corpora. It binds `data.snbt`, every localization file path, key, scalar value, array position, and array text, plus chapter-group order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Save normalization is directional and limited to the exact characterized item-task counts, item-reward counts, reward-table item types and weights, Iron's Spells component, glow encoding, three chapter order pairs, three reward-table order pairs, exact reward-table filename and title omissions, the three exact installed `data.snbt` defaults, and SNBT formatting. The fresh repository inventory SHA-256 is `6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede`.
 - The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
 
 ## Test-First Evidence
@@ -42,9 +42,28 @@ The next review found two further scanner bypasses: a ZIP with arbitrary prefixe
 
 The first post-fix boot then exposed runtime data corruption rather than a test-only issue. FTB Quests rewrote every high-bit ID because its installed bytecode uses signed `Long.parseLong(..., 16)`, and it replaced the affected Seal reward with a default apple. Three signed-safe RED tests drove the compiler migration, then the complete 586-occurrence corpus was regenerated. The next boot exposed the retired Act I `energy` alias becoming `custom`; installed bytecode proved `forge_energy` is the registered NeoForge type. Both defects are now covered by static and post-shutdown semantic regressions.
 
-Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue. The expanded oracle contains 1,525 records and matches the fresh post-save installed corpus with SHA-256 `b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1`. The review-fix offline gate passes all 283 tests with 77 intentional live skips, static quest validation reports 46 chapters, 313 quests, 334 tasks, and 436 rewards, and the fresh live gate runs all 283 tests without skips.
+Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue, and the resulting candidate completed the historical live gate recorded below. Review round 2 supersedes that oracle and transaction implementation.
 
-## Automated Gate
+Review round 2 reproduced 30 focused failures across 16 tests before production changes. The RED set covered unbound data and localization semantics, broad or symmetric normalization, incomplete FTB identity schema, reused validation logic, non-durable and partially preflighted migration state, blocked recovery paths, unbounded code and occurrence scans, ZIP metadata accepted before preflight, and stable-descriptor race gaps. One additional occurrence-bound regression failed before its focused production fix.
+
+## Review Round 2 Offline Gate
+
+The following fresh commands ran in the isolated review worktree based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501b918`:
+
+```text
+Ran 89 focused tests in 16.895s
+OK (skipped=2)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+Ran 302 offline tests in 36.998s
+OK (skipped=77)
+QUEST IDENTITY INVENTORY: records=3135 sha256=6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede
+```
+
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No live boot has run on the exact review round 2 commit. The prior live gate below remains historical evidence for the earlier candidate only and does not validate the revised transaction, semantic oracle, or Seal scanner.
+
+## Prior Automated Gate
 
 The following local gate completed on 2026-08-09 at candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df`:
 
@@ -61,7 +80,6 @@ SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f9
 QUEST AUDIT BYTES: OK sha256=7fb88229d850fb55934cf66144557d7b6ebb23151ee635fd9d18d2b0ef1e2a4a
 GATE AUDIT RENDER: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
 GATE AUDIT BYTES: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
-QUEST IDENTITY: OK records=1525 sha256=b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1
 BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
 Ran 283 live tests in 148.039s
 OK

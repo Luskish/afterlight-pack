@@ -22,7 +22,10 @@ MAX_FTB_ID = (1 << 63) - 1
 RESOURCE_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MANAGED_STATE_NAME = ".afterlight-managed.json"
 MIGRATION_JOURNAL_NAME = "journal.json"
-MIGRATION_TRANSACTION_VERSION = 1
+MIGRATION_JOURNAL_BACKUP_NAME = "journal.backup.json"
+MIGRATION_STAGE_BACKUP_NAME = "stage-backup"
+MIGRATION_STATE_ROOT_ENV = "AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT"
+MIGRATION_TRANSACTION_VERSION = 2
 DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
@@ -759,8 +762,24 @@ def _migration_snbt_role(
     if len(relative.parts) == 2 and relative.parts[0] == "chapters":
         if path == ("id",):
             return "definition"
-        if path in (("filename",), ("group",)):
+        if path in (("filename",), ("group",), ("autofocus_id",)):
             return "identity"
+        if (
+            len(path) == 3
+            and path[0] == "quest_links"
+            and isinstance(path[1], int)
+        ):
+            if path[2] == "id":
+                return "definition"
+            if path[2] == "linked_quest":
+                return "identity"
+        if (
+            len(path) == 3
+            and path[0] == "images"
+            and isinstance(path[1], int)
+            and path[2] == "id"
+        ):
+            return "definition"
         if (
             len(path) == 3
             and path[0] == "quests"
@@ -871,6 +890,19 @@ def _migration_scan_snbt(
             if target != token.value:
                 replacements.append((token, target))
 
+    if len(relative.parts) == 2 and relative.parts[0] == "chapters":
+        for parent_path, token in key_tokens:
+            if parent_path != ("dep_control_pts",):
+                continue
+            if HEX_ID.fullmatch(token.value) is None:
+                raise ValueError(
+                    f"malformed FTB identity in {relative} at "
+                    f"dep_control_pts key: {token.value!r}"
+                )
+            target = ftb_safe_id(token.value)
+            if target != token.value:
+                replacements.append((token, target))
+
     return _migration_apply_replacements(text, replacements), tuple(definitions)
 
 
@@ -903,18 +935,30 @@ def _migration_managed_state(text: str, path: Path) -> str:
 
 
 def _migration_file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _migration_transaction_directory(quest_root: Path) -> Path:
-    root_key = hashlib.sha256(
-        os.fsencode(str(quest_root.resolve()))
+    del quest_root
+    configured = os.environ.get(MIGRATION_STATE_ROOT_ENV)
+    if configured:
+        state_root = Path(os.path.abspath(os.path.expanduser(configured)))
+    else:
+        xdg_state_home = os.environ.get("XDG_STATE_HOME")
+        state_home = (
+            Path(os.path.abspath(os.path.expanduser(xdg_state_home)))
+            if xdg_state_home
+            else Path.home() / ".local" / "state"
+        )
+        state_root = state_home / "afterlight" / "quest-id-migrations"
+    transaction_key = hashlib.sha256(
+        b"afterlight-ftbquests-2101.1.30-signed-safe-v2"
     ).hexdigest()
-    return (
-        Path(tempfile.gettempdir())
-        / "afterlight-quest-id-migrations"
-        / root_key
-    )
+    return state_root / transaction_key
 
 
 def _migration_relative_path(value: object, label: str) -> Path:
@@ -926,113 +970,635 @@ def _migration_relative_path(value: object, label: str) -> Path:
     return relative
 
 
-def _replace_migration_file(source: Path, target: Path, mode: int) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
+def _fsync_directory(path: Path) -> None:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        flags |= os.O_DIRECTORY
+    descriptor = os.open(path, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _durable_mkdir(path: Path) -> None:
+    missing: list[Path] = []
+    current = path
+    while not current.exists():
+        missing.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    for directory in reversed(missing):
+        directory.mkdir()
+        _fsync_directory(directory.parent)
+
+
+def _durable_write_bytes(path: Path, payload: bytes, mode: int = 0o600) -> None:
+    _durable_mkdir(path.parent)
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".state", dir=path.parent
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(payload)
+            output.flush()
+            os.fchmod(output.fileno(), mode)
+            os.fsync(output.fileno())
+        os.replace(temp_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+            _fsync_directory(temp_path.parent)
+
+
+def _durable_copy_file(source: Path, target: Path, mode: int) -> None:
+    _durable_write_bytes(target, source.read_bytes(), mode)
+
+
+def _migration_stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _replace_migration_file(
+    source: Path,
+    target: Path,
+    mode: int,
+    expected_sha256: str | None = None,
+) -> None:
+    _durable_mkdir(target.parent)
+    source_flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        source_flags |= os.O_NOFOLLOW
+    source_descriptor = os.open(source, source_flags)
     descriptor, temp_name = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".migration", dir=target.parent
     )
     temp_path = Path(temp_name)
     try:
-        with source.open("rb") as input_handle, os.fdopen(descriptor, "wb") as output_handle:
-            shutil.copyfileobj(input_handle, output_handle)
+        source_before = os.fstat(source_descriptor)
+        if not stat.S_ISREG(source_before.st_mode) or source_before.st_nlink != 1:
+            raise ValueError(f"invalid staged FTB ID migration payload: {source}")
+        source_digest = hashlib.sha256()
+        with os.fdopen(
+            source_descriptor, "rb", closefd=False
+        ) as input_handle, os.fdopen(descriptor, "w+b") as output_handle:
+            for chunk in iter(lambda: input_handle.read(1024 * 1024), b""):
+                source_digest.update(chunk)
+                output_handle.write(chunk)
             output_handle.flush()
+            os.fchmod(output_handle.fileno(), mode)
             os.fsync(output_handle.fileno())
-        os.chmod(temp_path, mode)
+            output_handle.seek(0)
+            copied_digest = hashlib.sha256()
+            for chunk in iter(lambda: output_handle.read(1024 * 1024), b""):
+                copied_digest.update(chunk)
+        source_after = os.fstat(source_descriptor)
+        actual_source_sha256 = source_digest.hexdigest()
+        actual_copy_sha256 = copied_digest.hexdigest()
+        if _migration_stat_identity(source_before) != _migration_stat_identity(
+            source_after
+        ):
+            raise ValueError(f"staged FTB ID migration payload changed: {source}")
+        if expected_sha256 is not None and (
+            actual_source_sha256 != expected_sha256
+            or actual_copy_sha256 != expected_sha256
+        ):
+            raise ValueError(
+                f"staged FTB ID migration payload hash changed: {source}"
+            )
         os.replace(temp_path, target)
+        _fsync_directory(target.parent)
+        if (
+            expected_sha256 is not None
+            and _migration_file_sha256(target) != expected_sha256
+        ):
+            raise ValueError(
+                f"published FTB ID migration target hash changed: {target}"
+            )
     finally:
-        temp_path.unlink(missing_ok=True)
+        os.close(source_descriptor)
+        if temp_path.exists():
+            temp_path.unlink()
+            _fsync_directory(temp_path.parent)
 
 
-def _migration_apply_transaction(quest_root: Path, transaction: Path) -> int:
-    journal_path = transaction / MIGRATION_JOURNAL_NAME
+def _migration_journal_checksum(journal: Mapping[str, object]) -> str:
+    authenticated = {
+        key: value for key, value in journal.items() if key != "journal_sha256"
+    }
+    return hashlib.sha256(
+        json.dumps(
+            authenticated,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _migration_journal_bytes(journal: Mapping[str, object]) -> bytes:
+    authenticated = dict(journal)
+    authenticated["journal_sha256"] = _migration_journal_checksum(authenticated)
+    return (
+        json.dumps(authenticated, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+
+
+def _migration_read_journal_copy(path: Path) -> dict[str, object] | None:
     try:
-        journal = json.loads(journal_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"invalid FTB ID migration journal {journal_path}: {error}") from error
-    if not isinstance(journal, dict) or journal.get("version") != MIGRATION_TRANSACTION_VERSION:
-        raise ValueError(f"invalid FTB ID migration journal version: {journal_path}")
-    if journal.get("quest_root") != str(quest_root.resolve()):
-        raise ValueError(f"FTB ID migration journal root mismatch: {journal_path}")
-    writes = journal.get("writes")
-    moves = journal.get("moves")
+        path_stat = path.lstat()
+        if (
+            stat.S_ISLNK(path_stat.st_mode)
+            or not stat.S_ISREG(path_stat.st_mode)
+            or path_stat.st_nlink != 1
+            or path_stat.st_size > 4 * 1024 * 1024
+        ):
+            return None
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(value, dict):
+        return None
+    checksum = value.get("journal_sha256")
+    if (
+        not isinstance(checksum, str)
+        or re.fullmatch(r"[0-9a-f]{64}", checksum) is None
+        or checksum != _migration_journal_checksum(value)
+    ):
+        return None
+    return value
+
+
+def _migration_load_journal(transaction: Path) -> dict[str, object]:
+    journal_paths = (
+        transaction / MIGRATION_JOURNAL_NAME,
+        transaction / MIGRATION_JOURNAL_BACKUP_NAME,
+    )
+    copies = tuple(_migration_read_journal_copy(path) for path in journal_paths)
+    valid = [copy for copy in copies if copy is not None]
+    if not valid:
+        raise ValueError(f"invalid FTB ID migration journals: {transaction}")
+    canonical = _migration_journal_bytes(valid[0])
+    if any(_migration_journal_bytes(copy) != canonical for copy in valid[1:]):
+        raise ValueError(f"conflicting FTB ID migration journals: {transaction}")
+    for path, copy in zip(journal_paths, copies, strict=True):
+        if copy is None:
+            _durable_write_bytes(path, canonical)
+    return valid[0]
+
+
+def _migration_existing_hash(path: Path, label: str) -> str | None:
+    try:
+        path_stat = path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise ValueError(f"cannot inspect {label} {path}: {error}") from error
+    if (
+        stat.S_ISLNK(path_stat.st_mode)
+        or not stat.S_ISREG(path_stat.st_mode)
+        or path_stat.st_nlink != 1
+    ):
+        raise ValueError(f"invalid {label}: {path}")
+    return _migration_file_sha256(path)
+
+
+def _migration_authenticated_payload(
+    transaction: Path,
+    relative: Path,
+    expected_sha256: str,
+    mode: int,
+) -> Path:
+    stage = transaction / "stage" / relative
+    backup = transaction / MIGRATION_STAGE_BACKUP_NAME / relative
+    stage_hash = _migration_existing_hash(stage, "staged FTB ID migration payload")
+    backup_hash = _migration_existing_hash(
+        backup, "backup staged FTB ID migration payload"
+    )
+    stage_valid = stage_hash == expected_sha256
+    backup_valid = backup_hash == expected_sha256
+    if not stage_valid and not backup_valid:
+        raise ValueError(f"invalid staged FTB ID migration payload: {stage}")
+    if not stage_valid:
+        _durable_copy_file(backup, stage, mode)
+    if not backup_valid:
+        _durable_copy_file(stage, backup, mode)
+    for payload, label in (
+        (stage, "staged FTB ID migration payload"),
+        (backup, "backup staged FTB ID migration payload"),
+    ):
+        if _migration_existing_hash(payload, label) != expected_sha256:
+            raise ValueError(f"invalid staged FTB ID migration payload: {payload}")
+    return stage
+
+
+def _migration_preflight_transaction(
+    quest_root: Path,
+    transaction: Path,
+) -> tuple[
+    dict[str, object],
+    tuple[dict[str, object], ...],
+    tuple[dict[str, object], ...],
+    dict[Path, Path],
+]:
+    journal = _migration_load_journal(transaction)
+    if journal.get("version") != MIGRATION_TRANSACTION_VERSION:
+        raise ValueError(f"invalid FTB ID migration journal version: {transaction}")
+    origin_value = journal.get("quest_root")
+    if not isinstance(origin_value, str) or not Path(origin_value).is_absolute():
+        raise ValueError(f"invalid FTB ID migration journal root: {transaction}")
+    origin = Path(origin_value)
+    current_root = quest_root.resolve()
+    if current_root != origin and origin.exists():
+        raise ValueError(f"FTB ID migration journal root is still active: {origin}")
+    writes_value = journal.get("writes")
+    moves_value = journal.get("moves")
     changed = journal.get("changed")
-    if not isinstance(writes, list) or not isinstance(moves, list) or not isinstance(changed, int):
-        raise ValueError(f"invalid FTB ID migration journal operations: {journal_path}")
+    if (
+        not isinstance(writes_value, list)
+        or not isinstance(moves_value, list)
+        or not isinstance(changed, int)
+        or isinstance(changed, bool)
+        or changed < 0
+    ):
+        raise ValueError(f"invalid FTB ID migration journal operations: {transaction}")
 
-    move_by_source: dict[Path, dict[str, object]] = {}
-    for move in moves:
-        if not isinstance(move, dict):
-            raise ValueError(f"invalid FTB ID migration move: {move!r}")
-        source_relative = _migration_relative_path(move.get("source"), "move source")
-        _migration_relative_path(move.get("target"), "move target")
-        move_by_source[source_relative] = move
-
-    for write in writes:
-        if not isinstance(write, dict):
-            raise ValueError(f"invalid FTB ID migration write: {write!r}")
-        target_relative = _migration_relative_path(write.get("target"), "write target")
-        payload_relative = _migration_relative_path(write.get("payload"), "write payload")
+    writes: list[dict[str, object]] = []
+    payloads: dict[Path, Path] = {}
+    write_by_target: dict[Path, dict[str, object]] = {}
+    payload_relatives: set[Path] = set()
+    for write_value in writes_value:
+        if not isinstance(write_value, dict):
+            raise ValueError(f"invalid FTB ID migration write: {write_value!r}")
+        write = dict(write_value)
+        target_relative = _migration_relative_path(
+            write.get("target"), "write target"
+        )
+        payload_relative = _migration_relative_path(
+            write.get("payload"), "write payload"
+        )
         before_sha256 = write.get("before_sha256")
         after_sha256 = write.get("after_sha256")
         mode = write.get("mode")
-        if not all(
-            isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value)
-            for value in (before_sha256, after_sha256)
-        ) or not isinstance(mode, int):
+        if (
+            not all(
+                isinstance(value, str)
+                and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+                for value in (before_sha256, after_sha256)
+            )
+            or not isinstance(mode, int)
+            or isinstance(mode, bool)
+            or not 0 <= mode <= 0o7777
+            or target_relative in write_by_target
+            or payload_relative in payload_relatives
+        ):
             raise ValueError(f"invalid FTB ID migration write metadata: {write!r}")
-        payload = transaction / "stage" / payload_relative
-        if not payload.is_file() or _migration_file_sha256(payload) != after_sha256:
-            raise ValueError(f"invalid staged FTB ID migration payload: {payload}")
+        payload = _migration_authenticated_payload(
+            transaction,
+            payload_relative,
+            after_sha256,
+            mode,
+        )
+        write["target_relative"] = target_relative
+        write["payload_relative"] = payload_relative
+        writes.append(write)
+        payloads[target_relative] = payload
+        write_by_target[target_relative] = write
+        payload_relatives.add(payload_relative)
+
+    moves: list[dict[str, object]] = []
+    move_sources: set[Path] = set()
+    move_targets: set[Path] = set()
+    for move_value in moves_value:
+        if not isinstance(move_value, dict):
+            raise ValueError(f"invalid FTB ID migration move: {move_value!r}")
+        move = dict(move_value)
+        source_relative = _migration_relative_path(
+            move.get("source"), "move source"
+        )
+        target_relative = _migration_relative_path(
+            move.get("target"), "move target"
+        )
+        after_sha256 = move.get("after_sha256")
+        write = write_by_target.get(source_relative)
+        if (
+            not isinstance(after_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", after_sha256) is None
+            or write is None
+            or write.get("after_sha256") != after_sha256
+            or source_relative in move_sources
+            or target_relative in move_targets
+            or target_relative in write_by_target
+        ):
+            raise ValueError(f"invalid FTB ID migration move metadata: {move!r}")
+        move["source_relative"] = source_relative
+        move["target_relative"] = target_relative
+        moves.append(move)
+        move_sources.add(source_relative)
+        move_targets.add(target_relative)
+
+    move_by_source = {
+        move["source_relative"]: move for move in moves
+    }
+    for write in writes:
+        target_relative = write["target_relative"]
+        if not isinstance(target_relative, Path):
+            raise ValueError(f"invalid FTB ID migration write target: {write!r}")
+        before_sha256 = write["before_sha256"]
+        after_sha256 = write["after_sha256"]
+        target = quest_root / target_relative
+        current_hash = _migration_existing_hash(target, "FTB ID migration target")
+        move = move_by_source.get(target_relative)
+        if move is None:
+            if current_hash not in (None, before_sha256, after_sha256):
+                raise ValueError(f"FTB ID migration write target changed: {target}")
+            continue
+        move_target_relative = move["target_relative"]
+        if not isinstance(move_target_relative, Path):
+            raise ValueError(f"invalid FTB ID migration move target: {move!r}")
+        move_target = quest_root / move_target_relative
+        move_target_hash = _migration_existing_hash(
+            move_target, "FTB ID migration move target"
+        )
+        if current_hash not in (None, before_sha256, after_sha256):
+            raise ValueError(f"FTB ID migration move source changed: {target}")
+        if move_target_hash not in (None, after_sha256):
+            raise ValueError(f"FTB ID migration move target changed: {move_target}")
+
+    return journal, tuple(writes), tuple(moves), payloads
+
+
+def _migration_cleanup_orphan_temps(
+    quest_root: Path,
+    writes: Sequence[dict[str, object]],
+    moves: Sequence[dict[str, object]],
+) -> None:
+    relatives = {
+        write["target_relative"] for write in writes
+    } | {move["target_relative"] for move in moves}
+    for relative in relatives:
+        if not isinstance(relative, Path):
+            continue
+        target = quest_root / relative
+        for orphan in target.parent.glob(f".{target.name}.*.migration"):
+            orphan_stat = orphan.lstat()
+            if stat.S_ISLNK(orphan_stat.st_mode) or not stat.S_ISREG(
+                orphan_stat.st_mode
+            ):
+                raise ValueError(f"invalid FTB ID migration temp file: {orphan}")
+            orphan.unlink()
+            _fsync_directory(orphan.parent)
+
+
+def _migration_apply_transaction(quest_root: Path, transaction: Path) -> int:
+    journal, writes, moves, payloads = _migration_preflight_transaction(
+        quest_root, transaction
+    )
+    changed = journal["changed"]
+    if not isinstance(changed, int):
+        raise ValueError(f"invalid FTB ID migration changed count: {transaction}")
+    move_by_source = {move["source_relative"]: move for move in moves}
+    _migration_cleanup_orphan_temps(quest_root, writes, moves)
+
+    for write in writes:
+        target_relative = write["target_relative"]
+        after_sha256 = write["after_sha256"]
+        mode = write["mode"]
+        if (
+            not isinstance(target_relative, Path)
+            or not isinstance(after_sha256, str)
+            or not isinstance(mode, int)
+        ):
+            raise ValueError(f"invalid resumed FTB ID migration write: {write!r}")
         target = quest_root / target_relative
         move = move_by_source.get(target_relative)
         if move is not None:
-            move_target = quest_root / _migration_relative_path(
-                move.get("target"), "move target"
-            )
-            if move_target.exists():
-                if _migration_file_sha256(move_target) != after_sha256:
-                    raise ValueError(
-                        f"FTB ID migration target changed during recovery: {move_target}"
-                    )
-                if target.exists() and _migration_file_sha256(target) != after_sha256:
-                    raise ValueError(
-                        f"FTB ID migration source changed during recovery: {target}"
-                    )
+            move_target_relative = move["target_relative"]
+            if not isinstance(move_target_relative, Path):
+                raise ValueError(f"invalid resumed FTB ID migration move: {move!r}")
+            move_target = quest_root / move_target_relative
+            if _migration_existing_hash(
+                move_target, "FTB ID migration move target"
+            ) == after_sha256:
                 continue
-        if not target.is_file():
-            raise ValueError(f"FTB ID migration write target is missing: {target}")
-        current_sha256 = _migration_file_sha256(target)
-        if current_sha256 == after_sha256:
+        if _migration_existing_hash(target, "FTB ID migration target") == after_sha256:
             continue
-        if current_sha256 != before_sha256:
-            raise ValueError(f"FTB ID migration write target changed: {target}")
-        _replace_migration_file(payload, target, mode)
+        _replace_migration_file(
+            payloads[target_relative],
+            target,
+            mode,
+            after_sha256,
+        )
 
     for move in moves:
-        source_relative = _migration_relative_path(move.get("source"), "move source")
-        target_relative = _migration_relative_path(move.get("target"), "move target")
-        after_sha256 = move.get("after_sha256")
-        if not isinstance(after_sha256, str):
-            raise ValueError(f"invalid FTB ID migration move hash: {move!r}")
+        source_relative = move["source_relative"]
+        target_relative = move["target_relative"]
+        after_sha256 = move["after_sha256"]
+        if (
+            not isinstance(source_relative, Path)
+            or not isinstance(target_relative, Path)
+            or not isinstance(after_sha256, str)
+        ):
+            raise ValueError(f"invalid resumed FTB ID migration move: {move!r}")
         source = quest_root / source_relative
         target = quest_root / target_relative
-        if source.exists():
-            if _migration_file_sha256(source) != after_sha256:
-                raise ValueError(f"FTB ID migration source changed: {source}")
-            if target.exists() and _migration_file_sha256(target) != after_sha256:
-                raise ValueError(f"FTB ID migration target changed: {target}")
-            source.replace(target)
-        elif not target.is_file() or _migration_file_sha256(target) != after_sha256:
+        source_hash = _migration_existing_hash(
+            source, "FTB ID migration move source"
+        )
+        target_hash = _migration_existing_hash(
+            target, "FTB ID migration move target"
+        )
+        if target_hash == after_sha256:
+            if source_hash is not None:
+                source.unlink()
+                _fsync_directory(source.parent)
+            continue
+        if source_hash != after_sha256 or target_hash is not None:
             raise ValueError(f"FTB ID migration move is incomplete: {source} -> {target}")
+        source.replace(target)
+        _fsync_directory(source.parent)
+        if target.parent != source.parent:
+            _fsync_directory(target.parent)
+        if _migration_file_sha256(target) != after_sha256:
+            raise ValueError(f"FTB ID migration move target hash changed: {target}")
 
     _validate_migrated_quest_corpus(quest_root)
-    journal_path.unlink()
-    shutil.rmtree(transaction)
-    try:
-        transaction.parent.rmdir()
-    except OSError:
-        pass
+    for write in writes:
+        target_relative = write["target_relative"]
+        after_sha256 = write["after_sha256"]
+        if not isinstance(target_relative, Path) or not isinstance(after_sha256, str):
+            raise ValueError(f"invalid completed FTB ID migration write: {write!r}")
+        move = move_by_source.get(target_relative)
+        final_relative = move["target_relative"] if move is not None else target_relative
+        if not isinstance(final_relative, Path):
+            raise ValueError(f"invalid completed FTB ID migration target: {write!r}")
+        if _migration_file_sha256(quest_root / final_relative) != after_sha256:
+            raise ValueError(
+                f"published FTB ID migration target changed: "
+                f"{quest_root / final_relative}"
+            )
+        payload_relative = write["payload_relative"]
+        if not isinstance(payload_relative, Path):
+            raise ValueError(f"invalid completed FTB ID migration payload: {write!r}")
+        for stage_name in ("stage", MIGRATION_STAGE_BACKUP_NAME):
+            if (
+                _migration_file_sha256(
+                    transaction / stage_name / payload_relative
+                )
+                != after_sha256
+            ):
+                raise ValueError(
+                    f"staged FTB ID migration payload changed after preflight: "
+                    f"{transaction / stage_name / payload_relative}"
+                )
+
+    completed = transaction.with_name(f".{transaction.name}.complete")
+    if completed.exists():
+        shutil.rmtree(completed)
+        _fsync_directory(completed.parent)
+    os.replace(transaction, completed)
+    _fsync_directory(completed.parent)
+    shutil.rmtree(completed)
+    _fsync_directory(completed.parent)
     return changed
+
+
+def _require_signed_safe_ftb_identity(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or HEX_ID.fullmatch(value) is None
+        or ftb_safe_id(value) != value
+    ):
+        raise ValueError(f"signed-safe FTB identity required for {label}: {value!r}")
+    return value
+
+
+def _validate_known_ftb_identity_containers(
+    relative: Path,
+    parsed: object,
+) -> None:
+    if relative == Path("chapter_groups.snbt"):
+        if not isinstance(parsed, Mapping):
+            raise ValueError("chapter group registry is malformed")
+        groups = parsed.get("chapter_groups")
+        if not isinstance(groups, list):
+            raise ValueError("chapter group registry is malformed")
+        for position, group in enumerate(groups):
+            if not isinstance(group, Mapping):
+                raise ValueError(f"chapter group {position} is malformed")
+            _require_signed_safe_ftb_identity(
+                group.get("id"), f"{relative}:chapter_groups[{position}].id"
+            )
+        return
+
+    if len(relative.parts) == 2 and relative.parts[0] == "chapters":
+        if not isinstance(parsed, Mapping):
+            raise ValueError(f"chapter is malformed: {relative}")
+        _require_signed_safe_ftb_identity(relative.stem, f"{relative}:path")
+        for key in ("filename", "group", "id"):
+            _require_signed_safe_ftb_identity(
+                parsed.get(key), f"{relative}:{key}"
+            )
+        autofocus_id = parsed.get("autofocus_id")
+        if autofocus_id is not None:
+            _require_signed_safe_ftb_identity(
+                autofocus_id, f"{relative}:autofocus_id"
+            )
+        dep_control_pts = parsed.get("dep_control_pts", {})
+        if not isinstance(dep_control_pts, Mapping):
+            raise ValueError(f"dependency control points are malformed: {relative}")
+        for identifier in dep_control_pts:
+            _require_signed_safe_ftb_identity(
+                identifier, f"{relative}:dep_control_pts key"
+            )
+        for container_name, linked_key in (
+            ("quest_links", "linked_quest"),
+            ("images", None),
+        ):
+            values = parsed.get(container_name, [])
+            if not isinstance(values, list):
+                raise ValueError(f"{container_name} is malformed: {relative}")
+            for position, value in enumerate(values):
+                if not isinstance(value, Mapping):
+                    raise ValueError(
+                        f"{container_name}[{position}] is malformed: {relative}"
+                    )
+                _require_signed_safe_ftb_identity(
+                    value.get("id"),
+                    f"{relative}:{container_name}[{position}].id",
+                )
+                if linked_key is not None:
+                    _require_signed_safe_ftb_identity(
+                        value.get(linked_key),
+                        f"{relative}:{container_name}[{position}].{linked_key}",
+                    )
+        quests = parsed.get("quests")
+        if not isinstance(quests, list):
+            raise ValueError(f"quests are malformed: {relative}")
+        for quest_position, quest in enumerate(quests):
+            if not isinstance(quest, Mapping):
+                raise ValueError(
+                    f"quest {quest_position} is malformed: {relative}"
+                )
+            _require_signed_safe_ftb_identity(
+                quest.get("id"), f"{relative}:quests[{quest_position}].id"
+            )
+            dependencies = quest.get("dependencies", [])
+            if not isinstance(dependencies, list):
+                raise ValueError(
+                    f"quest dependencies are malformed: {relative}"
+                )
+            for dependency_position, dependency in enumerate(dependencies):
+                _require_signed_safe_ftb_identity(
+                    dependency,
+                    f"{relative}:quests[{quest_position}].dependencies"
+                    f"[{dependency_position}]",
+                )
+            for container_name in ("tasks", "rewards"):
+                values = quest.get(container_name, [])
+                if not isinstance(values, list):
+                    raise ValueError(
+                        f"quest {container_name} are malformed: {relative}"
+                    )
+                for position, value in enumerate(values):
+                    if not isinstance(value, Mapping):
+                        raise ValueError(
+                            f"quest {container_name}[{position}] is malformed: "
+                            f"{relative}"
+                        )
+                    _require_signed_safe_ftb_identity(
+                        value.get("id"),
+                        f"{relative}:quests[{quest_position}]."
+                        f"{container_name}[{position}].id",
+                    )
+        return
+
+    if len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
+        if not isinstance(parsed, Mapping):
+            raise ValueError(f"reward table is malformed: {relative}")
+        _require_signed_safe_ftb_identity(
+            parsed.get("id"), f"{relative}:id"
+        )
+        rewards = parsed.get("rewards")
+        if not isinstance(rewards, list):
+            raise ValueError(f"reward table rewards are malformed: {relative}")
+        for position, reward in enumerate(rewards):
+            if not isinstance(reward, Mapping):
+                raise ValueError(
+                    f"reward table reward {position} is malformed: {relative}"
+                )
+            _require_signed_safe_ftb_identity(
+                reward.get("id"), f"{relative}:rewards[{position}].id"
+            )
 
 
 def _validate_migrated_quest_corpus(quest_root: Path) -> None:
@@ -1042,6 +1608,7 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         relative = path.relative_to(quest_root)
         text = path.read_text(encoding="utf-8")
         parsed_files[relative] = _parse_snbt(text)
+        _validate_known_ftb_identity_containers(relative, parsed_files[relative])
         migrated, definitions = _migration_scan_snbt(relative, text)
         if migrated != text:
             raise ValueError(f"incomplete signed-safe FTB ID migration in {path}")
@@ -1067,6 +1634,7 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
     }
     quest_ids: set[str] = set()
     dependencies: list[tuple[str, str]] = []
+    identity_references: list[tuple[str, str]] = []
     table_references: list[tuple[str, int]] = []
     for relative, chapter in parsed_files.items():
         if len(relative.parts) != 2 or relative.parts[0] != "chapters":
@@ -1078,6 +1646,25 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
             raise ValueError(f"migrated chapter path identity mismatch: {relative}")
         if chapter.get("group") not in group_ids:
             raise ValueError(f"migrated chapter group is unresolved: {relative}")
+        autofocus_id = chapter.get("autofocus_id")
+        if isinstance(autofocus_id, str):
+            identity_references.append((f"{relative}:autofocus_id", autofocus_id))
+        dep_control_pts = chapter.get("dep_control_pts", {})
+        if isinstance(dep_control_pts, Mapping):
+            identity_references.extend(
+                (f"{relative}:dep_control_pts", str(identifier))
+                for identifier in dep_control_pts
+            )
+        quest_links = chapter.get("quest_links", [])
+        if isinstance(quest_links, list):
+            identity_references.extend(
+                (
+                    f"{relative}:quest_links[{position}]",
+                    str(link.get("linked_quest")),
+                )
+                for position, link in enumerate(quest_links)
+                if isinstance(link, Mapping)
+            )
         quests = chapter.get("quests")
         if not isinstance(quests, list):
             raise ValueError(f"migrated chapter quest list is malformed: {relative}")
@@ -1108,6 +1695,17 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
     if unresolved_dependencies:
         raise ValueError(
             f"migrated quest dependencies are unresolved: {unresolved_dependencies[:20]}"
+        )
+
+    unresolved_identity_references = [
+        (owner, identifier)
+        for owner, identifier in identity_references
+        if identifier not in quest_ids
+    ]
+    if unresolved_identity_references:
+        raise ValueError(
+            "migrated FTB identities are unresolved: "
+            f"{unresolved_identity_references[:20]}"
         )
 
     table_ids = {
@@ -1190,10 +1788,11 @@ def _migration_build_transaction(quest_root: Path, transaction: Path) -> bool:
     if not transformed and not moves:
         return False
 
-    transaction.parent.mkdir(parents=True, exist_ok=True)
+    _durable_mkdir(transaction.parent)
     setup = Path(
         tempfile.mkdtemp(prefix=f".{transaction.name}.", dir=transaction.parent)
     )
+    _fsync_directory(transaction.parent)
     try:
         stage = setup / "stage"
         shutil.copytree(quest_root, stage)
@@ -1227,36 +1826,57 @@ def _migration_build_transaction(quest_root: Path, transaction: Path) -> bool:
             }
             for source, target in moves
         ]
-        _atomic_write(
-            setup / MIGRATION_JOURNAL_NAME,
-            json.dumps(
-                {
-                    "version": MIGRATION_TRANSACTION_VERSION,
-                    "quest_root": str(quest_root.resolve()),
-                    "changed": len(transformed) + len(moves),
-                    "writes": writes,
-                    "moves": journal_moves,
-                },
-                indent=2,
-                sort_keys=True,
+        for write in writes:
+            payload_relative = Path(str(write["payload"]))
+            payload = stage / payload_relative
+            mode = int(write["mode"])
+            with payload.open("rb") as payload_handle:
+                os.fsync(payload_handle.fileno())
+            _fsync_directory(payload.parent)
+            _durable_copy_file(
+                payload,
+                setup / MIGRATION_STAGE_BACKUP_NAME / payload_relative,
+                mode,
             )
-            + "\n",
+        journal_bytes = _migration_journal_bytes(
+            {
+                "version": MIGRATION_TRANSACTION_VERSION,
+                "quest_root": str(quest_root.resolve()),
+                "changed": len(transformed) + len(moves),
+                "writes": writes,
+                "moves": journal_moves,
+            }
         )
+        _durable_write_bytes(setup / MIGRATION_JOURNAL_NAME, journal_bytes)
+        _durable_write_bytes(
+            setup / MIGRATION_JOURNAL_BACKUP_NAME, journal_bytes
+        )
+        _fsync_directory(setup)
         if transaction.exists():
             raise ValueError(f"FTB ID migration transaction already exists: {transaction}")
         os.replace(setup, transaction)
+        _fsync_directory(transaction.parent)
     finally:
         if setup.exists():
             shutil.rmtree(setup)
+            _fsync_directory(setup.parent)
     return True
 
 
 def _normalize_quest_corpus_ids_transaction(quest_root: Path) -> int:
     transaction = _migration_transaction_directory(quest_root)
-    journal = transaction / MIGRATION_JOURNAL_NAME
-    if transaction.exists() and not journal.is_file():
+    completed = transaction.with_name(f".{transaction.name}.complete")
+    if completed.exists():
+        shutil.rmtree(completed)
+        _fsync_directory(completed.parent)
+    journals = (
+        transaction / MIGRATION_JOURNAL_NAME,
+        transaction / MIGRATION_JOURNAL_BACKUP_NAME,
+    )
+    if transaction.exists() and not any(path.is_file() for path in journals):
         shutil.rmtree(transaction)
-    if journal.is_file():
+        _fsync_directory(transaction.parent)
+    if transaction.exists():
         return _migration_apply_transaction(quest_root, transaction)
     if not _migration_build_transaction(quest_root, transaction):
         return 0

@@ -2,7 +2,7 @@
 
 Date: 2026-08-09
 
-Candidate implementation commit: `7bae4ca59eed5844ffd96fe9938858c74fe95235`
+Candidate implementation commit: `78a982d10bcb9cc913185d198ecfdeddcbce03d1`
 
 Status: Local automated verification and independent review passed. Exact-SHA CI remains required before the Plan 05 merge.
 
@@ -41,7 +41,7 @@ Command:
 python3 -m unittest discover -s tools/tests -p 'test_*.py'
 ```
 
-Result: 205 tests passed. Seventy-seven live-install tests skipped intentionally in the clean-checkout mode. The same 205 tests passed with zero skips inside the fresh server installation.
+Result: 208 tests passed. Seventy-seven live-install tests skipped intentionally in the clean-checkout mode. The same 208 tests passed with zero skips inside the fresh server installation.
 
 ### Quest Validation
 
@@ -81,7 +81,7 @@ Result:
 SERVER BOOT: OK
 ```
 
-The final server run used Java 21.0.12, bound the test server to port 25599, reached `Done (25.442s)!`, passed all 205 installed live tests with zero skips, and exited cleanly.
+The final server run used Java 21.0.12, bound the test server to port 25599, reached `Done (26.003s)!`, passed all 208 installed live tests with zero skips, and exited cleanly.
 
 ### Authenticated State
 
@@ -90,7 +90,7 @@ The final server run used Java 21.0.12, bound the test server to port 25599, rea
 - Installed artifact inventory: 157 entries, digest prefix `3fab3746`
 - Mixin corpus: 305 archives, 261 configs, 2,286 common entries, 5 server entries, and 2,857 records
 - Authenticated common-list client targets: 31, digest `cbb81775f677097560dff565346df0d9cb6a6b68af1f38a52ce9e43184ed6f59`
-- Boot oracle result: 14 error records, a deterministic corpus of 477 warning records, and 39 named residuals. macOS may add one exact `LanServerPinger: No route to host` environmental warning; Linux may omit it. Any mutation, continuation, relocation, or duplicate remains rejected.
+- Boot oracle result: 14 error records, a deterministic corpus of 477 warning records, and 39 named residuals. macOS may add one exact `LanServerPinger: No route to host` warning. A loaded runner may add one exact Spark startup world-statistics timeout. Each exact signature has an independent zero-or-one quota, must agree across `latest.log` and `debug.log`, and must remain continuation-free. Any mutation, relocation, duplicate, or unknown warning remains rejected.
 - Fatal records: 0
 - Generic IDAS `Item must not be minecraft:air` errors: 0
 
@@ -107,6 +107,8 @@ The scoped re-review marked all five findings addressed, found no new Critical o
 The first exact-SHA run, `31295133973`, exposed a CPython ZIP-reader difference in the reviewed Ars Nouveau shared-header aliases. Commit `ee8cb18c8e44d2d8ba3c2d91ef8eb16ced992262` changed the scanner to derive the physical member boundary instead of assuming an alias position. Synthetic regressions and the real 305-archive corpus passed on CPython 3.12.3, 3.12.12, 3.13.0, and 3.14.2. Unknown duplicates, metadata drift, ambiguous boundaries, and changed payload hashes remain rejected.
 
 The second exact-SHA run, `31296385690`, reached the warning oracle and exposed two environment-dependent facts: Supplementaries changed only its executor pool number between macOS and Linux, and Linux omitted one exact macOS LAN multicast routing warning. Commit `7bae4ca59eed5844ffd96fe9938858c74fe95235` binds both exact Supplementaries messages while retaining their worker index, permits zero or one continuation-free `LanServerPinger #1` routing warning, and requires its presence to agree across `latest.log` and `debug.log`. The failed CI and local log pairs now independently match stable warning digest `5033a05cb2b3d17833c8824ef935e1190608faed1dd7ee9a370b502fb1cd5f2a`, total 477, and unique count 383. Mutated messages, loggers, threads, continuations, duplicates, and one-sided removals reject.
+
+The third exact-SHA run, `31297459020`, preserved the stable corpus but added one exact Spark warning on both authoritative logs. Installed Spark 1.10.124 bytecode proves that `AsyncWorldInfoProvider.get(...)` waits five seconds for server-thread world statistics, logs `Timed out waiting for world statistics` on `TimeoutException`, and returns without crashing. The loaded Linux runner crossed that threshold once during post-`Done` initialization. Commit `78a982d10bcb9cc913185d198ecfdeddcbce03d1` gives the exact continuation-free Spark signature its own zero-or-one quota, keeps the LAN and Spark quotas independent, requires cross-log agreement, and rejects duplicate or mutated signatures. The complete failed CI latest, debug, and console evidence replays with 14 accepted errors, 39 named residual warnings, and the unchanged stable warning digest.
 
 The final focused re-review found zero Critical, Important, or Minor issues and returned `READY`.
 

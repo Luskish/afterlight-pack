@@ -13,6 +13,11 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
+FTB_ID_TOKEN = re.compile(r"(?<![0-9A-F])([0-9A-F]{16})(?![0-9A-F])")
+NEGATIVE_TABLE_ID_TOKEN = re.compile(
+    r"(?P<prefix>\btable_id\s*:\s*)-(?P<value>[0-9]+)L\b"
+)
+MAX_FTB_ID = (1 << 63) - 1
 RESOURCE_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MANAGED_STATE_NAME = ".afterlight-managed.json"
 DEPENDENCY_REQUIREMENTS = frozenset(
@@ -113,7 +118,7 @@ class GroupSpec:
 
     @property
     def resolved_id(self) -> str:
-        return self.id or stable_id("chapter_group", self.slug)
+        return ftb_safe_id(self.id) if self.id else stable_id("chapter_group", self.slug)
 
 
 @dataclass
@@ -179,7 +184,7 @@ class QuestSpec:
     @property
     def dependency_ids(self) -> tuple[str, ...]:
         return tuple(
-            dependency
+            ftb_safe_id(dependency)
             if HEX_ID.fullmatch(dependency)
             else stable_id("quest", dependency)
             for dependency in self.dependencies
@@ -201,8 +206,25 @@ class ChapterSpec:
         return stable_id("chapter", self.slug)
 
 
+def ftb_safe_id(identifier: str) -> str:
+    if not HEX_ID.fullmatch(identifier):
+        raise ValueError(f"FTB ID must be 16 uppercase hexadecimal digits: {identifier}")
+    value = int(identifier, 16) & MAX_FTB_ID
+    if value < 2:
+        value += 2
+    return f"{value:016X}"
+
+
 def stable_id(kind: str, slug: str) -> str:
-    return hashlib.sha256(f"{kind}:{slug}".encode("utf-8")).hexdigest()[:16].upper()
+    digest = hashlib.sha256(f"{kind}:{slug}".encode("utf-8")).hexdigest()[:16].upper()
+    return ftb_safe_id(digest)
+
+
+def _migrate_negative_table_id(match: re.Match[str]) -> str:
+    signed_value = -int(match.group("value"))
+    unsigned_identifier = f"{signed_value & ((1 << 64) - 1):016X}"
+    safe_value = int(ftb_safe_id(unsigned_identifier), 16)
+    return f"{match.group('prefix')}{safe_value}L"
 
 
 def assert_no_id_collisions(catalog: Sequence[ChapterSpec]) -> None:
@@ -439,8 +461,66 @@ def _managed_state(chapters: Iterable[str], localization_keys: Iterable[str]) ->
     ) + "\n"
 
 
+def normalize_quest_corpus_ids(quest_root: Path) -> int:
+    paths = sorted(quest_root.rglob("*.snbt"))
+    state_path = quest_root / MANAGED_STATE_NAME
+    if state_path.is_file():
+        paths.append(state_path)
+    sources = {path: path.read_text(encoding="utf-8") for path in paths}
+    identifiers = {
+        match.group(1)
+        for text in sources.values()
+        for match in FTB_ID_TOKEN.finditer(text)
+    }
+    target_sources: dict[str, set[str]] = {}
+    for identifier in identifiers:
+        target_sources.setdefault(ftb_safe_id(identifier), set()).add(identifier)
+    collisions = {
+        target: sorted(originals)
+        for target, originals in target_sources.items()
+        if len(originals) > 1
+    }
+    if collisions:
+        raise ValueError(f"FTB signed-safe ID migration collisions: {collisions}")
+
+    migrations = {
+        identifier: ftb_safe_id(identifier)
+        for identifier in identifiers
+        if ftb_safe_id(identifier) != identifier
+    }
+    chapter_moves: list[tuple[Path, Path]] = []
+    for path in sorted((quest_root / "chapters").glob("*.snbt")):
+        if not HEX_ID.fullmatch(path.stem):
+            continue
+        target_id = ftb_safe_id(path.stem)
+        if target_id == path.stem:
+            continue
+        target = path.with_name(f"{target_id}.snbt")
+        if target.exists():
+            raise ValueError(
+                f"FTB signed-safe chapter migration target already exists: {target}"
+            )
+        chapter_moves.append((path, target))
+
+    changed = 0
+    for path, text in sources.items():
+        migrated = FTB_ID_TOKEN.sub(
+            lambda match: migrations.get(match.group(1), match.group(1)),
+            text,
+        )
+        migrated = NEGATIVE_TABLE_ID_TOKEN.sub(_migrate_negative_table_id, migrated)
+        if migrated != text:
+            _atomic_write(path, migrated)
+            changed += 1
+    for source, target in chapter_moves:
+        source.replace(target)
+        changed += 1
+    return changed
+
+
 def write_catalog(catalog: Sequence[ChapterSpec], quest_root: Path) -> list[Path]:
     assert_no_id_collisions(catalog)
+    normalize_quest_corpus_ids(quest_root)
     state_path = quest_root / MANAGED_STATE_NAME
     old_chapters, old_localization_keys = _load_managed_state(state_path)
     current_chapters = {chapter.id for chapter in catalog}
@@ -827,7 +907,10 @@ def validate_quests(
                 else:
                     errors.append(f"malformed item ID in {path}: {value}")
             elif HEX_ID.fullmatch(value):
-                all_ids.setdefault(value, []).append(path)
+                if ftb_safe_id(value) != value:
+                    errors.append(f"non signed-safe FTB ID in {path}: {value}")
+                else:
+                    all_ids.setdefault(value, []).append(path)
             else:
                 errors.append(f"malformed IDs in {path}: {value}")
 
@@ -933,8 +1016,12 @@ def validate_quests(
 
     for key in language_keys:
         match = re.match(r"^(?:chapter|chapter_group|quest|task)\.([^.]+)\.", key)
-        if match and not HEX_ID.fullmatch(match.group(1)):
-            errors.append(f"malformed IDs in localization key: {key}")
+        if match:
+            identifier = match.group(1)
+            if not HEX_ID.fullmatch(identifier):
+                errors.append(f"malformed IDs in localization key: {key}")
+            elif ftb_safe_id(identifier) != identifier:
+                errors.append(f"non signed-safe FTB ID in localization key: {key}")
 
     if not mods_dir.is_dir():
         errors.append(f"item audit unavailable: missing mods directory {mods_dir}")

@@ -1,34 +1,35 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "F58F5AEF697F7EFD"
-	group: "CA20F33642175B95"
-	icon: { id: "minecraft:iron_ingot" }
-	id: "F58F5AEF697F7EFD"
+	filename: "7C611E8A94BC5CE5"
+	group: "4A20F33642175B95"
+	icon: { id: "create:brass_ingot" }
+	id: "7C611E8A94BC5CE5"
 	images: [ ]
-	order_index: 20
+	order_index: 21
 	quest_links: [ ]
 	quests: [
 		{
-			id: "44C4CC196D2FB334"
+			id: "22699BF1FF1633C4"
+			dependencies: ["5A407B47132C07C6"]
 			x: 0.0d
 			y: 0.0d
 			can_repeat: true
 			repeat_cooldown: 5
 			tasks: [
 				{
-					id: "D5E050AAB771AC43"
+					id: "6BA7BF2F90031284"
 					type: "item"
 					item: { count: 1, id: "kubejs:requisition_chit" }
-					count: 8L
+					count: 16L
 					consume_items: true
 				}
 			]
 			rewards: [
 				{
-					id: "4B1DA9D78091E76D"
+					id: "78CA1DCAE584FE43"
 					type: "choice"
-					table_id: 1722236105617115092L
+					table_id: 1739929614607485509L
 				}
 			]
 		}

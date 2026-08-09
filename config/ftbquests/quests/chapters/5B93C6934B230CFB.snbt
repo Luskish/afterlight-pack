@@ -1,10 +1,10 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "DB93C6934B230CFB"
+	filename: "5B93C6934B230CFB"
 	group: "4525BB3160467FCB"
 	icon: { id: "minecraft:redstone" }
-	id: "DB93C6934B230CFB"
+	id: "5B93C6934B230CFB"
 	images: [ ]
 	order_index: 0
 	quest_links: [ ]
@@ -30,7 +30,7 @@
 			]
 		}
 		{
-			id: "FC8F354295683FD1"
+			id: "7C8F354295683FD1"
 			dependencies: ["13EDA73D499B3803"]
 			x: 2.0d
 			y: 0.0d
@@ -49,19 +49,19 @@
 			]
 		}
 		{
-			id: "D212B235023439B9"
-			dependencies: ["FC8F354295683FD1"]
+			id: "5212B235023439B9"
+			dependencies: ["7C8F354295683FD1"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
-				{ id: "9E71BF7AB5EEE038"
+				{ id: "1E71BF7AB5EEE038"
 				type: "item"
 				item: { count: 1, id: "minecraft:oak_planks" }
 				count: 32L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "8487712186009640"
+				{ id: "0487712186009640"
 				type: "item"
 				item: { count: 3, id: "kubejs:requisition_chit" }
 				count: 3 }
@@ -71,12 +71,12 @@
 			]
 		}
 		{
-			id: "AB27B2D887F61D7F"
-			dependencies: ["FC8F354295683FD1"]
+			id: "2B27B2D887F61D7F"
+			dependencies: ["7C8F354295683FD1"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
-				{ id: "9D73FB79ED38668F"
+				{ id: "1D73FB79ED38668F"
 				type: "item"
 				item: { count: 1, id: "minecraft:red_bed" }
 				count: 1L
@@ -91,7 +91,7 @@
 		}
 		{
 			id: "1F1C7A7B6649CDF4"
-			dependencies: ["D212B235023439B9", "AB27B2D887F61D7F"]
+			dependencies: ["5212B235023439B9", "2B27B2D887F61D7F"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -102,7 +102,7 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "F3AA114B55D3F3A7"
+				{ id: "73AA114B55D3F3A7"
 				type: "item"
 				item: { count: 3, id: "kubejs:requisition_chit" }
 				count: 3 }
@@ -114,7 +114,7 @@
 			x: 8.0d
 			y: 0.0d
 			tasks: [
-				{ id: "9B19222FF3A3BA79"
+				{ id: "1B19222FF3A3BA79"
 				type: "item"
 				item: { count: 1, id: "minecraft:iron_ingot" }
 				count: 16L
@@ -131,14 +131,14 @@
 			]
 		}
 		{
-			id: "C3115F61A3212A8C"
+			id: "43115F61A3212A8C"
 			dependencies: ["43B0A7E3442397D3"]
 			x: 10.0d
 			y: 0.0d
 			shape: "hexagon"
 			size: 1.5d
 			tasks: [
-				{ id: "B9D7C9EFCBCE97E8"
+				{ id: "39D7C9EFCBCE97E8"
 				type: "item"
 				item: { count: 1, id: "minecraft:redstone_block" }
 				count: 2L
@@ -156,30 +156,30 @@
 		}
 		{
 			id: "6828B9A1C4BACDF3"
-			dependencies: ["C3115F61A3212A8C"]
+			dependencies: ["43115F61A3212A8C"]
 			x: 10.0d
 			y: 2.0d
 			tasks: [
-				{ id: "F57949CF26F11CF6"
+				{ id: "757949CF26F11CF6"
 				type: "item"
 				item: { count: 1, id: "minecraft:torch" }
 				count: 16L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "FF0E6088BF4CD810"
+				{ id: "7F0E6088BF4CD810"
 				type: "item"
 				item: { count: 2, id: "kubejs:requisition_chit" }
 				count: 2 }
 			]
 		}
 		{
-			id: "838F61D9ECA32B48"
-			dependencies: ["C3115F61A3212A8C"]
+			id: "038F61D9ECA32B48"
+			dependencies: ["43115F61A3212A8C"]
 			x: 10.0d
 			y: -2.0d
 			tasks: [
-				{ id: "B9C717BFFEE3D235"
+				{ id: "39C717BFFEE3D235"
 				type: "item"
 				item: { count: 1, id: "minecraft:bread" }
 				count: 8L
@@ -193,8 +193,8 @@
 			]
 		}
 		{
-			id: "A48FD34379A1F831"
-			dependencies: ["C3115F61A3212A8C"]
+			id: "248FD34379A1F831"
+			dependencies: ["43115F61A3212A8C"]
 			x: 12.0d
 			y: 1.0d
 			tasks: [
@@ -215,7 +215,7 @@
 		}
 		{
 			id: "6BAD52BAD435FBAD"
-			dependencies: ["6828B9A1C4BACDF3", "838F61D9ECA32B48", "A48FD34379A1F831"]
+			dependencies: ["6828B9A1C4BACDF3", "038F61D9ECA32B48", "248FD34379A1F831"]
 			x: 14.0d
 			y: 0.0d
 			shape: "diamond"
@@ -232,10 +232,10 @@
 				type: "item"
 				item: { count: 15, id: "kubejs:requisition_chit" }
 				count: 15 }
-				{ id: "88E6034371572FA4"
+				{ id: "08E6034371572FA4"
 				type: "xp"
 				xp: 200 }
-				{ id: "A8D5D76597A28DE5"
+				{ id: "28D5D76597A28DE5"
 				type: "item"
 				item: { count: 2, id: "minecraft:golden_apple" }
 				count: 2 }

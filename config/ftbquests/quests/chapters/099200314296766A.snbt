@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "099200314296766A"
-	group: "CA20F33642175B95"
+	group: "4A20F33642175B95"
 	icon: { id: "mekanism:alloy_atomic" }
 	id: "099200314296766A"
 	images: [ ]
@@ -11,14 +11,14 @@
 	quests: [
 		{
 			id: "0CD3B784A9C67990"
-			dependencies: ["836D1C6E20B78461"]
+			dependencies: ["036D1C6E20B78461"]
 			x: 0.0d
 			y: 0.0d
 			can_repeat: true
 			repeat_cooldown: 5
 			tasks: [
 				{
-					id: "BC1B8F09A3A541D9"
+					id: "3C1B8F09A3A541D9"
 					type: "item"
 					item: { count: 1, id: "kubejs:requisition_chit" }
 					count: 32L
@@ -27,9 +27,9 @@
 			]
 			rewards: [
 				{
-					id: "DF33ADA6D05A1E21"
+					id: "5F33ADA6D05A1E21"
 					type: "choice"
-					table_id: -5073548148800006091L
+					table_id: 4149823888054769717L
 				}
 			]
 		}

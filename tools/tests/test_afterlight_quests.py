@@ -39,11 +39,11 @@ class Plan06GateDependencyTests(unittest.TestCase):
     }
     CERTIFICATION_FINALES = (
         "5ADAE277C9FEF0F1",
-        "B107D8813D59B2FF",
+        "3107D8813D59B2FF",
         "66CDE7B061D8DA5C",
         "42EE25F560AE65CD",
-        "E1F5D15817ED5EFD",
-        "FC9EA276C2D84333",
+        "61F5D15817ED5EFD",
+        "7C9EA276C2D84333",
     )
 
     @classmethod
@@ -148,7 +148,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
         chapter = self.quests.ChapterSpec(
             slug="story/test-linear",
             title="Linear Test",
-            group=self.quests.GroupSpec("test", "Test", "AAAAAAAAAAAAAAAA"),
+            group=self.quests.GroupSpec("test", "Test", "2AAAAAAAAAAAAAAA"),
             icon="minecraft:stone_pickaxe",
             order_index=0,
             quests=(quest,),
@@ -171,28 +171,28 @@ class Plan06GateDependencyTests(unittest.TestCase):
                 self.CERTIFICATION_FINALES,
                 (("74AB10F5C91F1022", "checkmark", {}),),
             ),
-            "F1B2919DF12C6845": (
+            "71B2919DF12C6845": (
                 (
-                    "90EDD2BED35BE9E3",
+                    "10EDD2BED35BE9E3",
                     "752C3E53CA89C92D",
-                    "A1A99D99B372916F",
+                    "21A99D99B372916F",
                     "3497EFDF016FAFD7",
                 ),
                 (
-                    ("BA12D2169F1CB1B8", "item", "kubejs:schematic_kinetic_frame"),
-                    ("F4435064B9C0A86F", "item", "kubejs:schematic_industrial_anchor"),
-                    ("830D638C9452FB47", "item", "kubejs:schematic_isotopic_core"),
+                    ("3A12D2169F1CB1B8", "item", "kubejs:schematic_kinetic_frame"),
+                    ("74435064B9C0A86F", "item", "kubejs:schematic_industrial_anchor"),
+                    ("030D638C9452FB47", "item", "kubejs:schematic_isotopic_core"),
                     ("23F46A9140462F95", "item", "kubejs:schematic_lattice_matrix"),
                 ),
             ),
-            "AD6ACF1CCBC7B4F2": (
+            "2D6ACF1CCBC7B4F2": (
                 (
-                    "8CE6F6160F721A8A",
-                    "98EABED18B5B2ECF",
+                    "0CE6F6160F721A8A",
+                    "18EABED18B5B2ECF",
                     *self.CERTIFICATION_FINALES,
-                    "E524EE78235F0942",
+                    "6524EE78235F0942",
                 ),
-                (("BBFA32444B48A6A0", "checkmark", {}),),
+                (("3BFA32444B48A6A0", "checkmark", {}),),
             ),
         }
 
@@ -217,7 +217,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     next(chapter for chapter in self.catalog if quest in chapter.quests)
                 ))
 
-        four_keys = self.quests_by_id["F1B2919DF12C6845"]
+        four_keys = self.quests_by_id["71B2919DF12C6845"]
         for task in four_keys.tasks:
             with self.subTest(four_keys_task=task.id):
                 self.assertIn("count", task.data)
@@ -240,17 +240,17 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     {"id": "74AB10F5C91F1022", "type": "checkmark"},
                 ),
             },
-            "F1B2919DF12C6845": {
+            "71B2919DF12C6845": {
                 "dependencies": (
-                    "90EDD2BED35BE9E3",
+                    "10EDD2BED35BE9E3",
                     "752C3E53CA89C92D",
-                    "A1A99D99B372916F",
+                    "21A99D99B372916F",
                     "3497EFDF016FAFD7",
                 ),
                 "progression_mode": "linear",
                 "tasks": (
                     {
-                        "id": "BA12D2169F1CB1B8",
+                        "id": "3A12D2169F1CB1B8",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -260,7 +260,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                         "consume_items": False,
                     },
                     {
-                        "id": "F4435064B9C0A86F",
+                        "id": "74435064B9C0A86F",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -270,7 +270,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                         "consume_items": False,
                     },
                     {
-                        "id": "830D638C9452FB47",
+                        "id": "030D638C9452FB47",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -291,16 +291,16 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     },
                 ),
             },
-            "AD6ACF1CCBC7B4F2": {
+            "2D6ACF1CCBC7B4F2": {
                 "dependencies": (
-                    "8CE6F6160F721A8A",
-                    "98EABED18B5B2ECF",
+                    "0CE6F6160F721A8A",
+                    "18EABED18B5B2ECF",
                     *self.CERTIFICATION_FINALES,
-                    "E524EE78235F0942",
+                    "6524EE78235F0942",
                 ),
                 "progression_mode": "linear",
                 "tasks": (
-                    {"id": "BBFA32444B48A6A0", "type": "checkmark"},
+                    {"id": "3BFA32444B48A6A0", "type": "checkmark"},
                 ),
             },
         }
@@ -333,10 +333,10 @@ class Plan06GateDependencyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = Path(temp_dir) / "quests"
             shutil.copytree(source_root, quest_root)
-            chapter_path = quest_root / "chapters" / "C402713763771CFA.snbt"
+            chapter_path = quest_root / "chapters" / "4402713763771CFA.snbt"
             original = chapter_path.read_text(encoding="utf-8")
             mutated = original.replace(
-                '"90EDD2BED35BE9E3"',
+                '"10EDD2BED35BE9E3"',
                 '"0000000000000000"',
                 1,
             )
@@ -345,7 +345,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 AssertionError,
-                "generated dependencies differ for F1B2919DF12C6845",
+                "generated dependencies differ for 71B2919DF12C6845",
             ):
                 self.assert_generated_authoritative_gate_graph(quest_root)
 
@@ -354,8 +354,8 @@ class Plan06GateDependencyTests(unittest.TestCase):
             chapter.id: chapter
             for chapter in self.catalog
         }
-        infrastructure = chapters["D070DE6E2B300F4B"]
-        architect = chapters["C402713763771CFA"]
+        infrastructure = chapters["5070DE6E2B300F4B"]
+        architect = chapters["4402713763771CFA"]
 
         for chapter in (infrastructure, architect):
             for quest in chapter.quests:
@@ -367,7 +367,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     )
 
         self.assertEqual(
-            getattr(self.quests_by_id["E524EE78235F0942"], "progression_mode", None),
+            getattr(self.quests_by_id["6524EE78235F0942"], "progression_mode", None),
             "linear",
         )
         self.assertEqual(
@@ -401,13 +401,13 @@ class Plan06GateDependencyTests(unittest.TestCase):
 class Plan06ActIVContractTests(unittest.TestCase):
     CHAPTERS = (
         (
-            "FE9B015A32C6D980",
+            "7E9B015A32C6D980",
             "story/17-five-impossible-parts",
             16,
             "kubejs:gate_kinetic_frame",
             (
-                "8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7",
-                "FF064705A3CAB2E6", "39C1F24EABBB34A3", "144473B8267DBC28",
+                "0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7",
+                "7F064705A3CAB2E6", "39C1F24EABBB34A3", "144473B8267DBC28",
             ),
         ),
         (
@@ -416,7 +416,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             17,
             "minecraft:echo_shard",
             (
-                "5468299A2A931991", "FEA7B2C8F11BB7A3", "8EEFDD9E6CFB69E6",
+                "5468299A2A931991", "7EA7B2C8F11BB7A3", "0EEFDD9E6CFB69E6",
                 "29D7871AFBE3A54A", "701505FDCCA53DFA", "462B11BD8C58BF6F",
             ),
         ),
@@ -427,7 +427,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             "kubejs:gate_of_return_core",
             (
                 "36D0902A2921C44E", "66AD5C821947DF8E", "1A68D1245CD980BD",
-                "6F3663F4C6D20255", "53B9BC5F498953D5", "B1C9557D2F51238F",
+                "6F3663F4C6D20255", "53B9BC5F498953D5", "31C9557D2F51238F",
             ),
         ),
         (
@@ -436,8 +436,8 @@ class Plan06ActIVContractTests(unittest.TestCase):
             19,
             "kubejs:ascendancy_seal",
             (
-                "51649E106286AA63", "FECCF0521DFCBED5", "9B523415541BD700",
-                "4DD9F3D1913499F3", "FEE7B9B28787F8CC", "FE6A0AC031F7F484",
+                "51649E106286AA63", "7ECCF0521DFCBED5", "1B523415541BD700",
+                "4DD9F3D1913499F3", "7EE7B9B28787F8CC", "7E6A0AC031F7F484",
             ),
         ),
     )
@@ -452,21 +452,21 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "afterlight",
     )
     CHAPTER_TITLES = {
-        "FE9B015A32C6D980": "Five Impossible Parts",
+        "7E9B015A32C6D980": "Five Impossible Parts",
         "6671EBE257F914CB": "The Cascade Truth",
         "6C4AE5CE13773438": "Gate of Return",
         "245BADE04399406C": "Afterlight",
     }
     QUEST_TITLES = {
-        "8055C66103106D86": "Kinetic Frame",
-        "D2FE1624DCCE878F": "Industrial Anchor",
+        "0055C66103106D86": "Kinetic Frame",
+        "52FE1624DCCE878F": "Industrial Anchor",
         "50775CE87FAA4EB7": "Isotopic Core",
-        "FF064705A3CAB2E6": "Lattice Matrix",
+        "7F064705A3CAB2E6": "Lattice Matrix",
         "39C1F24EABBB34A3": "Undercurrent Stabilizer",
         "144473B8267DBC28": "Five Impossible Parts",
         "5468299A2A931991": "Eleven-Second Window",
-        "FEA7B2C8F11BB7A3": "Inbound Address",
-        "8EEFDD9E6CFB69E6": "The Order I Gave",
+        "7EA7B2C8F11BB7A3": "Inbound Address",
+        "0EEFDD9E6CFB69E6": "The Order I Gave",
         "29D7871AFBE3A54A": "The Warning I Deleted",
         "701505FDCCA53DFA": "Decision Engine",
         "462B11BD8C58BF6F": "The Cascade Truth",
@@ -475,13 +475,13 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "1A68D1245CD980BD": "Gate of Return Core",
         "6F3663F4C6D20255": "Anchor and Contain",
         "53B9BC5F498953D5": "Eleven Seconds",
-        "B1C9557D2F51238F": "Gate of Return",
+        "31C9557D2F51238F": "Gate of Return",
         "51649E106286AA63": "Answering Sky",
-        "FECCF0521DFCBED5": "Stay",
-        "9B523415541BD700": "Return",
+        "7ECCF0521DFCBED5": "Stay",
+        "1B523415541BD700": "Return",
         "4DD9F3D1913499F3": "Build",
-        "FEE7B9B28787F8CC": "Choice Is Not a Lock",
-        "FE6A0AC031F7F484": "Afterlight",
+        "7EE7B9B28787F8CC": "Choice Is Not a Lock",
+        "7E6A0AC031F7F484": "Afterlight",
     }
     EXPECTED_SEAL_OCCURRENCES = Counter((
         (
@@ -493,7 +493,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             'item: { count: 1, id: "kubejs:ascendancy_seal" }',
         ),
         (
-            "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt",
+            "config/ftbquests/quests/chapters/3FF4AF7B0C73F058.snbt",
             'item: { count: 1, id: "kubejs:ascendancy_seal" }',
         ),
         (
@@ -562,82 +562,82 @@ class Plan06ActIVContractTests(unittest.TestCase):
         ),
     ))
     TASKS = {
-        "8055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
-        "D2FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
+        "0055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
+        "52FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
         "50775CE87FAA4EB7": ("1FAFC12F3779D20A", "item", "kubejs:gate_isotopic_core", "1L"),
-        "FF064705A3CAB2E6": ("56F8BDF69E27EB09", "item", "kubejs:gate_lattice_matrix", "1L"),
+        "7F064705A3CAB2E6": ("56F8BDF69E27EB09", "item", "kubejs:gate_lattice_matrix", "1L"),
         "39C1F24EABBB34A3": ("123B3D197A42CCEC", "item", "kubejs:undercurrent_stabilizer", "1L"),
         "144473B8267DBC28": ("42F99C5AFE250994", "checkmark", None, None),
-        "5468299A2A931991": ("F69EB9F91F23A058", "checkmark", None, None),
-        "FEA7B2C8F11BB7A3": ("338D9A310F981342", "checkmark", None, None),
-        "8EEFDD9E6CFB69E6": ("1ADC93AFE7A07EE2", "checkmark", None, None),
+        "5468299A2A931991": ("769EB9F91F23A058", "checkmark", None, None),
+        "7EA7B2C8F11BB7A3": ("338D9A310F981342", "checkmark", None, None),
+        "0EEFDD9E6CFB69E6": ("1ADC93AFE7A07EE2", "checkmark", None, None),
         "29D7871AFBE3A54A": ("476CF5B621B2F5DC", "checkmark", None, None),
-        "701505FDCCA53DFA": ("F2B91DC86514B2F4", "checkmark", None, None),
-        "462B11BD8C58BF6F": ("9F72EF1FDDBEFDB1", "checkmark", None, None),
-        "36D0902A2921C44E": ("951A464CC4D650A3", "item", "create:mechanical_crafter", "49L"),
-        "66AD5C821947DF8E": ("EE494144394F75AF", "forge_energy", None, "1000000000L"),
-        "1A68D1245CD980BD": ("D68026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
-        "6F3663F4C6D20255": ("9FDF7F09F581B25C", "checkmark", None, None),
-        "53B9BC5F498953D5": ("E45F98B8FAD4A1E5", "checkmark", None, None),
-        "B1C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
-        "51649E106286AA63": ("C15BBA206B34805E", "checkmark", None, None),
-        "FECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
-        "9B523415541BD700": ("490D864D07C16993", "checkmark", None, None),
+        "701505FDCCA53DFA": ("72B91DC86514B2F4", "checkmark", None, None),
+        "462B11BD8C58BF6F": ("1F72EF1FDDBEFDB1", "checkmark", None, None),
+        "36D0902A2921C44E": ("151A464CC4D650A3", "item", "create:mechanical_crafter", "49L"),
+        "66AD5C821947DF8E": ("6E494144394F75AF", "forge_energy", None, "1000000000L"),
+        "1A68D1245CD980BD": ("568026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
+        "6F3663F4C6D20255": ("1FDF7F09F581B25C", "checkmark", None, None),
+        "53B9BC5F498953D5": ("645F98B8FAD4A1E5", "checkmark", None, None),
+        "31C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
+        "51649E106286AA63": ("415BBA206B34805E", "checkmark", None, None),
+        "7ECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
+        "1B523415541BD700": ("490D864D07C16993", "checkmark", None, None),
         "4DD9F3D1913499F3": ("3D07F572A39DCE89", "checkmark", None, None),
-        "FEE7B9B28787F8CC": ("57D5E84BE50C3815", "checkmark", None, None),
-        "FE6A0AC031F7F484": ("2BFD5EB16E861768", "checkmark", None, None),
+        "7EE7B9B28787F8CC": ("57D5E84BE50C3815", "checkmark", None, None),
+        "7E6A0AC031F7F484": ("2BFD5EB16E861768", "checkmark", None, None),
     }
     DEPENDENCIES = {
-        "8055C66103106D86": ("72446D404001B38D", "90EDD2BED35BE9E3"),
-        "D2FE1624DCCE878F": ("72446D404001B38D", "752C3E53CA89C92D"),
-        "50775CE87FAA4EB7": ("72446D404001B38D", "A1A99D99B372916F"),
-        "FF064705A3CAB2E6": ("72446D404001B38D", "3497EFDF016FAFD7"),
-        "39C1F24EABBB34A3": ("72446D404001B38D", "87338DE0FE8114CF"),
-        "144473B8267DBC28": ("8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7", "FF064705A3CAB2E6", "39C1F24EABBB34A3"),
+        "0055C66103106D86": ("72446D404001B38D", "10EDD2BED35BE9E3"),
+        "52FE1624DCCE878F": ("72446D404001B38D", "752C3E53CA89C92D"),
+        "50775CE87FAA4EB7": ("72446D404001B38D", "21A99D99B372916F"),
+        "7F064705A3CAB2E6": ("72446D404001B38D", "3497EFDF016FAFD7"),
+        "39C1F24EABBB34A3": ("72446D404001B38D", "07338DE0FE8114CF"),
+        "144473B8267DBC28": ("0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7", "7F064705A3CAB2E6", "39C1F24EABBB34A3"),
         "5468299A2A931991": ("144473B8267DBC28",),
-        "FEA7B2C8F11BB7A3": ("5468299A2A931991",),
-        "8EEFDD9E6CFB69E6": ("FEA7B2C8F11BB7A3",),
-        "29D7871AFBE3A54A": ("FEA7B2C8F11BB7A3",),
-        "701505FDCCA53DFA": ("8EEFDD9E6CFB69E6", "29D7871AFBE3A54A"),
+        "7EA7B2C8F11BB7A3": ("5468299A2A931991",),
+        "0EEFDD9E6CFB69E6": ("7EA7B2C8F11BB7A3",),
+        "29D7871AFBE3A54A": ("7EA7B2C8F11BB7A3",),
+        "701505FDCCA53DFA": ("0EEFDD9E6CFB69E6", "29D7871AFBE3A54A"),
         "462B11BD8C58BF6F": ("701505FDCCA53DFA",),
         "36D0902A2921C44E": ("462B11BD8C58BF6F",),
         "66AD5C821947DF8E": ("462B11BD8C58BF6F",),
         "1A68D1245CD980BD": ("36D0902A2921C44E", "66AD5C821947DF8E"),
         "6F3663F4C6D20255": ("1A68D1245CD980BD",),
         "53B9BC5F498953D5": ("6F3663F4C6D20255",),
-        "B1C9557D2F51238F": ("53B9BC5F498953D5",),
-        "51649E106286AA63": ("B1C9557D2F51238F",),
-        "FECCF0521DFCBED5": ("51649E106286AA63",),
-        "9B523415541BD700": ("51649E106286AA63",),
+        "31C9557D2F51238F": ("53B9BC5F498953D5",),
+        "51649E106286AA63": ("31C9557D2F51238F",),
+        "7ECCF0521DFCBED5": ("51649E106286AA63",),
+        "1B523415541BD700": ("51649E106286AA63",),
         "4DD9F3D1913499F3": ("51649E106286AA63",),
-        "FEE7B9B28787F8CC": ("FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"),
-        "FE6A0AC031F7F484": ("FEE7B9B28787F8CC",),
+        "7EE7B9B28787F8CC": ("7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"),
+        "7E6A0AC031F7F484": ("7EE7B9B28787F8CC",),
     }
     REWARDS = {
-        "8055C66103106D86": (("FDDF59C2E8611A33", "item", "kubejs:requisition_chit", 2),),
-        "D2FE1624DCCE878F": (("F73BE066DAA64F1E", "item", "kubejs:requisition_chit", 2),),
-        "50775CE87FAA4EB7": (("D1D958EF8F96550A", "item", "kubejs:requisition_chit", 2),),
-        "FF064705A3CAB2E6": (("FC2E41070C0D4EAD", "item", "kubejs:requisition_chit", 2),),
+        "0055C66103106D86": (("7DDF59C2E8611A33", "item", "kubejs:requisition_chit", 2),),
+        "52FE1624DCCE878F": (("773BE066DAA64F1E", "item", "kubejs:requisition_chit", 2),),
+        "50775CE87FAA4EB7": (("51D958EF8F96550A", "item", "kubejs:requisition_chit", 2),),
+        "7F064705A3CAB2E6": (("7C2E41070C0D4EAD", "item", "kubejs:requisition_chit", 2),),
         "39C1F24EABBB34A3": (("49E08ADA36D12C00", "item", "kubejs:requisition_chit", 2),),
-        "144473B8267DBC28": (("95F642B272CAD5D9", "loot", "-7824471455364680287L"), ("7C74A9AE020CCF88", "item", "kubejs:requisition_chit", 48), ("7841DFAAC02FE09C", "xp", 1200)),
+        "144473B8267DBC28": (("15F642B272CAD5D9", "loot", "1398900581490095521L"), ("7C74A9AE020CCF88", "item", "kubejs:requisition_chit", 48), ("7841DFAAC02FE09C", "xp", 1200)),
         "5468299A2A931991": (("130C9C02580F8AB2", "item", "kubejs:requisition_chit", 2),),
-        "FEA7B2C8F11BB7A3": (("E4779A4097A21E24", "item", "kubejs:requisition_chit", 2),),
-        "8EEFDD9E6CFB69E6": (("B4DA7BDA11FF15E1", "item", "kubejs:requisition_chit", 2),),
+        "7EA7B2C8F11BB7A3": (("64779A4097A21E24", "item", "kubejs:requisition_chit", 2),),
+        "0EEFDD9E6CFB69E6": (("34DA7BDA11FF15E1", "item", "kubejs:requisition_chit", 2),),
         "29D7871AFBE3A54A": (("4265DC5E29DD495C", "item", "kubejs:requisition_chit", 2),),
-        "701505FDCCA53DFA": (("A0946798C9D438A5", "item", "kubejs:requisition_chit", 2),),
-        "462B11BD8C58BF6F": (("E5574664D0C5BFBC", "loot", "-7824471455364680287L"), ("8684D2673EF2793C", "item", "kubejs:requisition_chit", 48), ("1D8B00F2E259D4E9", "xp", 1200)),
-        "36D0902A2921C44E": (("AE04D1554265FEA8", "item", "kubejs:requisition_chit", 2),),
-        "66AD5C821947DF8E": (("C58DF86CC9EDDE39", "item", "kubejs:requisition_chit", 2),),
-        "1A68D1245CD980BD": (("926E7CA01AF02331", "item", "kubejs:requisition_chit", 2),),
-        "6F3663F4C6D20255": (("F70F4FA96AD8846F", "item", "kubejs:requisition_chit", 2),),
+        "701505FDCCA53DFA": (("20946798C9D438A5", "item", "kubejs:requisition_chit", 2),),
+        "462B11BD8C58BF6F": (("65574664D0C5BFBC", "loot", "1398900581490095521L"), ("0684D2673EF2793C", "item", "kubejs:requisition_chit", 48), ("1D8B00F2E259D4E9", "xp", 1200)),
+        "36D0902A2921C44E": (("2E04D1554265FEA8", "item", "kubejs:requisition_chit", 2),),
+        "66AD5C821947DF8E": (("458DF86CC9EDDE39", "item", "kubejs:requisition_chit", 2),),
+        "1A68D1245CD980BD": (("126E7CA01AF02331", "item", "kubejs:requisition_chit", 2),),
+        "6F3663F4C6D20255": (("770F4FA96AD8846F", "item", "kubejs:requisition_chit", 2),),
         "53B9BC5F498953D5": (("001A3DF980939775", "item", "kubejs:requisition_chit", 2),),
-        "B1C9557D2F51238F": (("990883BE42910C33", "loot", "-7824471455364680287L"), ("779DED635B727FA4", "item", "kubejs:requisition_chit", 56), ("A8D2BAFFE36060DF", "xp", 1500)),
+        "31C9557D2F51238F": (("190883BE42910C33", "loot", "1398900581490095521L"), ("779DED635B727FA4", "item", "kubejs:requisition_chit", 56), ("28D2BAFFE36060DF", "xp", 1500)),
         "51649E106286AA63": (("3ECE7555E764EAA5", "item", "kubejs:requisition_chit", 2),),
-        "FECCF0521DFCBED5": (("12FBAB4FE746C88E", "item", "kubejs:requisition_chit", 2),),
-        "9B523415541BD700": (("AD79CF5A30CA4A11", "item", "kubejs:requisition_chit", 2),),
+        "7ECCF0521DFCBED5": (("12FBAB4FE746C88E", "item", "kubejs:requisition_chit", 2),),
+        "1B523415541BD700": (("2D79CF5A30CA4A11", "item", "kubejs:requisition_chit", 2),),
         "4DD9F3D1913499F3": (("0E16CBC697464BBA", "item", "kubejs:requisition_chit", 2),),
-        "FEE7B9B28787F8CC": (("537620C3635C6D97", "item", "kubejs:requisition_chit", 2),),
-        "FE6A0AC031F7F484": (("DF14A45FDAFFC3A0", "item", "kubejs:ascendancy_seal", 1), ("95452D9C24ED0D2D", "loot", "-7327459831431184939L"), ("1E16545B7559C9DC", "item", "kubejs:requisition_chit", 64), ("01D54F268FBE2DDF", "xp", 2000), ("B80A062F62764247", "gamestage", "afterlight_story_complete")),
+        "7EE7B9B28787F8CC": (("537620C3635C6D97", "item", "kubejs:requisition_chit", 2),),
+        "7E6A0AC031F7F484": (("5F14A45FDAFFC3A0", "item", "kubejs:ascendancy_seal", 1), ("15452D9C24ED0D2D", "loot", "1895912205423590869L"), ("1E16545B7559C9DC", "item", "kubejs:requisition_chit", 64), ("01D54F268FBE2DDF", "xp", 2000), ("380A062F62764247", "gamestage", "afterlight_story_complete")),
     }
 
     @classmethod
@@ -794,10 +794,10 @@ class Plan06ActIVContractTests(unittest.TestCase):
             quest
             for chapter in catalog
             for quest in chapter.quests
-            if quest.id == "8055C66103106D86"
+            if quest.id == "0055C66103106D86"
         )
         kinetic.tasks[0].data["count"] = self.quests.SnbtLong(2)
-        with self.assertRaisesRegex(AssertionError, "FE9B015A32C6D980"):
+        with self.assertRaisesRegex(AssertionError, "7E9B015A32C6D980"):
             self.assert_regenerated_outputs_match(catalog)
 
     def test_generated_act_iv_chapters_have_exact_order_and_ids(self) -> None:
@@ -812,7 +812,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
 
     def test_generated_graph_tasks_and_response_semantics_are_exact(self) -> None:
         self.assert_generated_act_iv_exists()
-        response_ids = {"FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"}
+        response_ids = {"7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"}
         for quest_id, expected_task in self.TASKS.items():
             quest = self.quests_by_id[quest_id]
             self.assertEqual(tuple(quest.get("dependencies", ())), self.DEPENDENCIES[quest_id])
@@ -820,7 +820,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             self.assertEqual(quest.get("optional"), True if quest_id in response_ids else None)
             self.assertEqual(
                 quest.get("dependency_requirement"),
-                "one_completed" if quest_id == "FEE7B9B28787F8CC" else None,
+                "one_completed" if quest_id == "7EE7B9B28787F8CC" else None,
             )
             self.assertEqual(len(quest["tasks"]), 1)
             task = quest["tasks"][0]
@@ -900,7 +900,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         self.assertIn("same architecture", cascade_truth)
         self.assertIn("different memory", cascade_truth)
         self.assertIn("I remain responsible", cascade_truth)
-        afterlight = descriptions["FE6A0AC031F7F484"]
+        afterlight = descriptions["7E6A0AC031F7F484"]
         self.assertIn("future fork", afterlight)
         self.assertIn("ambiguity", afterlight)
         for task_id, *_task_contract in self.TASKS.values():
@@ -919,7 +919,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         ]
         self.assertEqual(len(seal_rewards), 1)
         quest_id, reward = seal_rewards[0]
-        self.assertEqual(quest_id, "FE6A0AC031F7F484")
+        self.assertEqual(quest_id, "7E6A0AC031F7F484")
         self.assertEqual(self.reward_contract(reward), self.REWARDS[quest_id][0])
         self.assert_seal_occurrence_inventory(ROOT)
 
@@ -946,7 +946,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
 
 
 class Plan06PostgameContractTests(unittest.TestCase):
-    CHAPTER_ID = "BFF4AF7B0C73F058"
+    CHAPTER_ID = "3FF4AF7B0C73F058"
     CHAPTER_SLUG = "story/postgame-beyond-afterlight"
     QUESTS = (
         ("480D3EAD1B1EA51B", "beyond-the-seal", "Beyond the Seal"),
@@ -958,7 +958,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
     )
     TASKS = {
         "480D3EAD1B1EA51B": (
-            ("9CCF9FFC57852557", "kubejs:ascendancy_seal", "1L", False),
+            ("1CCF9FFC57852557", "kubejs:ascendancy_seal", "1L", False),
         ),
         "3549F08263C17499": (
             ("552233E3840472BD", "draconicevolution:draconium_core", "1L", False),
@@ -970,22 +970,22 @@ class Plan06PostgameContractTests(unittest.TestCase):
         ),
         "077BB9C525F29F6D": (
             ("55BDDB1245A09683", "create:precision_mechanism", "256L", True),
-            ("BCEEEDECBD7D1D36", "create:railway_casing", "64L", True),
+            ("3CEEEDECBD7D1D36", "create:railway_casing", "64L", True),
             ("2FB04E1016BE7915", "draconicevolution:chaotic_core", "1L", True),
         ),
         "6E81867AC3F34C6B": (
-            ("B36DA1497068D7D5", "ae2:quantum_entangled_singularity", "64L", True),
-            ("A853E2D7FD71500D", "ae2:cell_component_256k", "16L", True),
+            ("336DA1497068D7D5", "ae2:quantum_entangled_singularity", "64L", True),
+            ("2853E2D7FD71500D", "ae2:cell_component_256k", "16L", True),
             ("15F6D0E7985B20A8", "draconicevolution:chaotic_core", "1L", True),
         ),
         "14FAB67A6CE71A00": (
             ("48CA55FFEC0E520A", "mekanism:alloy_atomic", "64L", True),
-            ("83CABFBA9933EB0E", "immersiveengineering:heavy_engineering", "64L", True),
+            ("03CABFBA9933EB0E", "immersiveengineering:heavy_engineering", "64L", True),
             ("289A3672715F5EA0", "draconicevolution:chaotic_core", "1L", True),
         ),
     }
     DEPENDENCIES = {
-        "480D3EAD1B1EA51B": ("FE6A0AC031F7F484",),
+        "480D3EAD1B1EA51B": ("7E6A0AC031F7F484",),
         "3549F08263C17499": ("480D3EAD1B1EA51B",),
         "58CB670EA52B1BCE": ("3549F08263C17499",),
         "077BB9C525F29F6D": ("58CB670EA52B1BCE",),
@@ -994,26 +994,26 @@ class Plan06PostgameContractTests(unittest.TestCase):
     }
     REWARDS = {
         "480D3EAD1B1EA51B": (
-            ("D7178803C8835935", "item", "kubejs:requisition_chit", 4),
+            ("57178803C8835935", "item", "kubejs:requisition_chit", 4),
         ),
         "3549F08263C17499": (
-            ("C7AFC900EB5531B5", "item", "kubejs:requisition_chit", 8),
+            ("47AFC900EB5531B5", "item", "kubejs:requisition_chit", 8),
         ),
         "58CB670EA52B1BCE": (
-            ("0761B2A37B66A358", "loot", "-7327459831431184939L"),
-            ("BBC27479AA455615", "item", "kubejs:requisition_chit", 16),
+            ("0761B2A37B66A358", "loot", "1895912205423590869L"),
+            ("3BC27479AA455615", "item", "kubejs:requisition_chit", 16),
             ("48AA57E507A53AE6", "xp", 1000),
         ),
         "077BB9C525F29F6D": (
-            ("94373B49E45A97AC", "item", "create:creative_motor", 1),
+            ("14373B49E45A97AC", "item", "create:creative_motor", 1),
         ),
         "6E81867AC3F34C6B": (
             ("76163DC425B7683B", "item", "ae2:creative_energy_cell", 1),
         ),
         "14FAB67A6CE71A00": (
-            ("8318F8EC25721760", "item", "mekanism:creative_energy_cube", 1),
+            ("0318F8EC25721760", "item", "mekanism:creative_energy_cube", 1),
             (
-                "E9677E965C9E0109",
+                "69677E965C9E0109",
                 "item",
                 "immersiveengineering:capacitor_creative",
                 1,
@@ -1026,7 +1026,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         "14FAB67A6CE71A00",
     }
     ACT_IV_CHAPTER_IDS = {
-        "FE9B015A32C6D980",
+        "7E9B015A32C6D980",
         "6671EBE257F914CB",
         "6C4AE5CE13773438",
         "245BADE04399406C",
@@ -1174,9 +1174,9 @@ class Plan06PostgameContractTests(unittest.TestCase):
             "default_reward_team: false",
             (self.quest_root / "data.snbt").read_text(encoding="utf-8"),
         )
-        response_ids = {"FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"}
+        response_ids = {"7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"}
         self.assertTrue(all(self.quests_by_id[quest_id].get("optional") is True for quest_id in response_ids))
-        convergence = self.quests_by_id["FEE7B9B28787F8CC"]
+        convergence = self.quests_by_id["7EE7B9B28787F8CC"]
         self.assertEqual(set(convergence["dependencies"]), response_ids)
         self.assertEqual(convergence.get("dependency_requirement"), "one_completed")
         postgame_ids = {quest_id for quest_id, _slug, _title in self.QUESTS}
@@ -1196,7 +1196,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
             if reward.get("item", {}).get("id") == "kubejs:ascendancy_seal"
         ]
         self.assertEqual(len(seal_rewards), 1)
-        self.assertEqual(seal_rewards[0][0], "FE6A0AC031F7F484")
+        self.assertEqual(seal_rewards[0][0], "7E6A0AC031F7F484")
         self.assertEqual(int(seal_rewards[0][1]["count"]), 1)
 
     def test_postgame_localization_and_manual_scope_are_explicit(self) -> None:
@@ -1285,7 +1285,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
         (quest_root / "lang" / "en_us.snbt").write_text(
             '{\n\tchapter_group.4525BB3160467FCB.title: "The Story"\n'
-            '\tquest.AAAAAAAAAAAAAAAA.title: "Unmanaged"\n}\n',
+            '\tquest.2AAAAAAAAAAAAAAA.title: "Unmanaged"\n}\n',
             encoding="utf-8",
         )
         return quest_root
@@ -1305,12 +1305,106 @@ class QuestCompilerTests(unittest.TestCase):
     def audit_item_count(self, item_id: str = "example:widget") -> int:
         return len(self.quests.KUBEJS_ITEM_ALLOWLIST | {item_id})
 
-    def test_stable_id_uses_truncated_uppercase_sha256(self) -> None:
-        expected = hashlib.sha256(b"quest:story/test/widget").hexdigest()[:16].upper()
+    def test_stable_id_uses_signed_safe_truncated_uppercase_sha256(self) -> None:
+        raw = int(
+            hashlib.sha256(b"quest:story/act-iv/afterlight").hexdigest()[:16],
+            16,
+        )
+        expected = f"{raw & ((1 << 63) - 1):016X}"
         self.assertEqual(
-            self.quests.stable_id("quest", "story/test/widget"),
+            self.quests.stable_id("quest", "story/act-iv/afterlight"),
             expected,
         )
+        self.assertLess(int(expected, 16), 1 << 63)
+        self.assertEqual(
+            self.quests.ftb_safe_id("FFFFFFFFFFFFFFFF"),
+            "7FFFFFFFFFFFFFFF",
+        )
+
+    def test_write_catalog_migrates_existing_high_bit_ftb_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            unsafe_ids = {
+                "FEDCBA9876543210": "7EDCBA9876543210",
+                "EEDCBA9876543210": "6EDCBA9876543210",
+                "DEDCBA9876543210": "5EDCBA9876543210",
+                "CEDCBA9876543210": "4EDCBA9876543210",
+            }
+            unsafe_chapter = quest_root / "chapters" / "FEDCBA9876543210.snbt"
+            unsafe_chapter.write_text(
+                "{\n"
+                '\tfilename: "FEDCBA9876543210"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tid: "FEDCBA9876543210"\n'
+                "\tquests: [{\n"
+                '\t\tid: "EEDCBA9876543210"\n'
+                '\t\ttasks: [{ id: "DEDCBA9876543210", type: "checkmark" }]\n'
+                '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n'
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            language = quest_root / "lang" / "en_us.snbt"
+            language_source = language.read_text(encoding="utf-8").rstrip()
+            language.write_text(
+                language_source[:-1]
+                + '\tchapter.FEDCBA9876543210.title: "Unsafe"\n'
+                + '\tquest.EEDCBA9876543210.title: "Unsafe"\n'
+                + '\tquest.EEDCBA9876543210.quest_desc: ["Unsafe"]\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+
+            self.quests.write_catalog([], quest_root)
+
+            self.assertFalse(unsafe_chapter.exists())
+            migrated = quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            self.assertTrue(migrated.is_file())
+            corpus = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in sorted(quest_root.rglob("*.snbt"))
+            )
+            for unsafe, safe in unsafe_ids.items():
+                self.assertNotIn(unsafe, corpus)
+                self.assertIn(safe, corpus)
+
+    def test_write_catalog_migrates_negative_reward_table_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            chapter_path = quest_root / "chapters" / "1234567890ABCDEF.snbt"
+            chapter_path.write_text(
+                "{\n"
+                '\tfilename: "1234567890ABCDEF"\n'
+                '\tid: "1234567890ABCDEF"\n'
+                '\tquests: [{\n'
+                '\t\tid: "234567890ABCDEF0"\n'
+                '\t\ttasks: [ ]\n'
+                '\t\trewards: [{\n'
+                '\t\t\tid: "34567890ABCDEF01"\n'
+                '\t\t\ttype: "random"\n'
+                '\t\t\ttable_id: -7824471455364680287L\n'
+                '\t\t}]\n'
+                '\t}]\n'
+                "}\n",
+                encoding="utf-8",
+            )
+            reward_table = quest_root / "reward_tables" / "cache.snbt"
+            reward_table.parent.mkdir()
+            reward_table.write_text(
+                '{\n\tid: "9369E4AACBCDF5A1"\n\trewards: [ ]\n}\n',
+                encoding="utf-8",
+            )
+
+            self.quests.write_catalog([], quest_root)
+
+            self.assertIn(
+                "table_id: 1398900581490095521L",
+                chapter_path.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                'id: "1369E4AACBCDF5A1"',
+                reward_table.read_text(encoding="utf-8"),
+            )
 
     def test_snbt_long_converts_hex_ids_to_signed_java_longs(self) -> None:
         self.assertEqual(
@@ -1335,6 +1429,24 @@ class QuestCompilerTests(unittest.TestCase):
             self.quests.SnbtLong(-(1 << 63) - 1)
         with self.assertRaisesRegex(ValueError, "hex ID"):
             self.quests.SnbtLong.from_hex("10000000000000000")
+
+    def test_all_energy_tasks_use_the_registered_neoforge_type(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        energy_tasks = []
+        for path in sorted((ROOT / "config/ftbquests/quests/chapters").glob("*.snbt")):
+            parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+            for quest in parsed["quests"]:
+                for task in quest["tasks"]:
+                    if task.get("type") in {"energy", "forge_energy"}:
+                        energy_tasks.append((quest["id"], task["id"], task["type"]))
+
+        self.assertTrue(energy_tasks)
+        self.assertNotIn("energy", {task_type for _quest, _task, task_type in energy_tasks})
+        self.assertIn(
+            ("752409F46D854A92", "14E2851EC7427F5A", "forge_energy"),
+            energy_tasks,
+        )
 
     def test_act_two_catalog_has_exact_shape_and_dependency_chain(self) -> None:
         catalog = self.quests.build_catalog()[:6]
@@ -1389,7 +1501,7 @@ class QuestCompilerTests(unittest.TestCase):
             all(chapter.group.resolved_id == "4525BB3160467FCB" for chapter in catalog)
         )
         self.assertEqual([chapter.order_index for chapter in catalog], [5, 6, 7, 8, 9, 10])
-        self.assertEqual(catalog[0].quests[0].dependency_ids, ("DA407B47132C07C6",))
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("5A407B47132C07C6",))
         for previous, current in zip(catalog, catalog[1:]):
             self.assertEqual(
                 current.quests[0].dependency_ids,
@@ -1530,24 +1642,24 @@ class QuestCompilerTests(unittest.TestCase):
             expected_quests,
         )
         self.assertEqual([chapter.order_index for chapter in catalog], [11, 12, 13, 14, 15])
-        self.assertEqual(catalog[0].quests[0].dependency_ids, ("836D1C6E20B78461",))
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("036D1C6E20B78461",))
         for previous, current in zip(catalog[:-1], catalog[1:-1]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
         self.assertEqual(
             catalog[-1].quests[0].dependency_ids,
             (
-                "90EDD2BED35BE9E3",
+                "10EDD2BED35BE9E3",
                 "752C3E53CA89C92D",
-                "A1A99D99B372916F",
+                "21A99D99B372916F",
                 "3497EFDF016FAFD7",
             ),
         )
         self.assertEqual(
             [chapter.quests[-1].id for chapter in catalog],
             [
-                "90EDD2BED35BE9E3",
+                "10EDD2BED35BE9E3",
                 "752C3E53CA89C92D",
-                "A1A99D99B372916F",
+                "21A99D99B372916F",
                 "3497EFDF016FAFD7",
                 "72446D404001B38D",
             ],
@@ -1680,7 +1792,7 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertIn("\t\t\trepeat_cooldown: 5", rendered)
 
     def test_dependency_requirement_renders_and_rejects_unknown_modes(self) -> None:
-        catalog = self.make_catalog(dependency="AAAAAAAAAAAAAAAA")
+        catalog = self.make_catalog(dependency="2AAAAAAAAAAAAAAA")
         catalog[0].quests[0].dependency_requirement = "one_completed"
 
         rendered = self.quests.render_chapter(catalog[0])
@@ -1700,7 +1812,7 @@ class QuestCompilerTests(unittest.TestCase):
         full_catalog = self.quests.build_catalog()
         catalog = [
             chapter for chapter in full_catalog
-            if chapter.group.resolved_id == "CA20F33642175B95"
+            if chapter.group.resolved_id == "4A20F33642175B95"
         ]
 
         self.assertEqual([chapter.title for chapter in catalog], [
@@ -1716,7 +1828,7 @@ class QuestCompilerTests(unittest.TestCase):
         ])
         self.assertEqual([len(chapter.quests) for chapter in catalog], [6, 6, 6, 6, 6, 6, 1, 1, 1])
         self.assertTrue(all(
-            chapter.group.resolved_id == "CA20F33642175B95"
+            chapter.group.resolved_id == "4A20F33642175B95"
             for chapter in catalog
         ))
         self.assertEqual([chapter.order_index for chapter in catalog], [1, 2, 3, 4, 5, 6, 20, 21, 22])
@@ -1726,7 +1838,7 @@ class QuestCompilerTests(unittest.TestCase):
                 chapter.group.resolved_id == "4525BB3160467FCB"
                 and chapter.order_index <= 15
             )
-            or chapter.group.resolved_id == "CA20F33642175B95"
+            or chapter.group.resolved_id == "4A20F33642175B95"
         ]
         self.assertEqual(
             (
@@ -1768,11 +1880,11 @@ class QuestCompilerTests(unittest.TestCase):
             infrastructure_proof.dependency_ids,
             (
                 "5ADAE277C9FEF0F1",
-                "B107D8813D59B2FF",
+                "3107D8813D59B2FF",
                 "66CDE7B061D8DA5C",
                 "42EE25F560AE65CD",
-                "E1F5D15817ED5EFD",
-                "FC9EA276C2D84333",
+                "61F5D15817ED5EFD",
+                "7C9EA276C2D84333",
             ),
         )
         self.assertEqual(len(infrastructure_proof.tasks), 1)
@@ -1970,7 +2082,7 @@ class QuestCompilerTests(unittest.TestCase):
 
     def test_task_six_catalog_has_exact_side_group_shape_and_finales(self) -> None:
         side_group_ids = {
-            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
         }
         catalog = [
             chapter for chapter in self.quests.build_catalog()
@@ -1995,38 +2107,38 @@ class QuestCompilerTests(unittest.TestCase):
             6, 6, 6, 5, 7, 7, 7, 7, 8, 6, 8, 11,
         ])
         self.assertEqual([chapter.id for chapter in catalog], [
-            "DCDF0BB344B02192",
-            "91D0B654D6E9B714",
+            "5CDF0BB344B02192",
+            "11D0B654D6E9B714",
             "045647E54F0A1D9E",
             "1A6C8CE2A6D208F9",
             "3C0EE28909760862",
-            "8A48AB2CC20BC026",
-            "FA26679C913AAF90",
+            "0A48AB2CC20BC026",
+            "7A26679C913AAF90",
             "5307E7406CB0DAE6",
             "4CEEFB108A0EECF8",
             "170AB7B39A0C4E47",
             "6A433C07EC56210B",
-            "EEFD817FBDA0461F",
+            "6EFD817FBDA0461F",
         ])
         self.assertEqual([chapter.quests[-1].id for chapter in catalog], [
             "051EA7B2A3B36BFD",
-            "DF26F92E726A22AC",
-            "C9286624F8D7D554",
-            "87338DE0FE8114CF",
+            "5F26F92E726A22AC",
+            "49286624F8D7D554",
+            "07338DE0FE8114CF",
             "4F4161F5B97E27ED",
             "3E1151169E81AD32",
             "7131E55FB7E21244",
             "505A306462A8BC7E",
             "0DAB608A7B083DB8",
             "26E98713CAC0A689",
-            "A31CFB60DB42BD03",
+            "231CFB60DB42BD03",
             "00EB5746A726C5B4",
         ])
         self.assertEqual(
             [chapter.group.resolved_id for chapter in catalog],
             ["51FF272F5030D2E6"] * 4
             + ["4DEAD1F5F7AB4DA3"] * 4
-            + ["C8F8381D9519D002"] * 4,
+            + ["48F8381D9519D002"] * 4,
         )
         full_catalog = self.quests.build_catalog()
         self.assertEqual(
@@ -2047,8 +2159,8 @@ class QuestCompilerTests(unittest.TestCase):
         ars_finale = "7480D99D56556C8E"
         branch_finales = (
             "051EA7B2A3B36BFD",
-            "DF26F92E726A22AC",
-            "C9286624F8D7D554",
+            "5F26F92E726A22AC",
+            "49286624F8D7D554",
         )
 
         for title in ("Names in the Circuit", "Spells Under Load", "The Soul Ledger"):
@@ -2088,20 +2200,20 @@ class QuestCompilerTests(unittest.TestCase):
 
         self.assertEqual(parsed["id"], "6B2D7DB791D992C3")
         self.assertEqual([quest["id"] for quest in parsed["quests"]], [
-            "96783315E0833B1D",
+            "16783315E0833B1D",
             "747D181BE87A2429",
-            "9738976FB1A6167A",
-            "DEEFEE4A3873DE5C",
-            "F2CE68CEF727A313",
+            "1738976FB1A6167A",
+            "5EEFEE4A3873DE5C",
+            "72CE68CEF727A313",
         ])
         self.assertEqual(
             [task["id"] for quest in parsed["quests"] for task in quest["tasks"]],
             [
-                "E595488C9696FD3D",
-                "CC3B34BB975A26E4",
-                "F0386E249F64C241",
+                "6595488C9696FD3D",
+                "4C3B34BB975A26E4",
+                "70386E249F64C241",
                 "448C181914369553",
-                "88B818D0316B37F9",
+                "08B818D0316B37F9",
                 "1BE02019A215A7C4",
             ],
         )
@@ -2111,11 +2223,11 @@ class QuestCompilerTests(unittest.TestCase):
                 "300AB696B71C85DF",
                 "3AB2DC0BCB5633EE",
                 "3F4B8DA2BF026248",
-                "96B4C8E5A1B26706",
+                "16B4C8E5A1B26706",
                 "60C70F21C10E9726",
-                "DDF12C4395F6A64A",
-                "B75634D32BF15E2B",
-                "937D55E3FC4E0FC8",
+                "5DF12C4395F6A64A",
+                "375634D32BF15E2B",
+                "137D55E3FC4E0FC8",
             ],
         )
         key_tasks = [
@@ -2134,7 +2246,7 @@ class QuestCompilerTests(unittest.TestCase):
             "Everything in this wing is optional. Nothing in this wing is small. "
             "Bring the recovered Deep Vault Key and a hammer. "
             "The key opens the way; honest metallurgy does the rest.",
-            localization["quest.96783315E0833B1D.quest_desc"],
+            localization["quest.16783315E0833B1D.quest_desc"],
         )
 
     def test_task_six_side_graph_has_only_planned_story_dependency_and_is_acyclic(self) -> None:
@@ -2143,7 +2255,7 @@ class QuestCompilerTests(unittest.TestCase):
         catalog = self.quests.build_catalog()
         story_group_id = catalog[0].group.resolved_id
         side_group_ids = {
-            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
         }
         side_chapters = [
             chapter for chapter in catalog
@@ -2165,20 +2277,20 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(len(side_quest_ids), 84)
         self.assertEqual(
             side_quest_ids & story_dependencies,
-            {"87338DE0FE8114CF"},
+            {"07338DE0FE8114CF"},
         )
 
         deep_vault = [
             chapter for chapter in catalog
             if chapter.group.resolved_id == "4DEAD1F5F7AB4DA3"
         ]
-        self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("F2CE68CEF727A313",))
+        self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("72CE68CEF727A313",))
         for previous, current in zip(deep_vault, deep_vault[1:]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
 
         atlas = [
             chapter for chapter in catalog
-            if chapter.group.resolved_id == "C8F8381D9519D002"
+            if chapter.group.resolved_id == "48F8381D9519D002"
         ]
         self.assertEqual(
             atlas[-1].quests[0].dependency_ids,
@@ -2382,7 +2494,7 @@ class QuestCompilerTests(unittest.TestCase):
         project_items: set[str] = set()
         for chapter in self.quests.build_catalog():
             if chapter.group.resolved_id not in {
-                "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+                "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
             }:
                 continue
             project_items.add(chapter.icon)
@@ -2456,7 +2568,7 @@ class QuestCompilerTests(unittest.TestCase):
                 "2E19596E25ADFC17",
                 "692967044603050B",
                 "490AEF80C130D8DD",
-                "93E278CD695BCE11",
+                "13E278CD695BCE11",
                 "5ADAE277C9FEF0F1",
             ],
         )
@@ -2484,7 +2596,7 @@ class QuestCompilerTests(unittest.TestCase):
     def test_writer_preserves_unmanaged_files_and_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
-            unmanaged = quest_root / "chapters" / "AAAAAAAAAAAAAAAA.snbt"
+            unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
             unmanaged.write_text("unmanaged\n", encoding="utf-8")
             catalog = self.make_catalog()
 
@@ -2497,7 +2609,7 @@ class QuestCompilerTests(unittest.TestCase):
 
             self.assertEqual(written, [chapter_path])
             self.assertEqual(unmanaged.read_text(encoding="utf-8"), "unmanaged\n")
-            self.assertIn("quest.AAAAAAAAAAAAAAAA.title", first_language)
+            self.assertIn("quest.2AAAAAAAAAAAAAAA.title", first_language)
             self.assertIn(f"chapter.{catalog[0].id}.title", first_language)
 
             self.quests.write_catalog(catalog, quest_root)
@@ -2511,7 +2623,7 @@ class QuestCompilerTests(unittest.TestCase):
     def test_writer_removes_only_stale_compiler_managed_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
-            unmanaged = quest_root / "chapters" / "AAAAAAAAAAAAAAAA.snbt"
+            unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
             unmanaged.write_text("unmanaged\n", encoding="utf-8")
             catalog = self.make_catalog()
             managed_chapter = quest_root / "chapters" / f"{catalog[0].id}.snbt"
@@ -2765,14 +2877,14 @@ class QuestCompilerTests(unittest.TestCase):
             ),
             "unresolved dependency": lambda text, chapter, quest: text.replace(
                 f'id: "{quest.id}"',
-                f'id: "{quest.id}"\n\t\t\tdependencies: ["FFFFFFFFFFFFFFFF"]',
+                f'id: "{quest.id}"\n\t\t\tdependencies: ["7FFFFFFFFFFFFFFF"]',
                 1,
             ),
             "em dash": lambda text, chapter, quest: text.replace(
                 'filename:', 'note: "forbidden \u2014 punctuation"\n\tfilename:', 1
             ),
             "filename/id mismatch": lambda text, chapter, quest: text.replace(
-                f'filename: "{chapter.id}"', 'filename: "AAAAAAAAAAAAAAAA"', 1
+                f'filename: "{chapter.id}"', 'filename: "2AAAAAAAAAAAAAAA"', 1
             ),
             "malformed item ID": lambda text, chapter, quest: text.replace(
                 "example:widget", "Example:missing"
@@ -2841,6 +2953,31 @@ class QuestCompilerTests(unittest.TestCase):
             errors = self.quests.validate_quests(quest_root, mods_dir)
             self.assertTrue(any("malformed IDs" in error for error in errors), errors)
 
+    def test_validator_rejects_high_bit_ftb_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            task_id = catalog[0].quests[0].tasks[0].id
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").replace(
+                    f'id: "{task_id}"',
+                    'id: "FFFFFFFFFFFFFFFF"',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(
+                any("signed-safe FTB ID" in error for error in errors),
+                errors,
+            )
+
     def test_validator_rejects_unbalanced_snbt(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -2872,7 +3009,7 @@ class QuestCompilerTests(unittest.TestCase):
                 chapter_path.read_text(encoding="utf-8").replace(
                     f'id: "{quest_id}"',
                     f'id: "{quest_id}"\n\t\t\tdependencies: [\n'
-                    '\t\t\t\t"FFFFFFFFFFFFFFFF"\n\t\t\t]',
+                    '\t\t\t\t"7FFFFFFFFFFFFFFF"\n\t\t\t]',
                     1,
                 ),
                 encoding="utf-8",

@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "170AB7B39A0C4E47"
-	group: "C8F8381D9519D002"
+	group: "48F8381D9519D002"
 	icon: { id: "undergarden:forgotten_ingot" }
 	id: "170AB7B39A0C4E47"
 	images: [ ]
@@ -10,8 +10,8 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "8105CB39F994B579"
-			dependencies: ["3196EE02D5C5B413", "A21D817C56D680CA"]
+			id: "0105CB39F994B579"
+			dependencies: ["3196EE02D5C5B413", "221D817C56D680CA"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -36,8 +36,8 @@
 			]
 		}
 		{
-			id: "E3B85107180781C2"
-			dependencies: ["8105CB39F994B579"]
+			id: "63B85107180781C2"
+			dependencies: ["0105CB39F994B579"]
 			x: 2.0d
 			y: -1.5d
 			tasks: [
@@ -49,7 +49,7 @@
 			]
 			rewards: [
 				{
-					id: "826FDCBF859994E1"
+					id: "026FDCBF859994E1"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -58,7 +58,7 @@
 		}
 		{
 			id: "0B8F4FA3D773C75E"
-			dependencies: ["E3B85107180781C2"]
+			dependencies: ["63B85107180781C2"]
 			x: 4.0d
 			y: -1.5d
 			tasks: [
@@ -79,8 +79,8 @@
 			]
 		}
 		{
-			id: "825D341769E84821"
-			dependencies: ["8105CB39F994B579"]
+			id: "025D341769E84821"
+			dependencies: ["0105CB39F994B579"]
 			x: 2.0d
 			y: 1.5d
 			tasks: [
@@ -92,7 +92,7 @@
 			]
 			rewards: [
 				{
-					id: "C8DA44B2BEB00B0C"
+					id: "48DA44B2BEB00B0C"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -101,12 +101,12 @@
 		}
 		{
 			id: "3AC2AF7542F7CADA"
-			dependencies: ["825D341769E84821"]
+			dependencies: ["025D341769E84821"]
 			x: 4.0d
 			y: 1.5d
 			tasks: [
 				{
-					id: "F6F9501294B0EAD1"
+					id: "76F9501294B0EAD1"
 					type: "kill"
 					entity: "deeperdarker:stalker"
 					value: 1L
@@ -128,7 +128,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "C27C5EBD68F70ECC"
+					id: "427C5EBD68F70ECC"
 					type: "checkmark"
 				}
 			]
@@ -145,7 +145,7 @@
 					count: 12
 				}
 				{
-					id: "809CFCD835E1FEEE"
+					id: "009CFCD835E1FEEE"
 					type: "xp"
 					xp: 300
 				}

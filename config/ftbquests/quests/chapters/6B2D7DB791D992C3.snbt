@@ -10,16 +10,16 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "96783315E0833B1D"
+			id: "16783315E0833B1D"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
-				{ id: "E595488C9696FD3D"
+				{ id: "6595488C9696FD3D"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:forge_hammer" }
 					count: 1L
 					consume_items: false }
-				{ id: "CC3B34BB975A26E4"
+				{ id: "4C3B34BB975A26E4"
 					type: "item"
 					item: { count: 1, id: "kubejs:deep_vault_key" }
 					count: 1L
@@ -37,11 +37,11 @@
 		}
 		{
 			id: "747D181BE87A2429"
-			dependencies: ["96783315E0833B1D"]
+			dependencies: ["16783315E0833B1D"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
-				{ id: "F0386E249F64C241"
+				{ id: "70386E249F64C241"
 				type: "item"
 				item: { count: 1, id: "modern_industrialization:bronze_ingot" }
 				count: 16L
@@ -55,7 +55,7 @@
 			]
 		}
 		{
-			id: "9738976FB1A6167A"
+			id: "1738976FB1A6167A"
 			dependencies: ["747D181BE87A2429"]
 			x: 4.0d
 			y: -1.0d
@@ -67,19 +67,19 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "96B4C8E5A1B26706"
+				{ id: "16B4C8E5A1B26706"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
 			]
 		}
 		{
-			id: "DEEFEE4A3873DE5C"
+			id: "5EEFEE4A3873DE5C"
 			dependencies: ["747D181BE87A2429"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
-				{ id: "88B818D0316B37F9"
+				{ id: "08B818D0316B37F9"
 				type: "item"
 				item: { count: 1, id: "modern_industrialization:bronze_machine_casing" }
 				count: 4L
@@ -93,8 +93,8 @@
 			]
 		}
 		{
-			id: "F2CE68CEF727A313"
-			dependencies: ["9738976FB1A6167A", "DEEFEE4A3873DE5C"]
+			id: "72CE68CEF727A313"
+			dependencies: ["1738976FB1A6167A", "5EEFEE4A3873DE5C"]
 			x: 6.0d
 			y: 0.0d
 			shape: "hexagon"
@@ -107,14 +107,14 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "DDF12C4395F6A64A"
+				{ id: "5DF12C4395F6A64A"
 				type: "loot"
-				table_id: -7824471455364680287L }
-				{ id: "B75634D32BF15E2B"
+				table_id: 1398900581490095521L }
+				{ id: "375634D32BF15E2B"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }
 				count: 10 }
-				{ id: "937D55E3FC4E0FC8"
+				{ id: "137D55E3FC4E0FC8"
 				type: "xp"
 				xp: 180 }
 			]

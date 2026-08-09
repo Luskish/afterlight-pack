@@ -1,10 +1,10 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "FA26679C913AAF90"
+	filename: "7A26679C913AAF90"
 	group: "4DEAD1F5F7AB4DA3"
 	icon: { id: "modern_industrialization:nuclear_reactor" }
-	id: "FA26679C913AAF90"
+	id: "7A26679C913AAF90"
 	images: [ ]
 	order_index: 3
 	quest_links: [ ]
@@ -33,7 +33,7 @@
 			]
 		}
 		{
-			id: "D61929A2956F2507"
+			id: "561929A2956F2507"
 			dependencies: ["2107CE4AC7DCE2B3"]
 			x: 2.0d
 			y: 0.0d
@@ -56,13 +56,13 @@
 			]
 		}
 		{
-			id: "D3DCD0CBD9BE347A"
-			dependencies: ["D61929A2956F2507"]
+			id: "53DCD0CBD9BE347A"
+			dependencies: ["561929A2956F2507"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "9C802882824E3A92"
+					id: "1C802882824E3A92"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:nuclear_casing" }
 					count: 16L
@@ -79,8 +79,8 @@
 			]
 		}
 		{
-			id: "8A362BDB888E949B"
-			dependencies: ["D3DCD0CBD9BE347A"]
+			id: "0A362BDB888E949B"
+			dependencies: ["53DCD0CBD9BE347A"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -103,7 +103,7 @@
 		}
 		{
 			id: "5C7ADA9A9A49770A"
-			dependencies: ["8A362BDB888E949B"]
+			dependencies: ["0A362BDB888E949B"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
@@ -125,7 +125,7 @@
 			]
 		}
 		{
-			id: "C9C43EEDD7055C79"
+			id: "49C43EEDD7055C79"
 			dependencies: ["5C7ADA9A9A49770A"]
 			x: 10.0d
 			y: 0.0d
@@ -149,12 +149,12 @@
 		}
 		{
 			id: "7131E55FB7E21244"
-			dependencies: ["C9C43EEDD7055C79"]
+			dependencies: ["49C43EEDD7055C79"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "843F4A19C7D0C484"
+					id: "043F4A19C7D0C484"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:plutonium_ingot" }
 					count: 16L
@@ -165,7 +165,7 @@
 				{
 					id: "10B44C69AA86007E"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
 					id: "6947BBC6BFFE4A2D"

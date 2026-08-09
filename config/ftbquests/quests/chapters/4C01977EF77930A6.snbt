@@ -10,7 +10,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "C5021BE218C5DFBD"
+			id: "45021BE218C5DFBD"
 			dependencies: ["6BAD52BAD435FBAD"]
 			x: 0.0d
 			y: 0.0d
@@ -26,27 +26,27 @@
 			]
 		}
 		{
-			id: "A38CE991EC7F6506"
-			dependencies: ["C5021BE218C5DFBD"]
+			id: "238CE991EC7F6506"
+			dependencies: ["45021BE218C5DFBD"]
 			x: 2.0d
 			y: -1.0d
 			tasks: [
-				{ id: "9C7A164BC8A03D2F"
+				{ id: "1C7A164BC8A03D2F"
 				type: "item"
 				item: { count: 1, id: "minecraft:blast_furnace" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "BE137DF09B04A2CB"
+				{ id: "3E137DF09B04A2CB"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
 			]
 		}
 		{
-			id: "8576C37E9FA4116C"
-			dependencies: ["C5021BE218C5DFBD"]
+			id: "0576C37E9FA4116C"
+			dependencies: ["45021BE218C5DFBD"]
 			x: 2.0d
 			y: 1.0d
 			tasks: [
@@ -65,7 +65,7 @@
 		}
 		{
 			id: "46AB5C8E8BB7721F"
-			dependencies: ["A38CE991EC7F6506", "8576C37E9FA4116C"]
+			dependencies: ["238CE991EC7F6506", "0576C37E9FA4116C"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -88,7 +88,7 @@
 			x: 6.0d
 			y: 0.0d
 			tasks: [
-				{ id: "F935841D7E68E8DD"
+				{ id: "7935841D7E68E8DD"
 				type: "advancement"
 				advancement: "minecraft:story/enter_the_nether"
 				criterion: "" }
@@ -98,7 +98,7 @@
 				type: "item"
 				item: { count: 8, id: "kubejs:requisition_chit" }
 				count: 8 }
-				{ id: "F7D0DF38E7BCB06B"
+				{ id: "77D0DF38E7BCB06B"
 				type: "xp"
 				xp: 120 }
 			]

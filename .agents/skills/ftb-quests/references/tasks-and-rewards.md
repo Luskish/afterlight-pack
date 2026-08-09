@@ -28,7 +28,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Kill Entity (`"kill"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "kill"
 	entity: "minecraft:blaze"
 	value: 10L
@@ -38,7 +38,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Location (`"location"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "location"
 	dimension: "minecraft:overworld"
 	position: [100, 64, -200]
@@ -49,7 +49,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Advancement (`"advancement"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "advancement"
 	advancement: "minecraft:story/iron_tools"
 }
@@ -58,7 +58,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Dimension (`"dimension"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "dimension"
 	dimension: "minecraft:the_nether"
 }
@@ -67,7 +67,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Stat (`"stat"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "stat"
 	stat: "minecraft:walk_one_cm"
 	value: 100000
@@ -77,7 +77,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Biome (`"biome"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "biome"
 	biome: "minecraft:cherry_grove"
 }
@@ -86,7 +86,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Structure (`"structure"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "structure"
 	structure: "minecraft:stronghold"
 }
@@ -95,7 +95,7 @@ Set display label via `task.<ID>.title` in lang file.
 ### Stage (`"stage"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "stage"
 	stage: "visited_nether"
 }
@@ -104,18 +104,18 @@ Set display label via `task.<ID>.title` in lang file.
 ### Fluid (`"fluid"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "fluid"
 	fluid: "minecraft:lava"
 	amount: 1000L
 }
 ```
 
-### Energy (`"energy"`)
+### Forge Energy (`"forge_energy"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
-	type: "energy"
+	id: "21B2C3D4E5F67890"
+	type: "forge_energy"
 	value: 10000L
 }
 ```
@@ -149,7 +149,7 @@ Use `"item"`, `"command"`, `"custom"`: NOT `"ftbquests:item"`.
 ### XP Levels Reward (`"xp_levels"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "xp_levels"
 	xp_levels: 5
 }
@@ -181,7 +181,7 @@ Standard loot: chance to get item OR nothing (based on empty weight).
 ### Advancement Reward (`"advancement"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "advancement"
 	advancement: "minecraft:story/iron_tools"
 }
@@ -191,7 +191,7 @@ Only grants the specified advancement, not prerequisites. Use command reward wit
 ### Toast Reward (`"toast"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "toast"
 	description: "You unlocked a new area!"
 }
@@ -200,7 +200,7 @@ Only grants the specified advancement, not prerequisites. Use command reward wit
 ### Stage Reward (`"stage"`)
 ```snbt
 {
-	id: "A1B2C3D4E5F67890"
+	id: "21B2C3D4E5F67890"
 	type: "stage"
 	stage: "visited_nether"
 	add: true

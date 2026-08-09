@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: Task 4 second-review fix commit `0ba8e8c5cee0ca3bff92883fc1bf654ac83ae75b` and the complete local post-fix gate are complete. Exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
+Status: the current Task 4 candidate and its complete local post-fix gate are complete. Commit `0ba8e8c5cee0ca3bff92883fc1bf654ac83ae75b` is superseded by the signed-safe ID, compressed-archive, runtime task-type, and post-save identity fixes recorded here. Exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
 
 ## Delivered Scope
 
@@ -18,6 +18,9 @@ Status: Task 4 second-review fix commit `0ba8e8c5cee0ca3bff92883fc1bf654ac83ae75
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
 - Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits.
 - The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler migrates high-bit IDs and their serialized negative reward-table references, rejects collisions, and validates the complete corpus before generation. This prevents FTB Quests 2101.1.30 from silently replacing IDs during save.
+- The post-shutdown quest-identity oracle compares 1,525 semantic records across repository and installed corpora. It binds groups, chapter files, quests, dependencies, tasks, rewards, reward tables, target items, table references, stages, and both authored EnderIO conduit components while ignoring formatting and injected default item components.
+- The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
 
 ## Test-First Evidence
 
@@ -33,7 +36,11 @@ Controller review then identified a potential label-only false green in the adve
 
 Independent review then found four additional gaps: the final generated audit was newer than the accepted boot logs, installed `mods/` was outside the Seal scan, empty mechanical cells were skipped, and helper or loop control-flow mutations could evade the structural contract. A second RED cycle added six focused regressions. All six failed before the production fixes, then all six passed after the fixes. The widened Gate, finale, and postgame selection now passes all 47 tests. Two additional fail-closed regressions prove that encoded Seal JSON with invalid UTF-8 and unsafe archive directory paths are rejected. The real installed archive scan reports exactly 19 reviewed occurrences with SHA-256 `a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126` in 9.07 seconds.
 
-A second exact-commit review reproduced three computed KubeJS grant forms that the lexical scanner could not see, a deflated nested JAR stored as `payload.bin`, and a count-two remainder loop that could execute zero iterations. A third RED cycle binds all three computed-script forms to a full code-corpus digest, requires extensionless ZIP recursion, requires exactly nine count-two remainder slots, proves slot 7 was visited, and rejects no-op, early-return, and zero-iteration remainder mutations. All 47 widened Gate, finale, and postgame tests pass after these fixes. Final runtime evidence is intentionally withheld until the changed Gate source, Packwiz index, and verifier complete a fresh full gate.
+A second exact-commit review reproduced three computed KubeJS grant forms that the lexical scanner could not see, a deflated nested JAR stored as `payload.bin`, and a count-two remainder loop that could execute zero iterations. A third RED cycle binds all three computed-script forms to a full code-corpus digest, requires extensionless ZIP recursion, requires exactly nine count-two remainder slots, proves slot 7 was visited, and rejects no-op, early-return, and zero-iteration remainder mutations. All 47 widened Gate, finale, and postgame tests pass after these fixes. The changed Gate source, Packwiz index, and verifier subsequently completed the fresh full gate recorded below.
+
+The next review found two further scanner bypasses: a ZIP with arbitrary prefixed bytes and compressed GZip NBT. Regressions now cover prefixed archives, GZip and zlib payloads, concatenated streams, trailing payloads, malformed compression, nested depth, member counts, expanded-byte budgets, and compression ratios. The real installed Twilight Forest corpus also proved that valid GZip NBT can contain benign trailing bytes, so the scanner recursively inspects trailing content instead of rejecting or ignoring it.
+
+The first post-fix boot then exposed runtime data corruption rather than a test-only issue. FTB Quests rewrote every high-bit ID because its installed bytecode uses signed `Long.parseLong(..., 16)`, and it replaced the affected Seal reward with a default apple. Three signed-safe RED tests drove the compiler migration, then the complete 586-occurrence corpus was regenerated. The next boot exposed the retired Act I `energy` alias becoming `custom`; installed bytecode proved `forge_energy` is the registered NeoForge type. Both defects are now covered by static and post-shutdown semantic regressions.
 
 ## Automated Gate
 
@@ -41,23 +48,25 @@ All earlier runtime evidence is superseded because the Gate source, Packwiz inde
 
 ```text
 BUILD QUESTS: OK (37 compiler-managed chapters written)
-PACKWIZ STATE: ef3c607f4956e55683a8ca4f6242b53bc07e69cf6b47a00ea69daafddaa3299e
-Ran 267 offline tests in 24.767s
+PACK SHA-256: 3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1
+INDEX SHA-256: 07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f
+Ran 277 offline tests in 27.801s
 OK (skipped=77)
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 VERIFY: ALL GREEN
 PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
-SEAL SOURCES: OK occurrences=19 sha256=a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126 code-corpus-sha256=381c9b2bedf2ff5915e7b255bb16ec77e2e3b60c53e998d59711baa19555a0d7
+SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f98c59805606208be0e8d9c67 code-corpus-sha256=7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258
+QUEST IDENTITY: OK records=1525 sha256=ebd3ece8d499fe8e50e8b1881f320c7ecf9fa40de947717c542d83c0fa6e4371
 BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
-Ran 267 live tests in 118.931s
+Ran 277 live tests in 142.083s
 OK
 SERVER BOOT: OK
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 ```
 
-The authenticated boot used nonce `1786291573-59071-31827`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `f38a76472792c908e97c3e0cd32b4db29a98d49f31d5fc2449d8421b26c7a945`. The rendered quest audit bytes matched SHA-256 `b6be89a35c7c5ea2f960fccd48f58fd813b5c86e2caf792fc3d06a196486a6e7`; its marker reported digest `be3d18091a1e0cc0e81f2ace182b104da15e70170c7bd4e7a4354156ba13f7b2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. `server-test/logs/kubejs/server.log` contained zero `ERROR` or `FATAL` records.
+The authenticated boot was run `local-20260809T174756Z-20412-21427` with nonce `1786297677-20412-8297`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `81824ad37dff50d804a145f2c39b7c76680f4d8528a237ee2353b0647b4b15bb`. The rendered quest audit bytes matched SHA-256 `8dfc0b717001a15658387830d06b8ab519690d72601f0ac6d94d28bb618b80ea`; its marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. `server-test/logs/kubejs/server.log` contained zero `ERROR` or `FATAL` records.
 
-The generated quest audit mtime was `1786290866`; both authoritative logs were newer at `1786291668`. Runtime quest validation ran immediately after `SERVER BOOT: OK`, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-commit re-review, detached boot, remote integration, or Pages evidence.
+The server reached `Done (26.440s)!`, then saved and shut down cleanly before the semantic identity comparison. Runtime quest validation ran inside the authenticated 277-test live suite, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-commit re-review, detached boot, remote integration, or Pages evidence.
 
 ## Team-Safety Proof
 
@@ -69,7 +78,7 @@ Static contracts require all of the following:
 - Explicit linear progression on every endgame quest.
 - Exactly three optional Chapter 20 responses with no exclusivity field.
 - Exact `one_completed` convergence into `Choice Is Not a Lock`.
-- Exactly one count-one Seal reward, owned by Chapter 20 finale `FE6A0AC031F7F484`.
+- Exactly one count-one Seal reward, owned by Chapter 20 finale `7E6A0AC031F7F484`.
 - No postgame quest is a dependency of Chapter 20 or any earlier Story quest.
 
 These static facts do not prove FTB Teams behavior with real clients.

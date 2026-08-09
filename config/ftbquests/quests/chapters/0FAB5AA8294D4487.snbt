@@ -1,22 +1,22 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "8FAB5AA8294D4487"
-	group: "CA20F33642175B95"
+	filename: "0FAB5AA8294D4487"
+	group: "4A20F33642175B95"
 	icon: { id: "powah:reactor_nitro" }
-	id: "8FAB5AA8294D4487"
+	id: "0FAB5AA8294D4487"
 	images: [ ]
 	order_index: 5
 	quest_links: [ ]
 	quests: [
 		{
-			id: "E4659C3AE503FE5D"
+			id: "64659C3AE503FE5D"
 			dependencies: ["6B876A865DE7A77A"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "D91AAC77EDA2D18B"
+					id: "591AAC77EDA2D18B"
 					type: "item"
 					item: { count: 1, id: "powah:reactor_nitro" }
 					count: 1L
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "A576251F8D80AA2F"
+					id: "2576251F8D80AA2F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,8 +33,8 @@
 			]
 		}
 		{
-			id: "E804D5D74CD20FE6"
-			dependencies: ["E4659C3AE503FE5D"]
+			id: "6804D5D74CD20FE6"
+			dependencies: ["64659C3AE503FE5D"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "9C25A0AC671BEE49"
-			dependencies: ["E804D5D74CD20FE6"]
+			id: "1C25A0AC671BEE49"
+			dependencies: ["6804D5D74CD20FE6"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "DAC5EE0389E7FD81"
+					id: "5AC5EE0389E7FD81"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -80,19 +80,19 @@
 		}
 		{
 			id: "071E21B340A9E74B"
-			dependencies: ["9C25A0AC671BEE49"]
+			dependencies: ["1C25A0AC671BEE49"]
 			x: 6.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "F6B70C3D32843DAF"
+					id: "76B70C3D32843DAF"
 					type: "item"
 					item: { count: 1, id: "fluxnetworks:flux_plug" }
 					count: 1L
 					consume_items: false
 				}
 				{
-					id: "A6CBE724F8223D66"
+					id: "26CBE724F8223D66"
 					type: "item"
 					item: { count: 1, id: "fluxnetworks:flux_point" }
 					count: 1L
@@ -109,13 +109,13 @@
 			]
 		}
 		{
-			id: "D4094B71582818F6"
+			id: "54094B71582818F6"
 			dependencies: ["071E21B340A9E74B"]
 			x: 8.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "F083BBB8F61D5D85"
+					id: "7083BBB8F61D5D85"
 					type: "forge_energy"
 					value: 100000000L
 					max_input: 1000000L
@@ -123,7 +123,7 @@
 			]
 			rewards: [
 				{
-					id: "A74F040BA735A92A"
+					id: "274F040BA735A92A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -131,8 +131,8 @@
 			]
 		}
 		{
-			id: "FC9EA276C2D84333"
-			dependencies: ["D4094B71582818F6"]
+			id: "7C9EA276C2D84333"
+			dependencies: ["54094B71582818F6"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -154,7 +154,7 @@
 					xp: 300
 				}
 				{
-					id: "E41FE7BF7357CAF5"
+					id: "641FE7BF7357CAF5"
 					type: "gamestage"
 					stage: "afterlight_cert_power_i"
 				}

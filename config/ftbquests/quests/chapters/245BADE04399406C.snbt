@@ -11,13 +11,13 @@
 	quests: [
 		{
 			id: "51649E106286AA63"
-			dependencies: ["B1C9557D2F51238F"]
+			dependencies: ["31C9557D2F51238F"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "C15BBA206B34805E"
+					id: "415BBA206B34805E"
 					type: "checkmark"
 				}
 			]
@@ -31,7 +31,7 @@
 			]
 		}
 		{
-			id: "FECCF0521DFCBED5"
+			id: "7ECCF0521DFCBED5"
 			dependencies: ["51649E106286AA63"]
 			progression_mode: "linear"
 			x: 2.0d
@@ -53,7 +53,7 @@
 			]
 		}
 		{
-			id: "9B523415541BD700"
+			id: "1B523415541BD700"
 			dependencies: ["51649E106286AA63"]
 			progression_mode: "linear"
 			x: 2.0d
@@ -67,7 +67,7 @@
 			]
 			rewards: [
 				{
-					id: "AD79CF5A30CA4A11"
+					id: "2D79CF5A30CA4A11"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -97,8 +97,8 @@
 			]
 		}
 		{
-			id: "FEE7B9B28787F8CC"
-			dependencies: ["FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"]
+			id: "7EE7B9B28787F8CC"
+			dependencies: ["7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"]
 			dependency_requirement: "one_completed"
 			progression_mode: "linear"
 			x: 5.0d
@@ -119,8 +119,8 @@
 			]
 		}
 		{
-			id: "FE6A0AC031F7F484"
-			dependencies: ["FEE7B9B28787F8CC"]
+			id: "7E6A0AC031F7F484"
+			dependencies: ["7EE7B9B28787F8CC"]
 			progression_mode: "linear"
 			x: 7.0d
 			y: 0.0d
@@ -132,15 +132,15 @@
 			]
 			rewards: [
 				{
-					id: "DF14A45FDAFFC3A0"
+					id: "5F14A45FDAFFC3A0"
 					type: "item"
 					item: { count: 1, id: "kubejs:ascendancy_seal" }
 					count: 1
 				}
 				{
-					id: "95452D9C24ED0D2D"
+					id: "15452D9C24ED0D2D"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
 					id: "1E16545B7559C9DC"
@@ -154,7 +154,7 @@
 					xp: 2000
 				}
 				{
-					id: "B80A062F62764247"
+					id: "380A062F62764247"
 					type: "gamestage"
 					stage: "afterlight_story_complete"
 				}

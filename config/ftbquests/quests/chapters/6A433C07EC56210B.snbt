@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "6A433C07EC56210B"
-	group: "C8F8381D9519D002"
+	group: "48F8381D9519D002"
 	icon: { id: "eternal_starlight:starlight_silver_coin" }
 	id: "6A433C07EC56210B"
 	images: [ ]
@@ -10,13 +10,13 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "8F4178A6A2CF1E5D"
+			id: "0F4178A6A2CF1E5D"
 			dependencies: ["5A355ED3DE01DF28"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "90EE3DF9748BC9E6"
+					id: "10EE3DF9748BC9E6"
 					type: "dimension"
 					dimension: "eternal_starlight:starlight"
 				}
@@ -31,8 +31,8 @@
 			]
 		}
 		{
-			id: "F7CE4A3AE1DBBBE4"
-			dependencies: ["8F4178A6A2CF1E5D"]
+			id: "77CE4A3AE1DBBBE4"
+			dependencies: ["0F4178A6A2CF1E5D"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -52,13 +52,13 @@
 			]
 		}
 		{
-			id: "8F0F70DEEF2240EE"
-			dependencies: ["F7CE4A3AE1DBBBE4"]
+			id: "0F0F70DEEF2240EE"
+			dependencies: ["77CE4A3AE1DBBBE4"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "D41F9D710B5A5F3E"
+					id: "541F9D710B5A5F3E"
 					type: "kill"
 					entity: "eternal_starlight:stranghoul"
 					value: 1L
@@ -74,8 +74,8 @@
 			]
 		}
 		{
-			id: "DB1790EC7F74E930"
-			dependencies: ["8F0F70DEEF2240EE"]
+			id: "5B1790EC7F74E930"
+			dependencies: ["0F0F70DEEF2240EE"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -96,12 +96,12 @@
 		}
 		{
 			id: "6D23C9E82FF36D47"
-			dependencies: ["DB1790EC7F74E930"]
+			dependencies: ["5B1790EC7F74E930"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "F72AF3AEDD69586C"
+					id: "772AF3AEDD69586C"
 					type: "advancement"
 					advancement: "eternal_starlight:kill_lunar_monstrosity"
 					criterion: ""
@@ -109,7 +109,7 @@
 			]
 			rewards: [
 				{
-					id: "8592F496064F7D69"
+					id: "0592F496064F7D69"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -117,20 +117,20 @@
 			]
 		}
 		{
-			id: "E7DA7457EB599DE0"
+			id: "67DA7457EB599DE0"
 			dependencies: ["6D23C9E82FF36D47"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BBE4D3B657EE810E"
+					id: "3BE4D3B657EE810E"
 					type: "structure"
 					structure: "eternal_starlight:golem_forge"
 				}
 			]
 			rewards: [
 				{
-					id: "B08193CFF928CE86"
+					id: "308193CFF928CE86"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -139,7 +139,7 @@
 		}
 		{
 			id: "5B4F46030C9B8CAE"
-			dependencies: ["E7DA7457EB599DE0"]
+			dependencies: ["67DA7457EB599DE0"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
@@ -152,7 +152,7 @@
 			]
 			rewards: [
 				{
-					id: "ACBB6C1BEBDF9B25"
+					id: "2CBB6C1BEBDF9B25"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -160,7 +160,7 @@
 			]
 		}
 		{
-			id: "A31CFB60DB42BD03"
+			id: "231CFB60DB42BD03"
 			dependencies: ["5B4F46030C9B8CAE"]
 			x: 14.0d
 			y: 0.0d
@@ -174,12 +174,12 @@
 			]
 			rewards: [
 				{
-					id: "FA42C14EF416137E"
+					id: "7A42C14EF416137E"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
-					id: "B5C417FDF5F7CCF7"
+					id: "35C417FDF5F7CCF7"
 					type: "item"
 					item: { count: 18, id: "kubejs:requisition_chit" }
 					count: 18

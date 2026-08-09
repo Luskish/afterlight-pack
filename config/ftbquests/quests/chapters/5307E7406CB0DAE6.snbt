@@ -16,7 +16,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "BA46F6A985DB59C6"
+					id: "3A46F6A985DB59C6"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:iridium_ingot" }
 					count: 16L
@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "E418053F13B8F3C3"
+			id: "6418053F13B8F3C3"
 			dependencies: ["616B4C5C04BDD88D"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "ECB2D194AE6405FD"
+					id: "6CB2D194AE6405FD"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:superconductor_ingot" }
 					count: 16L
@@ -57,7 +57,7 @@
 		}
 		{
 			id: "43B82DB92C7A1E22"
-			dependencies: ["E418053F13B8F3C3"]
+			dependencies: ["6418053F13B8F3C3"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "E91FE7F28A542058"
+					id: "691FE7F28A542058"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,7 +102,7 @@
 			]
 		}
 		{
-			id: "E89170334A824C52"
+			id: "689170334A824C52"
 			dependencies: ["057C19B0A4111580"]
 			x: 8.0d
 			y: 0.0d
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "57D1232E7FCAE4B4"
-			dependencies: ["E89170334A824C52"]
+			dependencies: ["689170334A824C52"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -138,7 +138,7 @@
 					consume_items: false
 				}
 				{
-					id: "83F2F5C612600EE1"
+					id: "03F2F5C612600EE1"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:quantum_barrel" }
 					count: 1L
@@ -172,16 +172,16 @@
 				{
 					id: "35386EEE27F36E07"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
-					id: "FB95D839B8462599"
+					id: "7B95D839B8462599"
 					type: "item"
 					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28
 				}
 				{
-					id: "FD6140BBCEA9BE30"
+					id: "7D6140BBCEA9BE30"
 					type: "xp"
 					xp: 900
 				}

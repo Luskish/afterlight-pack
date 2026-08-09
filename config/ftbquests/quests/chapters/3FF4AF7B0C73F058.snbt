@@ -1,23 +1,23 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "BFF4AF7B0C73F058"
+	filename: "3FF4AF7B0C73F058"
 	group: "4525BB3160467FCB"
 	icon: { id: "draconicevolution:chaotic_core" }
-	id: "BFF4AF7B0C73F058"
+	id: "3FF4AF7B0C73F058"
 	images: [ ]
 	order_index: 20
 	quest_links: [ ]
 	quests: [
 		{
 			id: "480D3EAD1B1EA51B"
-			dependencies: ["FE6A0AC031F7F484"]
+			dependencies: ["7E6A0AC031F7F484"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "9CCF9FFC57852557"
+					id: "1CCF9FFC57852557"
 					type: "item"
 					item: { count: 1, id: "kubejs:ascendancy_seal" }
 					count: 1L
@@ -26,7 +26,7 @@
 			]
 			rewards: [
 				{
-					id: "D7178803C8835935"
+					id: "57178803C8835935"
 					type: "item"
 					item: { count: 4, id: "kubejs:requisition_chit" }
 					count: 4
@@ -64,7 +64,7 @@
 			]
 			rewards: [
 				{
-					id: "C7AFC900EB5531B5"
+					id: "47AFC900EB5531B5"
 					type: "item"
 					item: { count: 8, id: "kubejs:requisition_chit" }
 					count: 8
@@ -90,10 +90,10 @@
 				{
 					id: "0761B2A37B66A358"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
-					id: "BBC27479AA455615"
+					id: "3BC27479AA455615"
 					type: "item"
 					item: { count: 16, id: "kubejs:requisition_chit" }
 					count: 16
@@ -122,7 +122,7 @@
 					consume_items: true
 				}
 				{
-					id: "BCEEEDECBD7D1D36"
+					id: "3CEEEDECBD7D1D36"
 					type: "item"
 					item: { count: 1, id: "create:railway_casing" }
 					count: 64L
@@ -138,7 +138,7 @@
 			]
 			rewards: [
 				{
-					id: "94373B49E45A97AC"
+					id: "14373B49E45A97AC"
 					type: "item"
 					item: { count: 1, id: "create:creative_motor" }
 					count: 1
@@ -155,14 +155,14 @@
 			repeat_cooldown: 3600
 			tasks: [
 				{
-					id: "B36DA1497068D7D5"
+					id: "336DA1497068D7D5"
 					type: "item"
 					item: { count: 1, id: "ae2:quantum_entangled_singularity" }
 					count: 64L
 					consume_items: true
 				}
 				{
-					id: "A853E2D7FD71500D"
+					id: "2853E2D7FD71500D"
 					type: "item"
 					item: { count: 1, id: "ae2:cell_component_256k" }
 					count: 16L
@@ -202,7 +202,7 @@
 					consume_items: true
 				}
 				{
-					id: "83CABFBA9933EB0E"
+					id: "03CABFBA9933EB0E"
 					type: "item"
 					item: { count: 1, id: "immersiveengineering:heavy_engineering" }
 					count: 64L
@@ -218,13 +218,13 @@
 			]
 			rewards: [
 				{
-					id: "8318F8EC25721760"
+					id: "0318F8EC25721760"
 					type: "item"
 					item: { count: 1, id: "mekanism:creative_energy_cube" }
 					count: 1
 				}
 				{
-					id: "E9677E965C9E0109"
+					id: "69677E965C9E0109"
 					type: "item"
 					item: { count: 1, id: "immersiveengineering:capacitor_creative" }
 					count: 1

@@ -1,17 +1,17 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "FE9B015A32C6D980"
+	filename: "7E9B015A32C6D980"
 	group: "4525BB3160467FCB"
 	icon: { id: "kubejs:gate_kinetic_frame" }
-	id: "FE9B015A32C6D980"
+	id: "7E9B015A32C6D980"
 	images: [ ]
 	order_index: 16
 	quest_links: [ ]
 	quests: [
 		{
-			id: "8055C66103106D86"
-			dependencies: ["72446D404001B38D", "90EDD2BED35BE9E3"]
+			id: "0055C66103106D86"
+			dependencies: ["72446D404001B38D", "10EDD2BED35BE9E3"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: -2.0d
@@ -26,7 +26,7 @@
 			]
 			rewards: [
 				{
-					id: "FDDF59C2E8611A33"
+					id: "7DDF59C2E8611A33"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,7 +34,7 @@
 			]
 		}
 		{
-			id: "D2FE1624DCCE878F"
+			id: "52FE1624DCCE878F"
 			dependencies: ["72446D404001B38D", "752C3E53CA89C92D"]
 			progression_mode: "linear"
 			x: 0.0d
@@ -50,7 +50,7 @@
 			]
 			rewards: [
 				{
-					id: "F73BE066DAA64F1E"
+					id: "773BE066DAA64F1E"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -59,7 +59,7 @@
 		}
 		{
 			id: "50775CE87FAA4EB7"
-			dependencies: ["72446D404001B38D", "A1A99D99B372916F"]
+			dependencies: ["72446D404001B38D", "21A99D99B372916F"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
@@ -74,7 +74,7 @@
 			]
 			rewards: [
 				{
-					id: "D1D958EF8F96550A"
+					id: "51D958EF8F96550A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -82,7 +82,7 @@
 			]
 		}
 		{
-			id: "FF064705A3CAB2E6"
+			id: "7F064705A3CAB2E6"
 			dependencies: ["72446D404001B38D", "3497EFDF016FAFD7"]
 			progression_mode: "linear"
 			x: 0.0d
@@ -98,7 +98,7 @@
 			]
 			rewards: [
 				{
-					id: "FC2E41070C0D4EAD"
+					id: "7C2E41070C0D4EAD"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -107,7 +107,7 @@
 		}
 		{
 			id: "39C1F24EABBB34A3"
-			dependencies: ["72446D404001B38D", "87338DE0FE8114CF"]
+			dependencies: ["72446D404001B38D", "07338DE0FE8114CF"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: 2.0d
@@ -131,7 +131,7 @@
 		}
 		{
 			id: "144473B8267DBC28"
-			dependencies: ["8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7", "FF064705A3CAB2E6", "39C1F24EABBB34A3"]
+			dependencies: ["0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7", "7F064705A3CAB2E6", "39C1F24EABBB34A3"]
 			progression_mode: "linear"
 			x: 3.0d
 			y: 0.0d
@@ -143,9 +143,9 @@
 			]
 			rewards: [
 				{
-					id: "95F642B272CAD5D9"
+					id: "15F642B272CAD5D9"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "7C74A9AE020CCF88"

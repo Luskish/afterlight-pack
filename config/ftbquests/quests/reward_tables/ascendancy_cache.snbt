@@ -1,5 +1,5 @@
 {
-	id: "9369E4AACBCDF5A1"
+	id: "1369E4AACBCDF5A1"
 	order_index: 0
 	filename: "ascendancy_cache"
 	icon: { id: "minecraft:chiseled_tuff_bricks" }
@@ -27,17 +27,17 @@
 			item: { count: 2, id: "minecraft:golden_apple" }
 			count: 2
 			weight: 15.0f }
-		{ id: "CE26DDD15CA45AE7"
+		{ id: "4E26DDD15CA45AE7"
 			type: "item"
 			item: { count: 3, id: "minecraft:diamond" }
 			count: 3
 			weight: 12.0f }
-		{ id: "90049DEEDE6C345C"
+		{ id: "10049DEEDE6C345C"
 			type: "item"
 			item: { count: 8, id: "create:brass_ingot" }
 			count: 8
 			weight: 12.0f }
-		{ id: "970E6CF8EBDE853A"
+		{ id: "170E6CF8EBDE853A"
 			type: "item"
 			item: { count: 6, id: "mekanism:alloy_infused" }
 			count: 6
@@ -52,7 +52,7 @@
 			item: { count: 1, id: "minecraft:netherite_scrap" }
 			count: 1
 			weight: 4.0f }
-		{ id: "ED46697149358B0D"
+		{ id: "6D46697149358B0D"
 			type: "item"
 			item: { count: 1, id: "minecraft:enchanted_golden_apple" }
 			count: 1

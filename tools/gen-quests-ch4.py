@@ -3,17 +3,17 @@
 append-only pattern as gen-quests-ch3.py. Run once, then retire."""
 import os, io, re
 
-from afterlight_quests import SnbtLong
+from afterlight_quests import SnbtLong, ftb_safe_id
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 STORY_GROUP = '4525BB3160467FCB'
-CACHE_TABLE_INT = SnbtLong.from_hex('9369E4AACBCDF5A1').value
+CACHE_TABLE_INT = SnbtLong.from_hex('1369E4AACBCDF5A1').value
 LANG = []
 _used = set()
 
 def hid():
     while True:
-        i = os.urandom(8).hex().upper()
+        i = ftb_safe_id(os.urandom(8).hex().upper())
         if i not in _used:
             _used.add(i); return i
 
@@ -22,7 +22,7 @@ def lang(k, v): LANG.append((k, v))
 
 CHIT = 'kubejs:requisition_chit'
 ch4 = hid()
-ch3_file = os.path.join(OUT, 'chapters', 'F70DAD173D9C234B.snbt')
+ch3_file = os.path.join(OUT, 'chapters', '770DAD173D9C234B.snbt')
 CH3_LAST = re.findall(r'^\t\t\tid: "([0-9A-F]{16})"', open(ch3_file).read(), re.M)[-1]
 
 Q = []
@@ -44,7 +44,7 @@ def t_check():
 
 def t_energy(v):
     i = hid()
-    return f'{{ id: "{i}"\n\t\t\t\ttype: "energy"\n\t\t\t\tvalue: {v}L }}'
+    return f'{{ id: "{i}"\n\t\t\t\ttype: "forge_energy"\n\t\t\t\tvalue: {v}L }}'
 
 def r_item(item, count=1):
     i = hid()

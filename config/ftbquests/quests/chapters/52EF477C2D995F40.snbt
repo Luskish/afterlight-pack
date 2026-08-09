@@ -15,7 +15,7 @@
 			x: 0.0d
 			y: 0.0d
 			tasks: [
-				{ id: "B56CA551BA15487D"
+				{ id: "356CA551BA15487D"
 				type: "item"
 				item: { count: 1, id: "mekanism:ingot_osmium" }
 				count: 8L
@@ -29,38 +29,38 @@
 			]
 		}
 		{
-			id: "AD231B51E916504C"
+			id: "2D231B51E916504C"
 			dependencies: ["43860D6CFEF31BB9"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
-				{ id: "C02EEA134EEA1779"
+				{ id: "402EEA134EEA1779"
 				type: "item"
 				item: { count: 1, id: "mekanism:steel_casing" }
 				count: 4L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "94A23B58F258FBAA"
+				{ id: "14A23B58F258FBAA"
 				type: "item"
 				item: { count: 5, id: "kubejs:requisition_chit" }
 				count: 5 }
 			]
 		}
 		{
-			id: "B3252BE859F3761C"
-			dependencies: ["AD231B51E916504C"]
+			id: "33252BE859F3761C"
+			dependencies: ["2D231B51E916504C"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
-				{ id: "8D46575BFD2E2E0B"
+				{ id: "0D46575BFD2E2E0B"
 				type: "item"
 				item: { count: 1, id: "mekanism:metallurgic_infuser" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "E714756C72D01646"
+				{ id: "6714756C72D01646"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
@@ -68,7 +68,7 @@
 		}
 		{
 			id: "39CDF7B349EA6E50"
-			dependencies: ["AD231B51E916504C"]
+			dependencies: ["2D231B51E916504C"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
@@ -79,7 +79,7 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "BC1335B811C34FB0"
+				{ id: "3C1335B811C34FB0"
 				type: "item"
 				item: { count: 6, id: "kubejs:requisition_chit" }
 				count: 6 }
@@ -89,8 +89,8 @@
 			]
 		}
 		{
-			id: "9876B3999E5E28F1"
-			dependencies: ["B3252BE859F3761C", "39CDF7B349EA6E50"]
+			id: "1876B3999E5E28F1"
+			dependencies: ["33252BE859F3761C", "39CDF7B349EA6E50"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -101,21 +101,21 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "FE0D25F158560ABF"
+				{ id: "7E0D25F158560ABF"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
 			]
 		}
 		{
-			id: "DA407B47132C07C6"
-			dependencies: ["9876B3999E5E28F1"]
+			id: "5A407B47132C07C6"
+			dependencies: ["1876B3999E5E28F1"]
 			x: 8.0d
 			y: 0.0d
 			shape: "hexagon"
 			size: 1.5d
 			tasks: [
-				{ id: "E568E083538F4913"
+				{ id: "6568E083538F4913"
 				type: "item"
 				item: { count: 1, id: "mekanism:energized_smelter" }
 				count: 1L
@@ -124,8 +124,8 @@
 			rewards: [
 				{ id: "3F445EF8F408A56C"
 				type: "loot"
-				table_id: -7824471455364680287L }
-				{ id: "ADD2F48DEE5F7604"
+				table_id: 1398900581490095521L }
+				{ id: "2DD2F48DEE5F7604"
 				type: "item"
 				item: { count: 12, id: "kubejs:requisition_chit" }
 				count: 12 }

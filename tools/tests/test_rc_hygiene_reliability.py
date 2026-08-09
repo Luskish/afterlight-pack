@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import importlib
 import io
@@ -17,6 +18,7 @@ import time
 import unittest
 import warnings
 import zipfile
+import zlib
 from collections import Counter
 from dataclasses import replace
 from unittest import mock
@@ -3061,7 +3063,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "be3d18091a1e0cc0e81f2ace182b104da15e70170c7bd4e7a4354156ba13f7b2",
+                "a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2",
                 237,
             ),
         )
@@ -3546,7 +3548,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                 "snbt:$.quests[].rewards[].item.id=kubejs:ascendancy_seal",
             ),
             (
-                "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt",
+                "config/ftbquests/quests/chapters/3FF4AF7B0C73F058.snbt",
                 "snbt:$.quests[].tasks[].item.id=kubejs:ascendancy_seal",
             ),
             (
@@ -3953,7 +3955,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "381c9b2bedf2ff5915e7b255bb16ec77e2e3b60c53e998d59711baa19555a0d7",
+            "7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
@@ -4010,7 +4012,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             reward_header = (
                 '\t\t\trewards: [\n'
                 '\t\t\t\t{\n'
-                '\t\t\t\t\tid: "DF14A45FDAFFC3A0"'
+                '\t\t\t\t\tid: "5F14A45FDAFFC3A0"'
             )
             misplaced_reward = act_four_text.replace(
                 reward_header,
@@ -4037,7 +4039,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             )
             self.assertNotEqual(normalized, act_four_text)
             act_four.write_text(normalized, encoding="utf-8")
-            postgame = install / "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt"
+            postgame = install / "config/ftbquests/quests/chapters/3FF4AF7B0C73F058.snbt"
             postgame_text = postgame.read_text(encoding="utf-8")
             normalized_postgame = postgame_text.replace(
                 'item: { count: 1, id: "kubejs:ascendancy_seal" }',
@@ -4107,6 +4109,90 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             root, install = self.copy_seal_corpus(Path(temporary))
             verifier = self.hygiene.verify_seal_sources
 
+            seal_id = b"kubejs:ascendancy_seal"
+            raw_nbt = (
+                b"\x0a\x00\x00"
+                b"\x08\x00\x02id"
+                + struct.pack(">H", len(seal_id))
+                + seal_id
+                + b"\x00"
+            )
+            compressed_nbt_paths = (
+                root / "kubejs/data/afterlight/structure/unauthorized.nbt",
+                install / "kubejs/data/afterlight/structure/unauthorized.nbt",
+            )
+            for compressed_nbt in compressed_nbt_paths:
+                compressed_nbt.parent.mkdir(parents=True, exist_ok=True)
+                compressed_nbt.write_bytes(gzip.compress(raw_nbt, mtime=0))
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            for compressed_nbt in compressed_nbt_paths:
+                compressed_nbt.unlink()
+
+            archived_nbt = install / "mods" / "compressed-nbt.jar"
+            with zipfile.ZipFile(
+                archived_nbt,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as output:
+                output.writestr(
+                    "data/afterlight/structure/unauthorized.nbt",
+                    gzip.compress(raw_nbt, mtime=0),
+                )
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            archived_nbt.unlink()
+
+            zlib_nbt_paths = (
+                root / "kubejs/data/afterlight/structure/unauthorized.nbt",
+                install / "kubejs/data/afterlight/structure/unauthorized.nbt",
+            )
+            for compressed_nbt in zlib_nbt_paths:
+                compressed_nbt.write_bytes(zlib.compress(raw_nbt))
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            for compressed_nbt in zlib_nbt_paths:
+                compressed_nbt.unlink()
+
+            wrapped_archive = io.BytesIO()
+            with zipfile.ZipFile(
+                wrapped_archive,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as output:
+                output.writestr(
+                    "data/afterlight/recipe/unauthorized.json",
+                    b'{"result":{"id":"kubejs:ascendancy_seal"}}\n',
+                )
+            for compression_name, compressed_payload in (
+                ("gzip", gzip.compress(wrapped_archive.getvalue(), mtime=0)),
+                ("zlib", zlib.compress(wrapped_archive.getvalue())),
+            ):
+                wrapped_paths = (
+                    root
+                    / f"kubejs/data/afterlight/structure/{compression_name}-wrapped.bin",
+                    install
+                    / f"kubejs/data/afterlight/structure/{compression_name}-wrapped.bin",
+                )
+                for wrapped_path in wrapped_paths:
+                    wrapped_path.write_bytes(compressed_payload)
+                with self.subTest(compression=compression_name), self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "Seal source corpus",
+                ):
+                    verifier(root, install)
+                for wrapped_path in wrapped_paths:
+                    wrapped_path.unlink()
+
             duplicate = install / "mods" / "unreviewed-duplicate.jar"
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
@@ -4173,6 +4259,40 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                 verifier(root, install)
             extensionless_outer.unlink()
 
+            prefixed_outer = install / "mods" / "prefixed-nested.jar"
+            prefixed_payload = b"MZ\x90\x00afterlight\n" + extensionless_payload.getvalue()
+            self.assertTrue(zipfile.is_zipfile(io.BytesIO(prefixed_payload)))
+            with zipfile.ZipFile(
+                prefixed_outer,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as output:
+                output.writestr(
+                    "META-INF/jarjar/payload.bin",
+                    prefixed_payload,
+                )
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            prefixed_outer.unlink()
+
+            depth_payload = extensionless_payload.getvalue()
+            for level in range(self.hygiene.SEAL_ARCHIVE_MAX_DEPTH):
+                nested = io.BytesIO()
+                with zipfile.ZipFile(nested, "w") as output:
+                    output.writestr(f"nested-{level}.bin", depth_payload)
+                depth_payload = nested.getvalue()
+            too_deep = install / "mods" / "too-deep.jar"
+            too_deep.write_bytes(depth_payload)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "nesting depth",
+            ):
+                verifier(root, install)
+            too_deep.unlink()
+
             bounded = install / "mods" / "bounded.jar"
             with zipfile.ZipFile(bounded, "w", compression=zipfile.ZIP_DEFLATED) as output:
                 output.writestr("one.txt", b"A" * 4096)
@@ -4196,6 +4316,99 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                     verifier(root, install)
             bounded.unlink()
 
+    def test_seal_compression_scan_is_bounded_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_seal_corpus(Path(temporary))
+            verifier = self.hygiene.verify_seal_sources
+            compressed_paths = (
+                root / "config/000-afterlight-compressed.bin",
+                install / "config/000-afterlight-compressed.bin",
+            )
+            for compressed_path in compressed_paths:
+                compressed_path.parent.mkdir(parents=True, exist_ok=True)
+
+            malformed_payloads = (
+                ("gzip", b"\x1f\x8btruncated"),
+                ("zlib", zlib.compress(b"truncated")[:-1]),
+            )
+            for compression_name, payload in malformed_payloads:
+                for compressed_path in compressed_paths:
+                    compressed_path.write_bytes(payload)
+                with self.subTest(compression=compression_name), self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    "cannot decompress",
+                ):
+                    verifier(root, install)
+
+            for compression_name, payload in (
+                ("gzip", gzip.compress(b"benign", mtime=0) + b"trailing"),
+                ("zlib", zlib.compress(b"benign") + b"trailing"),
+                (
+                    "concatenated-gzip",
+                    gzip.compress(b"first", mtime=0)
+                    + gzip.compress(b"second", mtime=0),
+                ),
+            ):
+                for compressed_path in compressed_paths:
+                    compressed_path.write_bytes(payload)
+                with self.subTest(compression=f"{compression_name}-benign-trailing"):
+                    result = verifier(root, install)
+                    self.assertEqual(
+                        Counter(result["root"]),
+                        self.EXPECTED_SEAL_OCCURRENCES,
+                    )
+
+            for compression_name, payload in (
+                (
+                    "gzip",
+                    gzip.compress(b"benign", mtime=0)
+                    + b"kubejs:ascendancy_seal",
+                ),
+                (
+                    "zlib",
+                    zlib.compress(b"benign") + b"kubejs:ascendancy_seal",
+                ),
+            ):
+                for compressed_path in compressed_paths:
+                    compressed_path.write_bytes(payload)
+                with self.subTest(compression=f"{compression_name}-seal-trailing"):
+                    with self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "Seal source corpus",
+                    ):
+                        verifier(root, install)
+
+            concatenated_seal = (
+                gzip.compress(b"benign", mtime=0)
+                + gzip.compress(b"kubejs:ascendancy_seal", mtime=0)
+            )
+            for compressed_path in compressed_paths:
+                compressed_path.write_bytes(concatenated_seal)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+
+            bounded_payload = gzip.compress(b"A" * 4096, mtime=0)
+            for compressed_path in compressed_paths:
+                compressed_path.write_bytes(bounded_payload)
+            for constant, value, message in (
+                ("SEAL_ARCHIVE_MAX_MEMBER_BYTES", 1, "compressed payload"),
+                ("SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES", 1, "expanded bytes"),
+                ("SEAL_ARCHIVE_MAX_COMPRESSION_RATIO", 2, "payload ratio"),
+                ("SEAL_ARCHIVE_MAX_DEPTH", 0, "nesting depth"),
+            ):
+                with self.subTest(constant=constant), mock.patch.object(
+                    self.hygiene,
+                    constant,
+                    value,
+                ), self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    message,
+                ):
+                    verifier(root, install)
+
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
@@ -4218,7 +4431,122 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         rc_source = (ROOT / "tools" / "rc_hygiene.py").read_text(encoding="utf-8")
         server_source = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
         self.assertIn("verify_seal_sources(root_path, install_path)", rc_source)
+        self.assertIn(
+            "verify_quest_identity_stability(root_path, install_path)",
+            rc_source,
+        )
         self.assertIn("verify-seal-sources --root . --install \"$DIR\"", server_source)
+
+
+class QuestIdentityStabilityTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.hygiene = hygiene_module()
+
+    def copy_quest_corpus(self, temporary: Path) -> tuple[Path, Path]:
+        root = temporary / "root"
+        install = temporary / "install"
+        source = ROOT / "config/ftbquests/quests"
+        shutil.copytree(source, root / "config/ftbquests/quests")
+        shutil.copytree(source, install / "config/ftbquests/quests")
+        return root, install
+
+    def test_semantic_quest_identity_survives_ftb_reformatting(self) -> None:
+        verifier = getattr(self.hygiene, "verify_quest_identity_stability", None)
+        self.assertTrue(callable(verifier), "quest identity verifier is missing")
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            chapter = install / "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
+            source = chapter.read_text(encoding="utf-8")
+            reformatted = source.replace("\n\t", "\n    ")
+            self.assertNotEqual(reformatted, source)
+            chapter.write_text(reformatted, encoding="utf-8")
+
+            result = verifier(root, install)
+
+            self.assertEqual(result["root"], result["install"])
+            self.assertGreater(result["count"], 1000)
+            self.assertRegex(result["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_quest_identity_ignores_runtime_item_component_defaults(self) -> None:
+        verifier = self.hygiene.verify_quest_identity_stability
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            chapter = install / "config/ftbquests/quests/chapters/11D0B654D6E9B714.snbt"
+            source = chapter.read_text(encoding="utf-8")
+            changed = source.replace(
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book" }',
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book", '
+                'components: { "minecraft:custom_data": { normalized: true } } }',
+                1,
+            )
+            self.assertNotEqual(changed, source)
+            chapter.write_text(changed, encoding="utf-8")
+
+            result = verifier(root, install)
+
+            self.assertEqual(result["root"], result["install"])
+
+    def test_quest_identity_rejects_silent_ftb_id_replacement(self) -> None:
+        verifier = getattr(self.hygiene, "verify_quest_identity_stability", None)
+        self.assertTrue(callable(verifier), "quest identity verifier is missing")
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            chapter = install / "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
+            source = chapter.read_text(encoding="utf-8")
+            changed = source.replace(
+                'id: "51649E106286AA63"',
+                'id: "0000000000000002"',
+                1,
+            )
+            self.assertNotEqual(changed, source)
+            chapter.write_text(changed, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "quest identity corpus",
+            ):
+                verifier(root, install)
+
+    def test_quest_identity_rejects_reward_target_replacement(self) -> None:
+        verifier = getattr(self.hygiene, "verify_quest_identity_stability", None)
+        self.assertTrue(callable(verifier), "quest identity verifier is missing")
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            chapter = install / "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
+            source = chapter.read_text(encoding="utf-8")
+            changed = source.replace(
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+                'item: { count: 1, id: "minecraft:apple" }',
+                1,
+            )
+            self.assertNotEqual(changed, source)
+            chapter.write_text(changed, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "quest identity corpus",
+            ):
+                verifier(root, install)
+
+    def test_quest_identity_rejects_authored_item_component_replacement(self) -> None:
+        verifier = self.hygiene.verify_quest_identity_stability
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            chapter = install / "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt"
+            source = chapter.read_text(encoding="utf-8")
+            changed = source.replace(
+                '"enderio:conduit": "enderio:item"',
+                '"enderio:conduit": "enderio:energy"',
+                1,
+            )
+            self.assertNotEqual(changed, source)
+            chapter.write_text(changed, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "quest identity corpus",
+            ):
+                verifier(root, install)
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):

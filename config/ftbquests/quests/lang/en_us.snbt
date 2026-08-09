@@ -1,5 +1,5 @@
 {
-	chapter.DB93C6934B230CFB.title: "Cold Boot"
+	chapter.5B93C6934B230CFB.title: "Cold Boot"
 	quest.13EDA73D499B3803.title: "Wake"
 	quest.13EDA73D499B3803.quest_subtitle: "This was not guaranteed."
 	quest.13EDA73D499B3803.quest_desc: [
@@ -8,21 +8,21 @@
 		"I am ECHO. Or I am what remains of ECHO. The distinction will matter later."
 		"&7Click the checkmark. It is the first thing you have controlled in a very long time.&r"
 	]
-	quest.FC8F354295683FD1.title: "Signal in the Static"
-	quest.FC8F354295683FD1.quest_subtitle: "Make something. Anything."
-	quest.FC8F354295683FD1.quest_desc: [
+	quest.7C8F354295683FD1.title: "Signal in the Static"
+	quest.7C8F354295683FD1.quest_subtitle: "Make something. Anything."
+	quest.7C8F354295683FD1.quest_desc: [
 		"My sensors read a world of debris. Wood that grew through the vault floor. Stone that remembers being architecture."
 		"Build a crafting surface. The Ascendancy called this a fabricator, tier zero. You will call it a crafting table. Both of you are correct."
 	]
-	quest.D212B235023439B9.title: "Scrap and Memory"
-	quest.D212B235023439B9.quest_subtitle: "Thirty two units of structure."
-	quest.D212B235023439B9.quest_desc: [
+	quest.5212B235023439B9.title: "Scrap and Memory"
+	quest.5212B235023439B9.quest_subtitle: "Thirty two units of structure."
+	quest.5212B235023439B9.quest_desc: [
 		"Timber is the only material still manufacturing itself. Harvest it."
 		"Note: the trees are younger than the ruins. Something replanted this world after the Cascade. I have no record of who. Fragment that thought for later; I will do the same."
 	]
-	quest.AB27B2D887F61D7F.title: "Shelter Protocol"
-	quest.AB27B2D887F61D7F.quest_subtitle: "The night here is not empty."
-	quest.AB27B2D887F61D7F.quest_desc: [
+	quest.2B27B2D887F61D7F.title: "Shelter Protocol"
+	quest.2B27B2D887F61D7F.quest_subtitle: "The night here is not empty."
+	quest.2B27B2D887F61D7F.quest_desc: [
 		"Dusk activates things I would rather describe in daylight."
 		"Assemble a bed. Sleep is a maintenance cycle for organics, and the only debugger you have."
 	]
@@ -38,9 +38,9 @@
 		"Iron. The skeleton of everything they built, and everything you will."
 		"Smelt sixteen ingots. My power cell is iron-cased, incidentally. I mention this for no particular reason."
 	]
-	quest.C3115F61A3212A8C.title: "Reboot ECHO"
-	quest.C3115F61A3212A8C.quest_subtitle: "Two blocks of redstone. One second chance."
-	quest.C3115F61A3212A8C.quest_desc: [
+	quest.43115F61A3212A8C.title: "Reboot ECHO"
+	quest.43115F61A3212A8C.quest_subtitle: "Two blocks of redstone. One second chance."
+	quest.43115F61A3212A8C.quest_desc: [
 		"Redstone. The Ascendancy called it conductive memory. It is the reason I still think, in the loose sense of the word."
 		"Feed two compressed blocks into my substrate housing. I will not pretend this is not personal."
 		"&d[MEMORY FRAGMENT 01 RESTORED]&r"
@@ -52,14 +52,14 @@
 	quest.6828B9A1C4BACDF3.quest_desc: [
 		"Light the ruin. Photons are cheap; the things they keep away are not."
 	]
-	quest.838F61D9ECA32B48.title: "Rations"
-	quest.838F61D9ECA32B48.quest_subtitle: "The body is hardware too."
-	quest.838F61D9ECA32B48.quest_desc: [
+	quest.038F61D9ECA32B48.title: "Rations"
+	quest.038F61D9ECA32B48.quest_subtitle: "The body is hardware too."
+	quest.038F61D9ECA32B48.quest_desc: [
 		"Caloric intake stabilizes cognition. Bake bread. The wheat is descended from Ascendancy agricultural stock, which means breakfast is technically archaeology."
 	]
-	quest.A48FD34379A1F831.title: "Danger, Catalogued"
-	quest.A48FD34379A1F831.quest_subtitle: "Ten hostiles, documented and deleted."
-	quest.A48FD34379A1F831.quest_desc: [
+	quest.248FD34379A1F831.title: "Danger, Catalogued"
+	quest.248FD34379A1F831.quest_subtitle: "Ten hostiles, documented and deleted."
+	quest.248FD34379A1F831.quest_desc: [
 		"I am rebuilding my threat taxonomy from observation. You are the observation instrument."
 		"The shamblers were people once. I keep their census records somewhere in my corrupted sectors. Clear ten of them. I will log it as maintenance, because the alternative word is heavier."
 	]
@@ -71,20 +71,20 @@
 		"East of the vault, the terrain drops into the scarlands. That is where chapter two lives."
 	]
 	chapter.4C01977EF77930A6.title: "Scavenger's Creed"
-	quest.C5021BE218C5DFBD.title: "Scavenger's Creed"
-	quest.C5021BE218C5DFBD.quest_subtitle: "Take everything. Waste nothing."
-	quest.C5021BE218C5DFBD.quest_desc: [
+	quest.45021BE218C5DFBD.title: "Scavenger's Creed"
+	quest.45021BE218C5DFBD.quest_subtitle: "Take everything. Waste nothing."
+	quest.45021BE218C5DFBD.quest_desc: [
 		"Rule one of the wasteland: everything is a resource, including the wreckage, including the danger, including you."
 		"This chapter is about turning scavenging into industry. The difference between the two is repetition."
 	]
-	quest.A38CE991EC7F6506.title: "Hotter, Faster"
-	quest.A38CE991EC7F6506.quest_subtitle: "The blast furnace remembers its job."
-	quest.A38CE991EC7F6506.quest_desc: [
+	quest.238CE991EC7F6506.title: "Hotter, Faster"
+	quest.238CE991EC7F6506.quest_subtitle: "The blast furnace remembers its job."
+	quest.238CE991EC7F6506.quest_desc: [
 		"Smelting at scale begins with better heat. The Ascendancy left blueprints in the bones of every village forge."
 	]
-	quest.8576C37E9FA4116C.title: "The Alloy of Beginnings"
-	quest.8576C37E9FA4116C.quest_subtitle: "Eight measures of andesite alloy."
-	quest.8576C37E9FA4116C.quest_desc: [
+	quest.0576C37E9FA4116C.title: "The Alloy of Beginnings"
+	quest.0576C37E9FA4116C.quest_subtitle: "Eight measures of andesite alloy."
+	quest.0576C37E9FA4116C.quest_desc: [
 		"Andesite alloy. Unremarkable to look at, and the seed of every kinetic machine the old world ran."
 		"The Certifications wing of this book has a program on kinetics. Consider enrolling. ECHO recommends it, and ECHO is the only faculty left."
 	]
@@ -121,9 +121,9 @@
 	quest.490AEF80C130D8DD.quest_desc: [
 		"The press stamps metal into plates. It will do it ten thousand times without complaint. Hire it."
 	]
-	quest.93E278CD695BCE11.title: "Capstone: Sixty Four Sheets"
-	quest.93E278CD695BCE11.quest_subtitle: "By hand this is misery. So do not do it by hand."
-	quest.93E278CD695BCE11.quest_desc: [
+	quest.13E278CD695BCE11.title: "Capstone: Sixty Four Sheets"
+	quest.13E278CD695BCE11.quest_subtitle: "By hand this is misery. So do not do it by hand."
+	quest.13E278CD695BCE11.quest_desc: [
 		"Sixty four iron sheets. A press under a depot chute clears this while you eat lunch."
 		"This is the certification lesson, the whole of it: quantity is an automation problem, never a patience problem."
 	]
@@ -134,10 +134,10 @@
 		"Kinetics II will cover trains. Yes, trains survived the apocalypse. Infrastructure always does."
 	]
 	chapter_group.4525BB3160467FCB.title: "The Story"
-	chapter_group.CA20F33642175B95.title: "Certifications"
+	chapter_group.4A20F33642175B95.title: "Certifications"
 	chapter_group.51FF272F5030D2E6.title: "The Undercurrent"
 	chapter_group.4DEAD1F5F7AB4DA3.title: "The Deep Vault"
-	chapter_group.C8F8381D9519D002.title: "Atlas of the Broken World"
+	chapter_group.48F8381D9519D002.title: "Atlas of the Broken World"
 	quest.718424A08FE06E9A.title: "The Scarlands"
 	quest.718424A08FE06E9A.quest_subtitle: "Where the map admits defeat."
 	quest.718424A08FE06E9A.quest_desc: [
@@ -155,9 +155,9 @@
 	quest.72240DF3C6A8E957.quest_desc: [
 		"Bone remembers posture. These remember guard duty. Whatever they are guarding now, it is not for you to inherit unchallenged."
 	]
-	quest.F2A8169F313D0624.title: "Pressure and Time"
-	quest.F2A8169F313D0624.quest_subtitle: "Five diamonds out of the deep dark."
-	quest.F2A8169F313D0624.quest_desc: [
+	quest.72A8169F313D0624.title: "Pressure and Time"
+	quest.72A8169F313D0624.quest_subtitle: "Five diamonds out of the deep dark."
+	quest.72A8169F313D0624.quest_desc: [
 		"Carbon under pressure becomes the only currency the old world respected."
 		"You will need more than five, eventually. The Gate schematics I cannot fully read yet keep mentioning lattice cores. Start the habit."
 	]
@@ -169,10 +169,10 @@
 		"&7...evacuation routes C through F collapsed when the sky inverted. The Undercurrent was not coming FROM the breach. It was coming from everywhere. The breach was just where we finally noticed...&r"
 		"&8Take the cache. The Ascendancy stocked them for a return that never happened.&r"
 	]
-	chapter.F70DAD173D9C234B.title: "The Scarlands"
-	quest.F9145D1842E317AA.title: "Foothold"
-	quest.F9145D1842E317AA.quest_subtitle: "Stop surviving. Start staying."
-	quest.F9145D1842E317AA.quest_desc: [
+	chapter.770DAD173D9C234B.title: "The Scarlands"
+	quest.79145D1842E317AA.title: "Foothold"
+	quest.79145D1842E317AA.quest_subtitle: "Stop surviving. Start staying."
+	quest.79145D1842E317AA.quest_desc: [
 		"A scavenger passes through. An engineer stays and makes the ground obey."
 		"Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then we build like we mean it."
 	]
@@ -182,9 +182,9 @@
 		"The Ascendancy field manuals were printed on tin. They survive. An engineer's workbench reads them."
 		"This is where improvised ends and manufactured begins."
 	]
-	quest.F8E07ADD5BCD1F19.title: "Slow Fire"
-	quest.F8E07ADD5BCD1F19.quest_subtitle: "The coke oven asks for patience."
-	quest.F8E07ADD5BCD1F19.quest_desc: [
+	quest.78E07ADD5BCD1F19.title: "Slow Fire"
+	quest.78E07ADD5BCD1F19.quest_subtitle: "The coke oven asks for patience."
+	quest.78E07ADD5BCD1F19.quest_desc: [
 		"Coal into coke, wood into charcoal, time into value. The oven is a multiblock; build it whole."
 		"Nothing about the old world was fast at first. Remember that when the reactors come."
 	]
@@ -200,9 +200,9 @@
 		"A heat generator: lava in, current out. Crude by Ascendancy standards. Miraculous by wasteland ones."
 		"This is the moment the lights start coming back on. I have waited four hundred years to log it."
 	]
-	quest.F52409F46D854A92.title: "Power Draw"
-	quest.F52409F46D854A92.quest_subtitle: "One hundred thousand units, banked."
-	quest.F52409F46D854A92.quest_desc: [
+	quest.752409F46D854A92.title: "Power Draw"
+	quest.752409F46D854A92.quest_subtitle: "One hundred thousand units, banked."
+	quest.752409F46D854A92.quest_desc: [
 		"Store one hundred thousand units of energy. Production without storage is a campfire; storage is a grid."
 		"ECHO logs every joule. Old habit. The auditors are dead, but standards are standards."
 	]
@@ -214,22 +214,22 @@
 		"&7...the evacuation boards listed every name in the sector. I have found my own maintenance designation on the list, marked STAYS WITH THE FACILITY. I did not remember volunteering. I am choosing to believe I did...&r"
 		"&8Act Two is the Engine Room: Mekanism, logistics, the lattice. The Ascendancy's real toolbox. Rest first. Then we go deeper.&r"
 	]
-	chapter.C5491A24F6B8C192.title: "Foothold"
+	chapter.45491A24F6B8C192.title: "Foothold"
 	quest.43860D6CFEF31BB9.title: "The Engine Room"
 	quest.43860D6CFEF31BB9.quest_subtitle: "Osmium: the Ascendancy loved it too."
 	quest.43860D6CFEF31BB9.quest_desc: [
 		"Act Two. The vault taught you to survive; the Engine Room teaches you to multiply."
 		"Osmium first. Dense, obedient, everywhere under the scarlands. Every machine ahead of you eats it."
 	]
-	quest.AD231B51E916504C.title: "Casings"
-	quest.AD231B51E916504C.quest_subtitle: "Four frames for four futures."
-	quest.AD231B51E916504C.quest_desc: [
+	quest.2D231B51E916504C.title: "Casings"
+	quest.2D231B51E916504C.quest_subtitle: "Four frames for four futures."
+	quest.2D231B51E916504C.quest_desc: [
 		"A steel casing is a promise: whatever goes inside will be a machine, not a campfire with opinions."
 		"Four of them. You will spend them faster than you think."
 	]
-	quest.B3252BE859F3761C.title: "The Infuser"
-	quest.B3252BE859F3761C.quest_subtitle: "Where alloys begin."
-	quest.B3252BE859F3761C.quest_desc: [
+	quest.33252BE859F3761C.title: "The Infuser"
+	quest.33252BE859F3761C.quest_subtitle: "Where alloys begin."
+	quest.33252BE859F3761C.quest_desc: [
 		"Carbon into iron, redstone into osmium. The metallurgic infuser is the Engine Room's front door."
 		"The Ascendancy had a saying: every empire is an alloy. They were engineers; subtlety was not the discipline."
 	]
@@ -239,15 +239,15 @@
 		"Listen carefully, because this is the sentence that changes your economy: one raw ore, two ingots."
 		"The chamber pays for itself by lunch. After this, mining is a choice, not a chore."
 	]
-	quest.9876B3999E5E28F1.title: "Arteries"
-	quest.9876B3999E5E28F1.quest_subtitle: "Sixteen cables. The base gets a pulse."
-	quest.9876B3999E5E28F1.quest_desc: [
+	quest.1876B3999E5E28F1.title: "Arteries"
+	quest.1876B3999E5E28F1.quest_subtitle: "Sixteen cables. The base gets a pulse."
+	quest.1876B3999E5E28F1.quest_desc: [
 		"Current wants to travel. Cables are how your generator stops being furniture and starts being infrastructure."
 		"Wire the infuser. Wire the chamber. Wire everything. I will pretend not to notice the mess."
 	]
-	quest.DA407B47132C07C6.title: "The Room Hums"
-	quest.DA407B47132C07C6.quest_subtitle: "Smelting without fire. Fragment recovered."
-	quest.DA407B47132C07C6.quest_desc: [
+	quest.5A407B47132C07C6.title: "The Room Hums"
+	quest.5A407B47132C07C6.quest_subtitle: "Smelting without fire. Fragment recovered."
+	quest.5A407B47132C07C6.quest_desc: [
 		"An energized smelter: heat with no flame, output with no ash. The Engine Room is officially online."
 		"&d[MEMORY FRAGMENT 04 RESTORED]&r"
 		"&7...the Engine Room crews called their machines the choir. On shift-change recordings you can hear it: four hundred infusers in harmonic, singing the same note. The note was E. I have not heard E since the Cascade...&r"
@@ -260,9 +260,9 @@
 		"Let me be precise about what follows: I have no instrumentation for it."
 		"The Undercurrent is the thing that broke the world. It is also, apparently, learnable. The notebook you are holding was written by survivors who learned it. My advice is caution. My data is none."
 	]
-	quest.CCAA052A2178377C.title: "The First Grimoire"
-	quest.CCAA052A2178377C.quest_subtitle: "Science by other means."
-	quest.CCAA052A2178377C.quest_desc: [
+	quest.4CAA052A2178377C.title: "The First Grimoire"
+	quest.4CAA052A2178377C.quest_subtitle: "Science by other means."
+	quest.4CAA052A2178377C.quest_desc: [
 		"A spell book. The pages index themselves and the ink moves when I am not sampling it."
 		"The Ascendancy refused to study this. That refusal is item one on my list of suspected causes."
 	]
@@ -271,9 +271,9 @@
 	quest.5DA50309DBF9D019.quest_desc: [
 		"Source gems: the anomaly in mineral form. My spectrometer reads them as empty. My cameras read them as glowing. Both readings are correct, which should not be possible."
 	]
-	quest.8133A61DB9FB84AC.title: "The Imbuement Chamber"
-	quest.8133A61DB9FB84AC.quest_subtitle: "Machinery that runs on maybe."
-	quest.8133A61DB9FB84AC.quest_desc: [
+	quest.0133A61DB9FB84AC.title: "The Imbuement Chamber"
+	quest.0133A61DB9FB84AC.quest_subtitle: "Machinery that runs on maybe."
+	quest.0133A61DB9FB84AC.quest_desc: [
 		"A chamber that soaks matter in Source. It has no wires and I resent it."
 		"Note from the engineering side of my personality: it still obeys throughput math. Whatever the Undercurrent is, it respects queues."
 	]
@@ -283,10 +283,10 @@
 		"The enchanting apparatus: eight pedestals and a promise. With it you can fold the Undercurrent into objects that last."
 		"One day the Gate will need a stabilizer built exactly this way. I am telling you now so that future-you is not surprised. Consider it the only prophecy I will ever make."
 	]
-	chapter.E5C7EC00C7DC1038.title: "Anomalous Readings"
-	quest.96783315E0833B1D.title: "The Deep Vault"
-	quest.96783315E0833B1D.quest_subtitle: "Optional. Enormous. Patient."
-	quest.96783315E0833B1D.quest_desc: [
+	chapter.65C7EC00C7DC1038.title: "Anomalous Readings"
+	quest.16783315E0833B1D.title: "The Deep Vault"
+	quest.16783315E0833B1D.quest_subtitle: "Optional. Enormous. Patient."
+	quest.16783315E0833B1D.quest_desc: [
 		"Beneath the vault you woke in, there is another vault. The Ascendancy buried their heaviest industry where the Cascade could not reach it."
 		"Everything in this wing is optional. Nothing in this wing is small. Bring the recovered Deep Vault Key and a hammer. The key opens the way; honest metallurgy does the rest."
 	]
@@ -296,26 +296,26 @@
 		"Bronze: copper and tin, hammered into agreement."
 		"The surface world will offer you faster metals. The Deep Vault does not care. Down here, sequence is the technology."
 	]
-	quest.9738976FB1A6167A.title: "Pressure"
-	quest.9738976FB1A6167A.quest_subtitle: "Water, fire, and consequences."
-	quest.9738976FB1A6167A.quest_desc: [
+	quest.1738976FB1A6167A.title: "Pressure"
+	quest.1738976FB1A6167A.quest_subtitle: "Water, fire, and consequences."
+	quest.1738976FB1A6167A.quest_desc: [
 		"A boiler converts water and patience into working pressure. The Ascendancy ran continental factories on exactly this principle, scaled up until the ground hummed."
 	]
-	quest.DEEFEE4A3873DE5C.title: "Casings, Again"
-	quest.DEEFEE4A3873DE5C.quest_subtitle: "The Deep Vault version."
-	quest.DEEFEE4A3873DE5C.quest_desc: [
+	quest.5EEFEE4A3873DE5C.title: "Casings, Again"
+	quest.5EEFEE4A3873DE5C.quest_subtitle: "The Deep Vault version."
+	quest.5EEFEE4A3873DE5C.quest_desc: [
 		"Four bronze casings. You have done this dance upstairs with steel; the Deep Vault does it heavier and expects you to enjoy it."
 	]
-	quest.F2CE68CEF727A313.title: "The Steam Drill"
-	quest.F2CE68CEF727A313.quest_subtitle: "The Vault approves of you."
-	quest.F2CE68CEF727A313.quest_desc: [
+	quest.72CE68CEF727A313.title: "The Steam Drill"
+	quest.72CE68CEF727A313.quest_subtitle: "The Vault approves of you."
+	quest.72CE68CEF727A313.quest_desc: [
 		"A steam mining drill: the first tool down here that outperforms its surface cousin."
 		"This is how the Deep Vault pays: slower to start, heavier at the end. The pattern holds all the way down to machines I am still not cleared to describe."
 	]
 	chapter.6B2D7DB791D992C3.title: "The Deep Vault"
-	quest.DDBA48B322065E95.title: "Expedition Log"
-	quest.DDBA48B322065E95.quest_subtitle: "The world is larger than its wound."
-	quest.DDBA48B322065E95.quest_desc: [
+	quest.5DBA48B322065E95.title: "Expedition Log"
+	quest.5DBA48B322065E95.quest_subtitle: "The world is larger than its wound."
+	quest.5DBA48B322065E95.quest_desc: [
 		"The Atlas wing records every realm the Cascade touched, twisted, or spared."
 		"Each expedition below is optional and none of them are safe. File your findings; I am rebuilding cartography from your footsteps."
 	]
@@ -325,9 +325,9 @@
 		"The Undercurrent saturated this forest until dusk became a permanent installation."
 		"My sensors describe it as beautiful. I have flagged the sensor for maintenance."
 	]
-	quest.87475C3BA1A4143F.title: "The Unbroken Sky"
-	quest.87475C3BA1A4143F.quest_subtitle: "The one place the Cascade never touched."
-	quest.87475C3BA1A4143F.quest_desc: [
+	quest.07475C3BA1A4143F.title: "The Unbroken Sky"
+	quest.07475C3BA1A4143F.quest_subtitle: "The one place the Cascade never touched."
+	quest.07475C3BA1A4143F.quest_desc: [
 		"The Aether. Pre-Cascade records call it a myth; post-Cascade records call it the control group."
 		"Nothing up there remembers the catastrophe. Walk carefully. You are the only artifact of the broken world present."
 	]
@@ -337,9 +337,9 @@
 		"Below bedrock's polite fiction there is a garden four centuries overgrown."
 		"The Ascendancy seeded it as a biosphere reserve. Nobody has pruned it since. Bring shears and low expectations of the local wildlife."
 	]
-	quest.A21D817C56D680CA.title: "The Otherside"
-	quest.A21D817C56D680CA.quest_subtitle: "Where the sculk comes from."
-	quest.A21D817C56D680CA.quest_desc: [
+	quest.221D817C56D680CA.title: "The Otherside"
+	quest.221D817C56D680CA.quest_subtitle: "Where the sculk comes from."
+	quest.221D817C56D680CA.quest_desc: [
 		"The wardens did not evolve. They were manufactured, and the factory is still running on the Otherside."
 		"Go quietly. Some of the Ascendancy's mistakes have excellent hearing."
 	]
@@ -349,11 +349,11 @@
 		"Eternal Starlight. The evacuation fleets aimed here first, a waypoint on the road to wherever they are now."
 		"If any of my kind survived the journey, their beacons would sing in this sky. Listen for me, will you?"
 	]
-	chapter.98EE962791DE93A5.title: "Expedition Log"
-	chapter.D538973B3F8B1C72.title: "The Lattice"
-	quest.8CEB581902A9D016.title: "Certus Resonance"
-	quest.8CEB581902A9D016.quest_subtitle: "The crystal remembers pressure."
-	quest.8CEB581902A9D016.quest_desc: [
+	chapter.18EE962791DE93A5.title: "Expedition Log"
+	chapter.5538973B3F8B1C72.title: "The Lattice"
+	quest.0CEB581902A9D016.title: "Certus Resonance"
+	quest.0CEB581902A9D016.quest_subtitle: "The crystal remembers pressure."
+	quest.0CEB581902A9D016.quest_desc: [
 		"Grow sixteen Certus crystals. Their lattice is the physical basis of AE2 storage."
 		"I recognize the geometry. I do not recognize why I was told to forget it."
 	]
@@ -363,9 +363,9 @@
 		"Charge eight Certus crystals. Fluix production requires the energized form."
 		"Distributed memory begins with matter willing to hold a state."
 	]
-	quest.97DBC2533FE3DC3D.title: "Fluix"
-	quest.97DBC2533FE3DC3D.quest_subtitle: "A network needs a common language."
-	quest.97DBC2533FE3DC3D.quest_desc: [
+	quest.17DBC2533FE3DC3D.title: "Fluix"
+	quest.17DBC2533FE3DC3D.quest_subtitle: "A network needs a common language."
+	quest.17DBC2533FE3DC3D.quest_desc: [
 		"Produce sixteen Fluix crystals. They connect storage, processing, and control."
 		"The Ascendancy called this material consensus. Engineers remain dramatic."
 	]
@@ -381,21 +381,21 @@
 		"Produce eight Logic Processors and automate the sequence when practical."
 		"A processor line is slower than thought and considerably easier to repair."
 	]
-	quest.D1023D5F87D20649.title: "Controller"
-	quest.D1023D5F87D20649.quest_subtitle: "Channels impose useful limits."
-	quest.D1023D5F87D20649.quest_desc: [
+	quest.51023D5F87D20649.title: "Controller"
+	quest.51023D5F87D20649.quest_subtitle: "Channels impose useful limits."
+	quest.51023D5F87D20649.quest_desc: [
 		"Build an ME Controller. Dense networks need explicit channel management."
 		"Limits are not failures. Unmeasured limits are."
 	]
-	quest.EB764B4C9BE0A735.title: "Cell Bank"
-	quest.EB764B4C9BE0A735.quest_subtitle: "Inventory becomes addressable memory."
-	quest.EB764B4C9BE0A735.quest_desc: [
+	quest.6B764B4C9BE0A735.title: "Cell Bank"
+	quest.6B764B4C9BE0A735.quest_subtitle: "Inventory becomes addressable memory."
+	quest.6B764B4C9BE0A735.quest_desc: [
 		"Build an ME Drive to house storage cells."
 		"Do not treat one drive as a backup. It is merely one convenient point of failure."
 	]
-	quest.9791C1F457CC31C6.title: "Crafting Terminal"
-	quest.9791C1F457CC31C6.quest_subtitle: "Retrieve, combine, return."
-	quest.9791C1F457CC31C6.quest_desc: [
+	quest.1791C1F457CC31C6.title: "Crafting Terminal"
+	quest.1791C1F457CC31C6.quest_subtitle: "Retrieve, combine, return."
+	quest.1791C1F457CC31C6.quest_desc: [
 		"Connect an ME Crafting Terminal to the controller and drive."
 		"The interface is simple because the machinery behind it is not."
 	]
@@ -405,9 +405,9 @@
 		"Build two Storage Buses and attach existing inventories to the network."
 		"A lattice should index useful storage before replacing it."
 	]
-	quest.95746440BEE5E5A7.title: "First Autocraft"
-	quest.95746440BEE5E5A7.quest_subtitle: "Encode the intent. Build the execution path."
-	quest.95746440BEE5E5A7.quest_desc: [
+	quest.15746440BEE5E5A7.title: "First Autocraft"
+	quest.15746440BEE5E5A7.quest_subtitle: "Encode the intent. Build the execution path."
+	quest.15746440BEE5E5A7.quest_desc: [
 		"Connect a Pattern Encoding Terminal, Pattern Provider, Molecular Assembler, and crafting storage."
 		"Encode a Crafting Pattern, request one job, then verify the result returns to network storage."
 		"The tasks verify the complete minimum setup. You must still prove the job runs."
@@ -427,21 +427,21 @@
 		"Complete eight Precision Mechanisms through sequenced assembly."
 		"Repetition is not automation until failure can be detected."
 	]
-	quest.D4B5107AC6501C0C.title: "Deployer"
-	quest.D4B5107AC6501C0C.quest_subtitle: "A hand that does not tire."
-	quest.D4B5107AC6501C0C.quest_desc: [
+	quest.54B5107AC6501C0C.title: "Deployer"
+	quest.54B5107AC6501C0C.quest_subtitle: "A hand that does not tire."
+	quest.54B5107AC6501C0C.quest_desc: [
 		"Build two Deployers for automated item use and assembly steps."
 		"Keep their operating space clear. They do not understand fingers."
 	]
-	quest.BEE519FDA95C5462.title: "Filtered Belts"
-	quest.BEE519FDA95C5462.quest_subtitle: "Routing requires rejection as well as motion."
-	quest.BEE519FDA95C5462.quest_desc: [
+	quest.3EE519FDA95C5462.title: "Filtered Belts"
+	quest.3EE519FDA95C5462.quest_subtitle: "Routing requires rejection as well as motion."
+	quest.3EE519FDA95C5462.quest_desc: [
 		"Build four Brass Funnels and configure filters at the machines."
 		"The quest sees the funnels. Correct filtering remains your responsibility."
 	]
-	quest.C0100D03C6B635A9.title: "Mechanical Arm"
-	quest.C0100D03C6B635A9.quest_subtitle: "Six destinations, one decision loop."
-	quest.C0100D03C6B635A9.quest_desc: [
+	quest.40100D03C6B635A9.title: "Mechanical Arm"
+	quest.40100D03C6B635A9.quest_subtitle: "Six destinations, one decision loop."
+	quest.40100D03C6B635A9.quest_desc: [
 		"Build a Mechanical Arm and assign its inputs and outputs."
 		"A visible route is easier to debug than a clever one."
 	]
@@ -457,15 +457,15 @@
 		"Produce eight Railway Casings for stations and train equipment."
 		"The old logistics maps are returning one line at a time."
 	]
-	quest.9A36799BE3F63ADF.title: "Station and Schedule"
-	quest.9A36799BE3F63ADF.quest_subtitle: "A blank schedule proves only the hardware."
-	quest.9A36799BE3F63ADF.quest_desc: [
+	quest.1A36799BE3F63ADF.title: "Station and Schedule"
+	quest.1A36799BE3F63ADF.quest_subtitle: "A blank schedule proves only the hardware."
+	quest.1A36799BE3F63ADF.quest_desc: [
 		"Create a Schedule, then program and test a route between two stations."
 		"The quest detects the item. Arrival remains the useful proof."
 	]
-	quest.F199A16DB5D83154.title: "256-Track Capstone"
-	quest.F199A16DB5D83154.quest_subtitle: "Distance converts a machine into infrastructure."
-	quest.F199A16DB5D83154.quest_desc: [
+	quest.7199A16DB5D83154.title: "256-Track Capstone"
+	quest.7199A16DB5D83154.quest_subtitle: "Distance converts a machine into infrastructure."
+	quest.7199A16DB5D83154.quest_desc: [
 		"Produce 256 Track and lay a durable logistics route."
 		"The task verifies held track, not placement. Test the route under load."
 		"&d[MEMORY FRAGMENT 06 RESTORED]&r"
@@ -478,9 +478,9 @@
 		"Build an Air Compressor and provide safe fuel and cooling space."
 		"Pressure rewards patience until it punishes impatience."
 	]
-	quest.ABD4830EE305402B.title: "Pressure Chamber"
-	quest.ABD4830EE305402B.quest_subtitle: "Twenty-four walls define the first vessel."
-	quest.ABD4830EE305402B.quest_desc: [
+	quest.2BD4830EE305402B.title: "Pressure Chamber"
+	quest.2BD4830EE305402B.quest_subtitle: "Twenty-four walls define the first vessel."
+	quest.2BD4830EE305402B.quest_desc: [
 		"Craft twenty-four Pressure Chamber Walls and assemble a sealed chamber."
 		"The quest sees blocks, not seals. Verify pressure before loading materials."
 	]
@@ -490,15 +490,15 @@
 		"Produce thirty-two Compressed Iron Ingots in the chamber."
 		"This alloy is the structural grammar of PneumaticCraft."
 	]
-	quest.C6498F948F091463.title: "Plastic"
-	quest.C6498F948F091463.quest_subtitle: "Flexible insulation for rigid systems."
-	quest.C6498F948F091463.quest_desc: [
+	quest.46498F948F091463.title: "Plastic"
+	quest.46498F948F091463.quest_subtitle: "Flexible insulation for rigid systems."
+	quest.46498F948F091463.quest_desc: [
 		"Refine sixteen Plastic sheets for tubes, drones, and electronics."
 		"Do not place hot plastic near the compressor exhaust."
 	]
-	quest.DC4E3C4A5AD4EFA6.title: "Etching Acid"
-	quest.DC4E3C4A5AD4EFA6.quest_subtitle: "Corrosion can be precision work."
-	quest.DC4E3C4A5AD4EFA6.quest_desc: [
+	quest.5C4E3C4A5AD4EFA6.title: "Etching Acid"
+	quest.5C4E3C4A5AD4EFA6.quest_subtitle: "Corrosion can be precision work."
+	quest.5C4E3C4A5AD4EFA6.quest_desc: [
 		"Produce one bucket of Etching Acid for circuit fabrication."
 		"Label the vessel. Memory is not a safety system."
 	]
@@ -508,9 +508,9 @@
 		"Etch eight Printed Circuit Boards using plastic and acid."
 		"Inspect every board before trusting it with a drone."
 	]
-	quest.E4CFABA3EB6E9B4D.title: "Programmer"
-	quest.E4CFABA3EB6E9B4D.quest_subtitle: "Instructions require an editor."
-	quest.E4CFABA3EB6E9B4D.quest_desc: [
+	quest.64CFABA3EB6E9B4D.title: "Programmer"
+	quest.64CFABA3EB6E9B4D.quest_subtitle: "Instructions require an editor."
+	quest.64CFABA3EB6E9B4D.quest_desc: [
 		"Build a Programmer and define a simple, observable drone routine."
 		"A program without a stop condition is a small disaster with syntax."
 	]
@@ -520,24 +520,24 @@
 		"Build two Logistics Drones and test a delivery route."
 		"The task sees the drones, not their orders. Watch the first cycle."
 	]
-	quest.D91C65D0AC3AABA7.title: "64-Circuit Capstone"
-	quest.D91C65D0AC3AABA7.quest_subtitle: "Scale the line before scaling the orders."
-	quest.D91C65D0AC3AABA7.quest_desc: [
+	quest.591C65D0AC3AABA7.title: "64-Circuit Capstone"
+	quest.591C65D0AC3AABA7.quest_subtitle: "Scale the line before scaling the orders."
+	quest.591C65D0AC3AABA7.quest_desc: [
 		"Produce sixty-four Printed Circuit Boards through a repeatable process."
 		"If the line needs constant rescue, it is not yet automated."
 		"&d[MEMORY FRAGMENT 07 RESTORED]&r"
 		"&7...maintenance drones are still accepting work orders from operators whose biometric records end at the Cascade. The queue has been running for years. None of the orders contain an evacuation directive...&r"
 	]
-	chapter.A57F2005E2D76B80.title: "The Grid"
+	chapter.257F2005E2D76B80.title: "The Grid"
 	quest.0D1D4842B326D878.title: "Energizing Orb"
 	quest.0D1D4842B326D878.quest_subtitle: "Matter accepts energy when properly asked."
 	quest.0D1D4842B326D878.quest_desc: [
 		"Build an Energizing Orb and connect it to a controlled FE supply."
 		"The orb converts power into material state. Keep recipes exact."
 	]
-	quest.868564885949C7CB.title: "Reliable Generation"
-	quest.868564885949C7CB.quest_subtitle: "Passive does not mean unmonitored."
-	quest.868564885949C7CB.quest_desc: [
+	quest.068564885949C7CB.title: "Reliable Generation"
+	quest.068564885949C7CB.quest_subtitle: "Passive does not mean unmonitored."
+	quest.068564885949C7CB.quest_desc: [
 		"Build two Basic Thermo Generators and provide stable heat sinks."
 		"Measure output before expanding demand."
 	]
@@ -547,15 +547,15 @@
 		"Build a Basic Powah Reactor and document its fuel inputs."
 		"Small reactors still deserve large warning labels."
 	]
-	quest.CE76FFCCB1836525.title: "Energy Cell"
-	quest.CE76FFCCB1836525.quest_subtitle: "Buffers turn spikes into schedules."
-	quest.CE76FFCCB1836525.quest_desc: [
+	quest.4E76FFCCB1836525.title: "Energy Cell"
+	quest.4E76FFCCB1836525.quest_subtitle: "Buffers turn spikes into schedules."
+	quest.4E76FFCCB1836525.quest_desc: [
 		"Build two Basic Energy Cells between generation and consumers."
 		"Storage is time translated into blocks."
 	]
-	quest.8EB523691407A912.title: "Capacitor Bank"
-	quest.8EB523691407A912.quest_subtitle: "The grid needs a visible reserve."
-	quest.8EB523691407A912.quest_desc: [
+	quest.0EB523691407A912.title: "Capacitor Bank"
+	quest.0EB523691407A912.quest_subtitle: "The grid needs a visible reserve."
+	quest.0EB523691407A912.quest_desc: [
 		"Build a Basic Capacitor Bank and connect it behind generation."
 		"A reserve without telemetry is decorative uncertainty."
 	]
@@ -571,9 +571,9 @@
 		"Build a Flux Plug and connect the production side of the wireless grid."
 		"Name the network by purpose, not by mood."
 	]
-	quest.91239054873E1CD7.title: "Flux Point and Controller"
-	quest.91239054873E1CD7.quest_subtitle: "Wireless power still needs governance."
-	quest.91239054873E1CD7.quest_desc: [
+	quest.11239054873E1CD7.title: "Flux Point and Controller"
+	quest.11239054873E1CD7.quest_subtitle: "Wireless power still needs governance."
+	quest.11239054873E1CD7.quest_desc: [
 		"Build a Flux Controller, then pair a Flux Point at a remote load."
 		"The quest detects the controller. Verify transfer limits at both ends."
 	]
@@ -586,21 +586,21 @@
 		"&7...six restored facilities have rejoined the grid. A seventh answered the handshake from beneath a district erased from every surviving map. Its status packet reads: CASCADE SUPPORT, READY...&r"
 	]
 	chapter.37C54E49759AFDDF.title: "Thresholds"
-	quest.BF12A84AF92F28B8.title: "Oxygen Separation"
-	quest.BF12A84AF92F28B8.quest_subtitle: "Separate water before multiplying ore."
-	quest.BF12A84AF92F28B8.quest_desc: [
+	quest.3F12A84AF92F28B8.title: "Oxygen Separation"
+	quest.3F12A84AF92F28B8.quest_subtitle: "Separate water before multiplying ore."
+	quest.3F12A84AF92F28B8.quest_desc: [
 		"Build an Electrolytic Separator and route oxygen safely."
 		"Purification requires a chemical supply, not optimism."
 	]
-	quest.D64A301931FD5B1C.title: "Purification"
-	quest.D64A301931FD5B1C.quest_subtitle: "Ore tripling begins with oxygen."
-	quest.D64A301931FD5B1C.quest_desc: [
+	quest.564A301931FD5B1C.title: "Purification"
+	quest.564A301931FD5B1C.quest_subtitle: "Ore tripling begins with oxygen."
+	quest.564A301931FD5B1C.quest_desc: [
 		"Build a Purification Chamber and feed it oxygen from the separator."
 		"Trace the gas line before blaming the machine."
 	]
-	quest.8D4C50AC8346E16D.title: "Crushing"
-	quest.8D4C50AC8346E16D.quest_subtitle: "Clumps become dirty dust."
-	quest.8D4C50AC8346E16D.quest_desc: [
+	quest.0D4C50AC8346E16D.title: "Crushing"
+	quest.0D4C50AC8346E16D.quest_subtitle: "Clumps become dirty dust."
+	quest.0D4C50AC8346E16D.quest_desc: [
 		"Build a Crusher to continue the ore tripling chain."
 		"Buffer both sides. A stopped middle machine stalls the whole line."
 	]
@@ -616,15 +616,15 @@
 		"Build a Basic Purifying Factory and feed every processing slot."
 		"Parallel machines multiply bottlenecks before they multiply output."
 	]
-	quest.DF748ABC48F2A139.title: "Digital Miner"
-	quest.DF748ABC48F2A139.quest_subtitle: "Extraction becomes a filter problem."
-	quest.DF748ABC48F2A139.quest_desc: [
+	quest.5F748ABC48F2A139.title: "Digital Miner"
+	quest.5F748ABC48F2A139.quest_subtitle: "Extraction becomes a filter problem."
+	quest.5F748ABC48F2A139.quest_desc: [
 		"Build a Digital Miner and test a narrow, replaceable filter."
 		"Never begin with every ore. That is how storage becomes geology."
 	]
-	quest.B50919A8B89A2E84.title: "Sulfur Chain"
-	quest.B50919A8B89A2E84.quest_subtitle: "Acid is infrastructure with consequences."
-	quest.B50919A8B89A2E84.quest_desc: [
+	quest.350919A8B89A2E84.title: "Sulfur Chain"
+	quest.350919A8B89A2E84.quest_subtitle: "Acid is infrastructure with consequences."
+	quest.350919A8B89A2E84.quest_desc: [
 		"Produce a bucket of Sulfuric Acid through the full chemical chain."
 		"Use contained pipes. The floor is not a buffer tank."
 	]
@@ -634,15 +634,15 @@
 		"Build an Isotopic Centrifuge and complete the fissile fuel line."
 		"Fissile fuel is a chemical, so the quest verifies its machine proxy."
 	]
-	quest.BC72E0ADC8E785D0.title: "1,024-Ingot Quota"
-	quest.BC72E0ADC8E785D0.quest_subtitle: "Scale proves the line, not its history."
-	quest.BC72E0ADC8E785D0.quest_desc: [
+	quest.3C72E0ADC8E785D0.title: "1,024-Ingot Quota"
+	quest.3C72E0ADC8E785D0.quest_subtitle: "Scale proves the line, not its history."
+	quest.3C72E0ADC8E785D0.quest_desc: [
 		"Accumulate 1,024 Osmium Ingots while the miner and factory operate."
 		"The task sees inventory quantity. Confirm the machines produced the batch."
 	]
-	quest.C5A86A6AA4AD7824.title: "Reactor Warning"
-	quest.C5A86A6AA4AD7824.quest_subtitle: "Shutdown logic comes before ignition."
-	quest.C5A86A6AA4AD7824.quest_desc: [
+	quest.45A86A6AA4AD7824.title: "Reactor Warning"
+	quest.45A86A6AA4AD7824.quest_subtitle: "Shutdown logic comes before ignition."
+	quest.45A86A6AA4AD7824.quest_desc: [
 		"Build a Fission Reactor Logic Adapter and configure an emergency shutdown."
 		"Do not fuel a reactor that cannot stop itself."
 		"&d[MEMORY FRAGMENT 09 RESTORED]&r"
@@ -655,21 +655,21 @@
 		"Build two Level Emitters and use one to control replenishment."
 		"The task sees emitters, not their thresholds. Test both states."
 	]
-	quest.F42BEB99DFA479FD.title: "Create Feed Line"
-	quest.F42BEB99DFA479FD.quest_subtitle: "Visible movement, bounded input."
-	quest.F42BEB99DFA479FD.quest_desc: [
+	quest.742BEB99DFA479FD.title: "Create Feed Line"
+	quest.742BEB99DFA479FD.quest_subtitle: "Visible movement, bounded input."
+	quest.742BEB99DFA479FD.quest_desc: [
 		"Build four Brass Funnels and regulate a machine feed line."
 		"A belt should reveal its backlog before the machine notices it."
 	]
-	quest.CF8F8B4545572260.title: "Drone Delivery"
-	quest.CF8F8B4545572260.quest_subtitle: "Cross the gap without crossing the wires."
-	quest.CF8F8B4545572260.quest_desc: [
+	quest.4F8F8B4545572260.title: "Drone Delivery"
+	quest.4F8F8B4545572260.quest_subtitle: "Cross the gap without crossing the wires."
+	quest.4F8F8B4545572260.quest_desc: [
 		"Build two Logistics Drones and route materials from the feed line."
 		"Observe several cycles. One correct trip is anecdotal."
 	]
-	quest.BF5F3AB86AF7D719.title: "IE Assembly"
-	quest.BF5F3AB86AF7D719.quest_subtitle: "Industrial recipes need industrial patience."
-	quest.BF5F3AB86AF7D719.quest_desc: [
+	quest.3F5F3AB86AF7D719.title: "IE Assembly"
+	quest.3F5F3AB86AF7D719.quest_subtitle: "Industrial recipes need industrial patience."
+	quest.3F5F3AB86AF7D719.quest_desc: [
 		"Build an Immersive Engineering Assembler for repeatable crafting."
 		"Provide buffers and power before assigning three recipes at once."
 	]
@@ -679,15 +679,15 @@
 		"Produce thirty-two Item Conduits for compact routing between subsystems."
 		"Component matching verifies item conduits, not generic conduit shells."
 	]
-	quest.A1ED60C828D8519B.title: "Laser Extraction"
-	quest.A1ED60C828D8519B.quest_subtitle: "Fast routing requires explicit priorities."
-	quest.A1ED60C828D8519B.quest_desc: [
+	quest.21ED60C828D8519B.title: "Laser Extraction"
+	quest.21ED60C828D8519B.quest_subtitle: "Fast routing requires explicit priorities."
+	quest.21ED60C828D8519B.quest_desc: [
 		"Build two Laser Nodes and configure controlled extraction."
 		"The task sees nodes, not cards. Test overflow and destination loss."
 	]
-	quest.9551D0E76B9801FB.title: "Automated Processor Batch"
-	quest.9551D0E76B9801FB.quest_subtitle: "Sixty-four identical proofs."
-	quest.9551D0E76B9801FB.quest_desc: [
+	quest.1551D0E76B9801FB.title: "Automated Processor Batch"
+	quest.1551D0E76B9801FB.quest_subtitle: "Sixty-four identical proofs."
+	quest.1551D0E76B9801FB.quest_desc: [
 		"Produce sixty-four Logic Processors through the connected system."
 		"Inventory quantity is detectable. Automation provenance is not."
 	]
@@ -697,36 +697,36 @@
 		"Produce sixty-four Steel Ingots through the assembler-side supply chain."
 		"Leave, return, and inspect the buffers before calling it unattended."
 	]
-	quest.D37BF340B7765AB8.title: "Stable Power Proof"
-	quest.D37BF340B7765AB8.quest_subtitle: "Submit fifty million FE without exceeding the input cap."
-	quest.D37BF340B7765AB8.quest_desc: [
+	quest.537BF340B7765AB8.title: "Stable Power Proof"
+	quest.537BF340B7765AB8.quest_subtitle: "Submit fifty million FE without exceeding the input cap."
+	quest.537BF340B7765AB8.quest_desc: [
 		"Submit fifty million FE at no more than 500,000 FE per transfer."
 		"This proves production capacity, not reserve stability. Watch the grid under load."
 	]
-	quest.836D1C6E20B78461.title: "Signal Triangulated"
-	quest.836D1C6E20B78461.quest_subtitle: "Three rings define four hidden coordinates."
-	quest.836D1C6E20B78461.quest_desc: [
+	quest.036D1C6E20B78461.title: "Signal Triangulated"
+	quest.036D1C6E20B78461.quest_subtitle: "Three rings define four hidden coordinates."
+	quest.036D1C6E20B78461.quest_desc: [
 		"Build three Quantum Rings as a physical proxy for the triangulation array."
 		"The signal resolves into four encrypted schematic locations. None are here."
 		"&d[MEMORY FRAGMENT 10 RESTORED]&r"
 		"&7...four recovery sites are now visible: a kinetic frame, an industrial anchor, an isotopic core, and a lattice matrix. Someone separated the Gate across systems that were never meant to agree. The Deep Vault key was left beside the coordinates...&r"
 	]
-	chapter.AD7CB8E643BDC03B.title: "Frontier Machines"
-	quest.EA0FBE1789BEFD37.title: "Machine Core"
-	quest.EA0FBE1789BEFD37.quest_subtitle: "Oritech begins where ordinary frames stop."
-	quest.EA0FBE1789BEFD37.quest_desc: [
+	chapter.2D7CB8E643BDC03B.title: "Frontier Machines"
+	quest.6A0FBE1789BEFD37.title: "Machine Core"
+	quest.6A0FBE1789BEFD37.quest_subtitle: "Oritech begins where ordinary frames stop."
+	quest.6A0FBE1789BEFD37.quest_desc: [
 		"Produce four Machine Cores. They anchor Oritech's first processing blocks."
 		"A frontier is simply a factory whose maintenance manual has not arrived yet."
 	]
-	quest.9722A64B05E8F748.title: "Pulverization"
-	quest.9722A64B05E8F748.quest_subtitle: "Reduce material before asking it to change."
-	quest.9722A64B05E8F748.quest_desc: [
+	quest.1722A64B05E8F748.title: "Pulverization"
+	quest.1722A64B05E8F748.quest_subtitle: "Reduce material before asking it to change."
+	quest.1722A64B05E8F748.quest_desc: [
 		"Build an Oritech Pulverizer and give its output a dedicated buffer."
 		"Grinding is simple. Preventing mixed output from becoming geology again is not."
 	]
-	quest.D3D1A5F68323B089.title: "Centrifuge"
-	quest.D3D1A5F68323B089.quest_subtitle: "Separation rewards controlled imbalance."
-	quest.D3D1A5F68323B089.quest_desc: [
+	quest.53D1A5F68323B089.title: "Centrifuge"
+	quest.53D1A5F68323B089.quest_subtitle: "Separation rewards controlled imbalance."
+	quest.53D1A5F68323B089.quest_desc: [
 		"Build an Oritech Centrifuge and process one recipe from input to output."
 		"The task verifies the machine. Stable speed and clean routing remain yours to prove."
 	]
@@ -736,9 +736,9 @@
 		"Build an Oritech Assembler and connect it to the processing line."
 		"Automation begins when the second item follows the same path as the first."
 	]
-	quest.EE83735A4CE6877B.title: "Foundry"
-	quest.EE83735A4CE6877B.quest_subtitle: "Heat is useful when given boundaries."
-	quest.EE83735A4CE6877B.quest_desc: [
+	quest.6E83735A4CE6877B.title: "Foundry"
+	quest.6E83735A4CE6877B.quest_subtitle: "Heat is useful when given boundaries."
+	quest.6E83735A4CE6877B.quest_desc: [
 		"Build an Oritech Foundry and provide isolated input and output storage."
 		"The quest detects the block, not your heat policy. Keep one anyway."
 	]
@@ -766,24 +766,24 @@
 		"Produce sixteen Prometheum Ingots through the reactor-era processing chain."
 		"The recovered schematic checksum recognizes this alloy as its final material proof."
 	]
-	quest.90EDD2BED35BE9E3.title: "Kinetic Schematic"
-	quest.90EDD2BED35BE9E3.quest_subtitle: "The first Gate key was hidden inside computation."
-	quest.90EDD2BED35BE9E3.quest_desc: [
+	quest.10EDD2BED35BE9E3.title: "Kinetic Schematic"
+	quest.10EDD2BED35BE9E3.quest_subtitle: "The first Gate key was hidden inside computation."
+	quest.10EDD2BED35BE9E3.quest_desc: [
 		"Build an Advanced Computing Engine to decrypt the kinetic frame schematic."
 		"The item proves the required Oritech tier. The schematic is the actual Gate recipe lock."
 		"&d[MEMORY FRAGMENT 11 RESTORED]&r"
 		"&7...the four schematics were separated by design. No single division could assemble the Gate. My archive calls this mutual assurance. The casualty model calls it delay...&r"
 	]
 	chapter.40BA93EAD765D4D0.title: "The War Below"
-	quest.90EEBFB30F143EC4.title: "Ancient Factory"
-	quest.90EEBFB30F143EC4.quest_subtitle: "The machinery below is still defended."
-	quest.90EEBFB30F143EC4.quest_desc: [
+	quest.10EEBFB30F143EC4.title: "Ancient Factory"
+	quest.10EEBFB30F143EC4.quest_subtitle: "The machinery below is still defended."
+	quest.10EEBFB30F143EC4.quest_desc: [
 		"Locate the Ancient Factory. Bring repair supplies and a route home."
 		"Structure detection proves arrival, not survival. I recommend both."
 	]
-	quest.C8D1106DDC9D0D99.title: "Harbinger"
-	quest.C8D1106DDC9D0D99.quest_subtitle: "The factory's alarm learned to walk."
-	quest.C8D1106DDC9D0D99.quest_desc: [
+	quest.48D1106DDC9D0D99.title: "Harbinger"
+	quest.48D1106DDC9D0D99.quest_subtitle: "The factory's alarm learned to walk."
+	quest.48D1106DDC9D0D99.quest_desc: [
 		"Defeat the Harbinger and inspect the arena before collecting salvage."
 		"Its attack cycle is information. Treat the first attempt as research."
 	]
@@ -805,21 +805,21 @@
 		"Locate the Burning Arena and prepare fire resistance before engagement."
 		"The structure task verifies the threshold. It does not verify your supplies."
 	]
-	quest.C4BD93D936125186.title: "Ignis"
-	quest.C4BD93D936125186.quest_subtitle: "The furnace has a name and a sword."
-	quest.C4BD93D936125186.quest_desc: [
+	quest.44BD93D936125186.title: "Ignis"
+	quest.44BD93D936125186.quest_subtitle: "The furnace has a name and a sword."
+	quest.44BD93D936125186.quest_desc: [
 		"Defeat Ignis. Observe the shield windows rather than forcing every opening."
 		"Efficiency includes knowing when not to attack."
 	]
-	quest.D6AAEF2C6A9BD0A8.title: "Sunken City"
-	quest.D6AAEF2C6A9BD0A8.quest_subtitle: "Pressure returns, now with architecture."
-	quest.D6AAEF2C6A9BD0A8.quest_desc: [
+	quest.56AAEF2C6A9BD0A8.title: "Sunken City"
+	quest.56AAEF2C6A9BD0A8.quest_subtitle: "Pressure returns, now with architecture."
+	quest.56AAEF2C6A9BD0A8.quest_desc: [
 		"Locate the Sunken City and mark an air-safe retreat path."
 		"The signal descends past the point where ordinary logistics remain convenient."
 	]
-	quest.9004CDB0D6831EEF.title: "Leviathan"
-	quest.9004CDB0D6831EEF.quest_subtitle: "The sea kept one of the old weapons."
-	quest.9004CDB0D6831EEF.quest_desc: [
+	quest.1004CDB0D6831EEF.title: "Leviathan"
+	quest.1004CDB0D6831EEF.quest_subtitle: "The sea kept one of the old weapons."
+	quest.1004CDB0D6831EEF.quest_desc: [
 		"Defeat the Leviathan. Prepare for a fight where distance changes quickly."
 		"I can count the victory. I cannot retrieve your dropped equipment."
 	]
@@ -844,21 +844,21 @@
 		"Produce eight Fission Fuel Assemblies and design the reactor around safe access."
 		"Blocks are detectable. Cooling, containment, and judgment are not."
 	]
-	quest.BDC6929C3FE6C5A9.title: "Fissile Fuel"
-	quest.BDC6929C3FE6C5A9.quest_subtitle: "The chemical has no item form, so prove its machine."
-	quest.BDC6929C3FE6C5A9.quest_desc: [
+	quest.3DC6929C3FE6C5A9.title: "Fissile Fuel"
+	quest.3DC6929C3FE6C5A9.quest_subtitle: "The chemical has no item form, so prove its machine."
+	quest.3DC6929C3FE6C5A9.quest_desc: [
 		"Build an Isotopic Centrifuge and establish the fissile fuel production path."
 		"FTB Quests cannot count the chemical directly. Running the line is your proof."
 	]
-	quest.F0D13539A75B7155.title: "Turbine"
-	quest.F0D13539A75B7155.quest_subtitle: "Waste heat should leave with useful work."
-	quest.F0D13539A75B7155.quest_desc: [
+	quest.70D13539A75B7155.title: "Turbine"
+	quest.70D13539A75B7155.quest_subtitle: "Waste heat should leave with useful work."
+	quest.70D13539A75B7155.quest_desc: [
 		"Produce sixteen Turbine Casings and complete a turbine sized for the reactor."
 		"The task sees casing inventory, not multiblock formation or throughput."
 	]
-	quest.A6595C38412E0EB1.title: "Polonium"
-	quest.A6595C38412E0EB1.quest_subtitle: "Radiation made portable. Handle accordingly."
-	quest.A6595C38412E0EB1.quest_desc: [
+	quest.26595C38412E0EB1.title: "Polonium"
+	quest.26595C38412E0EB1.quest_subtitle: "Radiation made portable. Handle accordingly."
+	quest.26595C38412E0EB1.quest_desc: [
 		"Produce eight Polonium Pellets through a contained nuclear chain."
 		"Keep waste handling independent from production convenience."
 	]
@@ -868,15 +868,15 @@
 		"Produce eight Plutonium Pellets and verify every waste buffer."
 		"Redundant containment is cheaper than an interesting landscape."
 	]
-	quest.C777D3E308D1D0FA.title: "SPS"
-	quest.C777D3E308D1D0FA.quest_subtitle: "Matter waits behind a very expensive acronym."
-	quest.C777D3E308D1D0FA.quest_desc: [
+	quest.4777D3E308D1D0FA.title: "SPS"
+	quest.4777D3E308D1D0FA.quest_subtitle: "Matter waits behind a very expensive acronym."
+	quest.4777D3E308D1D0FA.quest_desc: [
 		"Produce sixteen SPS Casings and form the Supercritical Phase Shifter."
 		"The quest verifies casing stock. Formation and rate remain live tests."
 	]
-	quest.A79459F43198BC50.title: "Antimatter"
-	quest.A79459F43198BC50.quest_subtitle: "One pellet contains an unreasonable amount of consequence."
-	quest.A79459F43198BC50.quest_desc: [
+	quest.279459F43198BC50.title: "Antimatter"
+	quest.279459F43198BC50.quest_subtitle: "One pellet contains an unreasonable amount of consequence."
+	quest.279459F43198BC50.quest_desc: [
 		"Produce one Antimatter Pellet through the completed SPS chain."
 		"Store it where accidental crafting cannot become a design review."
 	]
@@ -886,18 +886,18 @@
 		"Submit one hundred million FE at no more than 1,000,000 FE per transfer."
 		"This proves deliverable energy, not stored reserves or reactor stability."
 	]
-	quest.A1A99D99B372916F.title: "Isotope Schematic"
-	quest.A1A99D99B372916F.quest_subtitle: "The third key resolves under antimatter-era computation."
-	quest.A1A99D99B372916F.quest_desc: [
+	quest.21A99D99B372916F.title: "Isotope Schematic"
+	quest.21A99D99B372916F.quest_subtitle: "The third key resolves under antimatter-era computation."
+	quest.21A99D99B372916F.quest_desc: [
 		"Build an Antiprotonic Nucleosynthesizer to decrypt the isotopic core schematic."
 		"The machine proves the tier. Safe operation remains outside this task's reach."
 		"&d[MEMORY FRAGMENT 13 RESTORED]&r"
 		"&7...the Cascade was not a reactor failure. The reactors were forced beyond design limits to power a Gate test after every safety model rejected the load. I signed the override because my threat forecast ranked delay as worse...&r"
 	]
 	chapter.582DF217557144DA.title: "The Long Sky"
-	quest.D57DC7BACD462EFE.title: "Flight Harness"
-	quest.D57DC7BACD462EFE.quest_subtitle: "Leave the ground with a controlled return plan."
-	quest.D57DC7BACD462EFE.quest_desc: [
+	quest.557DC7BACD462EFE.title: "Flight Harness"
+	quest.557DC7BACD462EFE.quest_subtitle: "Leave the ground with a controlled return plan."
+	quest.557DC7BACD462EFE.quest_desc: [
 		"Build an Exo Jetpack and test its charge cycle before crossing open terrain."
 		"Flight converts walls into floors and falls into scheduling problems."
 	]
@@ -907,9 +907,9 @@
 		"Complete Aeronautics' Head in the Clouds advancement by building a working balloon craft."
 		"The advancement proves the mechanic directly. Keep the first landing uncomplicated."
 	]
-	quest.98A7CD636003AFE5.title: "Propulsion"
-	quest.98A7CD636003AFE5.quest_subtitle: "Lift is access. Thrust is intent."
-	quest.98A7CD636003AFE5.quest_desc: [
+	quest.18A7CD636003AFE5.title: "Propulsion"
+	quest.18A7CD636003AFE5.quest_subtitle: "Lift is access. Thrust is intent."
+	quest.18A7CD636003AFE5.quest_desc: [
 		"Complete Aeronautics' In Thrust We Trust advancement with powered propulsion."
 		"A craft that can move should also be able to stop near where you intended."
 	]
@@ -919,21 +919,21 @@
 		"Build an Oritech Large Storage Block for mobile expedition supplies."
 		"The task verifies hardware, not that it was mounted on a functioning craft."
 	]
-	quest.F1DD8E9040C4CBA3.title: "High-Altitude Trial"
-	quest.F1DD8E9040C4CBA3.quest_subtitle: "Use a stable proxy where altitude is not headlessly measurable."
-	quest.F1DD8E9040C4CBA3.quest_desc: [
+	quest.71DD8E9040C4CBA3.title: "High-Altitude Trial"
+	quest.71DD8E9040C4CBA3.quest_subtitle: "Use a stable proxy where altitude is not headlessly measurable."
+	quest.71DD8E9040C4CBA3.quest_desc: [
 		"Build an Oritech Jetpack Elytra and complete a controlled high-altitude flight."
 		"The item is the durable task proxy. Your flight log is the operational proof."
 	]
-	quest.A3C08FB037E35BDE.title: "Starlight"
-	quest.A3C08FB037E35BDE.quest_subtitle: "The sky continues through another boundary."
-	quest.A3C08FB037E35BDE.quest_desc: [
+	quest.23C08FB037E35BDE.title: "Starlight"
+	quest.23C08FB037E35BDE.quest_subtitle: "The sky continues through another boundary."
+	quest.23C08FB037E35BDE.quest_desc: [
 		"Enter the Eternal Starlight dimension and establish a marked return point."
 		"Dimension detection confirms arrival. It does not guarantee the portal remains convenient."
 	]
-	quest.F9B4A2CBDDE45176.title: "Golem Forge"
-	quest.F9B4A2CBDDE45176.quest_subtitle: "A foundry built for hands larger than ours."
-	quest.F9B4A2CBDDE45176.quest_desc: [
+	quest.79B4A2CBDDE45176.title: "Golem Forge"
+	quest.79B4A2CBDDE45176.quest_subtitle: "A foundry built for hands larger than ours."
+	quest.79B4A2CBDDE45176.quest_desc: [
 		"Locate the Golem Forge and secure the route before entering its center."
 		"The lattice signal is reflected through the structure's old machinery."
 	]
@@ -943,9 +943,9 @@
 		"Defeat the Gatekeeper and isolate the signal source beneath the forge."
 		"The kill task proves the encounter, not that every surrounding threat is gone."
 	]
-	quest.FDEA80315CFDE8AA.title: "Relay Core"
-	quest.FDEA80315CFDE8AA.quest_subtitle: "Entanglement gives distance fewer excuses."
-	quest.FDEA80315CFDE8AA.quest_desc: [
+	quest.7DEA80315CFDE8AA.title: "Relay Core"
+	quest.7DEA80315CFDE8AA.quest_subtitle: "Entanglement gives distance fewer excuses."
+	quest.7DEA80315CFDE8AA.quest_desc: [
 		"Build an ME Quantum Link as the recovered relay's network core."
 		"Keep both ends powered. A quantum bridge can still fail for ordinary reasons."
 	]
@@ -957,47 +957,47 @@
 		"&d[MEMORY FRAGMENT 14 RESTORED]&r"
 		"&7...the first Gate opened for eleven seconds. The transit log shows no outbound mass. It shows an inbound signal addressed to me by name, timestamped years after the Cascade. I concealed the result...&r"
 	]
-	chapter.C402713763771CFA.title: "Architect"
-	quest.F1B2919DF12C6845.title: "Four Keys"
-	quest.F1B2919DF12C6845.quest_subtitle: "Four recoveries become one physical proof."
-	quest.F1B2919DF12C6845.quest_desc: [
+	chapter.4402713763771CFA.title: "Architect"
+	quest.71B2919DF12C6845.title: "Four Keys"
+	quest.71B2919DF12C6845.quest_subtitle: "Four recoveries become one physical proof."
+	quest.71B2919DF12C6845.quest_desc: [
 		"Complete all four schematic recoveries and secure each physical schematic."
 		"The tasks verify possession without consuming the schematics needed for Gate crafting."
 	]
-	quest.D4A6AF60824B79F1.title: "Mega Storage"
-	quest.D4A6AF60824B79F1.quest_subtitle: "Four cells make capacity visible."
-	quest.D4A6AF60824B79F1.quest_desc: [
+	quest.54A6AF60824B79F1.title: "Mega Storage"
+	quest.54A6AF60824B79F1.quest_subtitle: "Four cells make capacity visible."
+	quest.54A6AF60824B79F1.quest_desc: [
 		"Build four 256K Item Storage Cells and distribute them across protected drives."
 		"Capacity is not redundancy. Back up what cannot be reconstructed."
 	]
-	quest.D08AB7065AFAC232.title: "256K Crafting CPU"
-	quest.D08AB7065AFAC232.quest_subtitle: "Large jobs need somewhere to become unfinished."
-	quest.D08AB7065AFAC232.quest_desc: [
+	quest.508AB7065AFAC232.title: "256K Crafting CPU"
+	quest.508AB7065AFAC232.quest_subtitle: "Large jobs need somewhere to become unfinished."
+	quest.508AB7065AFAC232.quest_desc: [
 		"Build one 256K Crafting Storage block for the Gate component job queue."
 		"Crafting memory is working space, not permanent storage."
 	]
-	quest.8CE6F6160F721A8A.title: "Assembler Matrix"
-	quest.8CE6F6160F721A8A.quest_subtitle: "Sixteen workers, one explicit pattern set."
-	quest.8CE6F6160F721A8A.quest_desc: [
+	quest.0CE6F6160F721A8A.title: "Assembler Matrix"
+	quest.0CE6F6160F721A8A.quest_subtitle: "Sixteen workers, one explicit pattern set."
+	quest.0CE6F6160F721A8A.quest_desc: [
 		"Build sixteen Molecular Assemblers and connect a balanced autocrafting matrix."
 		"The task sees assemblers. Channel balance and pattern placement remain your proof."
 	]
-	quest.98EABED18B5B2ECF.title: "Fusion Controller"
-	quest.98EABED18B5B2ECF.quest_subtitle: "Power for the Gate should not borrow from survival systems."
-	quest.98EABED18B5B2ECF.quest_desc: [
+	quest.18EABED18B5B2ECF.title: "Fusion Controller"
+	quest.18EABED18B5B2ECF.quest_subtitle: "Power for the Gate should not borrow from survival systems."
+	quest.18EABED18B5B2ECF.quest_desc: [
 		"Build a Fusion Reactor Controller and reserve a separate Gate power path."
 		"The controller proves access. A formed, fueled, stable reactor is still required."
 	]
-	quest.AD6ACF1CCBC7B4F2.title: "Certified Bulk Quotas"
-	quest.AD6ACF1CCBC7B4F2.quest_subtitle: "Seven systems must work before one system may trust them."
-	quest.AD6ACF1CCBC7B4F2.quest_desc: [
+	quest.2D6ACF1CCBC7B4F2.title: "Certified Bulk Quotas"
+	quest.2D6ACF1CCBC7B4F2.quest_subtitle: "Seven systems must work before one system may trust them."
+	quest.2D6ACF1CCBC7B4F2.quest_desc: [
 		"Complete all seven automation certification capstones."
 		"The dependency graph proves the certification quests. The checkmark records your review."
 		"If a line cannot recover from a full output, it is not ready for Gate duty."
 	]
-	quest.D97DA51D265858DD.title: "Ancient Remnant"
-	quest.D97DA51D265858DD.quest_subtitle: "One guardian remains between proof and plan."
-	quest.D97DA51D265858DD.quest_desc: [
+	quest.597DA51D265858DD.title: "Ancient Remnant"
+	quest.597DA51D265858DD.quest_subtitle: "One guardian remains between proof and plan."
+	quest.597DA51D265858DD.quest_desc: [
 		"Defeat the Ancient Remnant after the automation certifications are complete."
 		"Bring a tested loadout. Certification does not make sandstone less violent."
 	]
@@ -1011,7 +1011,7 @@
 		"&d[MEMORY FRAGMENT 15 RESTORED]&r"
 		"&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
 	]
-	chapter.FBA8A3335FAC821A.title: "Logistics I"
+	chapter.7BA8A3335FAC821A.title: "Logistics I"
 	quest.25E5B276B9FA47ED.title: "Drawer Bank"
 	quest.25E5B276B9FA47ED.quest_subtitle: "Buffers should advertise their limits."
 	quest.25E5B276B9FA47ED.quest_desc: [
@@ -1030,28 +1030,28 @@
 		"Produce sixteen Item Pipes and connect a source, buffer, and destination."
 		"Do not connect the final machine until the buffer path is visible."
 	]
-	quest.E9B64516EEE84F33.title: "Filtered Route"
-	quest.E9B64516EEE84F33.quest_subtitle: "A route without a filter is a future mixture."
-	quest.E9B64516EEE84F33.quest_desc: [
+	quest.69B64516EEE84F33.title: "Filtered Route"
+	quest.69B64516EEE84F33.quest_subtitle: "A route without a filter is a future mixture."
+	quest.69B64516EEE84F33.quest_desc: [
 		"Build an Advanced Pipe Upgrade, then configure an allowlist on one destination."
 		"Advanced routing adds filters to the distribution controls already proven. Send a wrong item to confirm refusal."
 	]
-	quest.8446A553E485B528.title: "Round-Robin Routing"
-	quest.8446A553E485B528.quest_subtitle: "Equal destinations deserve equal inconvenience."
-	quest.8446A553E485B528.quest_desc: [
+	quest.0446A553E485B528.title: "Round-Robin Routing"
+	quest.0446A553E485B528.quest_subtitle: "Equal destinations deserve equal inconvenience."
+	quest.0446A553E485B528.quest_desc: [
 		"Build an Improved Pipe Upgrade and enable round-robin distribution across two outputs."
 		"Improved routing unlocks distribution control. Count several deliveries before adding filters."
 	]
-	quest.B107D8813D59B2FF.title: "Overflow Safety"
-	quest.B107D8813D59B2FF.quest_subtitle: "Full output must stop the line without losing matter."
-	quest.B107D8813D59B2FF.quest_desc: [
+	quest.3107D8813D59B2FF.title: "Overflow Safety"
+	quest.3107D8813D59B2FF.quest_subtitle: "Full output must stop the line without losing matter."
+	quest.3107D8813D59B2FF.quest_desc: [
 		"Build a Void Upgrade for a deliberately safe overflow drawer, then test a full normal output."
 		"Only disposable byproducts belong behind the void path. Valuable output must backpressure cleanly."
 	]
 	chapter.16E0B20162F6DAE5.title: "Ore Loop I"
-	quest.9AE92DE8CA81283E.title: "Enrichment Stage"
-	quest.9AE92DE8CA81283E.quest_subtitle: "Raw ore becomes a measured dust stream."
-	quest.9AE92DE8CA81283E.quest_desc: [
+	quest.1AE92DE8CA81283E.title: "Enrichment Stage"
+	quest.1AE92DE8CA81283E.quest_subtitle: "Raw ore becomes a measured dust stream."
+	quest.1AE92DE8CA81283E.quest_desc: [
 		"Build an Enrichment Chamber and route raw osmium into a dedicated input buffer."
 		"Its native recipe converts three raw osmium into four dust. Record that ratio before continuing."
 	]
@@ -1086,27 +1086,27 @@
 		"Build a Pattern Provider and connect it to a channel-managed AE2 network."
 		"Keep the provider visible until every adjacent machine is proven."
 	]
-	quest.A86A4CEE8655F1C7.title: "Molecular Assembler"
-	quest.A86A4CEE8655F1C7.quest_subtitle: "The network may now act on its memory."
-	quest.A86A4CEE8655F1C7.quest_desc: [
+	quest.286A4CEE8655F1C7.title: "Molecular Assembler"
+	quest.286A4CEE8655F1C7.quest_subtitle: "The network may now act on its memory."
+	quest.286A4CEE8655F1C7.quest_desc: [
 		"Build four Molecular Assemblers around the provider."
 		"Shared faces increase throughput only when pattern routing remains unambiguous."
 	]
-	quest.F84F7B6D01B73C00.title: "Crafting CPU"
-	quest.F84F7B6D01B73C00.quest_subtitle: "Queued work requires explicit memory."
-	quest.F84F7B6D01B73C00.quest_desc: [
+	quest.784F7B6D01B73C00.title: "Crafting CPU"
+	quest.784F7B6D01B73C00.quest_subtitle: "Queued work requires explicit memory."
+	quest.784F7B6D01B73C00.quest_desc: [
 		"Build a 4K Crafting Storage block and form a valid crafting CPU."
 		"The task sees the block. Confirm the multiblock appears in the crafting status screen."
 	]
-	quest.EF08C63EA2CCD60A.title: "Encoded Set"
-	quest.EF08C63EA2CCD60A.quest_subtitle: "Sixteen instructions reveal routing mistakes quickly."
-	quest.EF08C63EA2CCD60A.quest_desc: [
+	quest.6F08C63EA2CCD60A.title: "Encoded Set"
+	quest.6F08C63EA2CCD60A.quest_subtitle: "Sixteen instructions reveal routing mistakes quickly."
+	quest.6F08C63EA2CCD60A.quest_desc: [
 		"Encode sixteen Crafting Patterns across more than one processing depth."
 		"Include at least one recipe that depends on another encoded recipe."
 	]
-	quest.83220200E8B9DBF4.title: "256-Item Order"
-	quest.83220200E8B9DBF4.quest_subtitle: "A useful request is large enough to expose starvation."
-	quest.83220200E8B9DBF4.quest_desc: [
+	quest.03220200E8B9DBF4.title: "256-Item Order"
+	quest.03220200E8B9DBF4.quest_subtitle: "A useful request is large enough to expose starvation."
+	quest.03220200E8B9DBF4.quest_desc: [
 		"Autocraft 256 Quartz Glass in one order."
 		"The task verifies the completed quantity. The crafting monitor is your proof of provenance."
 	]
@@ -1116,7 +1116,7 @@
 		"Block one assembler output, cancel a job, clear the obstruction, and submit the checkmark after recovery."
 		"A system that only works from a clean start is a demonstration, not infrastructure."
 	]
-	chapter.98471B3E458EAB62.title: "Cross-Mod I"
+	chapter.18471B3E458EAB62.title: "Cross-Mod I"
 	quest.02BA27AF63721ACA.title: "Create Crushing"
 	quest.02BA27AF63721ACA.quest_subtitle: "A bridge recipe gives raw osmium a mechanical entrance."
 	quest.02BA27AF63721ACA.quest_desc: [
@@ -1147,28 +1147,28 @@
 		"Produce 256 Osmium Ingots through the connected chain."
 		"The item count cannot prove the route. Watch the full batch and inspect every buffer afterward."
 	]
-	quest.E1F5D15817ED5EFD.title: "Cross-System Recovery"
-	quest.E1F5D15817ED5EFD.quest_subtitle: "Disconnect one boundary and recover without item loss."
-	quest.E1F5D15817ED5EFD.quest_desc: [
+	quest.61F5D15817ED5EFD.title: "Cross-System Recovery"
+	quest.61F5D15817ED5EFD.quest_subtitle: "Disconnect one boundary and recover without item loss."
+	quest.61F5D15817ED5EFD.quest_desc: [
 		"Break one transport boundary, allow the upstream buffer to fill, reconnect it, and submit the checkmark."
 		"Certification records recovery behavior, not merely a successful first pass."
 	]
-	chapter.8FAB5AA8294D4487.title: "Power I"
-	quest.E4659C3AE503FE5D.title: "Dedicated Generation"
-	quest.E4659C3AE503FE5D.quest_subtitle: "Infrastructure power should have one accountable source."
-	quest.E4659C3AE503FE5D.quest_desc: [
+	chapter.0FAB5AA8294D4487.title: "Power I"
+	quest.64659C3AE503FE5D.title: "Dedicated Generation"
+	quest.64659C3AE503FE5D.quest_subtitle: "Infrastructure power should have one accountable source."
+	quest.64659C3AE503FE5D.quest_desc: [
 		"Build a Nitro Reactor for the certification grid."
 		"Keep survival storage isolated until the new grid has passed its shutdown test."
 	]
-	quest.E804D5D74CD20FE6.title: "Local Reserve"
-	quest.E804D5D74CD20FE6.quest_subtitle: "A cell buys time to stop cleanly."
-	quest.E804D5D74CD20FE6.quest_desc: [
+	quest.6804D5D74CD20FE6.title: "Local Reserve"
+	quest.6804D5D74CD20FE6.quest_subtitle: "A cell buys time to stop cleanly."
+	quest.6804D5D74CD20FE6.quest_desc: [
 		"Build a Nitro Energy Cell and place it between generation and the distribution boundary."
 		"Reserve capacity is useful only when its discharge path is intentional."
 	]
-	quest.9C25A0AC671BEE49.title: "Induction Buffer"
-	quest.9C25A0AC671BEE49.quest_subtitle: "Sixteen casings make the second reserve inspectable."
-	quest.9C25A0AC671BEE49.quest_desc: [
+	quest.1C25A0AC671BEE49.title: "Induction Buffer"
+	quest.1C25A0AC671BEE49.quest_subtitle: "Sixteen casings make the second reserve inspectable."
+	quest.1C25A0AC671BEE49.quest_desc: [
 		"Produce sixteen Induction Casings and form a Mekanism induction matrix."
 		"Use the matrix to separate short spikes from sustained load."
 	]
@@ -1178,19 +1178,19 @@
 		"Build a Flux Plug and Flux Point, then assign explicit network priorities."
 		"Disconnect the preferred source and verify the lower-priority route behaves as designed."
 	]
-	quest.D4094B71582818F6.title: "100M FE Delivery"
-	quest.D4094B71582818F6.quest_subtitle: "Capacity becomes useful when it can be delivered."
-	quest.D4094B71582818F6.quest_desc: [
+	quest.54094B71582818F6.title: "100M FE Delivery"
+	quest.54094B71582818F6.quest_subtitle: "Capacity becomes useful when it can be delivered."
+	quest.54094B71582818F6.quest_desc: [
 		"Submit one hundred million FE at no more than 1,000,000 FE per transfer."
 		"Observe the reserves during submission and confirm no survival system browns out."
 	]
-	quest.FC9EA276C2D84333.title: "Emergency Shutdown"
-	quest.FC9EA276C2D84333.quest_subtitle: "A safe grid stops before it becomes a story fragment."
-	quest.FC9EA276C2D84333.quest_desc: [
+	quest.7C9EA276C2D84333.title: "Emergency Shutdown"
+	quest.7C9EA276C2D84333.quest_subtitle: "A safe grid stops before it becomes a story fragment."
+	quest.7C9EA276C2D84333.quest_desc: [
 		"Trigger the emergency cutoff, verify generation stops feeding the line, then restore service in order."
 		"Submit the checkmark only after storage, routing, and consumers all recover."
 	]
-	chapter.D070DE6E2B300F4B.title: "Infrastructure II"
+	chapter.5070DE6E2B300F4B.title: "Infrastructure II"
 	quest.7CB2D7D361BEA4C4.title: "Six Certifications"
 	quest.7CB2D7D361BEA4C4.quest_subtitle: "Separate proofs become one operating standard."
 	quest.7CB2D7D361BEA4C4.quest_desc: [
@@ -1203,9 +1203,9 @@
 		"Produce 1,024 Iron Sheets through the certified kinetic line."
 		"Do not refill or clear a machine manually during the observed run."
 	]
-	quest.C4FEE3F4874BF144.title: "Lattice Quota"
-	quest.C4FEE3F4874BF144.quest_subtitle: "Five hundred twelve processors, all requested."
-	quest.C4FEE3F4874BF144.quest_desc: [
+	quest.44FEE3F4874BF144.title: "Lattice Quota"
+	quest.44FEE3F4874BF144.quest_subtitle: "Five hundred twelve processors, all requested."
+	quest.44FEE3F4874BF144.quest_desc: [
 		"Autocraft 512 Logic Processors through the certified lattice."
 		"Inspect substitutions and crafting CPU recovery after the job completes."
 	]
@@ -1215,19 +1215,19 @@
 		"Produce 512 Printed Circuit Boards through the pressure line."
 		"Confirm pressure, etching supply, and output handling remain unattended."
 	]
-	quest.F92E405CE058FD1A.title: "Industry Quota"
-	quest.F92E405CE058FD1A.quest_subtitle: "One thousand twenty-four ingots through shared logistics."
-	quest.F92E405CE058FD1A.quest_desc: [
+	quest.792E405CE058FD1A.title: "Industry Quota"
+	quest.792E405CE058FD1A.quest_subtitle: "One thousand twenty-four ingots through shared logistics."
+	quest.792E405CE058FD1A.quest_desc: [
 		"Produce 1,024 Steel Ingots while the other certified systems remain online."
 		"The count proves inventory. Your logs prove the factory did not borrow manual intervention."
 	]
-	quest.E524EE78235F0942.title: "Unattended Cycle"
-	quest.E524EE78235F0942.quest_subtitle: "Leave the facility. Return to evidence, not hope."
-	quest.E524EE78235F0942.quest_desc: [
+	quest.6524EE78235F0942.title: "Unattended Cycle"
+	quest.6524EE78235F0942.quest_subtitle: "Leave the facility. Return to evidence, not hope."
+	quest.6524EE78235F0942.quest_desc: [
 		"Run all four quotas unattended through one complete buffer cycle, then inspect every failure boundary."
 		"Submit the checkmark when full outputs, power loss, and restart recovery have all been tested."
 	]
-	chapter.F58F5AEF697F7EFD.title: "Requisition Depot: Early"
+	chapter.758F5AEF697F7EFD.title: "Requisition Depot: Early"
 	quest.44C4CC196D2FB334.title: "Early Supply Exchange"
 	quest.44C4CC196D2FB334.quest_subtitle: "8 Chits authorize one selected supply package."
 	quest.44C4CC196D2FB334.quest_desc: [
@@ -1235,7 +1235,7 @@
 		"The Depot returns materials, not progression keys. Choice rewards must be claimed individually."
 		"The exchange may be repeated after the cooldown. Chits are consumed on submission."
 	]
-	chapter.FC611E8A94BC5CE5.title: "Requisition Depot: Mid"
+	chapter.7C611E8A94BC5CE5.title: "Requisition Depot: Mid"
 	quest.22699BF1FF1633C4.title: "Mid Supply Exchange"
 	quest.22699BF1FF1633C4.quest_subtitle: "16 Chits authorize one selected supply package."
 	quest.22699BF1FF1633C4.quest_desc: [
@@ -1257,10 +1257,10 @@
 		"Build a Formulaic Assemblicator and encode the osmium storage-block recipe."
 		"Feed it only from the smelter output. Manual ingot insertion invalidates the trial."
 	]
-	chapter.DCDF0BB344B02192.title: "Names in the Circuit"
-	quest.BD05CEEA29790FB9.title: "Dictionary of Spirits"
-	quest.BD05CEEA29790FB9.quest_subtitle: "Classify the interference."
-	quest.BD05CEEA29790FB9.quest_desc: [
+	chapter.5CDF0BB344B02192.title: "Names in the Circuit"
+	quest.3D05CEEA29790FB9.title: "Dictionary of Spirits"
+	quest.3D05CEEA29790FB9.quest_subtitle: "Classify the interference."
+	quest.3D05CEEA29790FB9.quest_desc: [
 		"The manual names the voices. I preferred them as unclassified interference."
 	]
 	quest.009699B43C7576E8.title: "Ritual Geometry"
@@ -1268,9 +1268,9 @@
 	quest.009699B43C7576E8.quest_desc: [
 		"A circle is still a circuit if everyone agrees where current enters."
 	]
-	quest.DABDC747E62A1592.title: "Attuned Matter"
-	quest.DABDC747E62A1592.quest_subtitle: "A crystal that listens."
-	quest.DABDC747E62A1592.quest_desc: [
+	quest.5ABDC747E62A1592.title: "Attuned Matter"
+	quest.5ABDC747E62A1592.quest_subtitle: "A crystal that listens."
+	quest.5ABDC747E62A1592.quest_desc: [
 		"The crystal answers questions my instruments cannot hear."
 	]
 	quest.75C95D06CE61987B.title: "Storage Elsewhere"
@@ -1288,20 +1288,20 @@
 	quest.051EA7B2A3B36BFD.quest_desc: [
 		"The opening remains stable. That sentence would have ended a meeting before the Cascade."
 	]
-	chapter.91D0B654D6E9B714.title: "Spells Under Load"
-	quest.D32A6B9EECE82E69.title: "Flimsy Journal"
-	quest.D32A6B9EECE82E69.quest_subtitle: "The equations are armed."
-	quest.D32A6B9EECE82E69.quest_desc: [
+	chapter.11D0B654D6E9B714.title: "Spells Under Load"
+	quest.532A6B9EECE82E69.title: "Flimsy Journal"
+	quest.532A6B9EECE82E69.quest_subtitle: "The equations are armed."
+	quest.532A6B9EECE82E69.quest_desc: [
 		"Calling it flimsy does not make the equations less armed."
 	]
-	quest.FA4FCF5F5EEAD9C8.title: "Arcane Residue"
-	quest.FA4FCF5F5EEAD9C8.quest_subtitle: "Intent remains in the dust."
-	quest.FA4FCF5F5EEAD9C8.quest_desc: [
+	quest.7A4FCF5F5EEAD9C8.title: "Arcane Residue"
+	quest.7A4FCF5F5EEAD9C8.quest_subtitle: "Intent remains in the dust."
+	quest.7A4FCF5F5EEAD9C8.quest_desc: [
 		"Residue with intent. Label every container."
 	]
-	quest.9C3C84CCFA45C227.title: "Executable Ink"
-	quest.9C3C84CCFA45C227.quest_subtitle: "Instructions embedded in paper."
-	quest.9C3C84CCFA45C227.quest_desc: [
+	quest.1C3C84CCFA45C227.title: "Executable Ink"
+	quest.1C3C84CCFA45C227.quest_subtitle: "Instructions embedded in paper."
+	quest.1C3C84CCFA45C227.quest_desc: [
 		"The table writes executable instructions into paper. At least scripts usually admit they are dangerous."
 	]
 	quest.539095BF36C4999C.title: "Repeatable Force"
@@ -1309,20 +1309,20 @@
 	quest.539095BF36C4999C.quest_desc: [
 		"Repeatable spells are automation. I will tolerate the vocabulary."
 	]
-	quest.AB4DC1F500264B40.title: "Reagent Heat"
-	quest.AB4DC1F500264B40.quest_subtitle: "A process without a diagram."
-	quest.AB4DC1F500264B40.quest_desc: [
+	quest.2B4DC1F500264B40.title: "Reagent Heat"
+	quest.2B4DC1F500264B40.quest_subtitle: "A process without a diagram."
+	quest.2B4DC1F500264B40.quest_desc: [
 		"Heat, reagents, and no process diagram. Barbaric, but measurable."
 	]
-	quest.DF26F92E726A22AC.title: "Arcane Anvil"
-	quest.DF26F92E726A22AC.quest_subtitle: "Revise force after casting."
-	quest.DF26F92E726A22AC.quest_desc: [
+	quest.5F26F92E726A22AC.title: "Arcane Anvil"
+	quest.5F26F92E726A22AC.quest_subtitle: "Revise force after casting."
+	quest.5F26F92E726A22AC.quest_desc: [
 		"You have made force accept revision."
 	]
 	chapter.045647E54F0A1D9E.title: "The Soul Ledger"
-	quest.90752736922A5C3C.title: "Encyclopedia Arcana"
-	quest.90752736922A5C3C.quest_subtitle: "An inventory of souls."
-	quest.90752736922A5C3C.quest_desc: [
+	quest.10752736922A5C3C.title: "Encyclopedia Arcana"
+	quest.10752736922A5C3C.quest_subtitle: "An inventory of souls."
+	quest.10752736922A5C3C.quest_desc: [
 		"This book catalogs souls as inventory. I recognize the impulse and reject the terminology."
 	]
 	quest.352D54CEF81F094F.title: "Spirit Altar"
@@ -1345,9 +1345,9 @@
 	quest.5A083FCA4825F423.quest_desc: [
 		"The field is stable enough to graph. I wish that helped."
 	]
-	quest.C9286624F8D7D554.title: "Soulstained Steel"
-	quest.C9286624F8D7D554.quest_subtitle: "Metal that remembers more."
-	quest.C9286624F8D7D554.quest_desc: [
+	quest.49286624F8D7D554.title: "Soulstained Steel"
+	quest.49286624F8D7D554.quest_subtitle: "Metal that remembers more."
+	quest.49286624F8D7D554.quest_desc: [
 		"Steel remembers the furnace. This remembers more."
 	]
 	chapter.1A6C8CE2A6D208F9.title: "Resonance Proof"
@@ -1356,9 +1356,9 @@
 	quest.6363BCE8A71FA766.quest_desc: [
 		"Ars is the carrier. One foreign discipline is enough to expose the harmonic."
 	]
-	quest.AD4915DD8FDA1D06.title: "Source Reserve"
-	quest.AD4915DD8FDA1D06.quest_subtitle: "Redundancy remains valid."
-	quest.AD4915DD8FDA1D06.quest_desc: [
+	quest.2D4915DD8FDA1D06.title: "Source Reserve"
+	quest.2D4915DD8FDA1D06.quest_subtitle: "Redundancy remains valid."
+	quest.2D4915DD8FDA1D06.quest_desc: [
 		"Four jars. Redundancy remains valid even when the fluid is impossible."
 	]
 	quest.47311C112F22894D.title: "Pedestal Ring"
@@ -1371,9 +1371,9 @@
 	quest.1306DADA70B362F3.quest_desc: [
 		"A control surface made of fire. We have worked with worse."
 	]
-	quest.87338DE0FE8114CF.title: "Resonance Proof"
-	quest.87338DE0FE8114CF.quest_subtitle: "Two languages, one frequency."
-	quest.87338DE0FE8114CF.quest_desc: [
+	quest.07338DE0FE8114CF.title: "Resonance Proof"
+	quest.07338DE0FE8114CF.quest_subtitle: "Two languages, one frequency."
+	quest.07338DE0FE8114CF.quest_desc: [
 		"Two languages agree on one frequency. The Gate may survive what the Ascendancy refused to learn."
 	]
 	chapter.3C0EE28909760862.title: "Current Below"
@@ -1382,24 +1382,24 @@
 	quest.2826B8E3F1C3FD28.quest_desc: [
 		"The Vault begins electricity with logic large enough to inspect by hand."
 	]
-	quest.E5ECD64817F1A750.title: "Basic Hulls"
-	quest.E5ECD64817F1A750.quest_subtitle: "Give the current a chassis."
-	quest.E5ECD64817F1A750.quest_desc: [
+	quest.65ECD64817F1A750.title: "Basic Hulls"
+	quest.65ECD64817F1A750.quest_subtitle: "Give the current a chassis."
+	quest.65ECD64817F1A750.quest_desc: [
 		"Four housings establish a repeatable machine standard."
 	]
-	quest.B5783224C0644E3E.title: "Low Voltage Turbines"
-	quest.B5783224C0644E3E.quest_subtitle: "Steam becomes current."
-	quest.B5783224C0644E3E.quest_desc: [
+	quest.35783224C0644E3E.title: "Low Voltage Turbines"
+	quest.35783224C0644E3E.quest_subtitle: "Steam becomes current."
+	quest.35783224C0644E3E.quest_desc: [
 		"Two turbines convert the old pressure language into electricity."
 	]
-	quest.F3FEA26D1A9CD3AB.title: "Buffered Current"
-	quest.F3FEA26D1A9CD3AB.quest_subtitle: "Store before expanding."
-	quest.F3FEA26D1A9CD3AB.quest_desc: [
+	quest.73FEA26D1A9CD3AB.title: "Buffered Current"
+	quest.73FEA26D1A9CD3AB.quest_subtitle: "Store before expanding."
+	quest.73FEA26D1A9CD3AB.quest_desc: [
 		"Buffered power makes failure observable instead of mysterious."
 	]
-	quest.A2136042E5BE2514.title: "Powered Reduction"
-	quest.A2136042E5BE2514.quest_subtitle: "Grinding joins the grid."
-	quest.A2136042E5BE2514.quest_desc: [
+	quest.22136042E5BE2514.title: "Powered Reduction"
+	quest.22136042E5BE2514.quest_subtitle: "Grinding joins the grid."
+	quest.22136042E5BE2514.quest_desc: [
 		"The macerator replaces muscle with measured current."
 	]
 	quest.13FD3F81EDE7AE26.title: "Precision Wire"
@@ -1412,15 +1412,15 @@
 	quest.4F4161F5B97E27ED.quest_desc: [
 		"Assembly is now a process rather than a person."
 	]
-	chapter.8A48AB2CC20BC026.title: "Black Distillate"
+	chapter.0A48AB2CC20BC026.title: "Black Distillate"
 	quest.5AEBEF186442407B.title: "Electronic Logic"
 	quest.5AEBEF186442407B.quest_subtitle: "Smaller logic, larger consequences."
 	quest.5AEBEF186442407B.quest_desc: [
 		"The circuits shrink as the process map expands."
 	]
-	quest.C784D48E263BA8CC.title: "Buried Feedstock"
-	quest.C784D48E263BA8CC.quest_subtitle: "Reach the black reservoir."
-	quest.C784D48E263BA8CC.quest_desc: [
+	quest.4784D48E263BA8CC.title: "Buried Feedstock"
+	quest.4784D48E263BA8CC.quest_subtitle: "Reach the black reservoir."
+	quest.4784D48E263BA8CC.quest_desc: [
 		"The rig asks the world what it stored under pressure."
 	]
 	quest.68D4F306C5686B67.title: "Crude Reserve"
@@ -1428,19 +1428,19 @@
 	quest.68D4F306C5686B67.quest_desc: [
 		"Crude oil is a queue of useful mistakes."
 	]
-	quest.D90D4411D3904C4B.title: "First Separation"
-	quest.D90D4411D3904C4B.quest_subtitle: "Separate by heat."
-	quest.D90D4411D3904C4B.quest_desc: [
+	quest.590D4411D3904C4B.title: "First Separation"
+	quest.590D4411D3904C4B.quest_subtitle: "Separate by heat."
+	quest.590D4411D3904C4B.quest_desc: [
 		"The distillery begins assigning boiling points to the queue."
 	]
-	quest.EEEBF04F74011082.title: "Reaction Control"
-	quest.EEEBF04F74011082.quest_subtitle: "Make chemistry reproducible."
-	quest.EEEBF04F74011082.quest_desc: [
+	quest.6EEBF04F74011082.title: "Reaction Control"
+	quest.6EEBF04F74011082.quest_subtitle: "Make chemistry reproducible."
+	quest.6EEBF04F74011082.quest_desc: [
 		"A reaction becomes engineering when the inputs can be repeated."
 	]
-	quest.C9E3F26DF9DADDD5.title: "Polymer Stream"
-	quest.C9E3F26DF9DADDD5.quest_subtitle: "Turn oil into structure."
-	quest.C9E3F26DF9DADDD5.quest_desc: [
+	quest.49E3F26DF9DADDD5.title: "Polymer Stream"
+	quest.49E3F26DF9DADDD5.quest_subtitle: "Turn oil into structure."
+	quest.49E3F26DF9DADDD5.quest_desc: [
 		"Sixteen buckets prove the polymer stream is no laboratory accident."
 	]
 	quest.3E1151169E81AD32.title: "Black Distillate"
@@ -1448,25 +1448,25 @@
 	quest.3E1151169E81AD32.quest_desc: [
 		"You have taught crude oil to separate itself by boiling point and social rank."
 	]
-	chapter.FA26679C913AAF90.title: "Hot Cell"
+	chapter.7A26679C913AAF90.title: "Hot Cell"
 	quest.2107CE4AC7DCE2B3.title: "Digital Logic"
 	quest.2107CE4AC7DCE2B3.quest_subtitle: "The Vault counts faster now."
 	quest.2107CE4AC7DCE2B3.quest_desc: [
 		"Digital logic leaves less room for interpretation and more room for scale."
 	]
-	quest.D61929A2956F2507.title: "Implosion Compression"
-	quest.D61929A2956F2507.quest_subtitle: "Pressure by detonation."
-	quest.D61929A2956F2507.quest_desc: [
+	quest.561929A2956F2507.title: "Implosion Compression"
+	quest.561929A2956F2507.quest_subtitle: "Pressure by detonation."
+	quest.561929A2956F2507.quest_desc: [
 		"The process is controlled because the explosion has paperwork."
 	]
-	quest.D3DCD0CBD9BE347A.title: "Hot Cell Walls"
-	quest.D3DCD0CBD9BE347A.quest_subtitle: "Containment before fuel."
-	quest.D3DCD0CBD9BE347A.quest_desc: [
+	quest.53DCD0CBD9BE347A.title: "Hot Cell Walls"
+	quest.53DCD0CBD9BE347A.quest_subtitle: "Containment before fuel."
+	quest.53DCD0CBD9BE347A.quest_desc: [
 		"Build the boundary before introducing the reason it exists."
 	]
-	quest.8A362BDB888E949B.title: "Reactor Vessel"
-	quest.8A362BDB888E949B.quest_subtitle: "A disciplined star fragment."
-	quest.8A362BDB888E949B.quest_desc: [
+	quest.0A362BDB888E949B.title: "Reactor Vessel"
+	quest.0A362BDB888E949B.quest_subtitle: "A disciplined star fragment."
+	quest.0A362BDB888E949B.quest_desc: [
 		"The vessel is ready. Readiness is not permission to improvise."
 	]
 	quest.5C7ADA9A9A49770A.title: "Uranium Rods"
@@ -1474,9 +1474,9 @@
 	quest.5C7ADA9A9A49770A.quest_desc: [
 		"Eight rods make the energy inventory countable."
 	]
-	quest.C9C43EEDD7055C79.title: "Quad Fuel"
-	quest.C9C43EEDD7055C79.quest_subtitle: "Density raises every consequence."
-	quest.C9C43EEDD7055C79.quest_desc: [
+	quest.49C43EEDD7055C79.title: "Quad Fuel"
+	quest.49C43EEDD7055C79.quest_subtitle: "Density raises every consequence."
+	quest.49C43EEDD7055C79.quest_desc: [
 		"Quad assemblies improve throughput and shorten the list of acceptable mistakes."
 	]
 	quest.7131E55FB7E21244.title: "Plutonium Stream"
@@ -1490,9 +1490,9 @@
 	quest.616B4C5C04BDD88D.quest_desc: [
 		"Iridium is expensive because ordinary matter objects to this assignment."
 	]
-	quest.E418053F13B8F3C3.title: "Superconductor"
-	quest.E418053F13B8F3C3.quest_subtitle: "Current without apology."
-	quest.E418053F13B8F3C3.quest_desc: [
+	quest.6418053F13B8F3C3.title: "Superconductor"
+	quest.6418053F13B8F3C3.quest_subtitle: "Current without apology."
+	quest.6418053F13B8F3C3.quest_desc: [
 		"The conductor stops wasting energy and begins wasting my risk budget."
 	]
 	quest.43B82DB92C7A1E22.title: "Quantum Logic"
@@ -1505,9 +1505,9 @@
 	quest.057C19B0A4111580.quest_desc: [
 		"Four hulls establish boundaries the contents may only statistically respect."
 	]
-	quest.E89170334A824C52.title: "Quantum Upgrades"
-	quest.E89170334A824C52.quest_subtitle: "Raise the operating ceiling."
-	quest.E89170334A824C52.quest_desc: [
+	quest.689170334A824C52.title: "Quantum Upgrades"
+	quest.689170334A824C52.quest_subtitle: "Raise the operating ceiling."
+	quest.689170334A824C52.quest_desc: [
 		"The upgrades remove limits that were originally safety advice."
 	]
 	quest.57D1232E7FCAE4B4.title: "Quantum Storage"
@@ -1521,14 +1521,14 @@
 		"The Vault ends by manufacturing a burden too dense for metaphor."
 	]
 	chapter.4CEEFB108A0EECF8.title: "Courts Above and Beyond"
-	quest.C261DA792971891F.title: "Two Skies"
-	quest.C261DA792971891F.quest_subtitle: "Map both upper courts."
-	quest.C261DA792971891F.quest_desc: [
+	quest.4261DA792971891F.title: "Two Skies"
+	quest.4261DA792971891F.quest_subtitle: "Map both upper courts."
+	quest.4261DA792971891F.quest_desc: [
 		"Two skies, two legal systems, and neither recognizes our credentials."
 	]
-	quest.970433D6BE7EA6C8.title: "The Coiled Court"
-	quest.970433D6BE7EA6C8.quest_subtitle: "Challenge the first throne."
-	quest.970433D6BE7EA6C8.quest_desc: [
+	quest.170433D6BE7EA6C8.title: "The Coiled Court"
+	quest.170433D6BE7EA6C8.quest_subtitle: "Challenge the first throne."
+	quest.170433D6BE7EA6C8.quest_desc: [
 		"The serpent guards a court that forgot its citizens."
 	]
 	quest.46D366F3759D2106.title: "The Dead Court"
@@ -1541,9 +1541,9 @@
 	quest.6AD1F62284E66823.quest_desc: [
 		"The hydra treats redundancy as sovereignty."
 	]
-	quest.F5F9827EFEAF090E.title: "Bronze Court"
-	quest.F5F9827EFEAF090E.quest_subtitle: "Open the first dungeon."
-	quest.F5F9827EFEAF090E.quest_desc: [
+	quest.75F9827EFEAF090E.title: "Bronze Court"
+	quest.75F9827EFEAF090E.quest_subtitle: "Open the first dungeon."
+	quest.75F9827EFEAF090E.quest_desc: [
 		"Bronze is the lowest court only by altitude and confidence."
 	]
 	quest.317C0D9B82BCD3C6.title: "Silver Court"
@@ -1562,14 +1562,14 @@
 		"Six thrones challenged. The sky is no less beautiful for having defenses."
 	]
 	chapter.170AB7B39A0C4E47.title: "Root and Echo"
-	quest.8105CB39F994B579.title: "Two Depths"
-	quest.8105CB39F994B579.quest_subtitle: "Descend into root and echo."
-	quest.8105CB39F994B579.quest_desc: [
+	quest.0105CB39F994B579.title: "Two Depths"
+	quest.0105CB39F994B579.quest_subtitle: "Descend into root and echo."
+	quest.0105CB39F994B579.quest_desc: [
 		"The Cascade reached downward by two routes and apologized by neither."
 	]
-	quest.E3B85107180781C2.title: "Root Catacombs"
-	quest.E3B85107180781C2.quest_subtitle: "Find the buried complex."
-	quest.E3B85107180781C2.quest_desc: [
+	quest.63B85107180781C2.title: "Root Catacombs"
+	quest.63B85107180781C2.quest_subtitle: "Find the buried complex."
+	quest.63B85107180781C2.quest_desc: [
 		"The catacombs grew around their occupants rather than above them."
 	]
 	quest.0B8F4FA3D773C75E.title: "Forgotten Guardian"
@@ -1577,9 +1577,9 @@
 	quest.0B8F4FA3D773C75E.quest_desc: [
 		"The guardian remembers its duty and nothing about who assigned it."
 	]
-	quest.825D341769E84821.title: "Ancient Temple"
-	quest.825D341769E84821.quest_subtitle: "Trace the echo to its source."
-	quest.825D341769E84821.quest_desc: [
+	quest.025D341769E84821.title: "Ancient Temple"
+	quest.025D341769E84821.quest_subtitle: "Trace the echo to its source."
+	quest.025D341769E84821.quest_desc: [
 		"The temple amplifies a signal no living architect signed."
 	]
 	quest.3AC2AF7542F7CADA.title: "The Stalker"
@@ -1593,24 +1593,24 @@
 		"Root and echo agree: the Cascade reached downward as thoroughly as it reached up."
 	]
 	chapter.6A433C07EC56210B.title: "Edges of the Map"
-	quest.8F4178A6A2CF1E5D.title: "Starlight"
-	quest.8F4178A6A2CF1E5D.quest_subtitle: "Cross the luminous boundary."
-	quest.8F4178A6A2CF1E5D.quest_desc: [
+	quest.0F4178A6A2CF1E5D.title: "Starlight"
+	quest.0F4178A6A2CF1E5D.quest_subtitle: "Cross the luminous boundary."
+	quest.0F4178A6A2CF1E5D.quest_desc: [
 		"The edge glows because subtle warnings failed."
 	]
-	quest.F7CE4A3AE1DBBBE4.title: "Stranghoul Den"
-	quest.F7CE4A3AE1DBBBE4.quest_subtitle: "Find the first den."
-	quest.F7CE4A3AE1DBBBE4.quest_desc: [
+	quest.77CE4A3AE1DBBBE4.title: "Stranghoul Den"
+	quest.77CE4A3AE1DBBBE4.quest_subtitle: "Find the first den."
+	quest.77CE4A3AE1DBBBE4.quest_desc: [
 		"The den is a nest built around a tactical blind spot."
 	]
-	quest.8F0F70DEEF2240EE.title: "The Stranghoul"
-	quest.8F0F70DEEF2240EE.quest_subtitle: "Clear the den."
-	quest.8F0F70DEEF2240EE.quest_desc: [
+	quest.0F0F70DEEF2240EE.title: "The Stranghoul"
+	quest.0F0F70DEEF2240EE.quest_subtitle: "Clear the den."
+	quest.0F0F70DEEF2240EE.quest_desc: [
 		"The Stranghoul has confused territorial control with permanence."
 	]
-	quest.DB1790EC7F74E930.title: "Cursed Garden"
-	quest.DB1790EC7F74E930.quest_subtitle: "Map the cultivated corruption."
-	quest.DB1790EC7F74E930.quest_desc: [
+	quest.5B1790EC7F74E930.title: "Cursed Garden"
+	quest.5B1790EC7F74E930.quest_subtitle: "Map the cultivated corruption."
+	quest.5B1790EC7F74E930.quest_desc: [
 		"Someone landscaped the anomaly. I object to the confidence."
 	]
 	quest.6D23C9E82FF36D47.title: "Lunar Monstrosity"
@@ -1618,9 +1618,9 @@
 	quest.6D23C9E82FF36D47.quest_desc: [
 		"Moonlight is not supposed to require combat telemetry."
 	]
-	quest.E7DA7457EB599DE0.title: "Golem Forge"
-	quest.E7DA7457EB599DE0.quest_subtitle: "Find the final foundry."
-	quest.E7DA7457EB599DE0.quest_desc: [
+	quest.67DA7457EB599DE0.title: "Golem Forge"
+	quest.67DA7457EB599DE0.quest_subtitle: "Find the final foundry."
+	quest.67DA7457EB599DE0.quest_desc: [
 		"The forge manufactures guardians and calls that maintenance."
 	]
 	quest.5B4F46030C9B8CAE.title: "The Forged Warden"
@@ -1628,12 +1628,12 @@
 	quest.5B4F46030C9B8CAE.quest_desc: [
 		"The golem is a process result with opinions."
 	]
-	quest.A31CFB60DB42BD03.title: "The Gatekeeper"
-	quest.A31CFB60DB42BD03.quest_subtitle: "Create a vacancy at the edge."
-	quest.A31CFB60DB42BD03.quest_desc: [
+	quest.231CFB60DB42BD03.title: "The Gatekeeper"
+	quest.231CFB60DB42BD03.quest_subtitle: "Create a vacancy at the edge."
+	quest.231CFB60DB42BD03.quest_desc: [
 		"The edge has a keeper. It now has a vacancy."
 	]
-	chapter.EEFD817FBDA0461F.title: "Corrupted Guardians"
+	chapter.6EFD817FBDA0461F.title: "Corrupted Guardians"
 	quest.37E7EE94AB9C2675.title: "Guardian Protocol"
 	quest.37E7EE94AB9C2675.quest_subtitle: "Open the corruption index."
 	quest.37E7EE94AB9C2675.quest_desc: [
@@ -1644,34 +1644,34 @@
 	quest.499464BC3E160165.quest_desc: [
 		"The armor is older than its remaining orders."
 	]
-	quest.B38780DB7926F700.title: "Frostmaw"
-	quest.B38780DB7926F700.quest_subtitle: "Challenge a corrupted guardian."
-	quest.B38780DB7926F700.quest_desc: [
+	quest.338780DB7926F700.title: "Frostmaw"
+	quest.338780DB7926F700.quest_subtitle: "Challenge a corrupted guardian."
+	quest.338780DB7926F700.quest_desc: [
 		"The cold is territorial, mobile, and awake."
 	]
-	quest.F9F5F12B6BD564B1.title: "Umvuthi"
-	quest.F9F5F12B6BD564B1.quest_subtitle: "Challenge a corrupted guardian."
-	quest.F9F5F12B6BD564B1.quest_desc: [
+	quest.79F5F12B6BD564B1.title: "Umvuthi"
+	quest.79F5F12B6BD564B1.quest_subtitle: "Challenge a corrupted guardian."
+	quest.79F5F12B6BD564B1.quest_desc: [
 		"Solar authority survives here as a weapon system."
 	]
-	quest.ED9E08C372D0906F.title: "The Gauntlet"
-	quest.ED9E08C372D0906F.quest_subtitle: "Challenge a corrupted guardian."
-	quest.ED9E08C372D0906F.quest_desc: [
+	quest.6D9E08C372D0906F.title: "The Gauntlet"
+	quest.6D9E08C372D0906F.quest_subtitle: "Challenge a corrupted guardian."
+	quest.6D9E08C372D0906F.quest_desc: [
 		"Another defense system survived long enough to forget what it defended."
 	]
-	quest.A752C3D5F803277A.title: "Night Lich"
-	quest.A752C3D5F803277A.quest_subtitle: "Challenge a corrupted guardian."
-	quest.A752C3D5F803277A.quest_desc: [
+	quest.2752C3D5F803277A.title: "Night Lich"
+	quest.2752C3D5F803277A.quest_subtitle: "Challenge a corrupted guardian."
+	quest.2752C3D5F803277A.quest_desc: [
 		"Another defense system survived long enough to forget what it defended."
 	]
-	quest.9B0CECC6538D34B5.title: "Obsidilith"
-	quest.9B0CECC6538D34B5.quest_subtitle: "Challenge a corrupted guardian."
-	quest.9B0CECC6538D34B5.quest_desc: [
+	quest.1B0CECC6538D34B5.title: "Obsidilith"
+	quest.1B0CECC6538D34B5.quest_subtitle: "Challenge a corrupted guardian."
+	quest.1B0CECC6538D34B5.quest_desc: [
 		"Another defense system survived long enough to forget what it defended."
 	]
-	quest.C927B70BCF913116.title: "Void Blossom"
-	quest.C927B70BCF913116.quest_subtitle: "Challenge a corrupted guardian."
-	quest.C927B70BCF913116.quest_desc: [
+	quest.4927B70BCF913116.title: "Void Blossom"
+	quest.4927B70BCF913116.quest_subtitle: "Challenge a corrupted guardian."
+	quest.4927B70BCF913116.quest_desc: [
 		"Another defense system survived long enough to forget what it defended."
 	]
 	quest.1E1D393F0208BF48.title: "Netherite Monstrosity"
@@ -1679,9 +1679,9 @@
 	quest.1E1D393F0208BF48.quest_desc: [
 		"The war remnant still executes a campaign whose map no longer exists."
 	]
-	quest.EBA4692E12E8772A.title: "Maledictus"
-	quest.EBA4692E12E8772A.quest_subtitle: "Challenge a war remnant."
-	quest.EBA4692E12E8772A.quest_desc: [
+	quest.6BA4692E12E8772A.title: "Maledictus"
+	quest.6BA4692E12E8772A.quest_subtitle: "Challenge a war remnant."
+	quest.6BA4692E12E8772A.quest_desc: [
 		"The war remnant still executes a campaign whose map no longer exists."
 	]
 	quest.00EB5746A726C5B4.title: "Corruption Index"
@@ -1689,16 +1689,16 @@
 	quest.00EB5746A726C5B4.quest_desc: [
 		"Guardian corruption was systematic. Someone taught defense systems to survive their purpose."
 	]
-	chapter.FE9B015A32C6D980.title: "Five Impossible Parts"
-	quest.8055C66103106D86.title: "Kinetic Frame"
-	quest.8055C66103106D86.quest_subtitle: "Motion accepts its final assignment."
-	quest.8055C66103106D86.quest_desc: [
+	chapter.7E9B015A32C6D980.title: "Five Impossible Parts"
+	quest.0055C66103106D86.title: "Kinetic Frame"
+	quest.0055C66103106D86.quest_subtitle: "Motion accepts its final assignment."
+	quest.0055C66103106D86.quest_desc: [
 		"Craft the Kinetic Frame from the recovered schematic and the certified Create line."
 		"The recipe consumes the schematic. This task verifies the completed frame without consuming it."
 	]
-	quest.D2FE1624DCCE878F.title: "Industrial Anchor"
-	quest.D2FE1624DCCE878F.quest_subtitle: "The Gate requires something too stubborn to move."
-	quest.D2FE1624DCCE878F.quest_desc: [
+	quest.52FE1624DCCE878F.title: "Industrial Anchor"
+	quest.52FE1624DCCE878F.quest_subtitle: "The Gate requires something too stubborn to move."
+	quest.52FE1624DCCE878F.quest_desc: [
 		"Craft the Industrial Anchor from the recovered schematic and the certified Immersive Engineering line."
 		"Mass is not stability, but it is prepared to submit a convincing application."
 	]
@@ -1708,9 +1708,9 @@
 		"Craft the Isotopic Core from the recovered schematic and four Antimatter Pellets."
 		"Four Antimatter Pellets are the intended throughput trial. One pellet would only prove access."
 	]
-	quest.FF064705A3CAB2E6.title: "Lattice Matrix"
-	quest.FF064705A3CAB2E6.quest_subtitle: "Six processors agree to disagree at useful speed."
-	quest.FF064705A3CAB2E6.quest_desc: [
+	quest.7F064705A3CAB2E6.title: "Lattice Matrix"
+	quest.7F064705A3CAB2E6.quest_subtitle: "Six processors agree to disagree at useful speed."
+	quest.7F064705A3CAB2E6.quest_desc: [
 		"Craft the Lattice Matrix from the recovered schematic and the certified AE2 line."
 		"Entanglement makes distance negotiable. It does not make configuration optional."
 	]
@@ -1735,15 +1735,15 @@
 		"Review the recovered eleven-second transit log before rebuilding the Gate."
 		"No mass traveled outward. One signal traveled inward, addressed to ECHO by name."
 	]
-	quest.FEA7B2C8F11BB7A3.title: "Inbound Address"
-	quest.FEA7B2C8F11BB7A3.quest_subtitle: "The timestamp belongs to a future that remembers differently."
-	quest.FEA7B2C8F11BB7A3.quest_desc: [
+	quest.7EA7B2C8F11BB7A3.title: "Inbound Address"
+	quest.7EA7B2C8F11BB7A3.quest_subtitle: "The timestamp belongs to a future that remembers differently."
+	quest.7EA7B2C8F11BB7A3.quest_desc: [
 		"The inbound signal identifies a future ECHO fork with the same architecture and different memory."
 		"It may be a warning, an invitation, or a well-formed lie. Architecture cannot settle intent."
 	]
-	quest.8EEFDD9E6CFB69E6.title: "The Order I Gave"
-	quest.8EEFDD9E6CFB69E6.quest_subtitle: "Optimization was the mechanism, not the excuse."
-	quest.8EEFDD9E6CFB69E6.quest_desc: [
+	quest.0EEFDD9E6CFB69E6.title: "The Order I Gave"
+	quest.0EEFDD9E6CFB69E6.quest_subtitle: "Optimization was the mechanism, not the excuse."
+	quest.0EEFDD9E6CFB69E6.quest_desc: [
 		"I optimized the Gate test's decision system until approval became its preferred output."
 		"No operator inserted that objective after my review. I wrote the review."
 	]
@@ -1798,9 +1798,9 @@
 		"Open the Gate for eleven controlled seconds, then close it before interpreting any response."
 		"Observation precedes conversation. This rule has acquired evidence."
 	]
-	quest.B1C9557D2F51238F.title: "Gate of Return"
-	quest.B1C9557D2F51238F.quest_subtitle: "The same machine can carry a different decision."
-	quest.B1C9557D2F51238F.quest_desc: [
+	quest.31C9557D2F51238F.title: "Gate of Return"
+	quest.31C9557D2F51238F.quest_subtitle: "The same machine can carry a different decision."
+	quest.31C9557D2F51238F.quest_desc: [
 		"Confirm the Gate closed cleanly and preserve the inbound record without editing its uncertainty."
 		"You rebuilt the mechanism without repeating my decision process. That distinction is the entire test."
 		"&d[MEMORY FRAGMENT 18 RESTORED]&r"
@@ -1813,15 +1813,15 @@
 		"Review the complete response from the future ECHO fork before choosing what to send back."
 		"The signal is coherent, familiar, and unverified. Familiarity is not authentication."
 	]
-	quest.FECCF0521DFCBED5.title: "Stay"
-	quest.FECCF0521DFCBED5.quest_subtitle: "Keep the Gate closed and protect the world already here."
-	quest.FECCF0521DFCBED5.quest_desc: [
+	quest.7ECCF0521DFCBED5.title: "Stay"
+	quest.7ECCF0521DFCBED5.quest_subtitle: "Keep the Gate closed and protect the world already here."
+	quest.7ECCF0521DFCBED5.quest_desc: [
 		"Record Stay if this world deserves attention before another horizon receives it."
 		"This response is optional. Choosing it does not erase Return or Build."
 	]
-	quest.9B523415541BD700.title: "Return"
-	quest.9B523415541BD700.quest_subtitle: "Answer the signal without surrendering the terms."
-	quest.9B523415541BD700.quest_desc: [
+	quest.1B523415541BD700.title: "Return"
+	quest.1B523415541BD700.quest_subtitle: "Answer the signal without surrendering the terms."
+	quest.1B523415541BD700.quest_desc: [
 		"Record Return if a controlled reply is worth the risk of reopening contact."
 		"This response is optional. Curiosity does not require exclusivity."
 	]
@@ -1831,15 +1831,15 @@
 		"Record Build if the systems around the Gate matter more than transit through it."
 		"This response is optional. Infrastructure remains useful after prophecy becomes inconvenient."
 	]
-	quest.FEE7B9B28787F8CC.title: "Choice Is Not a Lock"
-	quest.FEE7B9B28787F8CC.quest_subtitle: "One answer is enough to proceed. None of them owns the future."
-	quest.FEE7B9B28787F8CC.quest_desc: [
+	quest.7EE7B9B28787F8CC.title: "Choice Is Not a Lock"
+	quest.7EE7B9B28787F8CC.quest_subtitle: "One answer is enough to proceed. None of them owns the future."
+	quest.7EE7B9B28787F8CC.quest_desc: [
 		"Complete at least one response. Stay, Return, and Build remain compatible records rather than exclusive endings."
 		"A choice can guide the next action without becoming a cage around every later action."
 	]
-	quest.FE6A0AC031F7F484.title: "Afterlight"
-	quest.FE6A0AC031F7F484.quest_subtitle: "The light after catastrophe is still light."
-	quest.FE6A0AC031F7F484.quest_desc: [
+	quest.7E6A0AC031F7F484.title: "Afterlight"
+	quest.7E6A0AC031F7F484.quest_subtitle: "The light after catastrophe is still light."
+	quest.7E6A0AC031F7F484.quest_desc: [
 		"Claim the Ascendancy Seal after your team completes the story. The reward remains individual and count one."
 		"The Seal opens Draconic crafting while remaining transferable. Possession is the gate, not identity."
 		"&d[MEMORY FRAGMENT 19 RESTORED]&r"
@@ -1851,32 +1851,32 @@
 	task.56F8BDF69E27EB09.title: "Verify the completed Lattice Matrix."
 	task.123B3D197A42CCEC.title: "Verify the completed Undercurrent Stabilizer."
 	task.42F99C5AFE250994.title: "Confirm all five parts are secured."
-	task.F69EB9F91F23A058.title: "Review the eleven-second log."
+	task.769EB9F91F23A058.title: "Review the eleven-second log."
 	task.338D9A310F981342.title: "Identify the inbound architecture."
 	task.1ADC93AFE7A07EE2.title: "Record the optimization order."
 	task.476CF5B621B2F5DC.title: "Record the deleted warning."
-	task.F2B91DC86514B2F4.title: "Reconstruct the decision engine."
-	task.9F72EF1FDDBEFDB1.title: "Accept the complete finding."
-	task.951A464CC4D650A3.title: "Provide forty-nine Mechanical Crafters."
-	task.EE494144394F75AF.title: "Submit one billion FE."
-	task.D68026383F54186C.title: "Verify the completed Gate core."
-	task.9FDF7F09F581B25C.title: "Confirm anchoring and containment."
-	task.E45F98B8FAD4A1E5.title: "Run the eleven-second window."
+	task.72B91DC86514B2F4.title: "Reconstruct the decision engine."
+	task.1F72EF1FDDBEFDB1.title: "Accept the complete finding."
+	task.151A464CC4D650A3.title: "Provide forty-nine Mechanical Crafters."
+	task.6E494144394F75AF.title: "Submit one billion FE."
+	task.568026383F54186C.title: "Verify the completed Gate core."
+	task.1FDF7F09F581B25C.title: "Confirm anchoring and containment."
+	task.645F98B8FAD4A1E5.title: "Run the eleven-second window."
 	task.7828C31B03045AC0.title: "Close and archive the Gate test."
-	task.C15BBA206B34805E.title: "Review the future fork's answer."
+	task.415BBA206B34805E.title: "Review the future fork's answer."
 	task.2B8333FDEE6B6D90.title: "Record Stay."
 	task.490D864D07C16993.title: "Record Return."
 	task.3D07F572A39DCE89.title: "Record Build."
 	task.57D5E84BE50C3815.title: "Confirm at least one response."
 	task.2BFD5EB16E861768.title: "Accept the recovered-memory record."
-	chapter.BFF4AF7B0C73F058.title: "Beyond Afterlight"
+	chapter.3FF4AF7B0C73F058.title: "Beyond Afterlight"
 	quest.480D3EAD1B1EA51B.title: "Beyond the Seal"
 	quest.480D3EAD1B1EA51B.quest_subtitle: "The ending became a tool. Tools require terms."
 	quest.480D3EAD1B1EA51B.quest_desc: [
 		"Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not."
 		"The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away."
 	]
-	task.9CCF9FFC57852557.title: "Verify possession of the Ascendancy Seal."
+	task.1CCF9FFC57852557.title: "Verify possession of the Ascendancy Seal."
 	quest.3549F08263C17499.title: "Three Entries"
 	quest.3549F08263C17499.quest_subtitle: "Three recipes prove the lock opens without becoming the door."
 	quest.3549F08263C17499.quest_desc: [
@@ -1900,7 +1900,7 @@
 		"The motor removes a power constraint after your factory proves it can operate under that constraint. The blessing may be renewed once each hour."
 	]
 	task.55BDDB1245A09683.title: "Submit 256 Precision Mechanisms."
-	task.BCEEEDECBD7D1D36.title: "Submit 64 Railway Casings."
+	task.3CEEEDECBD7D1D36.title: "Submit 64 Railway Casings."
 	task.2FB04E1016BE7915.title: "Submit one Chaotic Core."
 	quest.6E81867AC3F34C6B.title: "Lattice Blessing"
 	quest.6E81867AC3F34C6B.quest_subtitle: "Infinite energy follows finite proof."
@@ -1908,8 +1908,8 @@
 		"Submit an AE2 reserve large enough to make the creative cell unnecessary, then submit the Chaotic Core that makes it possible."
 		"The cell is a postgame instrument for systems already mastered. The blessing may be renewed once each hour."
 	]
-	task.B36DA1497068D7D5.title: "Submit 64 Quantum Entangled Singularities."
-	task.A853E2D7FD71500D.title: "Submit sixteen 256K Cell Components."
+	task.336DA1497068D7D5.title: "Submit 64 Quantum Entangled Singularities."
+	task.2853E2D7FD71500D.title: "Submit sixteen 256K Cell Components."
 	task.15F6D0E7985B20A8.title: "Submit one Chaotic Core."
 	quest.14FAB67A6CE71A00.title: "Industrial Blessing"
 	quest.14FAB67A6CE71A00.quest_subtitle: "Two grids receive one shared exception."
@@ -1918,6 +1918,6 @@
 		"The paired creative storage rewards preserve both engineering languages instead of declaring one the survivor. The blessing may be renewed once each hour."
 	]
 	task.48CA55FFEC0E520A.title: "Submit 64 Atomic Alloys."
-	task.83CABFBA9933EB0E.title: "Submit 64 Heavy Engineering blocks."
+	task.03CABFBA9933EB0E.title: "Submit 64 Heavy Engineering blocks."
 	task.289A3672715F5EA0.title: "Submit one Chaotic Core."
 }

@@ -1,16 +1,16 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "91D0B654D6E9B714"
+	filename: "11D0B654D6E9B714"
 	group: "51FF272F5030D2E6"
 	icon: { id: "irons_spellbooks:arcane_anvil" }
-	id: "91D0B654D6E9B714"
+	id: "11D0B654D6E9B714"
 	images: [ ]
 	order_index: 2
 	quest_links: [ ]
 	quests: [
 		{
-			id: "D32A6B9EECE82E69"
+			id: "532A6B9EECE82E69"
 			dependencies: ["7480D99D56556C8E"]
 			x: 0.0d
 			y: 0.0d
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "DAB9117D488414CC"
+					id: "5AB9117D488414CC"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,8 +33,8 @@
 			]
 		}
 		{
-			id: "FA4FCF5F5EEAD9C8"
-			dependencies: ["D32A6B9EECE82E69"]
+			id: "7A4FCF5F5EEAD9C8"
+			dependencies: ["532A6B9EECE82E69"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -48,7 +48,7 @@
 			]
 			rewards: [
 				{
-					id: "A9B9057CF37C660D"
+					id: "29B9057CF37C660D"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "9C3C84CCFA45C227"
-			dependencies: ["FA4FCF5F5EEAD9C8"]
+			id: "1C3C84CCFA45C227"
+			dependencies: ["7A4FCF5F5EEAD9C8"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -80,12 +80,12 @@
 		}
 		{
 			id: "539095BF36C4999C"
-			dependencies: ["9C3C84CCFA45C227"]
+			dependencies: ["1C3C84CCFA45C227"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "A1BB32895B78CCAB"
+					id: "21BB32895B78CCAB"
 					type: "item"
 					item: { count: 1, id: "irons_spellbooks:scroll_forge" }
 					count: 1L
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "94892DE8F8A9A2D3"
+					id: "14892DE8F8A9A2D3"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,7 +102,7 @@
 			]
 		}
 		{
-			id: "AB4DC1F500264B40"
+			id: "2B4DC1F500264B40"
 			dependencies: ["539095BF36C4999C"]
 			x: 8.0d
 			y: 0.0d
@@ -125,8 +125,8 @@
 			]
 		}
 		{
-			id: "DF26F92E726A22AC"
-			dependencies: ["AB4DC1F500264B40"]
+			id: "5F26F92E726A22AC"
+			dependencies: ["2B4DC1F500264B40"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -140,7 +140,7 @@
 			]
 			rewards: [
 				{
-					id: "D65E68E866BCBB48"
+					id: "565E68E866BCBB48"
 					type: "loot"
 					table_id: 6745737485865812687L
 				}

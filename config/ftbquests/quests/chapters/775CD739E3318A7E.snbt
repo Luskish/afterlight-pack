@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "775CD739E3318A7E"
-	group: "CA20F33642175B95"
+	group: "4A20F33642175B95"
 	icon: { id: "ae2:pattern_provider" }
 	id: "775CD739E3318A7E"
 	images: [ ]
@@ -11,12 +11,12 @@
 	quests: [
 		{
 			id: "3011977E372A3BC6"
-			dependencies: ["95746440BEE5E5A7", "B107D8813D59B2FF"]
+			dependencies: ["15746440BEE5E5A7", "3107D8813D59B2FF"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E619ACA39FDC49DB"
+					id: "6619ACA39FDC49DB"
 					type: "item"
 					item: { count: 1, id: "ae2:pattern_provider" }
 					count: 1L
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "A76C32F99A132535"
+					id: "276C32F99A132535"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,7 +33,7 @@
 			]
 		}
 		{
-			id: "A86A4CEE8655F1C7"
+			id: "286A4CEE8655F1C7"
 			dependencies: ["3011977E372A3BC6"]
 			x: 2.0d
 			y: 0.0d
@@ -48,7 +48,7 @@
 			]
 			rewards: [
 				{
-					id: "977E03A063123081"
+					id: "177E03A063123081"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "F84F7B6D01B73C00"
-			dependencies: ["A86A4CEE8655F1C7"]
+			id: "784F7B6D01B73C00"
+			dependencies: ["286A4CEE8655F1C7"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -79,13 +79,13 @@
 			]
 		}
 		{
-			id: "EF08C63EA2CCD60A"
-			dependencies: ["F84F7B6D01B73C00"]
+			id: "6F08C63EA2CCD60A"
+			dependencies: ["784F7B6D01B73C00"]
 			x: 6.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "97A7289ADAEB5BE8"
+					id: "17A7289ADAEB5BE8"
 					type: "item"
 					item: { count: 1, id: "ae2:crafting_pattern" }
 					count: 16L
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "AE6EFB96C51BA15B"
+					id: "2E6EFB96C51BA15B"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,8 +102,8 @@
 			]
 		}
 		{
-			id: "83220200E8B9DBF4"
-			dependencies: ["EF08C63EA2CCD60A"]
+			id: "03220200E8B9DBF4"
+			dependencies: ["6F08C63EA2CCD60A"]
 			x: 8.0d
 			y: -1.0d
 			tasks: [
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "42EE25F560AE65CD"
-			dependencies: ["83220200E8B9DBF4"]
+			dependencies: ["03220200E8B9DBF4"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -143,7 +143,7 @@
 					count: 10
 				}
 				{
-					id: "A91104F01C9FD978"
+					id: "291104F01C9FD978"
 					type: "xp"
 					xp: 300
 				}

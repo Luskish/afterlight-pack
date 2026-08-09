@@ -1,10 +1,10 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "E5C7EC00C7DC1038"
+	filename: "65C7EC00C7DC1038"
 	group: "51FF272F5030D2E6"
 	icon: { id: "ars_nouveau:source_gem" }
-	id: "E5C7EC00C7DC1038"
+	id: "65C7EC00C7DC1038"
 	images: [ ]
 	order_index: 0
 	quest_links: [ ]
@@ -14,7 +14,7 @@
 			x: 0.0d
 			y: 0.0d
 			tasks: [
-				{ id: "C9BEABF3BA054BBC"
+				{ id: "49BEABF3BA054BBC"
 				type: "item"
 				item: { count: 1, id: "ars_nouveau:worn_notebook" }
 				count: 1L
@@ -28,12 +28,12 @@
 			]
 		}
 		{
-			id: "CCAA052A2178377C"
+			id: "4CAA052A2178377C"
 			dependencies: ["6546BA910285D6EB"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
-				{ id: "9F682DF9B967D698"
+				{ id: "1F682DF9B967D698"
 				type: "item"
 				item: { count: 1, id: "ars_nouveau:novice_spell_book" }
 				count: 1L
@@ -51,7 +51,7 @@
 		}
 		{
 			id: "5DA50309DBF9D019"
-			dependencies: ["CCAA052A2178377C"]
+			dependencies: ["4CAA052A2178377C"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
@@ -62,26 +62,26 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "FE84D5E966008753"
+				{ id: "7E84D5E966008753"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
 			]
 		}
 		{
-			id: "8133A61DB9FB84AC"
-			dependencies: ["CCAA052A2178377C"]
+			id: "0133A61DB9FB84AC"
+			dependencies: ["4CAA052A2178377C"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
-				{ id: "BCA55474DDE56684"
+				{ id: "3CA55474DDE56684"
 				type: "item"
 				item: { count: 1, id: "ars_nouveau:imbuement_chamber" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "AD3CAD167EE92E5C"
+				{ id: "2D3CAD167EE92E5C"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
@@ -89,7 +89,7 @@
 		}
 		{
 			id: "7480D99D56556C8E"
-			dependencies: ["5DA50309DBF9D019", "8133A61DB9FB84AC"]
+			dependencies: ["5DA50309DBF9D019", "0133A61DB9FB84AC"]
 			x: 6.0d
 			y: 0.0d
 			shape: "hexagon"
@@ -102,14 +102,14 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "C4F49A038502165F"
+				{ id: "44F49A038502165F"
 				type: "loot"
-				table_id: -7824471455364680287L }
-				{ id: "D2F066475C5C3E35"
+				table_id: 1398900581490095521L }
+				{ id: "52F066475C5C3E35"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }
 				count: 10 }
-				{ id: "87DF472E96A4D844"
+				{ id: "07DF472E96A4D844"
 				type: "xp"
 				xp: 150 }
 			]

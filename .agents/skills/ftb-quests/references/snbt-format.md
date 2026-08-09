@@ -51,7 +51,7 @@ my_list: [
 ```snbt
 quests: [
 	{
-		id: "ABC123DEF4567890"
+		id: "2BC123DEF4567890"
 		type: "item"
 	}
 	{
@@ -63,10 +63,11 @@ quests: [
 
 ## ID Format
 
-All FTB Quests IDs are **16-character uppercase hexadecimal strings** using ONLY characters `0-9` and `A-F`:
+All FTB Quests IDs are **16-character uppercase hexadecimal strings** using only characters `0-9` and `A-F`. For FTB Quests 2101.1.30, the first character must be `0` through `7` because string IDs are parsed as signed Java longs:
 ```
 7942A6A571A4C5EB    ← VALID
 58920EE9A298549B    ← VALID
+C942A6A571A4C5EB    ← INVALID (high bit set; silently replaced on load)
 C1D2E3F4G5H6C7D8   ← INVALID (contains G and H)
 ```
 

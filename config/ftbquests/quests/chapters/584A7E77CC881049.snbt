@@ -11,7 +11,7 @@
 	quests: [
 		{
 			id: "4D41BE537DD35854"
-			dependencies: ["F199A16DB5D83154"]
+			dependencies: ["7199A16DB5D83154"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "AD39B2A11D9C8EC9"
+					id: "2D39B2A11D9C8EC9"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "ABD4830EE305402B"
+			id: "2BD4830EE305402B"
 			dependencies: ["4D41BE537DD35854"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E8DCA895C8D2568D"
+					id: "68DCA895C8D2568D"
 					type: "item"
 					item: { count: 1, id: "pneumaticcraft:pressure_chamber_wall" }
 					count: 24L
@@ -48,7 +48,7 @@
 			]
 			rewards: [
 				{
-					id: "D1D2EE10ABFE583B"
+					id: "51D2EE10ABFE583B"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -57,12 +57,12 @@
 		}
 		{
 			id: "222E4484F8B79FFC"
-			dependencies: ["ABD4830EE305402B"]
+			dependencies: ["2BD4830EE305402B"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "9BAAD2BEF727856C"
+					id: "1BAAD2BEF727856C"
 					type: "item"
 					item: { count: 1, id: "pneumaticcraft:ingot_iron_compressed" }
 					count: 32L
@@ -79,7 +79,7 @@
 			]
 		}
 		{
-			id: "C6498F948F091463"
+			id: "46498F948F091463"
 			dependencies: ["222E4484F8B79FFC"]
 			x: 6.0d
 			y: -1.0d
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "C06FE8FB22371394"
+					id: "406FE8FB22371394"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,13 +102,13 @@
 			]
 		}
 		{
-			id: "DC4E3C4A5AD4EFA6"
+			id: "5C4E3C4A5AD4EFA6"
 			dependencies: ["222E4484F8B79FFC"]
 			x: 6.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "9B0790FB9ACC4B54"
+					id: "1B0790FB9ACC4B54"
 					type: "item"
 					item: { count: 1, id: "pneumaticcraft:etching_acid_bucket" }
 					count: 1L
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "E2968B51B9F73734"
+					id: "62968B51B9F73734"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "6BF38621204B70B0"
-			dependencies: ["C6498F948F091463", "DC4E3C4A5AD4EFA6"]
+			dependencies: ["46498F948F091463", "5C4E3C4A5AD4EFA6"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
@@ -140,7 +140,7 @@
 			]
 			rewards: [
 				{
-					id: "E28DE9689CE9AC57"
+					id: "628DE9689CE9AC57"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -148,13 +148,13 @@
 			]
 		}
 		{
-			id: "E4CFABA3EB6E9B4D"
+			id: "64CFABA3EB6E9B4D"
 			dependencies: ["6BF38621204B70B0"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "B0B684E3A89AD426"
+					id: "30B684E3A89AD426"
 					type: "item"
 					item: { count: 1, id: "pneumaticcraft:programmer" }
 					count: 1L
@@ -163,7 +163,7 @@
 			]
 			rewards: [
 				{
-					id: "FC3175E67212579A"
+					id: "7C3175E67212579A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -172,12 +172,12 @@
 		}
 		{
 			id: "53C65BE4DB17F1B9"
-			dependencies: ["E4CFABA3EB6E9B4D"]
+			dependencies: ["64CFABA3EB6E9B4D"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "AF3F97DCB7B971AD"
+					id: "2F3F97DCB7B971AD"
 					type: "item"
 					item: { count: 1, id: "pneumaticcraft:logistics_drone" }
 					count: 2L
@@ -186,7 +186,7 @@
 			]
 			rewards: [
 				{
-					id: "C3F84D82E1D9B319"
+					id: "43F84D82E1D9B319"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -194,7 +194,7 @@
 			]
 		}
 		{
-			id: "D91C65D0AC3AABA7"
+			id: "591C65D0AC3AABA7"
 			dependencies: ["53C65BE4DB17F1B9"]
 			x: 14.0d
 			y: 0.0d
@@ -209,9 +209,9 @@
 			]
 			rewards: [
 				{
-					id: "8E2F8BB68E411C35"
+					id: "0E2F8BB68E411C35"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "52D3D7436F7DC33F"

@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "16E0B20162F6DAE5"
-	group: "CA20F33642175B95"
+	group: "4A20F33642175B95"
 	icon: { id: "mekanism:enrichment_chamber" }
 	id: "16E0B20162F6DAE5"
 	images: [ ]
@@ -10,8 +10,8 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "9AE92DE8CA81283E"
-			dependencies: ["DA407B47132C07C6", "B107D8813D59B2FF"]
+			id: "1AE92DE8CA81283E"
+			dependencies: ["5A407B47132C07C6", "3107D8813D59B2FF"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "B1E6422F1649715F"
+					id: "31E6422F1649715F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,7 +34,7 @@
 		}
 		{
 			id: "325B8D7EEA0D7D7E"
-			dependencies: ["9AE92DE8CA81283E"]
+			dependencies: ["1AE92DE8CA81283E"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "F07C532F4D9E5D80"
+					id: "707C532F4D9E5D80"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -116,7 +116,7 @@
 			]
 			rewards: [
 				{
-					id: "D82094B7A3327256"
+					id: "582094B7A3327256"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -130,7 +130,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "83EDA6E84C30FCEE"
+					id: "03EDA6E84C30FCEE"
 					type: "item"
 					item: { count: 1, id: "mekanism:block_osmium" }
 					count: 32L
@@ -145,7 +145,7 @@
 					count: 10
 				}
 				{
-					id: "88FFA0E0EE319CB8"
+					id: "08FFA0E0EE319CB8"
 					type: "xp"
 					xp: 300
 				}

@@ -1,10 +1,10 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "98471B3E458EAB62"
-	group: "CA20F33642175B95"
+	filename: "18471B3E458EAB62"
+	group: "4A20F33642175B95"
 	icon: { id: "immersiveengineering:conveyor_basic" }
-	id: "98471B3E458EAB62"
+	id: "18471B3E458EAB62"
 	images: [ ]
 	order_index: 4
 	quest_links: [ ]
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "C0005994D134257E"
+					id: "40005994D134257E"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -39,7 +39,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "8FBA3062FEC0B421"
+					id: "0FBA3062FEC0B421"
 					type: "item"
 					item: { count: 1, id: "mekanism:energized_smelter" }
 					count: 1L
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "C9F701E3BCB9BD88"
+					id: "49F701E3BCB9BD88"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "BA3AD5202B4B08B3"
+					id: "3A3AD5202B4B08B3"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -125,7 +125,7 @@
 			]
 		}
 		{
-			id: "E1F5D15817ED5EFD"
+			id: "61F5D15817ED5EFD"
 			dependencies: ["11B87D7ED3233F04"]
 			x: 10.0d
 			y: 0.0d
@@ -137,18 +137,18 @@
 			]
 			rewards: [
 				{
-					id: "A7F72DC527F8AD7F"
+					id: "27F72DC527F8AD7F"
 					type: "item"
 					item: { count: 10, id: "kubejs:requisition_chit" }
 					count: 10
 				}
 				{
-					id: "9F4537EAB2E779DF"
+					id: "1F4537EAB2E779DF"
 					type: "xp"
 					xp: 300
 				}
 				{
-					id: "DE9C1DE1D7FDE28B"
+					id: "5E9C1DE1D7FDE28B"
 					type: "gamestage"
 					stage: "afterlight_cert_cross_mod_i"
 				}

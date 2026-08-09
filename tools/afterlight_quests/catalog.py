@@ -13,37 +13,37 @@ from .builder import (
 
 
 STORY = GroupSpec("story", "The Story", "4525BB3160467FCB")
-CERTIFICATIONS = GroupSpec("certifications", "Certifications", "CA20F33642175B95")
+CERTIFICATIONS = GroupSpec("certifications", "Certifications", "4A20F33642175B95")
 UNDERCURRENT = GroupSpec("undercurrent", "The Undercurrent", "51FF272F5030D2E6")
 DEEP_VAULT = GroupSpec("deep-vault", "The Deep Vault", "4DEAD1F5F7AB4DA3")
 ATLAS = GroupSpec(
     "atlas",
     "Atlas of the Broken World",
-    "C8F8381D9519D002",
+    "48F8381D9519D002",
 )
 
-ASCENDANCY_CACHE_TABLE = SnbtLong.from_hex("9369E4AACBCDF5A1")
+ASCENDANCY_CACHE_TABLE = SnbtLong.from_hex("1369E4AACBCDF5A1")
 ASCENDANCY_CACHE_RARE_TABLE = SnbtLong.from_hex("5D9DAC80C11182CF")
-ASCENDANCY_CACHE_EPIC_TABLE = SnbtLong.from_hex("9A4FA21B1999BDD5")
+ASCENDANCY_CACHE_EPIC_TABLE = SnbtLong.from_hex("1A4FA21B1999BDD5")
 DEPOT_EARLY_TABLE = SnbtLong.from_hex("17E69C9CFEA907D4")
 DEPOT_MID_TABLE = SnbtLong.from_hex("182578C414DC8A45")
-DEPOT_LATE_TABLE = SnbtLong.from_hex("B99722D6E7EF5835")
-CHAPTER_FIVE_FINALE = "DA407B47132C07C6"
+DEPOT_LATE_TABLE = SnbtLong.from_hex("399722D6E7EF5835")
+CHAPTER_FIVE_FINALE = "5A407B47132C07C6"
 SCHEMATIC_FINALES = (
-    "90EDD2BED35BE9E3",
+    "10EDD2BED35BE9E3",
     "752C3E53CA89C92D",
-    "A1A99D99B372916F",
+    "21A99D99B372916F",
     "3497EFDF016FAFD7",
 )
 CERTIFICATION_FINALES = (
     "5ADAE277C9FEF0F1",
-    "B107D8813D59B2FF",
+    "3107D8813D59B2FF",
     "66CDE7B061D8DA5C",
     "42EE25F560AE65CD",
-    "E1F5D15817ED5EFD",
-    "FC9EA276C2D84333",
+    "61F5D15817ED5EFD",
+    "7C9EA276C2D84333",
 )
-INFRASTRUCTURE_FINALE = "E524EE78235F0942"
+INFRASTRUCTURE_FINALE = "6524EE78235F0942"
 
 
 def _item_reward(quest_slug: str, item_id: str, count: int, name: str) -> RewardSpec:
@@ -1058,7 +1058,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(kinetic, "Kinetic Frame", "Motion accepts its final assignment.", (
             "Craft the Kinetic Frame from the recovered schematic and the certified Create line.",
             "The recipe consumes the schematic. This task verifies the completed frame without consuming it.",
-        ), "kubejs:gate_kinetic_frame", 1, ("72446D404001B38D", "90EDD2BED35BE9E3"), 0.0, -2.0),
+        ), "kubejs:gate_kinetic_frame", 1, ("72446D404001B38D", "10EDD2BED35BE9E3"), 0.0, -2.0),
         _item_quest(industrial, "Industrial Anchor", "The Gate requires something too stubborn to move.", (
             "Craft the Industrial Anchor from the recovered schematic and the certified Immersive Engineering line.",
             "Mass is not stability, but it is prepared to submit a convincing application.",
@@ -1066,7 +1066,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(isotopic, "Isotopic Core", "Matter contributes its least reasonable state.", (
             "Craft the Isotopic Core from the recovered schematic and four Antimatter Pellets.",
             "Four Antimatter Pellets are the intended throughput trial. One pellet would only prove access.",
-        ), "kubejs:gate_isotopic_core", 1, ("72446D404001B38D", "A1A99D99B372916F"), 0.0, 0.0),
+        ), "kubejs:gate_isotopic_core", 1, ("72446D404001B38D", "21A99D99B372916F"), 0.0, 0.0),
         _item_quest(lattice, "Lattice Matrix", "Six processors agree to disagree at useful speed.", (
             "Craft the Lattice Matrix from the recovered schematic and the certified AE2 line.",
             "Entanglement makes distance negotiable. It does not make configuration optional.",
@@ -1074,7 +1074,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(stabilizer, "Undercurrent Stabilizer", "Choose one language for the same dangerous sentence.", (
             "Craft the Undercurrent Stabilizer through Occultism, Malum, or the Iron's Spells route using Magic Cloth.",
             "The precursor records resonance. The branch material teaches it how not to become an incident.",
-        ), "kubejs:undercurrent_stabilizer", 1, ("72446D404001B38D", "87338DE0FE8114CF"), 0.0, 2.0),
+        ), "kubejs:undercurrent_stabilizer", 1, ("72446D404001B38D", "07338DE0FE8114CF"), 0.0, 2.0),
         QuestSpec(
             slug=finale,
             title="Five Impossible Parts",
@@ -1244,7 +1244,7 @@ def _chapter_twenty() -> ChapterSpec:
         _task_quest(sky, "Answering Sky", "The future fork is listening. Listening is not authority.", (
             "Review the complete response from the future ECHO fork before choosing what to send back.",
             "The signal is coherent, familiar, and unverified. Familiarity is not authentication.",
-        ), "checkmark", {}, ("B1C9557D2F51238F",), 0.0, 0.0),
+        ), "checkmark", {}, ("31C9557D2F51238F",), 0.0, 0.0),
         QuestSpec(
             slug=stay,
             title="Stay",
@@ -1400,7 +1400,7 @@ def _postgame_beyond_afterlight() -> ChapterSpec:
             ),
             x=0.0,
             y=0.0,
-            dependencies=("FE6A0AC031F7F484",),
+            dependencies=("7E6A0AC031F7F484",),
             progression_mode="linear",
             tasks=(
                 item_task(
@@ -2202,7 +2202,7 @@ def _undercurrent_chapters() -> tuple[ChapterSpec, ...]:
 def _deep_vault_chapters() -> tuple[ChapterSpec, ...]:
     current = _linear_item_chapter(
         "deep-vault/01-current-below", "Current Below", DEEP_VAULT,
-        "modern_industrialization:assembler", 1, "F2CE68CEF727A313",
+        "modern_industrialization:assembler", 1, "72CE68CEF727A313",
         (
             ("analog-circuit", "Analog Logic", "Electricity enters the archive.", "The Vault begins electricity with logic large enough to inspect by hand.", (("modern_industrialization:analog_circuit", 16),)),
             ("basic-hulls", "Basic Hulls", "Give the current a chassis.", "Four housings establish a repeatable machine standard.", (("modern_industrialization:basic_machine_hull", 4),)),
@@ -2276,7 +2276,7 @@ def _atlas_chapters() -> tuple[ChapterSpec, ...]:
         courts_slug, "Courts Above and Beyond", ATLAS,
         "twilightforest:twilight_scepter", 1,
         (
-            _side_task_quest(two_skies, "Two Skies", "Map both upper courts.", "Two skies, two legal systems, and neither recognizes our credentials.", (("dimension", {"dimension": "twilightforest:twilight_forest"}), ("dimension", {"dimension": "aether:the_aether"})), ("4B24516D89E13CFF", "87475C3BA1A4143F"), 0.0, 0.0),
+            _side_task_quest(two_skies, "Two Skies", "Map both upper courts.", "Two skies, two legal systems, and neither recognizes our credentials.", (("dimension", {"dimension": "twilightforest:twilight_forest"}), ("dimension", {"dimension": "aether:the_aether"})), ("4B24516D89E13CFF", "07475C3BA1A4143F"), 0.0, 0.0),
             _side_task_quest(naga, "The Coiled Court", "Challenge the first throne.", "The serpent guards a court that forgot its citizens.", (advancement("twilightforest:progress_naga"),), (two_skies,), 2.0, -2.0),
             _side_task_quest(lich, "The Dead Court", "Remove the second claimant.", "The lich kept authority after life stopped supporting the claim.", (advancement("twilightforest:progress_lich"),), (naga,), 4.0, -2.0),
             _side_task_quest(hydra, "The Many-Headed Court", "One verdict, several mouths.", "The hydra treats redundancy as sovereignty.", (advancement("twilightforest:progress_hydra"),), (lich,), 6.0, -2.0),
@@ -2297,7 +2297,7 @@ def _atlas_chapters() -> tuple[ChapterSpec, ...]:
     root = ChapterSpec(
         root_slug, "Root and Echo", ATLAS, "undergarden:forgotten_ingot", 2,
         (
-            _side_task_quest(below, "Two Depths", "Descend into root and echo.", "The Cascade reached downward by two routes and apologized by neither.", (("dimension", {"dimension": "undergarden:undergarden"}), ("dimension", {"dimension": "deeperdarker:otherside"})), ("3196EE02D5C5B413", "A21D817C56D680CA"), 0.0, 0.0),
+            _side_task_quest(below, "Two Depths", "Descend into root and echo.", "The Cascade reached downward by two routes and apologized by neither.", (("dimension", {"dimension": "undergarden:undergarden"}), ("dimension", {"dimension": "deeperdarker:otherside"})), ("3196EE02D5C5B413", "221D817C56D680CA"), 0.0, 0.0),
             _side_task_quest(catacombs, "Root Catacombs", "Find the buried complex.", "The catacombs grew around their occupants rather than above them.", (("structure", {"structure": "undergarden:catacombs"}),), (below,), 2.0, -1.5),
             _side_task_quest(guardian, "Forgotten Guardian", "Close the root protocol.", "The guardian remembers its duty and nothing about who assigned it.", (("kill", {"entity": "undergarden:forgotten_guardian", "value": SnbtLong(1)}),), (catacombs,), 4.0, -1.5),
             _side_task_quest(temple, "Ancient Temple", "Trace the echo to its source.", "The temple amplifies a signal no living architect signed.", (("structure", {"structure": "deeperdarker:ancient_temple"}),), (below,), 2.0, 1.5),

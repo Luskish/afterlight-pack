@@ -6,7 +6,7 @@ then retire; hand-edit the SNBT afterward.
 """
 import os, io
 
-from afterlight_quests import SnbtLong
+from afterlight_quests import SnbtLong, ftb_safe_id
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 STORY_GROUP = '4525BB3160467FCB'
@@ -17,7 +17,7 @@ _used = set()
 
 def hid():
     while True:
-        i = os.urandom(8).hex().upper()
+        i = ftb_safe_id(os.urandom(8).hex().upper())
         if i not in _used:
             _used.add(i)
             return i

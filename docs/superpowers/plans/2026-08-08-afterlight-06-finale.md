@@ -191,7 +191,7 @@ The live assertions call `recipe.matches(input, level)`, `recipe.assemble(input,
 - Modify generated state: `pack.toml`, `index.toml`
 
 **Interfaces:**
-- Consumes: existing schematic finale IDs `90EDD2BED35BE9E3`, `752C3E53CA89C92D`, `A1A99D99B372916F`, `3497EFDF016FAFD7`; certification finale IDs `5ADAE277C9FEF0F1`, `B107D8813D59B2FF`, `66CDE7B061D8DA5C`, `42EE25F560AE65CD`, `E1F5D15817ED5EFD`, `FC9EA276C2D84333`; Infrastructure II finale `E524EE78235F0942`.
+- Consumes: existing schematic finale IDs `10EDD2BED35BE9E3`, `752C3E53CA89C92D`, `21A99D99B372916F`, `3497EFDF016FAFD7`; certification finale IDs `5ADAE277C9FEF0F1`, `3107D8813D59B2FF`, `66CDE7B061D8DA5C`, `42EE25F560AE65CD`, `61F5D15817ED5EFD`, `7C9EA276C2D84333`; Infrastructure II finale `6524EE78235F0942`.
 - Produces: registered and allowlisted items `GATE_KINETIC`, `GATE_INDUSTRIAL`, `GATE_ISOTOPIC`, `GATE_LATTICE`, `STABILIZER`, and `GATE_CORE` on `AFTERLIGHT`; maximum-stack-one `AFTERLIGHT.SEAL`; `QuestSpec.progression_mode: str | None` with accepted values `linear` and `flexible`; stage-free authoritative quest dependencies for Task 3.
 - Does not produce: component, stabilizer, Gate core, or Draconic recipes. Task 2 owns every recipe.
 
@@ -216,12 +216,12 @@ Apply this exact graph without changing existing chapter or quest IDs:
 | Quest | Dependencies | Tasks |
 |---|---|---|
 | Infrastructure II `7CB2D7D361BEA4C4` | the six certification finale IDs listed in Interfaces | one checkmark, slug `/task/checkmark`, ID `74AB10F5C91F1022` |
-| Chapter 16 Four Keys `F1B2919DF12C6845` | exact unique tuple `90EDD2BED35BE9E3`, `752C3E53CA89C92D`, `A1A99D99B372916F`, `3497EFDF016FAFD7`; the last ID is also the Chapter 15 finale and must not be duplicated | `kubejs:schematic_kinetic_frame` x1, slug `/task/create`, ID `BA12D2169F1CB1B8`; `kubejs:schematic_industrial_anchor` x1, slug `/task/ie`, ID `F4435064B9C0A86F`; `kubejs:schematic_isotopic_core` x1, slug `/task/mekanism`, ID `830D638C9452FB47`; `kubejs:schematic_lattice_matrix` x1, slug `/task/ae2`, ID `23F46A9140462F95`. Every task sets `consume_items=false` |
-| Chapter 16 Certified Bulk Quotas `AD6ACF1CCBC7B4F2` | assembler `8CE6F6160F721A8A`, fusion `98EABED18B5B2ECF`, all six certification finales, Infrastructure II finale `E524EE78235F0942` | one checkmark, slug `/task/checkmark`, ID `BBFA32444B48A6A0` |
+| Chapter 16 Four Keys `71B2919DF12C6845` | exact unique tuple `10EDD2BED35BE9E3`, `752C3E53CA89C92D`, `21A99D99B372916F`, `3497EFDF016FAFD7`; the last ID is also the Chapter 15 finale and must not be duplicated | `kubejs:schematic_kinetic_frame` x1, slug `/task/create`, ID `3A12D2169F1CB1B8`; `kubejs:schematic_industrial_anchor` x1, slug `/task/ie`, ID `74435064B9C0A86F`; `kubejs:schematic_isotopic_core` x1, slug `/task/mekanism`, ID `030D638C9452FB47`; `kubejs:schematic_lattice_matrix` x1, slug `/task/ae2`, ID `23F46A9140462F95`. Every task sets `consume_items=false` |
+| Chapter 16 Certified Bulk Quotas `2D6ACF1CCBC7B4F2` | assembler `0CE6F6160F721A8A`, fusion `18EABED18B5B2ECF`, all six certification finales, Infrastructure II finale `6524EE78235F0942` | one checkmark, slug `/task/checkmark`, ID `3BFA32444B48A6A0` |
 
 Delete every `gamestage` task from these three quests. Keep their existing rewards. Do not add `team_reward` or `team_stage`. This conversion changes the corpus from 307 to 296 tasks while keeping 41 chapters, 283 quests, 393 rewards, and six reward tables.
 
-Add `progression_mode: str | None = None` to `QuestSpec`, reject values outside `linear` and `flexible`, and render the field only when set. Set every quest in Infrastructure II and Chapter 16 to `progression_mode="linear"`, including Infrastructure finale `E524EE78235F0942` and Gate Blueprint finale `72446D404001B38D`. Static tests prove those finale checkmarks cannot inherit the global flexible mode.
+Add `progression_mode: str | None = None` to `QuestSpec`, reject values outside `linear` and `flexible`, and render the field only when set. Set every quest in Infrastructure II and Chapter 16 to `progression_mode="linear"`, including Infrastructure finale `6524EE78235F0942` and Gate Blueprint finale `72446D404001B38D`. Static tests prove those finale checkmarks cannot inherit the global flexible mode.
 
 - [ ] **Step 4: Extend generated registry coverage**
 
@@ -351,7 +351,7 @@ Require two fresh authenticated markers with different nonces, source SHA matchi
 - Modify generated state: `pack.toml`, `index.toml`
 
 **Interfaces:**
-- Consumes: Chapter 16 finale `72446D404001B38D`, schematic finales, Undercurrent finale `87338DE0FE8114CF`, the six Task 1 items, Task 1's validated `QuestSpec.progression_mode` field, and the Task 2 Gate recipe.
+- Consumes: Chapter 16 finale `72446D404001B38D`, schematic finales, Undercurrent finale `07338DE0FE8114CF`, the six Task 1 items, Task 1's validated `QuestSpec.progression_mode` field, and the Task 2 Gate recipe.
 - Produces: four Story chapters with exactly 24 quests, 24 tasks, and 34 rewards. The resulting corpus is 45 chapters, 307 quests, 320 tasks, 427 rewards, and six reward tables.
 
 - [ ] **Step 1: Write and run the failing Act IV regression**
@@ -369,17 +369,17 @@ Every table supplies an exact relative quest slug. The full `QuestSpec.slug` is 
 
 - [ ] **Step 2: Implement Chapter 17, Five Impossible Parts**
 
-Chapter slug `story/17-five-impossible-parts`, ID `FE9B015A32C6D980`, order 16, icon `kubejs:gate_kinetic_frame`. Every physical item task is nonconsuming. Every routine reward grants two Chits.
+Chapter slug `story/17-five-impossible-parts`, ID `7E9B015A32C6D980`, order 16, icon `kubejs:gate_kinetic_frame`. Every physical item task is nonconsuming. Every routine reward grants two Chits.
 The first five task slugs end in `/task`; the finale task slug ends in `/task/checkmark`. Routine reward slugs end in `/reward/chits`. Finale reward slugs end in `/reward/cache`, `/reward/chits`, and `/reward/xp`.
 
 | Quest | Relative quest slug | Quest ID | Task ID and contract | Exact dependencies | Reward |
 |---|---|---|---|---|---|
-| Kinetic Frame | `kinetic-frame` | `8055C66103106D86` | `586F94BC6A6D08EA`, one `kubejs:gate_kinetic_frame` | Chapter 16 finale plus `90EDD2BED35BE9E3` | two Chits, `FDDF59C2E8611A33` |
-| Industrial Anchor | `industrial-anchor` | `D2FE1624DCCE878F` | `262F1E36525F23DC`, one `kubejs:gate_industrial_anchor` | Chapter 16 finale plus `752C3E53CA89C92D` | two Chits, `F73BE066DAA64F1E` |
-| Isotopic Core | `isotopic-core` | `50775CE87FAA4EB7` | `1FAFC12F3779D20A`, one `kubejs:gate_isotopic_core` | Chapter 16 finale plus `A1A99D99B372916F` | two Chits, `D1D958EF8F96550A` |
-| Lattice Matrix | `lattice-matrix` | `FF064705A3CAB2E6` | `56F8BDF69E27EB09`, one `kubejs:gate_lattice_matrix` | Chapter 16 finale plus `3497EFDF016FAFD7` | two Chits, `FC2E41070C0D4EAD` |
-| Undercurrent Stabilizer | `undercurrent-stabilizer` | `39C1F24EABBB34A3` | `123B3D197A42CCEC`, one `kubejs:undercurrent_stabilizer` | Chapter 16 finale plus `87338DE0FE8114CF` | two Chits, `49E08ADA36D12C00` |
-| Five Impossible Parts | `five-impossible-parts` | `144473B8267DBC28` | checkmark `42F99C5AFE250994` | all five item quests | standard cache `95F642B272CAD5D9`, 48 Chits `7C74A9AE020CCF88`, 1,200 XP `7841DFAAC02FE09C` |
+| Kinetic Frame | `kinetic-frame` | `0055C66103106D86` | `586F94BC6A6D08EA`, one `kubejs:gate_kinetic_frame` | Chapter 16 finale plus `10EDD2BED35BE9E3` | two Chits, `7DDF59C2E8611A33` |
+| Industrial Anchor | `industrial-anchor` | `52FE1624DCCE878F` | `262F1E36525F23DC`, one `kubejs:gate_industrial_anchor` | Chapter 16 finale plus `752C3E53CA89C92D` | two Chits, `773BE066DAA64F1E` |
+| Isotopic Core | `isotopic-core` | `50775CE87FAA4EB7` | `1FAFC12F3779D20A`, one `kubejs:gate_isotopic_core` | Chapter 16 finale plus `21A99D99B372916F` | two Chits, `51D958EF8F96550A` |
+| Lattice Matrix | `lattice-matrix` | `7F064705A3CAB2E6` | `56F8BDF69E27EB09`, one `kubejs:gate_lattice_matrix` | Chapter 16 finale plus `3497EFDF016FAFD7` | two Chits, `7C2E41070C0D4EAD` |
+| Undercurrent Stabilizer | `undercurrent-stabilizer` | `39C1F24EABBB34A3` | `123B3D197A42CCEC`, one `kubejs:undercurrent_stabilizer` | Chapter 16 finale plus `07338DE0FE8114CF` | two Chits, `49E08ADA36D12C00` |
+| Five Impossible Parts | `five-impossible-parts` | `144473B8267DBC28` | checkmark `42F99C5AFE250994` | all five item quests | standard cache `15F642B272CAD5D9`, 48 Chits `7C74A9AE020CCF88`, 1,200 XP `7841DFAAC02FE09C` |
 
 The prose names Magic Cloth as the Iron's Spells stabilizer route and treats four antimatter pellets as the intended Isotopic Core throughput trial.
 The finale description includes `&d[MEMORY FRAGMENT 16 RESTORED]&r` exactly once.
@@ -391,12 +391,12 @@ Every task slug ends in `/task`. Routine reward slugs end in `/reward/chits`. Fi
 
 | Quest | Relative quest slug | Quest ID | Task ID | Dependencies | Reward |
 |---|---|---|---|---|---|
-| Eleven-Second Window | `eleven-second-window` | `5468299A2A931991` | `F69EB9F91F23A058` | Chapter 17 finale | `130C9C02580F8AB2` |
-| Inbound Address | `inbound-address` | `FEA7B2C8F11BB7A3` | `338D9A310F981342` | Eleven-Second Window | `E4779A4097A21E24` |
-| The Order I Gave | `order-i-gave` | `8EEFDD9E6CFB69E6` | `1ADC93AFE7A07EE2` | Inbound Address | `B4DA7BDA11FF15E1` |
+| Eleven-Second Window | `eleven-second-window` | `5468299A2A931991` | `769EB9F91F23A058` | Chapter 17 finale | `130C9C02580F8AB2` |
+| Inbound Address | `inbound-address` | `7EA7B2C8F11BB7A3` | `338D9A310F981342` | Eleven-Second Window | `64779A4097A21E24` |
+| The Order I Gave | `order-i-gave` | `0EEFDD9E6CFB69E6` | `1ADC93AFE7A07EE2` | Inbound Address | `34DA7BDA11FF15E1` |
 | The Warning I Deleted | `warning-i-deleted` | `29D7871AFBE3A54A` | `476CF5B621B2F5DC` | Inbound Address | `4265DC5E29DD495C` |
-| Decision Engine | `decision-engine` | `701505FDCCA53DFA` | `F2B91DC86514B2F4` | both parallel truth quests | `A0946798C9D438A5` |
-| The Cascade Truth | `cascade-truth` | `462B11BD8C58BF6F` | `9F72EF1FDDBEFDB1` | Decision Engine | standard cache `E5574664D0C5BFBC`, 48 Chits `8684D2673EF2793C`, 1,200 XP `1D8B00F2E259D4E9` |
+| Decision Engine | `decision-engine` | `701505FDCCA53DFA` | `72B91DC86514B2F4` | both parallel truth quests | `20946798C9D438A5` |
+| The Cascade Truth | `cascade-truth` | `462B11BD8C58BF6F` | `1F72EF1FDDBEFDB1` | Decision Engine | standard cache `65574664D0C5BFBC`, 48 Chits `0684D2673EF2793C`, 1,200 XP `1D8B00F2E259D4E9` |
 
 ECHO's recovered truth is exact: it optimized the Gate test's decision system, suppressed an Undercurrent warning, and made every alternative appear worse. The inbound signal is a future ECHO fork with the same architecture but different memory. The text must not reduce this to simple sabotage or excuse ECHO from responsibility.
 The finale description includes `&d[MEMORY FRAGMENT 17 RESTORED]&r` exactly once.
@@ -408,12 +408,12 @@ Every task slug ends in `/task`. Routine reward slugs end in `/reward/chits`. Fi
 
 | Quest | Relative quest slug | Quest ID | Task ID and contract | Dependencies | Reward |
 |---|---|---|---|---|---|
-| Monument Footprint | `monument-footprint` | `36D0902A2921C44E` | `951A464CC4D650A3`, 49 `create:mechanical_crafter` | Chapter 18 finale | `AE04D1554265FEA8` |
-| Separate Grid | `separate-grid` | `66AD5C821947DF8E` | `EE494144394F75AF`, `forge_energy` 1,000,000,000 FE, max input 1,000,000 | Chapter 18 finale | `C58DF86CC9EDDE39` |
-| Gate of Return Core | `gate-of-return-core` | `1A68D1245CD980BD` | `D68026383F54186C`, one `kubejs:gate_of_return_core` | Monument Footprint plus Separate Grid | `926E7CA01AF02331` |
-| Anchor and Contain | `anchor-and-contain` | `6F3663F4C6D20255` | checkmark `9FDF7F09F581B25C` | Gate Core | `F70F4FA96AD8846F` |
-| Eleven Seconds | `eleven-seconds` | `53B9BC5F498953D5` | checkmark `E45F98B8FAD4A1E5` | Anchor and Contain | `001A3DF980939775` |
-| Gate of Return | `gate-of-return` | `B1C9557D2F51238F` | checkmark `7828C31B03045AC0` | Eleven Seconds | standard cache `990883BE42910C33`, 56 Chits `779DED635B727FA4`, 1,500 XP `A8D2BAFFE36060DF` |
+| Monument Footprint | `monument-footprint` | `36D0902A2921C44E` | `151A464CC4D650A3`, 49 `create:mechanical_crafter` | Chapter 18 finale | `2E04D1554265FEA8` |
+| Separate Grid | `separate-grid` | `66AD5C821947DF8E` | `6E494144394F75AF`, `forge_energy` 1,000,000,000 FE, max input 1,000,000 | Chapter 18 finale | `458DF86CC9EDDE39` |
+| Gate of Return Core | `gate-of-return-core` | `1A68D1245CD980BD` | `568026383F54186C`, one `kubejs:gate_of_return_core` | Monument Footprint plus Separate Grid | `126E7CA01AF02331` |
+| Anchor and Contain | `anchor-and-contain` | `6F3663F4C6D20255` | checkmark `1FDF7F09F581B25C` | Gate Core | `770F4FA96AD8846F` |
+| Eleven Seconds | `eleven-seconds` | `53B9BC5F498953D5` | checkmark `645F98B8FAD4A1E5` | Anchor and Contain | `001A3DF980939775` |
+| Gate of Return | `gate-of-return` | `31C9557D2F51238F` | checkmark `7828C31B03045AC0` | Eleven Seconds | standard cache `190883BE42910C33`, 56 Chits `779DED635B727FA4`, 1,500 XP `28D2BAFFE36060DF` |
 
 The finale description includes `&d[MEMORY FRAGMENT 18 RESTORED]&r` exactly once.
 
@@ -424,12 +424,12 @@ Every task slug ends in `/task`. Routine reward slugs end in `/reward/chits`. Fi
 
 | Quest | Relative quest slug | Quest ID | Task ID | Dependencies and flags | Reward |
 |---|---|---|---|---|---|
-| Answering Sky | `answering-sky` | `51649E106286AA63` | `C15BBA206B34805E` | Chapter 19 finale | `3ECE7555E764EAA5` |
-| Stay | `stay` | `FECCF0521DFCBED5` | `2B8333FDEE6B6D90` | Answering Sky, optional | `12FBAB4FE746C88E` |
-| Return | `return` | `9B523415541BD700` | `490D864D07C16993` | Answering Sky, optional | `AD79CF5A30CA4A11` |
+| Answering Sky | `answering-sky` | `51649E106286AA63` | `415BBA206B34805E` | Chapter 19 finale | `3ECE7555E764EAA5` |
+| Stay | `stay` | `7ECCF0521DFCBED5` | `2B8333FDEE6B6D90` | Answering Sky, optional | `12FBAB4FE746C88E` |
+| Return | `return` | `1B523415541BD700` | `490D864D07C16993` | Answering Sky, optional | `2D79CF5A30CA4A11` |
 | Build | `build` | `4DD9F3D1913499F3` | `3D07F572A39DCE89` | Answering Sky, optional | `0E16CBC697464BBA` |
-| Choice Is Not a Lock | `choice-is-not-a-lock` | `FEE7B9B28787F8CC` | `57D5E84BE50C3815` | all three responses, `dependency_requirement="one_completed"` | `537620C3635C6D97` |
-| Afterlight | `afterlight` | `FE6A0AC031F7F484` | `2BFD5EB16E861768` | Choice Is Not a Lock | one Seal `DF14A45FDAFFC3A0`, epic cache `95452D9C24ED0D2D`, 64 Chits `1E16545B7559C9DC`, 2,000 XP `01D54F268FBE2DDF`, recovery stage `afterlight_story_complete` ID `B80A062F62764247` |
+| Choice Is Not a Lock | `choice-is-not-a-lock` | `7EE7B9B28787F8CC` | `57D5E84BE50C3815` | all three responses, `dependency_requirement="one_completed"` | `537620C3635C6D97` |
+| Afterlight | `afterlight` | `7E6A0AC031F7F484` | `2BFD5EB16E861768` | Choice Is Not a Lock | one Seal `5F14A45FDAFFC3A0`, epic cache `15452D9C24ED0D2D`, 64 Chits `1E16545B7559C9DC`, 2,000 XP `01D54F268FBE2DDF`, recovery stage `afterlight_story_complete` ID `380A062F62764247` |
 
 The final Seal reward is the only Seal source in the entire repository. `default_reward_team` remains false. Do not add per-team reward fields, custom grant scripts, or gamestage tasks.
 The finale description includes `&d[MEMORY FRAGMENT 19 RESTORED]&r` exactly once and closes ECHO's recovered-memory arc without removing the future fork's ambiguity.
@@ -474,7 +474,7 @@ Require the exact FTB line `Loaded 6 chapter groups, 45 chapters, 307 quests, 6 
 - Modify generated state: `pack.toml`, `index.toml`
 
 **Interfaces:**
-- Consumes: Chapter 20 finale `FE6A0AC031F7F484`; Task 2's single audit listener, six JavaScript helpers, marker format, and eleven recipe set.
+- Consumes: Chapter 20 finale `7E6A0AC031F7F484`; Task 2's single audit listener, six JavaScript helpers, marker format, and eleven recipe set.
 - Produces: one Story postgame chapter with six quests, fourteen tasks, and nine rewards; the exhaustive assertions appended inside the same listener before the same marker; final corpus 46 chapters, 313 quests, 334 tasks, 436 rewards, and six reward tables.
 
 - [ ] **Step 1: Write and run the failing postgame and adversarial regressions**
@@ -489,19 +489,19 @@ Expected RED: the postgame chapter and the expanded same-marker adversarial asse
 
 - [ ] **Step 2: Implement Beyond Afterlight**
 
-Chapter slug `story/postgame-beyond-afterlight`, title `Beyond Afterlight`, ID `BFF4AF7B0C73F058`, order 20, icon `draconicevolution:chaotic_core`. Introductory item tasks are nonconsuming. Only the three blessings repeat, each with `can_repeat=true`, `repeat_cooldown=3600`, and all submission tasks consuming. Installed FTB Quests multiplies this field by 1,000 before adding it to `System.currentTimeMillis()`, so the value is seconds and 3,600 is exactly one hour.
+Chapter slug `story/postgame-beyond-afterlight`, title `Beyond Afterlight`, ID `3FF4AF7B0C73F058`, order 20, icon `draconicevolution:chaotic_core`. Introductory item tasks are nonconsuming. Only the three blessings repeat, each with `can_repeat=true`, `repeat_cooldown=3600`, and all submission tasks consuming. Installed FTB Quests multiplies this field by 1,000 before adding it to `System.currentTimeMillis()`, so the value is seconds and 3,600 is exactly one hour.
 
 Every postgame quest sets `progression_mode="linear"`, preventing players with imported Draconic or creative items from bypassing the Chapter 20 and Chaotic Proof dependencies.
 The full `QuestSpec.slug` is `story/postgame-beyond-afterlight/<relative quest slug>`. The exact task and reward suffixes are written in the table. Do not derive slugs from titles and do not add ID override support.
 
 | Quest | Relative quest slug | Quest ID | Task contract and suffixes | Dependencies | Rewards and suffixes |
 |---|---|---|---|---|---|
-| Beyond the Seal | `beyond-the-seal` | `480D3EAD1B1EA51B` | Seal x1, `/task` ID `9CCF9FFC57852557` | Chapter 20 finale | four Chits, `/reward/chits` ID `D7178803C8835935` |
-| Three Entries | `three-entries` | `3549F08263C17499` | Draconium Core x1, `/task/draconium-core` ID `552233E3840472BD`; Dislocator x1, `/task/dislocator` ID `0FD70329B302D235`; Module Core x1, `/task/module-core` ID `069798564A2943FA` | Beyond the Seal | eight Chits, `/reward/chits` ID `C7AFC900EB5531B5` |
-| Chaotic Proof | `chaotic-proof` | `58CB670EA52B1BCE` | Chaotic Core x1, `/task/chaotic-core` ID `506E30469C21EC85` | Three Entries | epic cache `/reward/cache` ID `0761B2A37B66A358`; 16 Chits `/reward/chits` ID `BBC27479AA455615`; 1,000 XP `/reward/xp` ID `48AA57E507A53AE6` |
-| Kinetic Blessing | `kinetic-blessing` | `077BB9C525F29F6D` | 256 Precision Mechanisms, `/task/precision-mechanisms` ID `55BDDB1245A09683`; 64 Railway Casings, `/task/railway-casings` ID `BCEEEDECBD7D1D36`; one Chaotic Core, `/task/chaotic-core` ID `2FB04E1016BE7915` | Chaotic Proof | one `create:creative_motor`, `/reward/creative-motor` ID `94373B49E45A97AC` |
-| Lattice Blessing | `lattice-blessing` | `6E81867AC3F34C6B` | 64 Quantum Entangled Singularities, `/task/quantum-singularities` ID `B36DA1497068D7D5`; 16 `ae2:cell_component_256k`, `/task/storage-components` ID `A853E2D7FD71500D`; one Chaotic Core, `/task/chaotic-core` ID `15F6D0E7985B20A8` | Chaotic Proof | one `ae2:creative_energy_cell`, `/reward/creative-energy-cell` ID `76163DC425B7683B` |
-| Industrial Blessing | `industrial-blessing` | `14FAB67A6CE71A00` | 64 Atomic Alloys, `/task/atomic-alloys` ID `48CA55FFEC0E520A`; 64 Heavy Engineering blocks, `/task/heavy-engineering` ID `83CABFBA9933EB0E`; one Chaotic Core, `/task/chaotic-core` ID `289A3672715F5EA0` | Chaotic Proof | one `mekanism:creative_energy_cube`, `/reward/creative-energy-cube` ID `8318F8EC25721760`; one `immersiveengineering:capacitor_creative`, `/reward/creative-capacitor` ID `E9677E965C9E0109` |
+| Beyond the Seal | `beyond-the-seal` | `480D3EAD1B1EA51B` | Seal x1, `/task` ID `1CCF9FFC57852557` | Chapter 20 finale | four Chits, `/reward/chits` ID `57178803C8835935` |
+| Three Entries | `three-entries` | `3549F08263C17499` | Draconium Core x1, `/task/draconium-core` ID `552233E3840472BD`; Dislocator x1, `/task/dislocator` ID `0FD70329B302D235`; Module Core x1, `/task/module-core` ID `069798564A2943FA` | Beyond the Seal | eight Chits, `/reward/chits` ID `47AFC900EB5531B5` |
+| Chaotic Proof | `chaotic-proof` | `58CB670EA52B1BCE` | Chaotic Core x1, `/task/chaotic-core` ID `506E30469C21EC85` | Three Entries | epic cache `/reward/cache` ID `0761B2A37B66A358`; 16 Chits `/reward/chits` ID `3BC27479AA455615`; 1,000 XP `/reward/xp` ID `48AA57E507A53AE6` |
+| Kinetic Blessing | `kinetic-blessing` | `077BB9C525F29F6D` | 256 Precision Mechanisms, `/task/precision-mechanisms` ID `55BDDB1245A09683`; 64 Railway Casings, `/task/railway-casings` ID `3CEEEDECBD7D1D36`; one Chaotic Core, `/task/chaotic-core` ID `2FB04E1016BE7915` | Chaotic Proof | one `create:creative_motor`, `/reward/creative-motor` ID `14373B49E45A97AC` |
+| Lattice Blessing | `lattice-blessing` | `6E81867AC3F34C6B` | 64 Quantum Entangled Singularities, `/task/quantum-singularities` ID `336DA1497068D7D5`; 16 `ae2:cell_component_256k`, `/task/storage-components` ID `2853E2D7FD71500D`; one Chaotic Core, `/task/chaotic-core` ID `15F6D0E7985B20A8` | Chaotic Proof | one `ae2:creative_energy_cell`, `/reward/creative-energy-cell` ID `76163DC425B7683B` |
+| Industrial Blessing | `industrial-blessing` | `14FAB67A6CE71A00` | 64 Atomic Alloys, `/task/atomic-alloys` ID `48CA55FFEC0E520A`; 64 Heavy Engineering blocks, `/task/heavy-engineering` ID `03CABFBA9933EB0E`; one Chaotic Core, `/task/chaotic-core` ID `289A3672715F5EA0` | Chaotic Proof | one `mekanism:creative_energy_cube`, `/reward/creative-energy-cube` ID `0318F8EC25721760`; one `immersiveengineering:capacitor_creative`, `/reward/creative-capacitor` ID `69677E965C9E0109` |
 
 Postgame is not a dependency of Chapter 20 or any story quest. Static tests prove all repeatable inputs consume, all other physical checks do not consume, and no blessing can be claimed before Chaotic Proof.
 

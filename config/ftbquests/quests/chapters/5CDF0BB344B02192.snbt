@@ -1,22 +1,22 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "DCDF0BB344B02192"
+	filename: "5CDF0BB344B02192"
 	group: "51FF272F5030D2E6"
 	icon: { id: "occultism:dictionary_of_spirits" }
-	id: "DCDF0BB344B02192"
+	id: "5CDF0BB344B02192"
 	images: [ ]
 	order_index: 1
 	quest_links: [ ]
 	quests: [
 		{
-			id: "BD05CEEA29790FB9"
+			id: "3D05CEEA29790FB9"
 			dependencies: ["7480D99D56556C8E"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "C45B58CED64EB321"
+					id: "445B58CED64EB321"
 					type: "item"
 					item: { count: 1, id: "occultism:dictionary_of_spirits" }
 					count: 1L
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "83BFC70F85305DA8"
+					id: "03BFC70F85305DA8"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,7 +34,7 @@
 		}
 		{
 			id: "009699B43C7576E8"
-			dependencies: ["BD05CEEA29790FB9"]
+			dependencies: ["3D05CEEA29790FB9"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -46,7 +46,7 @@
 					consume_items: false
 				}
 				{
-					id: "AB3961206BFA00E4"
+					id: "2B3961206BFA00E4"
 					type: "item"
 					item: { count: 1, id: "occultism:sacrificial_bowl" }
 					count: 1L
@@ -55,7 +55,7 @@
 			]
 			rewards: [
 				{
-					id: "C4F46E889A36102F"
+					id: "44F46E889A36102F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -63,13 +63,13 @@
 			]
 		}
 		{
-			id: "DABDC747E62A1592"
+			id: "5ABDC747E62A1592"
 			dependencies: ["009699B43C7576E8"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "FB9589772D640B7D"
+					id: "7B9589772D640B7D"
 					type: "item"
 					item: { count: 1, id: "occultism:spirit_attuned_gem" }
 					count: 4L
@@ -78,7 +78,7 @@
 			]
 			rewards: [
 				{
-					id: "CDB9B422C8FA0475"
+					id: "4DB9B422C8FA0475"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -87,12 +87,12 @@
 		}
 		{
 			id: "75C95D06CE61987B"
-			dependencies: ["DABDC747E62A1592"]
+			dependencies: ["5ABDC747E62A1592"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "F021193D9E3C4B45"
+					id: "7021193D9E3C4B45"
 					type: "item"
 					item: { count: 1, id: "occultism:storage_controller" }
 					count: 1L
@@ -115,7 +115,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "E30B50115C5F9458"
+					id: "630B50115C5F9458"
 					type: "item"
 					item: { count: 1, id: "occultism:storage_remote" }
 					count: 1L
@@ -147,7 +147,7 @@
 			]
 			rewards: [
 				{
-					id: "EAC51BB1DE5B7616"
+					id: "6AC51BB1DE5B7616"
 					type: "loot"
 					table_id: 6745737485865812687L
 				}

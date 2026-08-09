@@ -31,7 +31,7 @@ cat > "$STAGE/mmc-pack.json" <<JSON
 }
 JSON
 
-# Start from a clean archive — `zip -r` otherwise updates an existing zip in place,
+# Start from a clean archive. `zip -r` otherwise updates an existing zip in place,
 # which would let a stale entry from a previous build survive a rebuild.
 rm -f "$ZIP"
 (cd "$STAGE" && zip -qr "../$(basename "$ZIP")" .)

@@ -2,9 +2,9 @@
 
 Date: 2026-08-09
 
-Candidate implementation commit: `78a982d10bcb9cc913185d198ecfdeddcbce03d1`
+Candidate implementation commit: `229afed933668e3507e634a397c52574651bec72`
 
-Status: Local automated verification and independent review passed. Exact-SHA CI remains required before the Plan 05 merge.
+Status: Automated verification, independent review, exact-SHA CI, the `main` fast-forward, and GitHub Pages parity passed. Manual client and multiplayer acceptance remain release-candidate gates.
 
 ## Delivered Scope
 
@@ -110,7 +110,19 @@ The second exact-SHA run, `31296385690`, reached the warning oracle and exposed 
 
 The third exact-SHA run, `31297459020`, preserved the stable corpus but added one exact Spark warning on both authoritative logs. Installed Spark 1.10.124 bytecode proves that `AsyncWorldInfoProvider.get(...)` waits five seconds for server-thread world statistics, logs `Timed out waiting for world statistics` on `TimeoutException`, and returns without crashing. The loaded Linux runner crossed that threshold once during post-`Done` initialization. Commit `78a982d10bcb9cc913185d198ecfdeddcbce03d1` gives the exact continuation-free Spark signature its own zero-or-one quota, keeps the LAN and Spark quotas independent, requires cross-log agreement, and rejects duplicate or mutated signatures. The complete failed CI latest, debug, and console evidence replays with 14 accepted errors, 39 named residual warnings, and the unchanged stable warning digest.
 
+The fourth exact-SHA run, `31298322189`, passed the boot oracle and then exposed two test-only portability assumptions. Linux has no `/private/tmp`, and its live fixture contained zero LAN multicast route warnings. Commit `229afed933668e3507e634a397c52574651bec72` uses the host-selected temporary directory and constructs paired-presence and paired-absence LAN fixtures before testing either one-sided mismatch. The original failed Linux artifact and the local macOS fixture both passed the corrected focused tests.
+
 The final focused re-review found zero Critical, Important, or Minor issues and returned `READY`.
+
+## Exact-SHA Integration Evidence
+
+- Final `dev` CI run: `31299165284`, success at exact SHA `229afed933668e3507e634a397c52574651bec72`.
+- `main` CI run after the strict fast-forward: `31299461658`, success at the same exact SHA.
+- GitHub Pages deployment run: `31299461146`, success at the same exact SHA.
+- Both remote branch heads resolved to `229afed933668e3507e634a397c52574651bec72` after the merge.
+- The `main` CI boot oracle accepted 14 errors, 477 stable warnings, and 39 named residuals. Its authenticated live suite ran all 208 tests with zero skips and printed `SERVER BOOT: OK`.
+- Cache-busted local, raw full-SHA, and GitHub Pages copies of `pack.toml` were byte-identical at SHA-256 `6bf8c2aff8cbebafca966a2b72022aeac44be7d8af775532ba6b89845b4b5ce8`.
+- Cache-busted local, raw full-SHA, and GitHub Pages copies of `index.toml` were byte-identical at SHA-256 `668bf754d9e88abc80023ae4c1d2b84c2e297fc18a9c3b8fecc60dbfc603ccbb`.
 
 ## Manual Release Gates
 

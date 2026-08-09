@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AFTERLIGHT pack integrity verifier.
-# Checks: refresh idempotence, per-mod side values, and — against the live
-# Modrinth API — that every mod's pinned version really supports this pack's
+# Checks: refresh idempotence, per-mod side values, and, against the live
+# Modrinth API, that every mod's pinned version really supports this pack's
 # loader and Minecraft version. Exit 0 = all green.
 set -euo pipefail
 cd "$(dirname "$0")/.."

@@ -137,4 +137,4 @@
 - [x] Run `./tools/verify-pack.sh` and require `VERIFY: ALL GREEN`.
 - [x] Run `BOOT_TIMEOUT=1200 ./tools/server-test.sh` and require `SERVER BOOT: OK`.
 - [x] Require zero KubeJS script errors and a clean FTB Quests load summary.
-- [ ] Push `dev`, wait for green CI, update handoff, and merge to `main`.
+- [x] Push `dev`, wait for green CI, update handoff, and merge to `main`.

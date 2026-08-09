@@ -9,11 +9,103 @@ cd "$(dirname "$0")/.."
 source tools/versions.env
 export PATH="$PATH_EXTRA:$PATH"
 
-JAVA_HOME=${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}
-JAVA="$JAVA_HOME/bin/java"
+DIR=server-test
+BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
+SERVE_PORT=${SERVE_PORT:-8199}
+AFTERLIGHT_CACHE_DIR=${AFTERLIGHT_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/afterlight}
+NEOFORGE_INSTALLER_CACHE="$AFTERLIGHT_CACHE_DIR/neoforge-${NEOFORGE_VERSION}-installer.jar"
+RUN_ID="${GITHUB_RUN_ID:-local}-$(date -u +%Y%m%dT%H%M%SZ)-$$-${RANDOM}"
+EVIDENCE_DIR="$DIR/evidence/$RUN_ID"
+SERVE_PID=""
+NEOFORGE_INSTALLER_TMP=""
+RUN_FILES_FRESH=0
+
+mkdir -p "$EVIDENCE_DIR"
+cat > "$EVIDENCE_DIR/afterlight-run-marker.txt" <<MARKER
+run_id=$RUN_ID
+started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+pid=$$
+MARKER
+
+copy_evidence() {
+  local source_path=$1
+  local destination_path=$2
+  if [ -f "$source_path" ]; then
+    mkdir -p "$(dirname "$EVIDENCE_DIR/$destination_path")"
+    if ! cp "$source_path" "$EVIDENCE_DIR/$destination_path"; then
+      echo "WARN: could not capture evidence $source_path" >&2
+    fi
+  fi
+}
+
+cleanup() {
+  if [ -n "$SERVE_PID" ] && kill -0 "$SERVE_PID" 2>/dev/null; then
+    if ! kill "$SERVE_PID"; then
+      :
+    fi
+    if ! wait "$SERVE_PID" 2>/dev/null; then
+      :
+    fi
+  fi
+  if [ -n "$NEOFORGE_INSTALLER_TMP" ]; then
+    rm -f "$NEOFORGE_INSTALLER_TMP"
+  fi
+}
+
+capture_evidence() {
+  local status=$1
+  printf '%s\n' "$status" > "$EVIDENCE_DIR/harness-exit-status.txt"
+  if [ "$RUN_FILES_FRESH" -eq 1 ]; then
+    copy_evidence "$DIR/installer.log" "installer.log"
+    copy_evidence "$DIR/packwiz-install.log" "packwiz-install.log"
+    copy_evidence "$DIR/boot.log" "boot.log"
+    copy_evidence "$DIR/logs/latest.log" "logs/latest.log"
+    copy_evidence "$DIR/logs/debug.log" "logs/debug.log"
+    copy_evidence "$DIR/afterlight-audit-nonce.txt" "afterlight-audit-nonce.txt"
+    copy_evidence "$DIR/afterlight-server-exit-status.txt" "afterlight-server-exit-status.txt"
+    copy_evidence "$DIR/packwiz.json" "packwiz.json"
+    copy_evidence "$DIR/afterlight-provenance.txt" "afterlight-provenance.txt"
+  fi
+}
+
+finish() {
+  local status=$?
+  trap - EXIT INT TERM
+  cleanup
+  capture_evidence "$status"
+  exit "$status"
+}
+
+trap finish EXIT
+trap 'exit 130' INT TERM
+
+JAVA_HOME=${JAVA_HOME:-}
+JAVA=${JAVA_HOME:+$JAVA_HOME/bin/java}
 if [ ! -x "$JAVA" ]; then
-  JAVA=$(command -v java)
-  JAVA_HOME=$(cd "$(dirname "$JAVA")/.." && pwd)
+  if JAVA_CANDIDATE=$(command -v java 2>/dev/null); then
+    JAVA="$JAVA_CANDIDATE"
+  else
+    JAVA=""
+  fi
+fi
+if [ -z "$JAVA" ] || [ ! -x "$JAVA" ]; then
+  echo "need a working Java 21 runtime"
+  exit 2
+fi
+if ! JAVA_VERSION_OUTPUT=$("$JAVA" -version 2>&1); then
+  echo "need a working Java 21 runtime"
+  exit 2
+fi
+case "$(printf '%s\n' "$JAVA_VERSION_OUTPUT" | head -1)" in
+  *'version "21.'*) ;;
+  *)
+    echo "need a working Java 21 runtime"
+    exit 2
+    ;;
+esac
+RESOLVED_JAVA_HOME=$("$JAVA" -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.home = //p' | head -1)
+if [ -n "$RESOLVED_JAVA_HOME" ]; then
+  JAVA_HOME="$RESOLVED_JAVA_HOME"
 fi
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
@@ -33,12 +125,6 @@ command -v packwiz >/dev/null || {
 
 BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v0.0.3/packwiz-installer-bootstrap.jar"
 BOOTSTRAP_SHA256="a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c"
-DIR=server-test
-BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
-SERVE_PORT=${SERVE_PORT:-8199}
-AFTERLIGHT_CACHE_DIR=${AFTERLIGHT_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/afterlight}
-NEOFORGE_INSTALLER_CACHE="$AFTERLIGHT_CACHE_DIR/neoforge-${NEOFORGE_VERSION}-installer.jar"
-SERVE_PID=""
 
 python3 tools/rc_hygiene.py verify-manifest --root .
 MANIFEST_STATE=$(shasum -a 256 pack.toml index.toml)
@@ -53,43 +139,58 @@ assert_manifest_unchanged() {
   python3 tools/rc_hygiene.py verify-manifest --root . >/dev/null
 }
 
-cleanup() {
-  if [ -n "$SERVE_PID" ] && kill -0 "$SERVE_PID" 2>/dev/null; then
-    if ! kill "$SERVE_PID"; then
-      :
-    fi
-    if ! wait "$SERVE_PID" 2>/dev/null; then
-      :
-    fi
-  fi
-}
+if ! python3 - "$SERVE_PORT" <<'PY'
+import socket
+import sys
 
-if curl -sf "http://localhost:${SERVE_PORT}/" >/dev/null 2>&1; then
+port = int(sys.argv[1])
+socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    socket.bind(("127.0.0.1", port))
+except OSError:
+    raise SystemExit(1)
+finally:
+    socket.close()
+PY
+then
   echo "FAIL: port ${SERVE_PORT} already in use"
   exit 4
 fi
 
 packwiz serve --refresh=false --port "$SERVE_PORT" &
 SERVE_PID=$!
-trap cleanup EXIT
-trap 'cleanup; exit 130' INT TERM
 
 READY=0
 for _ in $(seq 1 20); do
+  if ! kill -0 "$SERVE_PID" 2>/dev/null; then
+    echo "FAIL: packwiz serve exited before readiness"
+    if ! wait "$SERVE_PID"; then
+      :
+    fi
+    exit 4
+  fi
   if curl -sf "http://localhost:${SERVE_PORT}/pack.toml" >/dev/null 2>&1; then
     READY=1
     break
   fi
   sleep 0.5
 done
+if ! kill -0 "$SERVE_PID" 2>/dev/null; then
+  echo "FAIL: packwiz serve exited before readiness"
+  if ! wait "$SERVE_PID"; then
+    :
+  fi
+  exit 4
+fi
 if [ "$READY" -ne 1 ]; then
   echo "FAIL: packwiz serve not ready on port ${SERVE_PORT}"
   exit 5
 fi
 assert_manifest_unchanged
 
-rm -rf "$DIR"
 mkdir -p "$DIR"
+find "$DIR" -mindepth 1 -maxdepth 1 ! -name evidence -exec rm -rf {} +
+RUN_FILES_FRESH=1
 AUDIT_NONCE="$(date +%s)-$$-${RANDOM}"
 printf '%s\n' "$AUDIT_NONCE" > "$DIR/afterlight-audit-nonce.txt"
 
@@ -102,7 +203,16 @@ if [ ! -f "$NEOFORGE_INSTALLER_CACHE" ]; then
     echo "FAIL: download NeoForge ${NEOFORGE_VERSION} installer ($NEOFORGE_URL)"
     exit 3
   fi
+  ACTUAL_NEOFORGE_SHA256=$(shasum -a 256 "$NEOFORGE_INSTALLER_TMP" | awk '{print $1}')
+  if [ "$ACTUAL_NEOFORGE_SHA256" != "$NEOFORGE_INSTALLER_SHA256" ]; then
+    rm -f "$NEOFORGE_INSTALLER_TMP"
+    echo "FAIL: NEOFORGE_INSTALLER_SHA256 mismatch"
+    echo "expected $NEOFORGE_INSTALLER_SHA256"
+    echo "actual   $ACTUAL_NEOFORGE_SHA256"
+    exit 3
+  fi
   mv "$NEOFORGE_INSTALLER_TMP" "$NEOFORGE_INSTALLER_CACHE"
+  NEOFORGE_INSTALLER_TMP=""
 fi
 ACTUAL_NEOFORGE_SHA256=$(shasum -a 256 "$NEOFORGE_INSTALLER_CACHE" | awk '{print $1}')
 if [ "$ACTUAL_NEOFORGE_SHA256" != "$NEOFORGE_INSTALLER_SHA256" ]; then
@@ -144,7 +254,7 @@ if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "ht
   exit 7
 fi
 assert_manifest_unchanged
-python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR"
+python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR" | tee "$DIR/afterlight-provenance.txt"
 
 AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
 if [ ! -f "$AUDIT_SCRIPT" ]; then
@@ -153,6 +263,7 @@ if [ ! -f "$AUDIT_SCRIPT" ]; then
 fi
 awk -v nonce="$AUDIT_NONCE" '{ gsub(/__AFTERLIGHT_BOOT_NONCE__/, nonce); print }' "$AUDIT_SCRIPT" > "$AUDIT_SCRIPT.tmp"
 mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
+python3 tools/rc_hygiene.py verify-quest-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
 
 echo "eula=true" > "$DIR/eula.txt"
 cat > "$DIR/server.properties" <<'PROPS'

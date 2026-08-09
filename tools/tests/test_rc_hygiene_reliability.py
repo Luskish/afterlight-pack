@@ -4,11 +4,16 @@ import hashlib
 import importlib
 import io
 import json
+import os
 import re
 import shutil
+import socket
 import struct
+import subprocess
 import sys
 import tempfile
+import textwrap
+import time
 import unittest
 import warnings
 import zipfile
@@ -20,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
 DEBUG_LOG = ROOT / "server-test" / "logs" / "debug.log"
 LATEST_LOG = ROOT / "server-test" / "logs" / "latest.log"
+BOOT_LOG = ROOT / "server-test" / "boot.log"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -63,7 +69,7 @@ def idas_compat_metadata(hygiene) -> dict:
 
 
 def write_provenance_fixture(
-    base: Path, side: str = "both"
+    base: Path, side: str = "both", download_hash_format: str = "sha256"
 ) -> tuple[Path, Path, Path]:
     root = base / "pack"
     install = base / "install"
@@ -71,13 +77,13 @@ def write_provenance_fixture(
     (install / "mods").mkdir(parents=True)
 
     jar_bytes = b"authenticated fixture jar"
-    jar_hash = sha256_bytes(jar_bytes)
+    jar_hash = hashlib.new(download_hash_format, jar_bytes).hexdigest()
     metadata = (
         'name = "Fixture Mod"\n'
         'filename = "fixture.jar"\n'
         f'side = "{side}"\n\n'
         '[download]\n'
-        'hash-format = "sha256"\n'
+        f'hash-format = "{download_hash_format}"\n'
         f'hash = "{jar_hash}"\n'
     ).encode()
     metadata_path = root / "mods" / "fixture.pw.toml"
@@ -92,12 +98,17 @@ def write_provenance_fixture(
     ).encode()
     (root / "index.toml").write_bytes(index)
     pack = (
-        'name = "Fixture"\n'
+        'name = "AFTERLIGHT"\n'
+        'author = "Shane + ECHO"\n'
+        'version = "test-fixture"\n'
         'pack-format = "packwiz:1.1.0"\n\n'
         '[index]\n'
         'file = "index.toml"\n'
         'hash-format = "sha256"\n'
-        f'hash = "{sha256_bytes(index)}"\n'
+        f'hash = "{sha256_bytes(index)}"\n\n'
+        '[versions]\n'
+        'minecraft = "1.21.1"\n'
+        'neoforge = "21.1.248"\n'
     ).encode()
     (root / "pack.toml").write_bytes(pack)
 
@@ -108,7 +119,7 @@ def write_provenance_fixture(
         if side == "client"
         else {
             "hash": {"type": "sha256", "value": sha256_bytes(metadata)},
-            "linkedFileHash": {"type": "sha256", "value": jar_hash},
+            "linkedFileHash": {"type": download_hash_format, "value": jar_hash},
             "cachedLocation": "mods/fixture.jar",
             "optionValue": True,
         }
@@ -138,12 +149,17 @@ def write_manifest_entry_fixture(
     ).encode()
     (root / "index.toml").write_bytes(index)
     pack = (
-        'name = "Fixture"\n'
+        'name = "AFTERLIGHT"\n'
+        'author = "Shane + ECHO"\n'
+        'version = "test-fixture"\n'
         'pack-format = "packwiz:1.1.0"\n\n'
         '[index]\n'
         'file = "index.toml"\n'
         'hash-format = "sha256"\n'
-        f'hash = "{sha256_bytes(index)}"\n'
+        f'hash = "{sha256_bytes(index)}"\n\n'
+        '[versions]\n'
+        'minecraft = "1.21.1"\n'
+        'neoforge = "21.1.248"\n'
     ).encode()
     (root / "pack.toml").write_bytes(pack)
     return root
@@ -151,7 +167,7 @@ def write_manifest_entry_fixture(
 
 def valid_boot_log(nonce: str) -> str:
     hygiene = hygiene_module()
-    digest = "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df"
+    digest = "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773"
     return "\n".join(
         (
             "[08Aug2026 11:59:58.000] [modloading-worker-0/INFO] "
@@ -372,6 +388,8 @@ def empty_mixin_scan() -> dict[str, object]:
         "direct_clientlevel_mixins": 0,
         "pseudo_clientlevel_candidates": [],
         "mixin_config_hashes": {},
+        "mixin_corpus_entries": [],
+        "client_target_candidates": [],
     }
 
 
@@ -588,6 +606,28 @@ class MixinCorpusNegativeTests(unittest.TestCase):
         hygiene._scan_mixin_archive("mods/server.pw.toml", output.getvalue(), scan)
         self.assertEqual(scan["server_mixins"], 1)
         self.assertEqual(scan["annotation_clientlevel_mixins"], 1)
+
+    def test_corpus_entry_binds_position_class_hash_form_and_targets(self) -> None:
+        hygiene = hygiene_module()
+        payload = mixin_class_bytes(
+            string_targets=("net.minecraft.server.level.ServerLevel",)
+        )
+        scan = empty_mixin_scan()
+        hygiene._scan_mixin_archive(
+            "mods/fixture.pw.toml", mixin_archive_bytes(payload), scan
+        )
+        entries = scan["mixin_corpus_entries"]
+        self.assertEqual(len(entries), 3)
+        mixin_entry = next(entry for entry in entries if entry[0] == "mixin")
+        self.assertEqual(mixin_entry[1], "mods/fixture.pw.toml")
+        self.assertEqual(mixin_entry[3], "mixins")
+        self.assertEqual(mixin_entry[4], 0)
+        self.assertEqual(mixin_entry[5], "LevelsMixin")
+        self.assertEqual(mixin_entry[7], sha256_bytes(payload))
+        self.assertEqual(mixin_entry[10], "targets")
+        self.assertEqual(
+            mixin_entry[11], ("Lnet/minecraft/server/level/ServerLevel;",)
+        )
 
     def test_duplicate_config_and_class_members_are_rejected(self) -> None:
         hygiene = hygiene_module()
@@ -943,6 +983,84 @@ class BootOracleNegativeTests(unittest.TestCase):
 
 
 class ManifestAndProvenanceNegativeTests(unittest.TestCase):
+    def test_safe_relative_path_rejects_noncanonical_spelling(self) -> None:
+        hygiene = hygiene_module()
+        for value in (
+            "config//fixture.json",
+            "config/./fixture.json",
+            "config/fixture.json/",
+        ):
+            with self.subTest(value=value), self.assertRaisesRegex(
+                hygiene.VerificationError, "noncanonical"
+            ):
+                hygiene._safe_relative_path(value, "fixture")
+
+    def test_manifest_rejects_pack_identity_runtime_and_index_path_drift(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            mutations = (
+                ('name = "AFTERLIGHT"', 'name = "Counterfeit"', "pack name"),
+                (
+                    'author = "Shane + ECHO"',
+                    'author = "Unknown"',
+                    "pack author",
+                ),
+                (
+                    'version = "test-fixture"',
+                    'version = ""',
+                    "pack version",
+                ),
+                (
+                    'pack-format = "packwiz:1.1.0"',
+                    'pack-format = "packwiz:1.0.0"',
+                    "pack format",
+                ),
+                (
+                    'minecraft = "1.21.1"',
+                    'minecraft = "1.21"',
+                    "Minecraft version",
+                ),
+                (
+                    'neoforge = "21.1.248"',
+                    'neoforge = "21.1.247"',
+                    "NeoForge version",
+                ),
+            )
+            for index, (original, replacement, message) in enumerate(mutations):
+                with self.subTest(replacement=replacement):
+                    root = write_manifest_entry_fixture(
+                        base / str(index), "config/fixture.json"
+                    )
+                    pack_path = root / "pack.toml"
+                    pack_path.write_text(
+                        pack_path.read_text(encoding="utf-8").replace(
+                            original, replacement, 1
+                        ),
+                        encoding="utf-8",
+                    )
+                    with self.assertRaisesRegex(hygiene.VerificationError, message):
+                        hygiene.verify_manifest(root)
+
+            root = write_manifest_entry_fixture(
+                base / "index-path", "config/fixture.json"
+            )
+            (root / "nested").mkdir()
+            (root / "nested" / "renamed-index.toml").write_bytes(
+                (root / "index.toml").read_bytes()
+            )
+            pack_path = root / "pack.toml"
+            pack_path.write_text(
+                pack_path.read_text(encoding="utf-8").replace(
+                    'file = "index.toml"',
+                    'file = "nested/renamed-index.toml"',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(hygiene.VerificationError, "index file"):
+                hygiene.verify_manifest(root)
+
     def test_manifest_index_drift_is_rejected(self) -> None:
         hygiene = hygiene_module()
         with tempfile.TemporaryDirectory() as temporary:
@@ -960,12 +1078,17 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             )
             index_bytes = (pack_root / "index.toml").read_bytes()
             (pack_root / "pack.toml").write_text(
-                'name = "Fixture"\n'
+                'name = "AFTERLIGHT"\n'
+                'author = "Shane + ECHO"\n'
+                'version = "test-fixture"\n'
                 'pack-format = "packwiz:1.1.0"\n\n'
                 '[index]\n'
                 'file = "index.toml"\n'
                 'hash-format = "sha1"\n'
-                f'hash = "{hashlib.sha1(index_bytes).hexdigest()}"\n',
+                f'hash = "{hashlib.sha1(index_bytes).hexdigest()}"\n\n'
+                '[versions]\n'
+                'minecraft = "1.21.1"\n'
+                'neoforge = "21.1.248"\n',
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(
@@ -985,12 +1108,17 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ).encode()
             (index_root / "index.toml").write_bytes(downgraded_index)
             (index_root / "pack.toml").write_text(
-                'name = "Fixture"\n'
+                'name = "AFTERLIGHT"\n'
+                'author = "Shane + ECHO"\n'
+                'version = "test-fixture"\n'
                 'pack-format = "packwiz:1.1.0"\n\n'
                 '[index]\n'
                 'file = "index.toml"\n'
                 'hash-format = "sha256"\n'
-                f'hash = "{sha256_bytes(downgraded_index)}"\n',
+                f'hash = "{sha256_bytes(downgraded_index)}"\n\n'
+                '[versions]\n'
+                'minecraft = "1.21.1"\n'
+                'neoforge = "21.1.248"\n',
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(
@@ -1061,6 +1189,152 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_install_provenance(root, install)
 
+    def test_repository_and_installed_hardlinks_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            root, install, jar_path = write_provenance_fixture(base / "repo")
+            metadata_path = root / "mods" / "fixture.pw.toml"
+            os.link(metadata_path, base / "metadata-hardlink.pw.toml")
+            with self.assertRaisesRegex(hygiene.VerificationError, "hardlink"):
+                hygiene.verify_manifest(root)
+
+            root, install, jar_path = write_provenance_fixture(base / "install")
+            os.link(jar_path, base / "artifact-hardlink.jar")
+            with self.assertRaisesRegex(hygiene.VerificationError, "hardlink"):
+                hygiene.verify_install_provenance(root, install)
+
+    def test_installed_shipping_inventory_rejects_extra_and_client_files(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            root, install, _ = write_provenance_fixture(base / "extra")
+            (install / "config").mkdir()
+            (install / "config" / "unexpected.json").write_text(
+                "{}", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "physical shipping inventory"
+            ):
+                hygiene.verify_install_provenance(root, install)
+
+            root, install, _ = write_provenance_fixture(
+                base / "client", side="client"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "client-only artifact"
+            ):
+                hygiene.verify_install_provenance(root, install)
+
+    def test_duplicate_cached_locations_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install, _ = write_provenance_fixture(Path(temporary))
+            metadata = (root / "mods" / "fixture.pw.toml").read_bytes()
+            duplicate_relative = "mods/duplicate.pw.toml"
+            (root / duplicate_relative).write_bytes(metadata)
+            index = (
+                'hash-format = "sha256"\n\n'
+                '[[files]]\n'
+                'file = "mods/duplicate.pw.toml"\n'
+                f'hash = "{sha256_bytes(metadata)}"\n'
+                'metafile = true\n\n'
+                '[[files]]\n'
+                'file = "mods/fixture.pw.toml"\n'
+                f'hash = "{sha256_bytes(metadata)}"\n'
+                'metafile = true\n'
+            ).encode()
+            (root / "index.toml").write_bytes(index)
+            pack = (
+                'name = "AFTERLIGHT"\n'
+                'author = "Shane + ECHO"\n'
+                'version = "test-fixture"\n'
+                'pack-format = "packwiz:1.1.0"\n\n'
+                '[index]\n'
+                'file = "index.toml"\n'
+                'hash-format = "sha256"\n'
+                f'hash = "{sha256_bytes(index)}"\n\n'
+                '[versions]\n'
+                'minecraft = "1.21.1"\n'
+                'neoforge = "21.1.248"\n'
+            ).encode()
+            (root / "pack.toml").write_bytes(pack)
+            provenance_path = install / "packwiz.json"
+            provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+            provenance["packFileHash"]["value"] = sha256_bytes(pack)
+            provenance["indexFileHash"]["value"] = sha256_bytes(index)
+            provenance["cachedFiles"][duplicate_relative] = dict(
+                provenance["cachedFiles"]["mods/fixture.pw.toml"]
+            )
+            provenance_path.write_text(json.dumps(provenance), encoding="utf-8")
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "duplicate cachedLocation"
+            ):
+                hygiene.verify_install_provenance(root, install)
+
+    def test_reviewed_server_artifact_inventory_rejects_weak_hash_substitution(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        guard = getattr(hygiene, "verify_reviewed_server_artifact_inventory", None)
+        self.assertIsNotNone(guard)
+        if guard is None:
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install, jar_path = write_provenance_fixture(
+                Path(temporary), download_hash_format="sha1"
+            )
+            baseline = hygiene.verify_install_provenance(root, install)
+            self.assertIn("afterlightServerArtifacts", baseline)
+            expected = baseline["afterlightServerArtifacts"]
+            original_hash_file = hygiene._hash_file
+            jar_path.write_bytes(b"one-for-one substituted fixture jar")
+
+            def weak_hash_collision(path: Path, hash_format: str) -> str:
+                if path.resolve() == jar_path.resolve() and hash_format == "sha1":
+                    return baseline["cachedFiles"]["mods/fixture.pw.toml"][
+                        "linkedFileHash"
+                    ]["value"]
+                return original_hash_file(path, hash_format)
+
+            with mock.patch.object(hygiene, "_hash_file", weak_hash_collision):
+                changed = hygiene.verify_install_provenance(root, install)
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "server artifact inventory"
+            ):
+                guard(
+                    changed,
+                    expected_count=expected["count"],
+                    expected_digest=expected["digest"],
+                )
+
+    def test_duplicate_ae2_metadata_is_removed(self) -> None:
+        self.assertTrue((ROOT / "mods" / "ae2.pw.toml").is_file())
+        self.assertFalse((ROOT / "mods" / "applied-energistics-2.pw.toml").exists())
+
+    def test_installed_pack_file_and_parent_symlinks_are_rejected(self) -> None:
+        hygiene = hygiene_module()
+        jar_bytes = b"authenticated fixture jar"
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            root, install, jar_path = write_provenance_fixture(base / "file-link")
+            external_jar = base / "external.jar"
+            external_jar.write_bytes(jar_bytes)
+            jar_path.unlink()
+            jar_path.symlink_to(external_jar)
+            with self.assertRaisesRegex(hygiene.VerificationError, "symlink"):
+                hygiene.verify_install_provenance(root, install)
+
+            root, install, jar_path = write_provenance_fixture(base / "parent-link")
+            external_mods = base / "external-mods"
+            external_mods.mkdir()
+            (external_mods / "fixture.jar").write_bytes(jar_bytes)
+            jar_path.unlink()
+            (install / "mods").rmdir()
+            (install / "mods").symlink_to(external_mods, target_is_directory=True)
+            with self.assertRaisesRegex(hygiene.VerificationError, "symlink"):
+                hygiene.verify_install_provenance(root, install)
+
     def test_shipping_policy_rejects_forbidden_and_root_leakage(self) -> None:
         hygiene = hygiene_module()
         forbidden = (
@@ -1122,7 +1396,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 292)
+        self.assertEqual(len(indexed), 291)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -1320,7 +1594,9 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             return original_hash_file(path, hash_format)
 
         with mock.patch.object(hygiene, "_hash_file", side_effect=changed_hash):
-            with self.assertRaisesRegex(hygiene.VerificationError, "Sable artifact hash"):
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "server artifact inventory"
+            ):
                 hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
     def test_sable_verifier_rejects_fourth_pseudo_clientlevel_candidate(self) -> None:
@@ -1355,6 +1631,60 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                 hygiene.VerificationError, "@Pseudo ClientLevel candidate set"
             ):
                 hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
+
+    def test_sable_verifier_rejects_one_for_one_corpus_substitution(self) -> None:
+        hygiene = hygiene_module()
+        original_scan = hygiene._scan_mixin_archive
+        changed = False
+
+        def changed_scan(label, payload, result, nested_queue=None):
+            nonlocal changed
+            original_scan(label, payload, result, nested_queue)
+            entries = result.get("mixin_corpus_entries", [])
+            if not changed and entries:
+                first = entries[0]
+                entries[0] = (*first[:-1], "substituted")
+                changed = True
+
+        with (
+            mock.patch.object(hygiene, "_scan_mixin_archive", changed_scan),
+            self.assertRaisesRegex(
+                hygiene.VerificationError, "mixin corpus digest"
+            ),
+        ):
+            hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
+
+    def test_sable_verifier_rejects_new_common_server_client_target(self) -> None:
+        hygiene = hygiene_module()
+        original_scan = hygiene._scan_mixin_archive
+        injected = False
+
+        def changed_scan(label, payload, result, nested_queue=None):
+            nonlocal injected
+            original_scan(label, payload, result, nested_queue)
+            if not injected:
+                result.setdefault("client_target_candidates", []).append(
+                    (
+                        "mods/substituted.pw.toml",
+                        "substituted.mixins.json",
+                        "mixins",
+                        0,
+                        "SubstitutedMixin",
+                        "substituted/SubstitutedMixin.class",
+                        "0" * 64,
+                        "targets",
+                        ("Lnet/minecraft/client/Minecraft;",),
+                    )
+                )
+                injected = True
+
+        with (
+            mock.patch.object(hygiene, "_scan_mixin_archive", changed_scan),
+            self.assertRaisesRegex(
+                hygiene.VerificationError, "client target inventory"
+            ),
+        ):
+            hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
 
 class CurrentBootProjectionNegativeTests(unittest.TestCase):
@@ -1437,6 +1767,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.hygiene = hygiene_module()
         self.latest = LATEST_LOG.read_text(encoding="utf-8", errors="replace")
         self.debug = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
+        self.boot = BOOT_LOG.read_text(encoding="utf-8", errors="replace")
         self.nonce = (ROOT / "server-test" / "afterlight-audit-nonce.txt").read_text(
             encoding="utf-8"
         ).strip()
@@ -1446,12 +1777,34 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             .strip()
         )
 
-    def verify_pair(self, latest: str, debug: str):
+    def verify_pair(self, latest: str, debug: str, boot: str | None = None):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
             (install / "logs").mkdir()
             (install / "logs" / "latest.log").write_text(latest, encoding="utf-8")
             (install / "logs" / "debug.log").write_text(debug, encoding="utf-8")
+            (install / "boot.log").write_text(
+                self.boot if boot is None else boot, encoding="utf-8"
+            )
+            with (
+                mock.patch.object(self.hygiene, "verify_install_provenance"),
+                mock.patch.object(self.hygiene, "verify_jdt_evidence"),
+                mock.patch.object(self.hygiene, "verify_sable_source_evidence"),
+                mock.patch.object(
+                    self.hygiene, "verify_idas_compat_source_evidence"
+                ),
+            ):
+                return self.hygiene.verify_boot_run(
+                    ROOT, install, self.nonce, self.status
+                )
+
+    def verify_bytes(self, latest: bytes, debug: bytes, boot: bytes):
+        with tempfile.TemporaryDirectory() as temporary:
+            install = Path(temporary)
+            (install / "logs").mkdir()
+            (install / "logs" / "latest.log").write_bytes(latest)
+            (install / "logs" / "debug.log").write_bytes(debug)
+            (install / "boot.log").write_bytes(boot)
             with (
                 mock.patch.object(self.hygiene, "verify_install_provenance"),
                 mock.patch.object(self.hygiene, "verify_jdt_evidence"),
@@ -1507,6 +1860,51 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
                 debug_changed=debug is debug_changed,
             ):
                 self.assert_pair_rejected(latest, debug)
+
+    def test_console_rejects_malformed_or_relocated_headers_for_every_level(self) -> None:
+        parser = getattr(self.hygiene, "parse_console_records", None)
+        self.assertIsNotNone(parser)
+        if parser is None:
+            return
+        for level in ("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"):
+            variants = (
+                f" [12:00:00.000] [main/{level}] [fixture/Test]: relocated\n",
+                f"[12:00:00.000] [main/{level} [fixture/Test]: malformed\n",
+                f"\x1b[31m[12:00:00.000] [main/{level} [fixture/Test]: ansi\x1b[0m\n",
+            )
+            for text in variants:
+                with self.subTest(level=level, text=text), self.assertRaises(
+                    self.hygiene.VerificationError
+                ):
+                    parser(text)
+
+    def test_strict_utf8_rejects_invalid_bytes_inside_authoritative_logs(self) -> None:
+        payloads = {
+            "latest": self.latest.encode("utf-8"),
+            "debug": self.debug.encode("utf-8"),
+            "boot": self.boot.encode("utf-8"),
+        }
+        for label in payloads:
+            changed = dict(payloads)
+            marker = b"/ERROR]"
+            self.assertIn(marker, changed[label])
+            changed[label] = changed[label].replace(marker, marker + b"\xff", 1)
+            with self.subTest(label=label), self.assertRaisesRegex(
+                self.hygiene.VerificationError, "UTF-8"
+            ):
+                self.verify_bytes(
+                    changed["latest"], changed["debug"], changed["boot"]
+                )
+
+    def test_console_only_severe_record_is_rejected(self) -> None:
+        injected = (
+            "\n[12:00:00.000] [main/ERROR] "
+            "[fixture.Hidden/SOURCE]: console-only exception\n"
+        )
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError, "console severe"
+        ):
+            self.verify_pair(self.latest, self.debug, self.boot + injected)
 
     def test_complete_warning_fingerprint_corpus_rejects_all_mutations(self) -> None:
         unknown = (
@@ -1749,7 +2147,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df",
+                "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773",
                 219,
             ),
         )
@@ -1797,13 +2195,68 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
                 with self.subTest(label=label):
                     script_path.write_text(changed, encoding="utf-8")
                     with self.assertRaisesRegex(
-                        hygiene.VerificationError, "quest audit source mismatch"
+                        hygiene.VerificationError, "deterministic builder output"
                     ):
                         hygiene.quest_audit_expectation(root)
 
+    def test_complete_generated_quest_audit_script_matches_builder_bytes(self) -> None:
+        hygiene = hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(ROOT / "config", root / "config")
+            shutil.copytree(ROOT / "mods", root / "mods")
+            shutil.copytree(
+                ROOT / "kubejs" / "startup_scripts",
+                root / "kubejs" / "startup_scripts",
+            )
+            script_dir = root / "kubejs" / "server_scripts" / "afterlight"
+            script_dir.mkdir(parents=True)
+            source = (
+                ROOT
+                / "kubejs"
+                / "server_scripts"
+                / "afterlight"
+                / "generated_quest_item_audit.js"
+            ).read_text(encoding="utf-8")
+            changed = source.replace("!Item.exists(id)", "false", 1)
+            self.assertNotEqual(source, changed)
+            (script_dir / "generated_quest_item_audit.js").write_text(
+                changed, encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "builder output"
+            ):
+                hygiene.quest_audit_expectation(root)
+
+    def test_installed_quest_audit_rejects_post_nonce_bypass(self) -> None:
+        hygiene = hygiene_module()
+        verifier = getattr(hygiene, "verify_installed_quest_audit", None)
+        self.assertIsNotNone(verifier)
+        if verifier is None:
+            return
+        nonce = "fixture-nonce"
+        relative = Path(
+            "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+        )
+        expected = (ROOT / relative).read_text(encoding="utf-8").replace(
+            "__AFTERLIGHT_BOOT_NONCE__", nonce
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            install = Path(temporary)
+            target = install / relative
+            target.parent.mkdir(parents=True)
+            target.write_text(
+                expected.replace("!Item.exists(id)", "false", 1),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "installed quest audit"
+            ):
+                verifier(ROOT, install, nonce)
+
     def test_zero_and_mutated_quest_digests_are_rejected(self) -> None:
         digest = (
-            "0fe91314f66689496da364432a98134f73f5ccfe890233ab9141901e8f9f08df"
+            "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773"
         )
         for replacement in ("0" * 64, "1" + digest[1:]):
             with self.subTest(replacement=replacement):
@@ -1870,6 +2323,23 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):
+    def test_quest_audit_cli_reports_only_quest_result(self) -> None:
+        hygiene = hygiene_module()
+        arguments = hygiene.argparse.Namespace(
+            root=".", install="server-test", nonce="fixture"
+        )
+        output = io.StringIO()
+        with (
+            mock.patch.object(
+                hygiene, "verify_installed_quest_audit", return_value="a" * 64
+            ),
+            mock.patch("sys.stdout", output),
+        ):
+            hygiene._cli_verify_quest_audit(arguments)
+        self.assertEqual(
+            output.getvalue(), f"QUEST AUDIT BYTES: OK sha256={'a' * 64}\n"
+        )
+
     def test_filter_patterns_reject_namespace_and_path_near_matches(self) -> None:
         hygiene = hygiene_module()
         namespace_pattern = "^create_enchantment_industry$"
@@ -1930,6 +2400,52 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
         self.assertEqual(len(run_lines), 1)
         self.assertNotIn("|| true", run_lines[0])
 
+    def test_server_harness_requires_a_working_java_21_runtime(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            'if JAVA_CANDIDATE=$(command -v java 2>/dev/null); then', script
+        )
+        self.assertIn('JAVA="$JAVA_CANDIDATE"', script)
+        self.assertIn("need a working Java 21 runtime", script)
+
+    def test_server_harness_rejects_unowned_port_and_dead_serve_process(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn('socket.bind(("127.0.0.1", port))', script)
+        self.assertIn('kill -0 "$SERVE_PID"', script)
+        self.assertIn("packwiz serve exited before readiness", script)
+
+    def test_neoforge_installer_is_authenticated_before_cache_publish(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        temp_checksum_line = 'shasum -a 256 "$NEOFORGE_INSTALLER_TMP"'
+        cache_publish_line = 'mv "$NEOFORGE_INSTALLER_TMP"'
+        self.assertIn(temp_checksum_line, script)
+        self.assertIn(cache_publish_line, script)
+        temp_checksum = script.index(temp_checksum_line)
+        cache_publish = script.index(cache_publish_line)
+        self.assertLess(temp_checksum, cache_publish)
+
+    def test_ci_failure_evidence_is_run_unique_and_complete(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn('EVIDENCE_DIR="$DIR/evidence/$RUN_ID"', script)
+        self.assertIn("afterlight-run-marker.txt", script)
+        for relative in (
+            "installer.log",
+            "packwiz-install.log",
+            "boot.log",
+            "logs/latest.log",
+            "logs/debug.log",
+            "afterlight-audit-nonce.txt",
+            "afterlight-server-exit-status.txt",
+            "packwiz.json",
+        ):
+            with self.subTest(relative=relative):
+                self.assertIn(relative, script)
+        workflow = (ROOT / ".github" / "workflows" / "pack-ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("server-test/evidence/", workflow)
+        self.assertNotIn("server-test/boot.log\n", workflow)
+
     def test_ci_and_neoforge_installer_executables_are_immutable(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "pack-ci.yml").read_text(
             encoding="utf-8"
@@ -1962,6 +2478,221 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
         execute_index = script.index("-jar neoforge-installer.jar")
         self.assertLess(checksum_index, execute_index)
         self.assertIn("NEOFORGE_INSTALLER_SHA256 mismatch", script)
+
+
+class ServerHarnessIntegrationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name) / "repo"
+        self.fake_bin = self.root / "fake-bin"
+        self.java_home = self.root / "fake-jdk"
+        (self.root / "tools").mkdir(parents=True)
+        self.fake_bin.mkdir()
+        (self.java_home / "bin").mkdir(parents=True)
+        shutil.copy2(ROOT / "tools" / "server-test.sh", self.root / "tools")
+        (self.root / "tools" / "versions.env").write_text(
+            "MC_VERSION=1.21.1\n"
+            "NEOFORGE_VERSION=21.1.248\n"
+            "NEOFORGE_INSTALLER_SHA256=${NEOFORGE_INSTALLER_SHA256:-"
+            + sha256_bytes(b"expected installer")
+            + "}\n"
+            "JAVA_HOME=${JAVA_HOME:-/missing}\n"
+            "PATH_EXTRA=${PATH_EXTRA:-/missing}\n",
+            encoding="utf-8",
+        )
+        (self.root / "pack.toml").write_text("pack\n", encoding="utf-8")
+        (self.root / "index.toml").write_text("index\n", encoding="utf-8")
+        self._write_executable(
+            self.root / "tools" / "rc_hygiene.py",
+            "#!/usr/bin/env python3\nraise SystemExit(0)\n",
+        )
+        self._write_java(21)
+        self._write_executable(
+            self.fake_bin / "gtimeout", "#!/bin/sh\nexit 99\n"
+        )
+        self._write_packwiz("serve")
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def _write_executable(self, path: Path, source: str) -> None:
+        path.write_text(source, encoding="utf-8")
+        path.chmod(0o755)
+
+    def _write_java(self, major: int) -> None:
+        self._write_executable(
+            self.java_home / "bin" / "java",
+            textwrap.dedent(
+                f"""\
+                #!/bin/sh
+                if [ "$1" = "-version" ]; then
+                  echo 'openjdk version "{major}.0.1"' >&2
+                  exit 0
+                fi
+                if [ "$1" = "-XshowSettings:properties" ]; then
+                  echo '    java.home = {self.java_home}' >&2
+                  exit 0
+                fi
+                echo invoked >> "{self.root / 'java-invocations.txt'}"
+                exit 97
+                """
+            ),
+        )
+
+    def _write_packwiz(self, mode: str) -> None:
+        source = textwrap.dedent(
+            f"""\
+            #!/usr/bin/env python3
+            import http.server
+            import os
+            from pathlib import Path
+            import socketserver
+            import sys
+
+            if {mode!r} == "dead":
+                raise SystemExit(23)
+            port = int(sys.argv[sys.argv.index("--port") + 1])
+            Path({str(self.root / 'serve.pid')!r}).write_text(str(os.getpid()))
+            os.chdir({str(self.root)!r})
+            class Handler(http.server.SimpleHTTPRequestHandler):
+                def log_message(self, format, *args):
+                    pass
+            socketserver.TCPServer.allow_reuse_address = True
+            with socketserver.TCPServer(("127.0.0.1", port), Handler) as server:
+                server.serve_forever()
+            """
+        )
+        self._write_executable(self.fake_bin / "packwiz", source)
+
+    def _environment(self, port: int) -> dict[str, str]:
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "JAVA_HOME": str(self.java_home),
+                "PATH_EXTRA": str(self.fake_bin),
+                "SERVE_PORT": str(port),
+                "AFTERLIGHT_CACHE_DIR": str(self.root / "cache"),
+                "NEOFORGE_INSTALLER_SHA256": sha256_bytes(b"expected installer"),
+            }
+        )
+        return environment
+
+    def _free_port(self) -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            return int(listener.getsockname()[1])
+
+    def _run(self, port: int, timeout: float = 20) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "tools/server-test.sh"],
+            cwd=self.root,
+            env=self._environment(port),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=False,
+        )
+
+    def _assert_port_released(self, port: int) -> None:
+        deadline = time.monotonic() + 3
+        while True:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    probe.bind(("127.0.0.1", port))
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    self.fail(f"serve port {port} was not released by trap cleanup")
+                time.sleep(0.05)
+        pid_path = self.root / "serve.pid"
+        if pid_path.is_file():
+            serve_pid = int(pid_path.read_text(encoding="utf-8"))
+            with self.assertRaises(ProcessLookupError):
+                os.kill(serve_pid, 0)
+
+    def test_wrong_java_preserves_prior_local_evidence(self) -> None:
+        self._write_java(17)
+        prior = self.root / "server-test" / "boot.log"
+        prior.parent.mkdir()
+        prior.write_text("prior boot evidence\n", encoding="utf-8")
+        result = self._run(self._free_port())
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("need a working Java 21 runtime", result.stdout)
+        self.assertEqual(prior.read_text(encoding="utf-8"), "prior boot evidence\n")
+
+    def test_occupied_404_port_preserves_prior_boot_log(self) -> None:
+        port = self._free_port()
+        server = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import http.server,socketserver; "
+                f"socketserver.TCPServer(('127.0.0.1',{port}),http.server.SimpleHTTPRequestHandler).serve_forever()",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            time.sleep(0.15)
+            prior = self.root / "server-test" / "boot.log"
+            prior.parent.mkdir()
+            prior.write_text("prior 404 evidence\n", encoding="utf-8")
+            result = self._run(port)
+            self.assertEqual(result.returncode, 4, result.stdout)
+            self.assertIn("port", result.stdout)
+            self.assertEqual(prior.read_text(encoding="utf-8"), "prior 404 evidence\n")
+        finally:
+            server.terminate()
+            server.wait(timeout=5)
+
+    def test_dead_packwiz_serve_fails_without_readiness_false_positive(self) -> None:
+        self._write_packwiz("dead")
+        port = self._free_port()
+        result = self._run(port)
+        self.assertEqual(result.returncode, 4, result.stdout)
+        self.assertIn("exited before readiness", result.stdout)
+        self._assert_port_released(port)
+
+    def test_corrupt_cached_installer_is_removed_without_execution(self) -> None:
+        port = self._free_port()
+        cache = self.root / "cache" / "neoforge-21.1.248-installer.jar"
+        cache.parent.mkdir()
+        cache.write_bytes(b"corrupt cached installer")
+        result = self._run(port)
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("NEOFORGE_INSTALLER_SHA256 mismatch", result.stdout)
+        self.assertFalse(cache.exists())
+        self.assertFalse((self.root / "java-invocations.txt").exists())
+        self._assert_port_released(port)
+
+    def test_corrupt_download_is_never_published_and_trap_cleans_serve(self) -> None:
+        curl = textwrap.dedent(
+            """\
+            #!/bin/sh
+            output=""
+            previous=""
+            for argument in "$@"; do
+              if [ "$previous" = "-o" ]; then output="$argument"; fi
+              previous="$argument"
+            done
+            case "$*" in
+              *maven.neoforged.net*) printf 'corrupt temp installer' > "$output"; exit 0 ;;
+            esac
+            exec /usr/bin/curl "$@"
+            """
+        )
+        self._write_executable(self.fake_bin / "curl", curl)
+        port = self._free_port()
+        result = self._run(port)
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("NEOFORGE_INSTALLER_SHA256 mismatch", result.stdout)
+        cache = self.root / "cache" / "neoforge-21.1.248-installer.jar"
+        self.assertFalse(cache.exists())
+        self.assertEqual(list(cache.parent.glob("*.tmp.*")), [])
+        self.assertFalse((self.root / "java-invocations.txt").exists())
+        self._assert_port_released(port)
 
 
 if __name__ == "__main__":

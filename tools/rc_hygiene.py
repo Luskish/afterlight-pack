@@ -5,7 +5,9 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import re
+import stat
 import sys
 import tomllib
 import warnings
@@ -16,10 +18,15 @@ from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Sequence
 
 try:
-    from afterlight_quests.builder import _quest_item_ids, quest_item_audit_digest
+    from afterlight_quests.builder import (
+        _quest_item_ids,
+        _render_quest_item_audit,
+        quest_item_audit_digest,
+    )
 except ModuleNotFoundError:
     from tools.afterlight_quests.builder import (
         _quest_item_ids,
+        _render_quest_item_audit,
         quest_item_audit_digest,
     )
 
@@ -143,13 +150,64 @@ SABLE_MIXIN_CLASSES = {
         "f5cecf91372f08ef0b5b9bc36f609b6f2df726dc3612731d9e0a5a56460b647c",
     ),
 }
-SABLE_ENABLED_METADATA_COUNT = 158
+SABLE_ENABLED_METADATA_COUNT = 157
 SABLE_TOP_LEVEL_ARTIFACT_COUNT = 157
 SABLE_ARCHIVE_SCOPE_COUNT = 305
 SABLE_MIXIN_CONFIG_COUNT = 261
 SABLE_COMMON_MIXIN_COUNT = 2286
 SABLE_SERVER_MIXIN_COUNT = 5
 SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
+REVIEWED_SERVER_ARTIFACT_COUNT = 157
+REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
+    "bd4c6f9d850ac5fb63ff85af2c2c5738b9997054fa0c104b7155f5959d1e7e93"
+)
+REVIEWED_MIXIN_CORPUS_SHA256 = (
+    "4edbbf17adc509bf5c98c43a7d1d9a1408ca43473857f60c2debd016783fdfc0"
+)
+REVIEWED_CLIENT_TARGET_INVENTORY: tuple[tuple[object, ...], ...] = (
+    (
+        "mods/sable.pw.toml",
+        "sable.mixins.json",
+        "mixins",
+        40,
+        "entity.entity_aabb_lookup.LevelsMixin",
+        "dev/ryanhcode/sable/mixin/entity/entity_aabb_lookup/LevelsMixin.class",
+        "0b6d6e637410852d131f2178c53a454bdd506555e509c5aea2ce3127d01070c0",
+        "value",
+        (
+            "Lnet/minecraft/server/level/ServerLevel;",
+            "Lnet/minecraft/client/multiplayer/ClientLevel;",
+        ),
+    ),
+    (
+        "mods/sable.pw.toml",
+        "sable.mixins.json",
+        "mixins",
+        100,
+        "plot.LevelsMixin",
+        "dev/ryanhcode/sable/mixin/plot/LevelsMixin.class",
+        "660410f918f5676d49e734028cb2e74967a622746cc7c7f22ff805016c476bda",
+        "value",
+        (
+            "Lnet/minecraft/server/level/ServerLevel;",
+            "Lnet/minecraft/client/multiplayer/ClientLevel;",
+        ),
+    ),
+    (
+        "mods/sable.pw.toml",
+        "sable.mixins.json",
+        "mixins",
+        132,
+        "water_occlusion.LevelsMixin",
+        "dev/ryanhcode/sable/mixin/water_occlusion/LevelsMixin.class",
+        "f5cecf91372f08ef0b5b9bc36f609b6f2df726dc3612731d9e0a5a56460b647c",
+        "value",
+        (
+            "Lnet/minecraft/server/level/ServerLevel;",
+            "Lnet/minecraft/client/multiplayer/ClientLevel;",
+        ),
+    ),
+)
 SABLE_STACK_SHA256 = {
     "prepare": "bae3607214c9f8b88f6bd73e309b99f58eb926a2baae5d8515d3feba85efc7ca",
     "validate": "364c2c1f95784628e77870ba1d8be5f7b808016042ba565bc18d4ef27c94500b",
@@ -306,10 +364,40 @@ LOG_HEADER = re.compile(
     r"\[(?P<thread>[^\]\r\n]+)\/(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\] "
     r"\[(?P<logger>[^\]]+)\]: (?P<message>.*)$"
 )
+CONSOLE_HEADER = re.compile(
+    r"^\[(?P<timestamp>\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\] "
+    r"\[(?P<thread>[^\]\r\n]+)\/(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\] "
+    r"\[(?P<logger>[^\]]+)\]: (?P<message>.*)$"
+)
 ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
 SGR_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 HEADER_LEVEL_LIKE = re.compile(
     r"\[[^\]\r\n]+/(?:TRACE|DEBUG|INFO|WARN|ERROR|FATAL)(?:\]|\s|$)"
+)
+SEVERE_OUTPUT_LIKE = re.compile(
+    r"(?:^|\b)(?:FATAL|ERROR|Exception|Throwable|OutOfMemoryError|"
+    r"StackOverflowError|Caused by|Segmentation fault|panic)(?:\b|:)",
+    re.IGNORECASE,
+)
+REVIEWED_CONSOLE_SEVERE_COUNT = 34
+REVIEWED_CONSOLE_SEVERE_SHA256 = (
+    "16b9082ad72b7d8943dfb82fe732517101270bf66378ecc22e91b3d1fc9e804c"
+)
+CONSOLE_LOGGER_CANONICAL = {
+    "common.asm.RuntimeDistCleaner/DISTXFORM": (
+        "net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM"
+    ),
+    "ne.ne.fm.co.as.RuntimeDistCleaner/DISTXFORM": (
+        "net.neoforged.fml.common.asm.RuntimeDistCleaner/DISTXFORM"
+    ),
+    "minecraft/AbstractPackResources": (
+        "net.minecraft.server.packs.AbstractPackResources/"
+    ),
+    "ne.ne.fm.VersionChecker/": "net.neoforged.fml.VersionChecker/",
+}
+CONSOLE_ATTACHED_NOISE = (
+    "WARN StatusConsoleListener Advanced terminal features are not available in "
+    "this environment"
 )
 
 PACK_SHIPPING_ROOTS = frozenset(
@@ -323,6 +411,12 @@ PACK_SHIPPING_ROOTS = frozenset(
         "shaderpacks",
     }
 )
+EXPECTED_PACK_NAME = "AFTERLIGHT"
+EXPECTED_PACK_AUTHOR = "Shane + ECHO"
+EXPECTED_PACK_FORMAT = "packwiz:1.1.0"
+EXPECTED_INDEX_FILE = "index.toml"
+EXPECTED_MINECRAFT_VERSION = "1.21.1"
+EXPECTED_NEOFORGE_VERSION = "21.1.248"
 FORBIDDEN_SHIPPING_PARTS = frozenset(
     {
         ".agents",
@@ -369,6 +463,18 @@ REVIEWED_DUPLICATE_ZIP_MEMBERS = {
         "a5b67acba0dd6a28db1c36f4d9cf8052979b59c36dba0a9119cf03c8e5365fb0",
     ),
 }
+BETTER_STRONGHOLDS_ORE_RELATIVE = PurePosixPath(
+    "config/betterstrongholds/neoforge-1_21/ores.json"
+)
+BETTER_STRONGHOLDS_ORE_ENTRIES = {
+    "minecraft:lapis_ore": 0.15,
+    "minecraft:redstone_ore[lit=false]": 0.15,
+    "minecraft:diamond_ore": 0.05,
+    "minecraft:emerald_ore": 0.05,
+    "minecraft:iron_ore": 0.2,
+    "minecraft:coal_ore": 0.19,
+    "minecraft:gold_ore": 0.2,
+}
 
 
 def _hash_bytes(payload: bytes, hash_format: str) -> str:
@@ -402,6 +508,8 @@ def _read_toml(path: Path) -> dict:
 
 def _safe_relative_path(value: str, label: str) -> PurePosixPath:
     path = PurePosixPath(value)
+    if path.as_posix() != value:
+        raise VerificationError(f"noncanonical {label} path {value!r}")
     if path.is_absolute() or not path.parts or any(part in ("", ".", "..") for part in path.parts):
         raise VerificationError(f"unsafe {label} path {value!r}")
     return path
@@ -410,10 +518,17 @@ def _safe_relative_path(value: str, label: str) -> PurePosixPath:
 def _verified_regular_file(
     root: Path, relative: PurePosixPath, label: str
 ) -> Path:
+    root = root.resolve(strict=True)
     target = root
     for part in relative.parts:
         target /= part
-        if target.is_symlink():
+        try:
+            target_stat = target.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} path {relative.as_posix()}: {error}"
+            ) from error
+        if stat.S_ISLNK(target_stat.st_mode):
             raise VerificationError(
                 f"symlink in {label} path: {relative.as_posix()}"
             )
@@ -429,9 +544,135 @@ def _verified_regular_file(
         raise VerificationError(
             f"{label} path escapes pack root: {relative.as_posix()}"
         ) from error
-    if not resolved.is_file():
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(target, flags)
+    except OSError as error:
+        raise VerificationError(
+            f"cannot open {label} path {relative.as_posix()}: {error}"
+        ) from error
+    try:
+        opened_stat = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if not stat.S_ISREG(opened_stat.st_mode):
         raise VerificationError(f"{label} is missing: {relative.as_posix()}")
+    if opened_stat.st_nlink != 1:
+        raise VerificationError(
+            f"hardlink rejected for {label}: {relative.as_posix()}"
+        )
+    if (opened_stat.st_dev, opened_stat.st_ino) != (
+        target_stat.st_dev,
+        target_stat.st_ino,
+    ):
+        raise VerificationError(
+            f"{label} changed during verification: {relative.as_posix()}"
+        )
     return resolved
+
+
+def _installed_shipping_inventory(install_path: Path) -> set[str]:
+    inventory: set[str] = set()
+    for root_name in sorted(PACK_SHIPPING_ROOTS):
+        shipping_root = install_path / root_name
+        try:
+            root_stat = shipping_root.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect installed shipping root {root_name}: {error}"
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode):
+            raise VerificationError(f"symlink in installed shipping root: {root_name}")
+        if not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(
+                f"installed shipping root is not a directory: {root_name}"
+            )
+        for directory, directory_names, file_names in os.walk(
+            shipping_root, followlinks=False
+        ):
+            directory_path = Path(directory)
+            for name in tuple(directory_names):
+                relative = _safe_relative_path(
+                    (directory_path / name).relative_to(install_path).as_posix(),
+                    "installed directory",
+                )
+                child_stat = (directory_path / name).lstat()
+                if stat.S_ISLNK(child_stat.st_mode):
+                    raise VerificationError(
+                        f"symlink in installed shipping path: {relative.as_posix()}"
+                    )
+                if not stat.S_ISDIR(child_stat.st_mode):
+                    raise VerificationError(
+                        f"non-directory in installed shipping path: {relative.as_posix()}"
+                    )
+            for name in file_names:
+                relative = _safe_relative_path(
+                    (directory_path / name).relative_to(install_path).as_posix(),
+                    "installed file",
+                )
+                _verified_regular_file(
+                    install_path, relative, "installed shipping file"
+                )
+                inventory.add(relative.as_posix())
+    return inventory
+
+
+def _artifact_inventory_digest(inventory: Sequence[dict[str, str]]) -> str:
+    payload = json.dumps(
+        list(inventory), ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
+    return _hash_bytes(payload, "sha256")
+
+
+def verify_reviewed_server_artifact_inventory(
+    provenance: dict,
+    *,
+    expected_count: int = REVIEWED_SERVER_ARTIFACT_COUNT,
+    expected_digest: str = REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256,
+) -> None:
+    actual = provenance.get("afterlightServerArtifacts")
+    expected = {"count": expected_count, "digest": expected_digest}
+    actual_summary = (
+        {"count": actual.get("count"), "digest": actual.get("digest")}
+        if isinstance(actual, dict)
+        else actual
+    )
+    if actual_summary != expected:
+        raise VerificationError(
+            "server artifact inventory changed: "
+            f"expected={expected} actual={actual_summary}"
+        )
+
+
+def _server_artifact_evidence(
+    metadata_relatives: Sequence[str], resolved: dict[str, Path], provenance: dict
+) -> dict[str, object]:
+    inventory = []
+    for metadata_relative in metadata_relatives:
+        cached = provenance["cachedFiles"].get(metadata_relative)
+        if not isinstance(cached, dict) or not isinstance(
+            cached.get("cachedLocation"), str
+        ):
+            raise VerificationError(
+                f"missing cached location for server artifact {metadata_relative}"
+            )
+        inventory.append(
+            {
+                "metadata": metadata_relative,
+                "cachedLocation": cached["cachedLocation"],
+                "sha256": _hash_file(resolved[metadata_relative], "sha256"),
+            }
+        )
+    inventory.sort(key=lambda entry: (entry["metadata"], entry["cachedLocation"]))
+    return {
+        "count": len(inventory),
+        "digest": _artifact_inventory_digest(inventory),
+        "inventory": inventory,
+    }
 
 
 def _enforce_shipping_policy(relative: PurePosixPath) -> None:
@@ -461,6 +702,40 @@ def _enforce_shipping_policy(relative: PurePosixPath) -> None:
         )
 
 
+def verify_better_strongholds_contract(root: Path | str) -> dict[str, object]:
+    root_path = Path(root).resolve()
+    config_path = _verified_regular_file(
+        root_path, BETTER_STRONGHOLDS_ORE_RELATIVE, "Better Strongholds ore config"
+    )
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise VerificationError(
+            f"cannot read Better Strongholds ore config: {error}"
+        ) from error
+    expected = {
+        "oreChances": {
+            "entries": BETTER_STRONGHOLDS_ORE_ENTRIES,
+            "defaultBlock": "minecraft:coal_ore",
+        }
+    }
+    if config != expected:
+        raise VerificationError(
+            f"Better Strongholds complete ore contract changed: {config}"
+        )
+    fallback = 1.0 - sum(BETTER_STRONGHOLDS_ORE_ENTRIES.values())
+    effective_coal = BETTER_STRONGHOLDS_ORE_ENTRIES["minecraft:coal_ore"] + fallback
+    if abs(fallback - 0.01) > 1e-12 or abs(effective_coal - 0.2) > 1e-12:
+        raise VerificationError(
+            "Better Strongholds effective fallback coal probability changed"
+        )
+    return {
+        "entries": dict(BETTER_STRONGHOLDS_ORE_ENTRIES),
+        "fallback": fallback,
+        "effective_coal": effective_coal,
+    }
+
+
 def verify_manifest(root: Path | str) -> dict[str, object]:
     root_path = Path(root).resolve()
     pack_path = _verified_regular_file(
@@ -468,11 +743,29 @@ def verify_manifest(root: Path | str) -> dict[str, object]:
     )
     pack_bytes = pack_path.read_bytes()
     pack = _read_toml(pack_path)
+    if pack.get("name") != EXPECTED_PACK_NAME:
+        raise VerificationError("pack name changed")
+    if pack.get("author") != EXPECTED_PACK_AUTHOR:
+        raise VerificationError("pack author changed")
+    version = pack.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise VerificationError("pack version is missing")
+    if pack.get("pack-format") != EXPECTED_PACK_FORMAT:
+        raise VerificationError("pack format changed")
+    versions = pack.get("versions")
+    if not isinstance(versions, dict):
+        raise VerificationError("pack runtime versions are missing")
+    if versions.get("minecraft") != EXPECTED_MINECRAFT_VERSION:
+        raise VerificationError("Minecraft version changed")
+    if versions.get("neoforge") != EXPECTED_NEOFORGE_VERSION:
+        raise VerificationError("NeoForge version changed")
     index_config = pack.get("index")
     if not isinstance(index_config, dict):
         raise VerificationError("pack.toml has no index table")
 
     index_relative = _safe_relative_path(str(index_config.get("file", "")), "index")
+    if index_relative != PurePosixPath(EXPECTED_INDEX_FILE):
+        raise VerificationError("pack index file changed")
     index_hash_format = str(index_config.get("hash-format", ""))
     if index_hash_format != "sha256":
         raise VerificationError("pack.toml index hash-format must remain sha256")
@@ -537,7 +830,9 @@ def verify_install_provenance(
     root_path = Path(root).resolve()
     install_path = Path(install).resolve()
     manifest = verify_manifest(root_path)
-    provenance_path = install_path / "packwiz.json"
+    provenance_path = _verified_regular_file(
+        install_path, PurePosixPath("packwiz.json"), "installer provenance"
+    )
     try:
         provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -563,11 +858,21 @@ def verify_install_provenance(
         raise VerificationError("authenticated manifest has no indexed entry map")
     file_hash_format = str(manifest["file_hash_format"])
     expected_cached_files: dict[str, dict[str, object]] = {}
+    installed_locations: dict[str, str] = {}
+    client_only_locations: set[str] = set()
+    server_artifact_metadata: dict[str, str] = {}
     for relative_text, indexed in indexed_entries.items():
         if not isinstance(relative_text, str) or not isinstance(indexed, dict):
             raise VerificationError("authenticated manifest entry is malformed")
         indexed_hash = str(indexed.get("hash", ""))
         if not indexed.get("metafile", False):
+            prior_metadata = installed_locations.get(relative_text)
+            if prior_metadata is not None:
+                raise VerificationError(
+                    "duplicate cachedLocation derived from authenticated index: "
+                    f"{relative_text} ({prior_metadata}, {relative_text})"
+                )
+            installed_locations[relative_text] = relative_text
             expected_cached_files[relative_text] = {
                 "hash": {"type": file_hash_format, "value": indexed_hash},
                 "cachedLocation": relative_text,
@@ -575,8 +880,9 @@ def verify_install_provenance(
             }
             continue
 
-        metadata_path = root_path.joinpath(
-            *_safe_relative_path(relative_text, "metadata").parts
+        metadata_relative = _safe_relative_path(relative_text, "metadata")
+        metadata_path = _verified_regular_file(
+            root_path, metadata_relative, "metadata"
         )
         metadata = _read_toml(metadata_path)
         side = metadata.get("side")
@@ -585,6 +891,16 @@ def verify_install_provenance(
                 f"metadata has no deliberate side value: {relative_text}"
             )
         if side == "client":
+            filename = _safe_relative_path(
+                str(metadata.get("filename", "")), "metadata filename"
+            )
+            if len(filename.parts) != 1:
+                raise VerificationError(
+                    f"metadata filename must be a basename: {relative_text}"
+                )
+            client_only_locations.add(
+                (PurePosixPath(relative_text).parent / filename).as_posix()
+            )
             expected_cached_files[relative_text] = {
                 "optionValue": True,
                 "onlyOtherSide": True,
@@ -611,6 +927,14 @@ def verify_install_provenance(
         cached_location = (
             PurePosixPath(relative_text).parent / filename
         ).as_posix()
+        prior_metadata = installed_locations.get(cached_location)
+        if prior_metadata is not None:
+            raise VerificationError(
+                "duplicate cachedLocation derived from authenticated metadata: "
+                f"{cached_location} ({prior_metadata}, {relative_text})"
+            )
+        installed_locations[cached_location] = relative_text
+        server_artifact_metadata[cached_location] = relative_text
         expected_cached_files[relative_text] = {
             "hash": {"type": file_hash_format, "value": indexed_hash},
             "linkedFileHash": {
@@ -639,6 +963,25 @@ def verify_install_provenance(
     if not verify_files:
         return provenance
 
+    physical_inventory = _installed_shipping_inventory(install_path)
+    present_client_artifacts = sorted(client_only_locations & physical_inventory)
+    if present_client_artifacts:
+        raise VerificationError(
+            f"client-only artifact present in server install: {present_client_artifacts}"
+        )
+    expected_physical_inventory = {
+        str(cached["cachedLocation"])
+        for cached in expected_cached_files.values()
+        if isinstance(cached.get("cachedLocation"), str)
+    }
+    if physical_inventory != expected_physical_inventory:
+        raise VerificationError(
+            "physical shipping inventory differs from authenticated server pack: "
+            f"missing={sorted(expected_physical_inventory - physical_inventory)} "
+            f"extra={sorted(physical_inventory - expected_physical_inventory)}"
+        )
+
+    artifact_inventory: list[dict[str, str]] = []
     for relative_text, cached in expected_cached_files.items():
         cached_location = cached.get("cachedLocation")
         if not isinstance(cached_location, str):
@@ -646,11 +989,9 @@ def verify_install_provenance(
         installed_relative = _safe_relative_path(
             cached_location, f"installed location for {relative_text}"
         )
-        installed_path = install_path.joinpath(*installed_relative.parts)
-        if not installed_path.is_file():
-            raise VerificationError(
-                f"installed pack file is missing: {cached_location}"
-            )
+        installed_path = _verified_regular_file(
+            install_path, installed_relative, "installed pack file"
+        )
         hash_spec = cached.get("linkedFileHash", cached.get("hash"))
         if not isinstance(hash_spec, dict):
             raise VerificationError(
@@ -663,6 +1004,23 @@ def verify_install_provenance(
                 "installed file hash mismatch for "
                 f"{cached_location}: expected {expected_hash}, got {actual_hash}"
             )
+        metadata_identity = server_artifact_metadata.get(cached_location)
+        if metadata_identity is not None:
+            artifact_inventory.append(
+                {
+                    "metadata": metadata_identity,
+                    "cachedLocation": cached_location,
+                    "sha256": _hash_file(installed_path, "sha256"),
+                }
+            )
+    artifact_inventory.sort(
+        key=lambda entry: (entry["metadata"], entry["cachedLocation"])
+    )
+    provenance["afterlightServerArtifacts"] = {
+        "count": len(artifact_inventory),
+        "digest": _artifact_inventory_digest(artifact_inventory),
+        "inventory": artifact_inventory,
+    }
     return provenance
 
 
@@ -718,9 +1076,9 @@ def _resolve_source_jar(
         raise VerificationError(
             f"cached artifact filename mismatch for {metadata_relative}: {cached_posix.name} != {filename}"
         )
-    jar_path = install_path.joinpath(*cached_posix.parts)
-    if not jar_path.is_file():
-        raise VerificationError(f"source artifact is missing: {jar_path}")
+    jar_path = _verified_regular_file(
+        install_path, cached_posix, "source artifact"
+    )
     actual_hash = _hash_file(jar_path, declared_hash_format)
     if actual_hash != declared_hash:
         raise VerificationError(
@@ -1023,6 +1381,15 @@ def _scan_mixin_archive(
     nested_queue: list[tuple[str, Path | bytes]] | None = None,
 ) -> None:
     try:
+        archive_sha256 = (
+            _hash_file(payload, "sha256")
+            if isinstance(payload, Path)
+            else _hash_bytes(payload, "sha256")
+        )
+        corpus_entries = result["mixin_corpus_entries"]
+        if not isinstance(corpus_entries, list):
+            raise VerificationError("invalid mixin corpus accumulator")
+        corpus_entries.append(("archive", label, archive_sha256))
         archive_source = payload if isinstance(payload, Path) else io.BytesIO(payload)
         with zipfile.ZipFile(archive_source) as archive:
             member_infos = archive.infolist()
@@ -1080,6 +1447,7 @@ def _scan_mixin_archive(
                         )
                     continue
                 config_hashes[identity] = config_hash
+                corpus_entries.append(("config", label, resource, config_hash))
                 result["mixin_configs"] = int(result["mixin_configs"]) + 1
                 package = config["package"].replace(".", "/")
                 for list_key, counter_key in (
@@ -1091,7 +1459,7 @@ def _scan_mixin_archive(
                         raise VerificationError(
                             f"invalid {list_key} mixin list in {label}!/{resource}"
                         )
-                    for mixin_name in entries:
+                    for position, mixin_name in enumerate(entries):
                         if not isinstance(mixin_name, str):
                             raise VerificationError(
                                 f"invalid {list_key} mixin entry in {label}!/{resource}"
@@ -1109,6 +1477,45 @@ def _scan_mixin_archive(
                         pseudo, has_mixin, target_form, targets = _mixin_targets(
                             class_payload
                         )
+                        class_hash = _hash_bytes(class_payload, "sha256")
+                        corpus_entries.append(
+                            (
+                                "mixin",
+                                label,
+                                resource,
+                                list_key,
+                                position,
+                                mixin_name,
+                                class_resource,
+                                class_hash,
+                                pseudo,
+                                has_mixin,
+                                target_form,
+                                targets,
+                            )
+                        )
+                        if any(
+                            target.startswith("Lnet/minecraft/client/")
+                            for target in targets
+                        ):
+                            client_targets = result["client_target_candidates"]
+                            if not isinstance(client_targets, list):
+                                raise VerificationError(
+                                    "invalid client target accumulator"
+                                )
+                            client_targets.append(
+                                (
+                                    label,
+                                    resource,
+                                    list_key,
+                                    position,
+                                    mixin_name,
+                                    class_resource,
+                                    class_hash,
+                                    target_form,
+                                    targets,
+                                )
+                            )
                         if has_mixin and (
                             "Lnet/minecraft/client/multiplayer/ClientLevel;" in targets
                         ):
@@ -1127,7 +1534,7 @@ def _scan_mixin_archive(
                                         resource,
                                         mixin_name,
                                         class_resource,
-                                        _hash_bytes(class_payload, "sha256"),
+                                        class_hash,
                                         target_form,
                                         targets,
                                     )
@@ -1168,6 +1575,10 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         )
         for relative in metadata_relatives
     }
+    provenance["afterlightServerArtifacts"] = _server_artifact_evidence(
+        metadata_relatives, resolved, provenance
+    )
+    verify_reviewed_server_artifact_inventory(provenance)
     unique_archives: dict[Path, str] = {}
     for relative, archive_path in resolved.items():
         unique_archives.setdefault(archive_path.resolve(), relative)
@@ -1266,6 +1677,8 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "annotation_clientlevel_mixins": 0,
         "pseudo_clientlevel_candidates": [],
         "mixin_config_hashes": {},
+        "mixin_corpus_entries": [],
+        "client_target_candidates": [],
     }
     archive_queue: list[tuple[str, Path | bytes]] = [
         (metadata_relative, archive_path)
@@ -1297,6 +1710,26 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
             "Sable exhaustive @Pseudo ClientLevel candidate set changed: "
             f"expected {tuple(expected_candidates)}, got {candidates}"
         )
+    corpus_entries = tuple(scan["mixin_corpus_entries"])
+    corpus_digest = _hash_bytes(
+        json.dumps(
+            corpus_entries,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8"),
+        "sha256",
+    )
+    if corpus_digest != REVIEWED_MIXIN_CORPUS_SHA256:
+        raise VerificationError(
+            "Sable exhaustive mixin corpus digest changed: "
+            f"expected {REVIEWED_MIXIN_CORPUS_SHA256}, got {corpus_digest}"
+        )
+    client_targets = tuple(scan["client_target_candidates"])
+    if client_targets != REVIEWED_CLIENT_TARGET_INVENTORY:
+        raise VerificationError(
+            "Sable exhaustive client target inventory changed: "
+            f"expected {REVIEWED_CLIENT_TARGET_INVENTORY}, got {client_targets}"
+        )
 
     return {
         "artifact_sha256": sable_hash,
@@ -1313,6 +1746,9 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
             scan["annotation_clientlevel_mixins"]
         ),
         "pseudo_clientlevel_candidates": candidates,
+        "mixin_corpus_count": len(corpus_entries),
+        "mixin_corpus_sha256": corpus_digest,
+        "client_target_candidates": client_targets,
         "mixin_config_identities": tuple(
             (label, resource, config_hash)
             for (label, resource), config_hash in sorted(
@@ -1517,6 +1953,138 @@ def parse_log_records(log_text: str) -> tuple[LogRecord, ...]:
         current_lines.append(line)
     finish_record()
     return tuple(records)
+
+
+def parse_console_records(console_text: str) -> tuple[LogRecord, ...]:
+    records: list[LogRecord] = []
+    current_match: re.Match[str] | None = None
+    current_lines: list[str] = []
+
+    def finish_record() -> None:
+        nonlocal current_match, current_lines
+        if current_match is None:
+            return
+        records.append(
+            LogRecord(
+                timestamp=current_match.group("timestamp"),
+                thread=current_match.group("thread"),
+                level=current_match.group("level"),
+                logger=current_match.group("logger"),
+                message=current_match.group("message"),
+                continuations=tuple(current_lines[1:]),
+                text="\n".join(current_lines),
+            )
+        )
+
+    logical_lines: list[tuple[int, str]] = []
+    for physical_number, raw_line in enumerate(console_text.splitlines(), start=1):
+        without_sgr = SGR_ESCAPE.sub("", raw_line)
+        if "\x1b" in without_sgr:
+            raise VerificationError(
+                f"unsupported ANSI escape in console line {physical_number}"
+            )
+        pieces = re.sub(
+            r"(?<!^)(?=\[\d{2}:\d{2}:\d{2}(?:\.\d{3})?\] )",
+            "\n",
+            without_sgr,
+        ).splitlines()
+        logical_lines.extend((physical_number, piece) for piece in pieces)
+
+    for line_number, line in logical_lines:
+        match = CONSOLE_HEADER.match(line)
+        if match:
+            finish_record()
+            current_match = match
+            current_lines = [line]
+            continue
+        if HEADER_LEVEL_LIKE.search(line):
+            raise VerificationError(
+                "malformed or relocated console header at line "
+                f"{line_number}: {line}"
+            )
+        if current_match is None:
+            raise VerificationError(
+                f"unattached console line {line_number}: {line}"
+            )
+        current_lines.append(line)
+    finish_record()
+    return tuple(records)
+
+
+def _severe_console_projection(
+    records: Sequence[LogRecord], *, console: bool = False
+) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
+    projection = []
+    for record in records:
+        if record.level not in ("ERROR", "FATAL") and not SEVERE_OUTPUT_LIKE.search(
+            "\n".join((record.message, *record.continuations))
+        ):
+            continue
+        canonical = canonical_record_tuple(record)
+        continuations = []
+        for line in canonical[4]:
+            normalized_line = line.rstrip(" ")
+            if console and normalized_line == CONSOLE_ATTACHED_NOISE:
+                continue
+            if console:
+                normalized_line = re.sub(r" \{[^{}]*\}$", "", normalized_line)
+            continuations.append(normalized_line)
+        canonical = (
+            canonical[0],
+            canonical[1],
+            CONSOLE_LOGGER_CANONICAL.get(canonical[2], canonical[2]),
+            canonical[3].rstrip(" "),
+            tuple(continuations),
+        )
+        projection.append(canonical)
+    return tuple(projection)
+
+
+def _validate_console_projection(
+    console_records: Sequence[LogRecord], latest_records: Sequence[LogRecord]
+) -> tuple[str, int]:
+    console_projection = _severe_console_projection(console_records, console=True)
+    latest_projection = _severe_console_projection(latest_records)
+    console_errors = Counter(
+        record for record in console_projection if record[1] in ("ERROR", "FATAL")
+    )
+    latest_errors = Counter(
+        record for record in latest_projection if record[1] in ("ERROR", "FATAL")
+    )
+    if console_errors != latest_errors or Counter(console_projection) - Counter(
+        latest_projection
+    ):
+        raise VerificationError(
+            "console severe projection differs from authenticated latest.log records"
+        )
+    payload = json.dumps(
+        sorted(Counter(console_projection).items()),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    digest = _hash_bytes(payload, "sha256")
+    actual = (len(console_projection), digest)
+    expected = (
+        REVIEWED_CONSOLE_SEVERE_COUNT,
+        REVIEWED_CONSOLE_SEVERE_SHA256,
+    )
+    if actual != expected:
+        raise VerificationError(
+            f"console severe corpus changed: expected={expected} actual={actual}"
+        )
+    return digest, len(console_projection)
+
+
+def _read_strict_utf8(
+    root: Path, relative: PurePosixPath, label: str
+) -> str:
+    path = _verified_regular_file(root, relative, label)
+    try:
+        return path.read_bytes().decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise VerificationError(f"{label} is not strict UTF-8: {error}") from error
+    except OSError as error:
+        raise VerificationError(f"cannot read {label} {path}: {error}") from error
 
 
 def _record_is(
@@ -2501,15 +3069,15 @@ def verify_boot_run(
     install_path = Path(install).resolve()
     verify_install_provenance(root_path, install_path, verify_files=False)
     verify_jdt_evidence(root_path, install_path)
-    log_path = install_path / "logs" / "latest.log"
-    debug_path = install_path / "logs" / "debug.log"
-    try:
-        log_text = log_path.read_text(encoding="utf-8", errors="replace")
-        debug_text = debug_path.read_text(encoding="utf-8", errors="replace")
-    except OSError as error:
-        raise VerificationError(
-            f"cannot read authoritative current logs {log_path} and {debug_path}: {error}"
-        ) from error
+    log_text = _read_strict_utf8(
+        install_path, PurePosixPath("logs/latest.log"), "latest.log"
+    )
+    debug_text = _read_strict_utf8(
+        install_path, PurePosixPath("logs/debug.log"), "debug.log"
+    )
+    boot_text = _read_strict_utf8(
+        install_path, PurePosixPath("boot.log"), "boot.log"
+    )
     sable = verify_sable_runtime_dist_cleaner_evidence(
         root_path,
         install_path,
@@ -2523,6 +3091,7 @@ def verify_boot_run(
     )
     latest_records = parse_log_records(log_text)
     debug_records = parse_log_records(debug_text)
+    console_records = parse_console_records(boot_text)
     errors, warnings, _, _ = _validate_canonical_log_pair(
         latest_records, debug_records
     )
@@ -2534,11 +3103,16 @@ def verify_boot_run(
         )
     if errors[sable.label] != len(sable.latest_record_indices):
         raise VerificationError("Sable canonical error count differs from source proof")
+    console_digest, console_count = _validate_console_projection(
+        console_records, latest_records
+    )
     return {
         "errors": errors,
         "warnings": warnings,
         "warning_records": REVIEWED_WARNING_TOTAL,
         "audits": audits,
+        "console_severe_count": console_count,
+        "console_severe_sha256": console_digest,
     }
 
 
@@ -2557,6 +3131,12 @@ def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
         raise VerificationError(
             f"cannot read generated quest audit script {script_path}: {error}"
         ) from error
+    quest_root = root_path / "config" / "ftbquests" / "quests"
+    expected_script = _render_quest_item_audit(quest_root)
+    if script != expected_script:
+        raise VerificationError(
+            "generated quest audit script differs from deterministic builder output"
+        )
     digest_matches = re.findall(
         r"^const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '([0-9a-f]{64})'$",
         script,
@@ -2593,7 +3173,6 @@ def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
     )
     if script.count(success_line) != 1:
         raise VerificationError("generated quest audit success emitter changed")
-    quest_root = root_path / "config" / "ftbquests" / "quests"
     source_items = _quest_item_ids(quest_root)
     source_digest = quest_item_audit_digest(quest_root)
     if tuple(items) != source_items or digest_matches[0] != source_digest:
@@ -2602,6 +3181,38 @@ def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
             "the authenticated quest compiler inputs"
         )
     return source_digest, len(source_items)
+
+
+def verify_installed_quest_audit(
+    root: Path | str, install: Path | str, nonce: str
+) -> str:
+    if re.fullmatch(r"[A-Za-z0-9._-]+", nonce) is None:
+        raise VerificationError("installed quest audit nonce is malformed")
+    root_path = Path(root).resolve()
+    install_path = Path(install).resolve()
+    quest_root = root_path / "config" / "ftbquests" / "quests"
+    expected_source = _render_quest_item_audit(quest_root)
+    placeholder = "__AFTERLIGHT_BOOT_NONCE__"
+    if expected_source.count(placeholder) != 1:
+        raise VerificationError("quest audit builder nonce contract changed")
+    expected = expected_source.replace(placeholder, nonce, 1).encode("utf-8")
+    relative = PurePosixPath(
+        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+    )
+    installed_path = _verified_regular_file(
+        install_path, relative, "installed quest audit"
+    )
+    try:
+        actual = installed_path.read_bytes()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read installed quest audit {installed_path}: {error}"
+        ) from error
+    if actual != expected:
+        raise VerificationError(
+            "installed quest audit differs from canonical post-nonce builder bytes"
+        )
+    return _hash_bytes(actual, "sha256")
 
 
 def validate_boot_markers(
@@ -2821,6 +3432,7 @@ def build_filter_archive() -> bytes:
 
 def _cli_verify_manifest(args: argparse.Namespace) -> None:
     result = verify_manifest(Path(args.root))
+    verify_better_strongholds_contract(Path(args.root))
     print(
         "MANIFEST: OK "
         f"pack={result['pack_hash']} index={result['index_hash']} "
@@ -2829,8 +3441,14 @@ def _cli_verify_manifest(args: argparse.Namespace) -> None:
 
 
 def _cli_verify_provenance(args: argparse.Namespace) -> None:
-    verify_install_provenance(Path(args.root), Path(args.install))
-    print("PROVENANCE: OK")
+    result = verify_install_provenance(Path(args.root), Path(args.install))
+    verify_reviewed_server_artifact_inventory(result)
+    artifacts = result["afterlightServerArtifacts"]
+    print(
+        "PROVENANCE: OK "
+        f"server-artifacts={artifacts['count']} "
+        f"sha256={artifacts['digest']}"
+    )
 
 
 def _cli_verify_boot(args: argparse.Namespace) -> None:
@@ -2845,6 +3463,13 @@ def _cli_verify_boot(args: argparse.Namespace) -> None:
     )
 
 
+def _cli_verify_quest_audit(args: argparse.Namespace) -> None:
+    digest = verify_installed_quest_audit(
+        Path(args.root), Path(args.install), args.nonce
+    )
+    print(f"QUEST AUDIT BYTES: OK sha256={digest}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AFTERLIGHT RC hygiene verifier")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2855,6 +3480,11 @@ def build_parser() -> argparse.ArgumentParser:
     provenance.add_argument("--root", default=".")
     provenance.add_argument("--install", required=True)
     provenance.set_defaults(handler=_cli_verify_provenance)
+    quest_audit = subparsers.add_parser("verify-quest-audit")
+    quest_audit.add_argument("--root", default=".")
+    quest_audit.add_argument("--install", required=True)
+    quest_audit.add_argument("--nonce", required=True)
+    quest_audit.set_defaults(handler=_cli_verify_quest_audit)
     boot = subparsers.add_parser("verify-boot")
     boot.add_argument("--root", default=".")
     boot.add_argument("--install", required=True)

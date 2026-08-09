@@ -38,7 +38,5 @@ jobs:
         if: failure()
         with:
           name: server-test-logs
-          path: |
-            server-test/boot.log
-            server-test/logs/
+          path: server-test/evidence/
           if-no-files-found: ignore

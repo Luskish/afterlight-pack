@@ -327,6 +327,11 @@ class ReviewedConfigFixtureTests(unittest.TestCase):
         self.assertEqual(text.count("\tskreecherSpawnRolls = 1"), 1)
 
     def test_better_strongholds_ore_weights_preserve_distribution_without_overflow(self) -> None:
+        hygiene = rc_hygiene
+        verifier = getattr(hygiene, "verify_better_strongholds_contract", None)
+        self.assertIsNotNone(verifier)
+        if verifier is None:
+            return
         config = load_json(
             ROOT
             / "config"
@@ -336,10 +341,22 @@ class ReviewedConfigFixtureTests(unittest.TestCase):
         )
         chances = config["oreChances"]
         entries = chances["entries"]
+        expected = {
+            "minecraft:lapis_ore": 0.15,
+            "minecraft:redstone_ore[lit=false]": 0.15,
+            "minecraft:diamond_ore": 0.05,
+            "minecraft:emerald_ore": 0.05,
+            "minecraft:iron_ore": 0.2,
+            "minecraft:coal_ore": 0.19,
+            "minecraft:gold_ore": 0.2,
+        }
         self.assertEqual(chances["defaultBlock"], "minecraft:coal_ore")
-        self.assertEqual(entries["minecraft:coal_ore"], 0.19)
-        self.assertEqual(entries["minecraft:gold_ore"], 0.2)
-        self.assertLess(sum(entries.values()), 1.0)
+        self.assertEqual(entries, expected)
+        self.assertAlmostEqual(1.0 - sum(entries.values()), 0.01)
+        self.assertAlmostEqual(
+            entries["minecraft:coal_ore"] + 1.0 - sum(entries.values()), 0.2
+        )
+        verifier(ROOT)
 
 
 class JarOverrideFixtureTests(unittest.TestCase):
@@ -646,7 +663,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
             evidence["mixin_config_sha256"],
             "02dd86d2bd0ed6bef4841b1ae4ac8579edeb33fe0134f2060191b49102c4878d",
         )
-        self.assertEqual(evidence["enabled_metadata"], 158)
+        self.assertEqual(evidence["enabled_metadata"], 157)
         self.assertEqual(evidence["top_level_artifacts"], 157)
         self.assertEqual(evidence["archive_scopes"], 305)
         self.assertEqual(evidence["mixin_configs"], 261)

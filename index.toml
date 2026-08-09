@@ -486,7 +486,7 @@ hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "7730ba71ef60d98231bb0901a4cabb250fa7103724374f5a6c5cc48a14aea7a1"
+hash = "912fe10827507082ea47a908ea99627d79f4e2afe4587b179d2dcf743012cbbd"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -549,11 +549,6 @@ metafile = true
 [[files]]
 file = "mods/appleskin.pw.toml"
 hash = "716d930feff599bf9ce732e05979fbae8025dc8a3c13ccf4f1cb207a70883bc6"
-metafile = true
-
-[[files]]
-file = "mods/applied-energistics-2.pw.toml"
-hash = "afa4f499d946514c51f41f8f2202ac0946052b012570a210ebb31f0d0d627672"
 metafile = true
 
 [[files]]

@@ -21,6 +21,9 @@ from unittest import mock
 from pathlib import Path
 
 
+tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
+
+
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
 DEBUG_LOG = ROOT / "server-test" / "logs" / "debug.log"
@@ -28,6 +31,8 @@ LATEST_LOG = ROOT / "server-test" / "logs" / "latest.log"
 BOOT_LOG = ROOT / "server-test" / "boot.log"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+
+from live_install_support import requires_live_install
 
 
 def hygiene_module():
@@ -390,6 +395,7 @@ def empty_mixin_scan() -> dict[str, object]:
         "mixin_config_hashes": {},
         "mixin_corpus_entries": [],
         "client_target_candidates": [],
+        "client_target_class_evidence": {},
     }
 
 
@@ -461,6 +467,99 @@ class StrictLogParserNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         with self.assertRaisesRegex(hygiene.VerificationError, "unattached log line"):
             hygiene.parse_log_records("java.lang.IllegalStateException: orphan\n")
+
+    def test_compound_exception_classes_are_severe_without_prose_false_positives(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        severe_messages = (
+            "java.lang.IllegalStateException: invalid state",
+            "java.util.concurrent.CompletionException: failed future",
+            "java.lang.NoClassDefFoundError: missing class",
+            "example.mod.DeeplySpecificLoadException: failed mod",
+        )
+        for message in severe_messages:
+            record = hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                "main",
+                "INFO",
+                "fixture/",
+                message,
+                (),
+                "",
+            )
+            with self.subTest(message=message):
+                self.assertEqual(
+                    len(hygiene._severe_console_projection((record,))), 1
+                )
+
+        benign = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "INFO",
+            "fixture/",
+            "Exception handling and error recovery documentation loaded",
+            (),
+            "",
+        )
+        self.assertEqual(hygiene._severe_console_projection((benign,)), ())
+
+    def test_warning_path_projection_is_checkout_and_install_root_portable(self) -> None:
+        hygiene = hygiene_module()
+        first_workspace = Path("/Users/example/first-checkout")
+        second_workspace = Path("/opt/build/relocated-checkout")
+        first_install = first_workspace / "isolated-server"
+        second_install = second_workspace / "different-install"
+
+        def evidence(workspace: Path, install: Path) -> tuple[str, int, int]:
+            records = hygiene.parse_log_records(
+                "[08Aug2026 12:00:00.000] [main/WARN] [fixture/]: "
+                f"source={workspace}/config/fixture.toml install={install}/mods/a.jar\n"
+                f"continuation {install}/libraries/example.jar\n"
+            )
+            return hygiene.warning_multiset_evidence(
+                records, workspace_root=workspace, install_root=install
+            )
+
+        self.assertEqual(
+            evidence(first_workspace, first_install),
+            evidence(second_workspace, second_install),
+        )
+
+    def test_mixin_synthetic_rename_session_id_is_the_only_normalized_field(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        template = (
+            "Renaming synthetic method lambda$getStacks$0()Ljava/lang/"
+            "IllegalStateException; to {session}$fabric$lambda$getStacks$0$0 "
+            "in fixture.mixins.json:FixtureMixin from mod fixture"
+        )
+
+        def record(session: str, suffix: str = "FixtureMixin"):
+            return hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                "main",
+                "DEBUG",
+                "mixin/",
+                template.format(session=session).replace("FixtureMixin", suffix),
+                (),
+                "fixture",
+            )
+
+        first = hygiene.canonical_record_tuple(record("md0f210e"))
+        second = hygiene.canonical_record_tuple(record("md6e4466"))
+        self.assertEqual(first, second)
+        self.assertNotEqual(
+            first,
+            hygiene.canonical_record_tuple(
+                record("md6e4466", suffix="SubstitutedMixin")
+            ),
+        )
+        self.assertNotEqual(
+            first,
+            hygiene.canonical_record_tuple(record("prefix6e4466")),
+        )
 
 
 class MixinCorpusNegativeTests(unittest.TestCase):
@@ -607,6 +706,38 @@ class MixinCorpusNegativeTests(unittest.TestCase):
         self.assertEqual(scan["server_mixins"], 1)
         self.assertEqual(scan["annotation_clientlevel_mixins"], 1)
 
+    def test_common_client_targets_are_derived_across_platform_and_mod_packages(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        targets = (
+            "Lnet/minecraft/client/multiplayer/ClientLevel;",
+            "Lnet/neoforged/neoforge/client/ClientHooks;",
+            "Lnet/caffeinemc/mods/sodium/client/render/chunk/BlockRenderer;",
+            "Lcom/simibubi/create/CreateClient;",
+            "Lfixture/client/render/ModSpecificRenderer;",
+        )
+        output = io.BytesIO()
+        config = json.dumps(
+            {"required": True, "package": "fixture", "mixins": ["ClientTargetsMixin"]},
+            sort_keys=True,
+        ).encode("utf-8")
+        class_payload = mixin_class_bytes(value_targets=targets)
+        with zipfile.ZipFile(output, "w") as archive:
+            archive.writestr(
+                "META-INF/neoforge.mods.toml",
+                '[[mixins]]\nconfig = "fixture.mixins.json"\n',
+            )
+            archive.writestr("fixture.mixins.json", config)
+            archive.writestr("fixture/ClientTargetsMixin.class", class_payload)
+            archive.writestr("fixture/client/render/ModSpecificRenderer.class", b"client")
+        scan = empty_mixin_scan()
+        hygiene._scan_mixin_archive("mods/client-targets.pw.toml", output.getvalue(), scan)
+        candidates = hygiene._finalize_client_target_inventory(scan)
+        self.assertEqual(len(candidates), len(targets))
+        self.assertEqual(tuple(candidate[-2] for candidate in candidates), targets)
+        self.assertTrue(all(candidate[-1] for candidate in candidates))
+
     def test_corpus_entry_binds_position_class_hash_form_and_targets(self) -> None:
         hygiene = hygiene_module()
         payload = mixin_class_bytes(
@@ -672,6 +803,7 @@ class MixinCorpusNegativeTests(unittest.TestCase):
                 "mods/outer.pw.toml", outer.getvalue(), empty_mixin_scan()
             )
 
+    @requires_live_install(ROOT)
     def test_real_corpus_processes_every_mixin_scope(self) -> None:
         hygiene = hygiene_module()
         evidence = hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
@@ -797,6 +929,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         ):
             hygiene.validate_error_records(log_text, hygiene.project_error_allowances())
 
+    @requires_live_install(ROOT)
     def test_sable_dedicated_verifier_accepts_current_named_context(self) -> None:
         hygiene = hygiene_module()
         records = hygiene.parse_log_records(
@@ -807,6 +940,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         self.assertEqual(len(indices), 12)
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_same_count_relocation(self) -> None:
         hygiene = hygiene_module()
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
@@ -818,6 +952,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         self.assert_sable_debug_rejected(relocated, "RuntimeDistCleaner")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_added_substitute_context(self) -> None:
         hygiene = hygiene_module()
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
@@ -828,6 +963,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         self.assert_sable_debug_rejected(substituted, "provenance count mismatch")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_named_prepare_source_substitution(self) -> None:
         hygiene = hygiene_module()
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
@@ -838,6 +974,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         self.assert_sable_debug_rejected(substituted, "prepare source context")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_application_source_substitution(self) -> None:
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
         substituted = debug_text.replace(
@@ -851,6 +988,7 @@ class BootOracleNegativeTests(unittest.TestCase):
             substituted, r"application source .* context changed"
         )
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_changed_normalized_stack_source(self) -> None:
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
         substituted = debug_text.replace(
@@ -860,6 +998,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         )
         self.assert_sable_debug_rejected(substituted, "normalized stack hash changed")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_named_window_relocation(self) -> None:
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
         anchor = (
@@ -877,6 +1016,7 @@ class BootOracleNegativeTests(unittest.TestCase):
         lines.insert(p2_anchor, moved)
         self.assert_sable_debug_rejected("\n".join(lines) + "\n", "P1 source window")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_missing_first_p3_named_anchor(self) -> None:
         debug_text = DEBUG_LOG.read_text(encoding="utf-8", errors="replace")
         substituted = debug_text.replace(
@@ -1143,6 +1283,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             with self.assertRaisesRegex(hygiene.VerificationError, "installed pack provenance"):
                 hygiene.verify_install_provenance(root, install)
 
+    @requires_live_install(ROOT)
     def test_missing_cached_pack_file_is_rejected(self) -> None:
         hygiene = hygiene_module()
         provenance = json.loads(
@@ -1325,6 +1466,37 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             with self.assertRaisesRegex(hygiene.VerificationError, "symlink"):
                 hygiene.verify_install_provenance(root, install)
 
+    def test_symlink_install_root_and_existing_ancestor_are_rejected_first(self) -> None:
+        hygiene = hygiene_module()
+        jar_bytes = b"authenticated fixture jar"
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            root, install, _ = write_provenance_fixture(base / "fixture")
+            direct_link = base / "install-link"
+            direct_link.symlink_to(install, target_is_directory=True)
+            ancestor_link = base / "ancestor-link"
+            ancestor_link.symlink_to(install.parent, target_is_directory=True)
+            nested_link = ancestor_link / install.name
+
+            for candidate in (direct_link, nested_link):
+                for verifier in (
+                    lambda: hygiene.verify_install_provenance(root, candidate),
+                    lambda: hygiene.resolve_source_jars(
+                        root, candidate, ("mods/fixture.pw.toml",)
+                    ),
+                    lambda: hygiene.verify_sable_source_evidence(root, candidate),
+                    lambda: hygiene.verify_idas_compat_source_evidence(root, candidate),
+                    lambda: hygiene.verify_jdt_evidence(root, candidate),
+                    lambda: hygiene.verify_boot_run(root, candidate, "nonce", 0),
+                    lambda: hygiene.verify_installed_quest_audit(
+                        root, candidate, "nonce"
+                    ),
+                ):
+                    with self.subTest(candidate=candidate, verifier=verifier), self.assertRaisesRegex(
+                        hygiene.VerificationError, "symlink"
+                    ):
+                        verifier()
+
             root, install, jar_path = write_provenance_fixture(base / "parent-link")
             external_mods = base / "external-mods"
             external_mods.mkdir()
@@ -1418,6 +1590,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             with self.assertRaisesRegex(hygiene.VerificationError, "not installed on the server side"):
                 hygiene.resolve_source_jar(root, install, "mods/fixture.pw.toml")
 
+    @requires_live_install(ROOT)
     def test_idas_compat_verifier_rejects_changed_source_commit(self) -> None:
         hygiene = hygiene_module()
         source = hygiene.resolve_source_jar(
@@ -1457,6 +1630,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_idas_compat_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_idas_compat_verifier_rejects_reviewed_allowlist_changes(self) -> None:
         hygiene = hygiene_module()
         source = hygiene.resolve_source_jar(
@@ -1517,6 +1691,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                             ROOT, ROOT / "server-test"
                         )
 
+    @requires_live_install(ROOT)
     def test_idas_compat_verifier_rejects_negative_test_hash_change(self) -> None:
         hygiene = hygiene_module()
         source = hygiene.resolve_source_jar(
@@ -1558,6 +1733,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_idas_compat_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_idas_compat_verifier_rejects_extra_archive_payload(self) -> None:
         hygiene = hygiene_module()
         source = hygiene.resolve_source_jar(
@@ -1584,6 +1760,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_idas_compat_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_authenticated_artifact_hash_change(self) -> None:
         hygiene = hygiene_module()
         original_hash_file = hygiene._hash_file
@@ -1599,6 +1776,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_fourth_pseudo_clientlevel_candidate(self) -> None:
         hygiene = hygiene_module()
         original_scan = hygiene._scan_mixin_archive
@@ -1632,6 +1810,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             ):
                 hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_one_for_one_corpus_substitution(self) -> None:
         hygiene = hygiene_module()
         original_scan = hygiene._scan_mixin_archive
@@ -1654,6 +1833,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         ):
             hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
+    @requires_live_install(ROOT)
     def test_sable_verifier_rejects_new_common_server_client_target(self) -> None:
         hygiene = hygiene_module()
         original_scan = hygiene._scan_mixin_archive
@@ -1674,6 +1854,8 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                         "0" * 64,
                         "targets",
                         ("Lnet/minecraft/client/Minecraft;",),
+                        "minecraft-client-package",
+                        "Lnet/minecraft/client/Minecraft;",
                     )
                 )
                 injected = True
@@ -1687,6 +1869,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
 
 
+@requires_live_install(ROOT)
 class CurrentBootProjectionNegativeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.hygiene = hygiene_module()
@@ -1762,6 +1945,7 @@ class CurrentBootProjectionNegativeTests(unittest.TestCase):
             )
 
 
+@requires_live_install(ROOT)
 class CanonicalBootOracleNegativeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.hygiene = hygiene_module()
@@ -1780,7 +1964,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
     def verify_pair(self, latest: str, debug: str, boot: str | None = None):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
-            (install / "logs").mkdir()
+            (install / "logs").mkdir(parents=True)
             (install / "logs" / "latest.log").write_text(latest, encoding="utf-8")
             (install / "logs" / "debug.log").write_text(debug, encoding="utf-8")
             (install / "boot.log").write_text(
@@ -1906,6 +2090,81 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         ):
             self.verify_pair(self.latest, self.debug, self.boot + injected)
 
+    def test_compound_exception_is_rejected_when_latest_debug_or_console_only(
+        self,
+    ) -> None:
+        latest_header = (
+            "[08Aug2026 12:00:00.000] [main/INFO] [fixture.Hidden/]: "
+            "java.lang.IllegalStateException: injected"
+        )
+        console_header = (
+            "[12:00:00.000] [main/INFO] [fixture.Hidden/]: "
+            "java.lang.IllegalStateException: injected"
+        )
+        variants = (
+            (
+                self.inject_after_ignored_info(self.latest, latest_header),
+                self.debug,
+                self.boot,
+            ),
+            (
+                self.latest,
+                self.inject_after_ignored_info(self.debug, latest_header),
+                self.boot,
+            ),
+            (self.latest, self.debug, self.boot + "\n" + console_header + "\n"),
+        )
+        for latest, debug, boot in variants:
+            with self.subTest(
+                latest_changed=latest is not self.latest,
+                debug_changed=debug is not self.debug,
+                boot_changed=boot is not self.boot,
+            ), self.assertRaises(self.hygiene.VerificationError):
+                self.verify_pair(latest, debug, boot)
+
+    def test_warning_multiset_is_portable_across_relocated_checkout_and_install(
+        self,
+    ) -> None:
+        old_workspace = str(ROOT)
+        audit_expectation = self.hygiene.quest_audit_expectation(ROOT)
+        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+            workspace = Path(temporary).resolve()
+            install = workspace / "isolated-runtime"
+            rewritten_latest = self.latest.replace(
+                f"{old_workspace}/server-test", str(install)
+            ).replace(old_workspace, str(workspace))
+            rewritten_debug = self.debug.replace(
+                f"{old_workspace}/server-test", str(install)
+            ).replace(old_workspace, str(workspace))
+            rewritten_boot = self.boot.replace(
+                f"{old_workspace}/server-test", str(install)
+            ).replace(old_workspace, str(workspace))
+            (install / "logs").mkdir(parents=True)
+            (install / "logs" / "latest.log").write_text(
+                rewritten_latest, encoding="utf-8"
+            )
+            (install / "logs" / "debug.log").write_text(
+                rewritten_debug, encoding="utf-8"
+            )
+            (install / "boot.log").write_text(rewritten_boot, encoding="utf-8")
+            with (
+                mock.patch.object(self.hygiene, "verify_install_provenance"),
+                mock.patch.object(self.hygiene, "verify_jdt_evidence"),
+                mock.patch.object(self.hygiene, "verify_sable_source_evidence"),
+                mock.patch.object(
+                    self.hygiene, "verify_idas_compat_source_evidence"
+                ),
+                mock.patch.object(
+                    self.hygiene,
+                    "quest_audit_expectation",
+                    return_value=audit_expectation,
+                ),
+            ):
+                result = self.hygiene.verify_boot_run(
+                    workspace, install, self.nonce, self.status
+                )
+        self.assertEqual(result["warning_records"], self.hygiene.REVIEWED_WARNING_TOTAL)
+
     def test_complete_warning_fingerprint_corpus_rejects_all_mutations(self) -> None:
         unknown = (
             "[08Aug2026 12:00:00.000] [main/WARN] "
@@ -1994,8 +2253,16 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "",
         )
         self.assertEqual(
-            self.hygiene.canonical_record_fingerprint(local),
-            self.hygiene.canonical_record_fingerprint(ci),
+            self.hygiene.canonical_record_fingerprint(
+                local,
+                workspace_root="/Users/example/project",
+                install_root="/Users/example/project/server-test",
+            ),
+            self.hygiene.canonical_record_fingerprint(
+                ci,
+                workspace_root="/home/runner/work/afterlight",
+                install_root="/home/runner/work/afterlight/server-test",
+            ),
         )
 
         yungs_message = (
@@ -2323,6 +2590,18 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):
+    def test_live_runtime_gate_skips_precisely_or_fails_when_required(self) -> None:
+        support = importlib.import_module("live_install_support")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            decision = support.live_install_decision(root, require=False)
+            self.assertFalse(decision.ready)
+            self.assertIn("fresh authenticated server-test install", decision.reason)
+            with self.assertRaisesRegex(
+                RuntimeError, "AFTERLIGHT_REQUIRE_LIVE_TESTS=1"
+            ):
+                support.live_install_decision(root, require=True)
+
     def test_quest_audit_cli_reports_only_quest_result(self) -> None:
         hygiene = hygiene_module()
         arguments = hygiene.argparse.Namespace(
@@ -2381,24 +2660,37 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
     def test_server_harness_pins_bootstrap_and_preserves_process_truth(self) -> None:
         script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
         self.assertIn(
-            "releases/download/v0.0.3/packwiz-installer-bootstrap.jar", script
-        )
-        self.assertIn(
-            "a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c",
+            "releases/download/v${PACKWIZ_BOOTSTRAP_VERSION}/"
+            "packwiz-installer-bootstrap.jar",
             script,
+        )
+        versions = (ROOT / "tools" / "versions.env").read_text(encoding="utf-8")
+        self.assertIn(
+            "PACKWIZ_BOOTSTRAP_SHA256=${PACKWIZ_BOOTSTRAP_SHA256:-"
+            "a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c}",
+            versions,
         )
         self.assertIn("packwiz serve --refresh=false", script)
         self.assertIn("python3 tools/rc_hygiene.py verify-manifest", script)
         self.assertIn("afterlight-server-exit-status.txt", script)
         self.assertRegex(script, re.compile(r"SERVER_STATUS=\$\?"))
         self.assertIn("ACTUAL_BOOTSTRAP_SHA256", script)
+        self.assertNotIn("releases/latest", script)
+        self.assertIn("--bootstrap-no-update", script)
+        self.assertIn("--bootstrap-main-jar", script)
+        self.assertIn("packwiz-installer.jar", script)
         self.assertIn("assert_manifest_unchanged", script)
         self.assertGreaterEqual(script.count("assert_manifest_unchanged"), 5)
         self.assertNotIn("packwiz refresh", script)
         self.assertNotIn("|| true", script)
-        run_lines = [line for line in script.splitlines() if "./run.sh nogui" in line]
-        self.assertEqual(len(run_lines), 1)
-        self.assertNotIn("|| true", run_lines[0])
+        self.assertIn("AFTERLIGHT_REQUIRE_LIVE_TESTS=1", script)
+        self.assertIn("AFTERLIGHT_LIVE_RUN_ID", script)
+        self.assertIn("afterlight-live-tests-ready.txt", script)
+        self.assertIn("os.setsid()", script)
+        self.assertIn(
+            'os.execv(sys.argv[2], [sys.argv[2], sys.argv[3], "./run.sh", "nogui"])',
+            script,
+        )
 
     def test_server_harness_requires_a_working_java_21_runtime(self) -> None:
         script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
@@ -2471,6 +2763,19 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
             versions,
             r"NEOFORGE_INSTALLER_SHA256=\$\{NEOFORGE_INSTALLER_SHA256:-[0-9a-f]{64}\}",
         )
+        self.assertIn(
+            "PACKWIZ_INSTALLER_VERSION=${PACKWIZ_INSTALLER_VERSION:-0.5.14}",
+            versions,
+        )
+        self.assertIn(
+            "PACKWIZ_INSTALLER_SHA256=${PACKWIZ_INSTALLER_SHA256:-"
+            "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598}",
+            versions,
+        )
+        self.assertIn(
+            "PACKWIZ_INSTALLER_SIZE=${PACKWIZ_INSTALLER_SIZE:-4378828}",
+            versions,
+        )
         script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
         self.assertIn("NEOFORGE_INSTALLER_CACHE", script)
         self.assertIn("ACTUAL_NEOFORGE_SHA256", script)
@@ -2478,6 +2783,32 @@ class FilterAndHarnessNegativeTests(unittest.TestCase):
         execute_index = script.index("-jar neoforge-installer.jar")
         self.assertLess(checksum_index, execute_index)
         self.assertIn("NEOFORGE_INSTALLER_SHA256 mismatch", script)
+
+    def test_packwiz_main_installer_is_authenticated_before_cache_publish(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            "releases/download/v${PACKWIZ_INSTALLER_VERSION}/packwiz-installer.jar",
+            script,
+        )
+        self.assertIn('wc -c < "$PACKWIZ_INSTALLER_TMP"', script)
+        self.assertIn('shasum -a 256 "$PACKWIZ_INSTALLER_TMP"', script)
+        self.assertIn('mv "$PACKWIZ_INSTALLER_TMP" "$PACKWIZ_INSTALLER_CACHE"', script)
+        self.assertLess(
+            script.index('wc -c < "$PACKWIZ_INSTALLER_TMP"'),
+            script.index('mv "$PACKWIZ_INSTALLER_TMP" "$PACKWIZ_INSTALLER_CACHE"'),
+        )
+        self.assertLess(
+            script.index('shasum -a 256 "$PACKWIZ_INSTALLER_TMP"'),
+            script.index('mv "$PACKWIZ_INSTALLER_TMP" "$PACKWIZ_INSTALLER_CACHE"'),
+        )
+        self.assertNotIn("api.github.com/repos/comp500/packwiz-installer/releases/latest", script)
+
+    def test_server_harness_tracks_and_terminates_the_server_process_group(self) -> None:
+        script = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn('SERVER_PID=""', script)
+        self.assertIn('kill -TERM -- "-$SERVER_PID"', script)
+        self.assertIn('wait "$SERVER_PID"', script)
+        self.assertIn("os.setsid()", script)
 
 
 class ServerHarnessIntegrationTests(unittest.TestCase):
@@ -2496,6 +2827,15 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
             "NEOFORGE_INSTALLER_SHA256=${NEOFORGE_INSTALLER_SHA256:-"
             + sha256_bytes(b"expected installer")
             + "}\n"
+            "PACKWIZ_BOOTSTRAP_VERSION=${PACKWIZ_BOOTSTRAP_VERSION:-0.0.3}\n"
+            "PACKWIZ_BOOTSTRAP_SHA256=${PACKWIZ_BOOTSTRAP_SHA256:-"
+            + sha256_bytes(b"bootstrap bytes")
+            + "}\n"
+            "PACKWIZ_INSTALLER_VERSION=${PACKWIZ_INSTALLER_VERSION:-0.5.14}\n"
+            "PACKWIZ_INSTALLER_SHA256=${PACKWIZ_INSTALLER_SHA256:-"
+            + sha256_bytes(b"expected packwiz installer")
+            + "}\n"
+            "PACKWIZ_INSTALLER_SIZE=${PACKWIZ_INSTALLER_SIZE:-27}\n"
             "JAVA_HOME=${JAVA_HOME:-/missing}\n"
             "PATH_EXTRA=${PATH_EXTRA:-/missing}\n",
             encoding="utf-8",
@@ -2539,6 +2879,65 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
             ),
         )
 
+    def _write_installer_java(
+        self, run_source: str = "#!/bin/sh\nexit 0\n", *, create_audit: bool = False
+    ) -> None:
+        self._write_executable(
+            self.java_home / "bin" / "java",
+            textwrap.dedent(
+                f"""\
+                #!/usr/bin/env python3
+                import os
+                from pathlib import Path
+                import sys
+
+                if sys.argv[1:] == ["-version"]:
+                    print('openjdk version "21.0.1"', file=sys.stderr)
+                    raise SystemExit(0)
+                if sys.argv[1:2] == ["-XshowSettings:properties"]:
+                    print("    java.home = {self.java_home}", file=sys.stderr)
+                    raise SystemExit(0)
+                with Path({str(self.root / 'java-arguments.txt')!r}).open("a", encoding="utf-8") as target:
+                    target.write(" ".join(sys.argv[1:]) + "\\n")
+                if sys.argv[1:3] == ["-jar", "neoforge-installer.jar"]:
+                    run_path = Path({str(self.root / 'server-test' / 'run.sh')!r})
+                    run_path.write_text({run_source!r}, encoding="utf-8")
+                    run_path.chmod(0o755)
+                    raise SystemExit(0)
+                if sys.argv[1:3] == ["-jar", "packwiz-installer-bootstrap.jar"]:
+                    if {create_audit!r}:
+                        audit = Path({str(self.root / 'server-test/kubejs/server_scripts/afterlight/generated_quest_item_audit.js')!r})
+                        audit.parent.mkdir(parents=True, exist_ok=True)
+                        audit.write_text("__AFTERLIGHT_BOOT_NONCE__\\n", encoding="utf-8")
+                    raise SystemExit(0)
+                raise SystemExit(97)
+                """
+            ),
+        )
+
+    def _write_authenticated_curl(self, packwiz_payload: bytes = b"expected packwiz installer") -> None:
+        self._write_executable(
+            self.fake_bin / "curl",
+            textwrap.dedent(
+                f"""\
+                #!/bin/sh
+                output=""
+                previous=""
+                for argument in "$@"; do
+                  if [ "$previous" = "-o" ]; then output="$argument"; fi
+                  previous="$argument"
+                done
+                printf '%s\n' "$*" >> "{self.root / 'curl-arguments.txt'}"
+                case "$*" in
+                  *maven.neoforged.net*) printf 'expected installer' > "$output" ;;
+                  *packwiz-installer-bootstrap*) printf 'bootstrap bytes' > "$output" ;;
+                  *packwiz/packwiz-installer/releases/download*) printf {packwiz_payload.decode('ascii')!r} > "$output" ;;
+                  *) exec /usr/bin/curl "$@" ;;
+                esac
+                """
+            ),
+        )
+
     def _write_packwiz(self, mode: str) -> None:
         source = textwrap.dedent(
             f"""\
@@ -2557,6 +2956,11 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
             class Handler(http.server.SimpleHTTPRequestHandler):
                 def log_message(self, format, *args):
                     pass
+                def do_GET(self):
+                    if {mode!r} == "hold":
+                        self.send_error(404)
+                        return
+                    super().do_GET()
             socketserver.TCPServer.allow_reuse_address = True
             with socketserver.TCPServer(("127.0.0.1", port), Handler) as server:
                 server.serve_forever()
@@ -2564,7 +2968,9 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         )
         self._write_executable(self.fake_bin / "packwiz", source)
 
-    def _environment(self, port: int) -> dict[str, str]:
+    def _environment(
+        self, port: int, overrides: dict[str, str] | None = None
+    ) -> dict[str, str]:
         environment = os.environ.copy()
         environment.update(
             {
@@ -2573,8 +2979,15 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                 "SERVE_PORT": str(port),
                 "AFTERLIGHT_CACHE_DIR": str(self.root / "cache"),
                 "NEOFORGE_INSTALLER_SHA256": sha256_bytes(b"expected installer"),
+                "PACKWIZ_BOOTSTRAP_SHA256": sha256_bytes(b"bootstrap bytes"),
+                "PACKWIZ_INSTALLER_VERSION": "0.5.14",
+                "PACKWIZ_INSTALLER_SHA256": sha256_bytes(
+                    b"expected packwiz installer"
+                ),
+                "PACKWIZ_INSTALLER_SIZE": str(len(b"expected packwiz installer")),
             }
         )
+        environment.update(overrides or {})
         return environment
 
     def _free_port(self) -> int:
@@ -2582,11 +2995,16 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
             listener.bind(("127.0.0.1", 0))
             return int(listener.getsockname()[1])
 
-    def _run(self, port: int, timeout: float = 20) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        port: int,
+        timeout: float = 20,
+        overrides: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["bash", "tools/server-test.sh"],
             cwd=self.root,
-            env=self._environment(port),
+            env=self._environment(port, overrides),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -2612,6 +3030,27 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
             with self.assertRaises(ProcessLookupError):
                 os.kill(serve_pid, 0)
 
+    def _wait_for_path(self, path: Path, timeout: float = 8) -> None:
+        deadline = time.monotonic() + timeout
+        while not path.exists():
+            if time.monotonic() >= deadline:
+                self.fail(f"timed out waiting for {path}")
+            time.sleep(0.05)
+
+    def _wait_for_process_path(
+        self, process: subprocess.Popen[str], path: Path, timeout: float = 8
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        while not path.exists():
+            if process.poll() is not None:
+                output, _ = process.communicate()
+                self.fail(
+                    f"process exited {process.returncode} before creating {path}: {output}"
+                )
+            if time.monotonic() >= deadline:
+                self.fail(f"timed out waiting for {path}")
+            time.sleep(0.05)
+
     def test_wrong_java_preserves_prior_local_evidence(self) -> None:
         self._write_java(17)
         prior = self.root / "server-test" / "boot.log"
@@ -2621,6 +3060,115 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stdout)
         self.assertIn("need a working Java 21 runtime", result.stdout)
         self.assertEqual(prior.read_text(encoding="utf-8"), "prior boot evidence\n")
+
+    def test_symlink_install_root_is_rejected_before_any_write(self) -> None:
+        external = self.root / "external-install"
+        external.mkdir()
+        sentinel = external / "sentinel.txt"
+        sentinel.write_text("must remain untouched\n", encoding="utf-8")
+        (self.root / "server-test").symlink_to(external, target_is_directory=True)
+        result = self._run(self._free_port())
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("symlink", result.stdout)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "must remain untouched\n")
+        self.assertEqual(sorted(path.name for path in external.iterdir()), ["sentinel.txt"])
+
+    def test_sigint_and_sigterm_terminate_packwiz_and_preserve_prior_evidence(
+        self,
+    ) -> None:
+        for signal_number in (2, 15):
+            with self.subTest(signal=signal_number):
+                (self.root / "serve.pid").unlink(missing_ok=True)
+                self._write_packwiz("hold")
+                port = self._free_port()
+                prior = self.root / "server-test" / "boot.log"
+                prior.parent.mkdir(exist_ok=True)
+                prior.write_text("prior signal evidence\n", encoding="utf-8")
+                process = subprocess.Popen(
+                    ["bash", "tools/server-test.sh"],
+                    cwd=self.root,
+                    env=self._environment(port),
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                try:
+                    self._wait_for_path(self.root / "serve.pid")
+                    os.kill(process.pid, signal_number)
+                    output, _ = process.communicate(timeout=10)
+                    self.assertEqual(process.returncode, 130, output)
+                    self.assertEqual(
+                        prior.read_text(encoding="utf-8"),
+                        "prior signal evidence\n",
+                    )
+                    self.assertEqual(
+                        list((self.root / "cache").glob("*.tmp.*"))
+                        if (self.root / "cache").exists()
+                        else [],
+                        [],
+                    )
+                    self._assert_port_released(port)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=5)
+
+    def test_sigint_and_sigterm_terminate_server_process_group_and_free_port(
+        self,
+    ) -> None:
+        for signal_number in (2, 15):
+            with self.subTest(signal=signal_number):
+                (self.root / "server.pid").unlink(missing_ok=True)
+                (self.root / "serve.pid").unlink(missing_ok=True)
+                server_port = self._free_port()
+                run_script = textwrap.dedent(
+                    f"""\
+                    #!/bin/sh
+                    exec {sys.executable} -c "import os,socket,time; from pathlib import Path; s=socket.socket(); s.bind(('127.0.0.1', {server_port})); s.listen(); Path({str(self.root / 'server.pid')!r}).write_text(str(os.getpid())); time.sleep(60)"
+                    """
+                )
+                self._prepare_packwiz_installer_stage(
+                    run_script, create_audit=True
+                )
+                self._write_executable(
+                    self.fake_bin / "gtimeout",
+                    "#!/bin/sh\nshift\nexec \"$@\"\n",
+                )
+                serve_port = self._free_port()
+                process = subprocess.Popen(
+                    ["bash", "tools/server-test.sh"],
+                    cwd=self.root,
+                    env=self._environment(
+                        serve_port, {"SERVER_PORT": str(server_port)}
+                    ),
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                child_pid = None
+                try:
+                    self._wait_for_process_path(
+                        process, self.root / "server.pid", timeout=12
+                    )
+                    child_pid = int(
+                        (self.root / "server.pid").read_text(encoding="utf-8")
+                    )
+                    os.kill(process.pid, signal_number)
+                    output, _ = process.communicate(timeout=10)
+                    self.assertEqual(process.returncode, 130, output)
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(child_pid, 0)
+                    self._assert_port_released(server_port)
+                    self._assert_port_released(serve_port)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=5)
+                    if child_pid is not None:
+                        try:
+                            os.kill(child_pid, 9)
+                        except ProcessLookupError:
+                            pass
 
     def test_occupied_404_port_preserves_prior_boot_log(self) -> None:
         port = self._free_port()
@@ -2693,6 +3241,112 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         self.assertEqual(list(cache.parent.glob("*.tmp.*")), [])
         self.assertFalse((self.root / "java-invocations.txt").exists())
         self._assert_port_released(port)
+
+    def _prepare_packwiz_installer_stage(
+        self, run_source: str = "#!/bin/sh\nexit 0\n", *, create_audit: bool = False
+    ) -> None:
+        self._write_installer_java(run_source, create_audit=create_audit)
+        self._write_authenticated_curl()
+        neoforge_cache = self.root / "cache" / "neoforge-21.1.248-installer.jar"
+        neoforge_cache.parent.mkdir(parents=True, exist_ok=True)
+        neoforge_cache.write_bytes(b"expected installer")
+
+    def test_packwiz_installer_uses_immutable_download_and_exact_bootstrap_argv(
+        self,
+    ) -> None:
+        self._prepare_packwiz_installer_stage()
+        port = self._free_port()
+        result = self._run(port)
+        self.assertEqual(result.returncode, 7, result.stdout)
+        self.assertIn("generated quest item audit script missing", result.stdout)
+        curl_arguments = (self.root / "curl-arguments.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "https://github.com/packwiz/packwiz-installer/releases/download/"
+            "v0.5.14/packwiz-installer.jar",
+            curl_arguments,
+        )
+        self.assertNotIn("releases/latest", curl_arguments)
+        java_arguments = (self.root / "java-arguments.txt").read_text(
+            encoding="utf-8"
+        ).splitlines()
+        bootstrap = next(
+            line
+            for line in java_arguments
+            if line.startswith("-jar packwiz-installer-bootstrap.jar")
+        )
+        self.assertEqual(
+            bootstrap,
+            "-jar packwiz-installer-bootstrap.jar --bootstrap-no-update "
+            "--bootstrap-main-jar packwiz-installer.jar -g -s server "
+            f"http://localhost:{port}/pack.toml",
+        )
+        self._assert_port_released(port)
+
+    def test_corrupt_cached_packwiz_installer_is_removed_before_bootstrap(self) -> None:
+        self._prepare_packwiz_installer_stage()
+        cache = self.root / "cache" / "packwiz-installer-0.5.14.jar"
+        cache.write_bytes(b"corrupt cached packwiz installer")
+        port = self._free_port()
+        result = self._run(port)
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("PACKWIZ_INSTALLER", result.stdout)
+        self.assertFalse(cache.exists())
+        arguments = (self.root / "java-arguments.txt").read_text(encoding="utf-8")
+        self.assertNotIn("packwiz-installer-bootstrap.jar", arguments)
+        self._assert_port_released(port)
+
+    def test_packwiz_installer_rejects_wrong_size_and_wrong_hash(self) -> None:
+        cases = (
+            (
+                {"PACKWIZ_INSTALLER_SIZE": "28"},
+                "size mismatch",
+            ),
+            (
+                {"PACKWIZ_INSTALLER_SHA256": "0" * 64},
+                "SHA-256 mismatch",
+            ),
+        )
+        for overrides, message in cases:
+            with self.subTest(message=message):
+                self._prepare_packwiz_installer_stage()
+                cache = self.root / "cache" / "packwiz-installer-0.5.14.jar"
+                cache.write_bytes(b"expected packwiz installer")
+                result = self._run(self._free_port(), overrides=overrides)
+                self.assertEqual(result.returncode, 3, result.stdout)
+                self.assertIn(message, result.stdout)
+                self.assertFalse(cache.exists())
+
+    def test_corrupt_packwiz_download_is_not_published(self) -> None:
+        self._prepare_packwiz_installer_stage()
+        self._write_authenticated_curl(b"corrupt packwiz download")
+        cache = self.root / "cache" / "packwiz-installer-0.5.14.jar"
+        result = self._run(self._free_port())
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("PACKWIZ_INSTALLER", result.stdout)
+        self.assertFalse(cache.exists())
+        self.assertEqual(list(cache.parent.glob("*.tmp.*")), [])
+
+    def test_missing_packwiz_main_jar_fails_before_bootstrap_execution(self) -> None:
+        self._prepare_packwiz_installer_stage()
+        self._write_executable(
+            self.fake_bin / "cp",
+            textwrap.dedent(
+                """\
+                #!/bin/sh
+                case "$1" in
+                  *packwiz-installer-0.5.14.jar) exit 0 ;;
+                esac
+                exec /bin/cp "$@"
+                """
+            ),
+        )
+        result = self._run(self._free_port())
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("packwiz-installer.jar missing", result.stdout)
+        arguments = (self.root / "java-arguments.txt").read_text(encoding="utf-8")
+        self.assertNotIn("packwiz-installer-bootstrap.jar", arguments)
 
 
 if __name__ == "__main__":

@@ -12,13 +12,40 @@ export PATH="$PATH_EXTRA:$PATH"
 DIR=server-test
 BOOT_TIMEOUT=${BOOT_TIMEOUT:-420}
 SERVE_PORT=${SERVE_PORT:-8199}
+SERVER_PORT=${SERVER_PORT:-25599}
 AFTERLIGHT_CACHE_DIR=${AFTERLIGHT_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/afterlight}
 NEOFORGE_INSTALLER_CACHE="$AFTERLIGHT_CACHE_DIR/neoforge-${NEOFORGE_VERSION}-installer.jar"
+PACKWIZ_INSTALLER_CACHE="$AFTERLIGHT_CACHE_DIR/packwiz-installer-${PACKWIZ_INSTALLER_VERSION}.jar"
 RUN_ID="${GITHUB_RUN_ID:-local}-$(date -u +%Y%m%dT%H%M%SZ)-$$-${RANDOM}"
 EVIDENCE_DIR="$DIR/evidence/$RUN_ID"
 SERVE_PID=""
+SERVER_PID=""
 NEOFORGE_INSTALLER_TMP=""
+PACKWIZ_INSTALLER_TMP=""
 RUN_FILES_FRESH=0
+
+if ! python3 - "$DIR" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+candidate = Path(os.path.abspath(sys.argv[1]))
+current = Path(candidate.anchor)
+for part in candidate.parts[1:]:
+    current /= part
+    try:
+        current_stat = current.lstat()
+    except FileNotFoundError:
+        break
+    if stat.S_ISLNK(current_stat.st_mode):
+        print(f"FAIL: symlink in install root path: {current}")
+        raise SystemExit(1)
+PY
+then
+  exit 9
+fi
+python3 tools/rc_hygiene.py verify-install-root --install "$DIR" --allow-missing >/dev/null
 
 mkdir -p "$EVIDENCE_DIR"
 cat > "$EVIDENCE_DIR/afterlight-run-marker.txt" <<MARKER
@@ -39,6 +66,16 @@ copy_evidence() {
 }
 
 cleanup() {
+  if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+    if ! kill -TERM -- "-$SERVER_PID" 2>/dev/null; then
+      if ! kill -TERM "$SERVER_PID" 2>/dev/null; then
+        :
+      fi
+    fi
+    if ! wait "$SERVER_PID" 2>/dev/null; then
+      :
+    fi
+  fi
   if [ -n "$SERVE_PID" ] && kill -0 "$SERVE_PID" 2>/dev/null; then
     if ! kill "$SERVE_PID"; then
       :
@@ -49,6 +86,9 @@ cleanup() {
   fi
   if [ -n "$NEOFORGE_INSTALLER_TMP" ]; then
     rm -f "$NEOFORGE_INSTALLER_TMP"
+  fi
+  if [ -n "$PACKWIZ_INSTALLER_TMP" ]; then
+    rm -f "$PACKWIZ_INSTALLER_TMP"
   fi
 }
 
@@ -65,18 +105,19 @@ capture_evidence() {
     copy_evidence "$DIR/afterlight-server-exit-status.txt" "afterlight-server-exit-status.txt"
     copy_evidence "$DIR/packwiz.json" "packwiz.json"
     copy_evidence "$DIR/afterlight-provenance.txt" "afterlight-provenance.txt"
+    copy_evidence "$DIR/afterlight-live-tests-ready.txt" "afterlight-live-tests-ready.txt"
   fi
 }
 
 finish() {
-  local status=$?
+  local status=$1
   trap - EXIT INT TERM
   cleanup
   capture_evidence "$status"
   exit "$status"
 }
 
-trap finish EXIT
+trap 'finish $?' EXIT
 trap 'exit 130' INT TERM
 
 JAVA_HOME=${JAVA_HOME:-}
@@ -123,8 +164,8 @@ command -v packwiz >/dev/null || {
   exit 2
 }
 
-BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v0.0.3/packwiz-installer-bootstrap.jar"
-BOOTSTRAP_SHA256="a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c"
+BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v${PACKWIZ_BOOTSTRAP_VERSION}/packwiz-installer-bootstrap.jar"
+PACKWIZ_INSTALLER_URL="https://github.com/packwiz/packwiz-installer/releases/download/v${PACKWIZ_INSTALLER_VERSION}/packwiz-installer.jar"
 
 python3 tools/rc_hygiene.py verify-manifest --root .
 MANIFEST_STATE=$(shasum -a 256 pack.toml index.toml)
@@ -237,18 +278,77 @@ if ! (cd "$DIR" && "$JAVA" -jar neoforge-installer.jar --install-server . > inst
 fi
 assert_manifest_unchanged
 
+if [ -f "$PACKWIZ_INSTALLER_CACHE" ]; then
+  ACTUAL_PACKWIZ_INSTALLER_SIZE=$(wc -c < "$PACKWIZ_INSTALLER_CACHE" | tr -d '[:space:]')
+  ACTUAL_PACKWIZ_INSTALLER_SHA256=$(shasum -a 256 "$PACKWIZ_INSTALLER_CACHE" | awk '{print $1}')
+  if [ "$ACTUAL_PACKWIZ_INSTALLER_SIZE" != "$PACKWIZ_INSTALLER_SIZE" ]; then
+    rm -f "$PACKWIZ_INSTALLER_CACHE"
+    echo "FAIL: PACKWIZ_INSTALLER size mismatch"
+    echo "expected $PACKWIZ_INSTALLER_SIZE"
+    echo "actual   $ACTUAL_PACKWIZ_INSTALLER_SIZE"
+    exit 3
+  fi
+  if [ "$ACTUAL_PACKWIZ_INSTALLER_SHA256" != "$PACKWIZ_INSTALLER_SHA256" ]; then
+    rm -f "$PACKWIZ_INSTALLER_CACHE"
+    echo "FAIL: PACKWIZ_INSTALLER SHA-256 mismatch"
+    echo "expected $PACKWIZ_INSTALLER_SHA256"
+    echo "actual   $ACTUAL_PACKWIZ_INSTALLER_SHA256"
+    exit 3
+  fi
+else
+  PACKWIZ_INSTALLER_TMP="${PACKWIZ_INSTALLER_CACHE}.tmp.$$"
+  if ! curl -sfL -o "$PACKWIZ_INSTALLER_TMP" "$PACKWIZ_INSTALLER_URL"; then
+    rm -f "$PACKWIZ_INSTALLER_TMP"
+    echo "FAIL: download Packwiz installer ${PACKWIZ_INSTALLER_VERSION} ($PACKWIZ_INSTALLER_URL)"
+    exit 3
+  fi
+  ACTUAL_PACKWIZ_INSTALLER_SIZE=$(wc -c < "$PACKWIZ_INSTALLER_TMP" | tr -d '[:space:]')
+  ACTUAL_PACKWIZ_INSTALLER_SHA256=$(shasum -a 256 "$PACKWIZ_INSTALLER_TMP" | awk '{print $1}')
+  if [ "$ACTUAL_PACKWIZ_INSTALLER_SIZE" != "$PACKWIZ_INSTALLER_SIZE" ]; then
+    rm -f "$PACKWIZ_INSTALLER_TMP"
+    echo "FAIL: PACKWIZ_INSTALLER size mismatch"
+    echo "expected $PACKWIZ_INSTALLER_SIZE"
+    echo "actual   $ACTUAL_PACKWIZ_INSTALLER_SIZE"
+    exit 3
+  fi
+  if [ "$ACTUAL_PACKWIZ_INSTALLER_SHA256" != "$PACKWIZ_INSTALLER_SHA256" ]; then
+    rm -f "$PACKWIZ_INSTALLER_TMP"
+    echo "FAIL: PACKWIZ_INSTALLER SHA-256 mismatch"
+    echo "expected $PACKWIZ_INSTALLER_SHA256"
+    echo "actual   $ACTUAL_PACKWIZ_INSTALLER_SHA256"
+    exit 3
+  fi
+  mv "$PACKWIZ_INSTALLER_TMP" "$PACKWIZ_INSTALLER_CACHE"
+  PACKWIZ_INSTALLER_TMP=""
+fi
+cp "$PACKWIZ_INSTALLER_CACHE" "$DIR/packwiz-installer.jar"
+if [ ! -f "$DIR/packwiz-installer.jar" ]; then
+  echo "FAIL: packwiz-installer.jar missing before bootstrap execution"
+  exit 3
+fi
+ACTUAL_PACKWIZ_INSTALLER_SIZE=$(wc -c < "$DIR/packwiz-installer.jar" | tr -d '[:space:]')
+ACTUAL_PACKWIZ_INSTALLER_SHA256=$(shasum -a 256 "$DIR/packwiz-installer.jar" | awk '{print $1}')
+if [ "$ACTUAL_PACKWIZ_INSTALLER_SIZE" != "$PACKWIZ_INSTALLER_SIZE" ]; then
+  echo "FAIL: PACKWIZ_INSTALLER size mismatch after cache copy"
+  exit 3
+fi
+if [ "$ACTUAL_PACKWIZ_INSTALLER_SHA256" != "$PACKWIZ_INSTALLER_SHA256" ]; then
+  echo "FAIL: PACKWIZ_INSTALLER SHA-256 mismatch after cache copy"
+  exit 3
+fi
+
 if ! curl -sfL -o "$DIR/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL"; then
   echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"
   exit 3
 fi
 ACTUAL_BOOTSTRAP_SHA256=$(shasum -a 256 "$DIR/packwiz-installer-bootstrap.jar" | awk '{print $1}')
-if [ "$ACTUAL_BOOTSTRAP_SHA256" != "$BOOTSTRAP_SHA256" ]; then
+if [ "$ACTUAL_BOOTSTRAP_SHA256" != "$PACKWIZ_BOOTSTRAP_SHA256" ]; then
   echo "FAIL: packwiz-installer-bootstrap SHA-256 mismatch"
-  echo "expected $BOOTSTRAP_SHA256"
+  echo "expected $PACKWIZ_BOOTSTRAP_SHA256"
   echo "actual   $ACTUAL_BOOTSTRAP_SHA256"
   exit 3
 fi
-if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1); then
+if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar --bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar -g -s server "http://localhost:${SERVE_PORT}/pack.toml" > packwiz-install.log 2>&1); then
   echo "FAIL: packwiz-installer server side"
   tail -30 "$DIR/packwiz-install.log"
   exit 7
@@ -266,14 +366,29 @@ mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
 python3 tools/rc_hygiene.py verify-quest-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
 
 echo "eula=true" > "$DIR/eula.txt"
-cat > "$DIR/server.properties" <<'PROPS'
+cat > "$DIR/server.properties" <<PROPS
 level-seed=afterlight-ci
-server-port=25599
+server-port=$SERVER_PORT
 PROPS
 
 set +e
-(cd "$DIR" && printf 'stop\n' | "$TIMEOUT_BIN" "$BOOT_TIMEOUT" ./run.sh nogui > boot.log 2>&1)
+python3 -c '
+import os
+import sys
+
+os.chdir(sys.argv[1])
+read_fd, write_fd = os.pipe()
+os.write(write_fd, b"stop\n")
+os.close(write_fd)
+os.dup2(read_fd, 0)
+os.close(read_fd)
+os.setsid()
+os.execv(sys.argv[2], [sys.argv[2], sys.argv[3], "./run.sh", "nogui"])
+' "$DIR" "$TIMEOUT_BIN" "$BOOT_TIMEOUT" > "$DIR/boot.log" 2>&1 &
+SERVER_PID=$!
+wait "$SERVER_PID"
 SERVER_STATUS=$?
+SERVER_PID=""
 set -e
 printf '%s\n' "$SERVER_STATUS" > "$DIR/afterlight-server-exit-status.txt"
 assert_manifest_unchanged
@@ -288,12 +403,18 @@ if ! python3 tools/rc_hygiene.py verify-boot --root . --install "$DIR" --nonce "
   exit 8
 fi
 
-if ! python3 tools/tests/test_rc_hygiene_reliability.py; then
-  echo "SERVER BOOT: FAILED: RC hygiene reliability probes did not pass"
-  exit 9
-fi
-if ! python3 tools/tests/test_rc_hygiene.py; then
-  echo "SERVER BOOT: FAILED: RC hygiene fixture validation did not pass"
+PACK_SHA256=$(shasum -a 256 pack.toml | awk '{print $1}')
+INDEX_SHA256=$(shasum -a 256 index.toml | awk '{print $1}')
+cat > "$DIR/afterlight-live-tests-ready.txt" <<READY
+run_id=$RUN_ID
+nonce=$AUDIT_NONCE
+pack_sha256=$PACK_SHA256
+index_sha256=$INDEX_SHA256
+READY
+
+if ! AFTERLIGHT_REQUIRE_LIVE_TESTS=1 AFTERLIGHT_LIVE_RUN_ID="$RUN_ID" \
+  python3 -m unittest discover -s tools/tests -p 'test_*.py'; then
+  echo "SERVER BOOT: FAILED: authenticated live Python suite did not pass"
   exit 9
 fi
 assert_manifest_unchanged

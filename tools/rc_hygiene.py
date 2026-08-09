@@ -164,49 +164,31 @@ REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
 REVIEWED_MIXIN_CORPUS_SHA256 = (
     "4edbbf17adc509bf5c98c43a7d1d9a1408ca43473857f60c2debd016783fdfc0"
 )
-REVIEWED_CLIENT_TARGET_INVENTORY: tuple[tuple[object, ...], ...] = (
-    (
-        "mods/sable.pw.toml",
-        "sable.mixins.json",
-        "mixins",
-        40,
-        "entity.entity_aabb_lookup.LevelsMixin",
-        "dev/ryanhcode/sable/mixin/entity/entity_aabb_lookup/LevelsMixin.class",
-        "0b6d6e637410852d131f2178c53a454bdd506555e509c5aea2ce3127d01070c0",
-        "value",
-        (
-            "Lnet/minecraft/server/level/ServerLevel;",
-            "Lnet/minecraft/client/multiplayer/ClientLevel;",
-        ),
-    ),
-    (
-        "mods/sable.pw.toml",
-        "sable.mixins.json",
-        "mixins",
-        100,
-        "plot.LevelsMixin",
-        "dev/ryanhcode/sable/mixin/plot/LevelsMixin.class",
-        "660410f918f5676d49e734028cb2e74967a622746cc7c7f22ff805016c476bda",
-        "value",
-        (
-            "Lnet/minecraft/server/level/ServerLevel;",
-            "Lnet/minecraft/client/multiplayer/ClientLevel;",
-        ),
-    ),
-    (
-        "mods/sable.pw.toml",
-        "sable.mixins.json",
-        "mixins",
-        132,
-        "water_occlusion.LevelsMixin",
-        "dev/ryanhcode/sable/mixin/water_occlusion/LevelsMixin.class",
-        "f5cecf91372f08ef0b5b9bc36f609b6f2df726dc3612731d9e0a5a56460b647c",
-        "value",
-        (
-            "Lnet/minecraft/server/level/ServerLevel;",
-            "Lnet/minecraft/client/multiplayer/ClientLevel;",
-        ),
-    ),
+REVIEWED_CLIENT_TARGET_COUNT = 20
+REVIEWED_CLIENT_TARGET_INVENTORY_SHA256 = (
+    "c55a2f9ab12eb6c6fc37bd330df8323999501913a5a8c3159e5939bd8a83b1e2"
+)
+REVIEWED_CLIENT_TARGETS = (
+    "Lnet/neoforged/neoforge/client/model/generators/ModelBuilder;",
+    "Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/pipeline/BlockOcclusionCache;",
+    "Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/pipeline/BlockRenderer;",
+    "Lcom/simibubi/create/CreateClient;",
+    "Lcom/simibubi/create/foundation/blockEntity/behaviour/ValueBoxRenderer;",
+    "Lcom/aetherteam/aether/client/TriviaGenerator;",
+    "Lnet/neoforged/neoforge/client/extensions/IBlockEntityRendererExtension;",
+    "Lnet/neoforged/neoforge/client/ClientHooks;",
+    "Learth/terrarium/athena/api/client/models/neoforge/FactoryManagerImpl;",
+    "Lcom/simibubi/create/content/schematics/client/tools/DeployTool;",
+    "Lcom/simibubi/create/content/schematics/client/SchematicAndQuillHandler;",
+    "Lcom/simibubi/create/content/schematics/client/tools/SchematicToolBase;",
+    "Lcom/simibubi/create/content/equipment/toolbox/ToolboxHandlerClient;",
+    "Lio/github/mortuusars/exposure/client/animation/CameraPoses;",
+    "Lnet/mehvahdjukaar/moonlight/api/client/util/LOD;",
+    "Lnet/mehvahdjukaar/vista/client/ViewFinderController;",
+    "Lnet/minecraft/client/multiplayer/ClientLevel;",
+    "Lnet/minecraft/client/multiplayer/ClientLevel;",
+    "Lnet/minecraft/client/multiplayer/ClientLevel;",
+    "Ldev/ryanhcode/sable/sublevel/render/dispatcher/VanillaSubLevelRenderDispatcher;",
 )
 SABLE_STACK_SHA256 = {
     "prepare": "bae3607214c9f8b88f6bd73e309b99f58eb926a2baae5d8515d3feba85efc7ca",
@@ -375,13 +357,20 @@ HEADER_LEVEL_LIKE = re.compile(
     r"\[[^\]\r\n]+/(?:TRACE|DEBUG|INFO|WARN|ERROR|FATAL)(?:\]|\s|$)"
 )
 SEVERE_OUTPUT_LIKE = re.compile(
-    r"(?:^|\b)(?:FATAL|ERROR|Exception|Throwable|OutOfMemoryError|"
-    r"StackOverflowError|Caused by|Segmentation fault|panic)(?:\b|:)",
-    re.IGNORECASE,
+    r"(?:\b(?:FATAL|ERROR)\b|"
+    r"(?<![A-Za-z0-9_$])(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*"
+    r"[A-Z][A-Za-z0-9_$]*?(?:Exception|Error|Throwable)(?![A-Za-z0-9_$])|"
+    r"(?<![A-Za-z0-9_$])(?:[a-z_$][A-Za-z0-9_$]*\.)+"
+    r"(?:Exception|Error|Throwable)(?![A-Za-z0-9_$])|"
+    r"\bCaused by:|\bSegmentation fault\b|\bpanic:)",
 )
-REVIEWED_CONSOLE_SEVERE_COUNT = 34
+REVIEWED_CONSOLE_SEVERE_COUNT = 62
 REVIEWED_CONSOLE_SEVERE_SHA256 = (
-    "16b9082ad72b7d8943dfb82fe732517101270bf66378ecc22e91b3d1fc9e804c"
+    "ed408c68bf375c658891ec372f94bfb5c766cffc9d52804e96012657ab07ec4b"
+)
+REVIEWED_DEBUG_SEVERE_COUNT = 80
+REVIEWED_DEBUG_SEVERE_SHA256 = (
+    "0292b411acc6145d69a97ca14ab08440451f5045aa49d543a3e2c6bfe964206a"
 )
 CONSOLE_LOGGER_CANONICAL = {
     "common.asm.RuntimeDistCleaner/DISTXFORM": (
@@ -451,7 +440,7 @@ YUNGS_VOLATILE_WORKER_WARNINGS = frozenset(
 REVIEWED_WARNING_TOTAL = 478
 REVIEWED_WARNING_UNIQUE = 384
 REVIEWED_WARNING_MULTISET_SHA256 = (
-    "e47a762c90a3009cce022e9cface034373a3430fd5b230740fc4135bfa82ccc4"
+    "06e7b2de112448be970d0fccad0eee682928af8aec24172c229a88c8a93890bd"
 )
 REVIEWED_DUPLICATE_ZIP_MEMBERS = {
     ("mods/ars-nouveau.pw.toml", "META-INF/LICENSE.txt"): (
@@ -515,10 +504,54 @@ def _safe_relative_path(value: str, label: str) -> PurePosixPath:
     return path
 
 
+def _validated_root(
+    value: Path | str, label: str, *, must_exist: bool = True
+) -> Path:
+    raw = os.fspath(value)
+    if not raw:
+        raise VerificationError(f"{label} path is empty")
+    candidate = Path(os.path.abspath(raw))
+    current = Path(candidate.anchor)
+    for part in candidate.parts[1:]:
+        current /= part
+        try:
+            current_stat = current.lstat()
+        except FileNotFoundError as error:
+            if must_exist:
+                raise VerificationError(
+                    f"cannot inspect {label} path {candidate}: {error}"
+                ) from error
+            return candidate
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} path {candidate}: {error}"
+            ) from error
+        if stat.S_ISLNK(current_stat.st_mode):
+            raise VerificationError(f"symlink in {label} path: {current}")
+    try:
+        resolved = candidate.resolve(strict=must_exist)
+    except OSError as error:
+        raise VerificationError(f"cannot resolve {label} path {candidate}: {error}") from error
+    if resolved != candidate:
+        raise VerificationError(
+            f"{label} path is not physically canonical: {candidate} != {resolved}"
+        )
+    if must_exist:
+        try:
+            root_stat = candidate.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} path {candidate}: {error}"
+            ) from error
+        if not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(f"{label} is not a directory: {candidate}")
+    return candidate
+
+
 def _verified_regular_file(
     root: Path, relative: PurePosixPath, label: str
 ) -> Path:
-    root = root.resolve(strict=True)
+    root = _validated_root(root, f"{label} root")
     target = root
     for part in relative.parts:
         target /= part
@@ -703,7 +736,7 @@ def _enforce_shipping_policy(relative: PurePosixPath) -> None:
 
 
 def verify_better_strongholds_contract(root: Path | str) -> dict[str, object]:
-    root_path = Path(root).resolve()
+    root_path = _validated_root(root, "pack root")
     config_path = _verified_regular_file(
         root_path, BETTER_STRONGHOLDS_ORE_RELATIVE, "Better Strongholds ore config"
     )
@@ -737,7 +770,7 @@ def verify_better_strongholds_contract(root: Path | str) -> dict[str, object]:
 
 
 def verify_manifest(root: Path | str) -> dict[str, object]:
-    root_path = Path(root).resolve()
+    root_path = _validated_root(root, "pack root")
     pack_path = _verified_regular_file(
         root_path, PurePosixPath("pack.toml"), "pack manifest"
     )
@@ -827,8 +860,8 @@ def verify_manifest(root: Path | str) -> dict[str, object]:
 def verify_install_provenance(
     root: Path | str, install: Path | str, verify_files: bool = True
 ) -> dict:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     manifest = verify_manifest(root_path)
     provenance_path = _verified_regular_file(
         install_path, PurePosixPath("packwiz.json"), "installer provenance"
@@ -1090,8 +1123,8 @@ def _resolve_source_jar(
 def resolve_source_jars(
     root: Path | str, install: Path | str, metadata_relatives: Iterable[str]
 ) -> dict[str, Path]:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     manifest = verify_manifest(root_path)
     provenance = verify_install_provenance(
         root_path, install_path, verify_files=False
@@ -1374,6 +1407,57 @@ def _declared_mixin_configs(archive: zipfile.ZipFile, names: set[str]) -> tuple[
     return tuple(sorted(configs))
 
 
+def _client_target_classification(target: str) -> str | None:
+    if not target.startswith("L") or not target.endswith(";"):
+        return None
+    internal = target[1:-1]
+    parts = internal.split("/")
+    simple_name = parts[-1].split("$", 1)[0]
+    package_parts = tuple(part.lower() for part in parts[:-1])
+    if internal.startswith("net/minecraft/client/"):
+        return "minecraft-client-package"
+    if internal.startswith("net/neoforged/neoforge/client/"):
+        return "neoforge-client-package"
+    if internal.startswith("net/caffeinemc/mods/sodium/client/"):
+        return "sodium-client-package"
+    if internal.startswith("com/simibubi/create/") and (
+        "client" in package_parts
+        or "render" in package_parts
+        or "renderer" in package_parts
+        or simple_name.endswith(("Client", "Renderer"))
+    ):
+        return "create-client-class"
+    if "client" in package_parts:
+        return "mod-client-package"
+    if "render" in package_parts or "renderer" in package_parts:
+        return "mod-render-package"
+    if simple_name.endswith("Client"):
+        return "client-class-suffix"
+    if simple_name.endswith("Renderer"):
+        return "renderer-class-suffix"
+    return None
+
+
+def _finalize_client_target_inventory(
+    scan: dict[str, object],
+) -> tuple[tuple[object, ...], ...]:
+    candidates = scan.get("client_target_candidates")
+    evidence_map = scan.get("client_target_class_evidence")
+    if not isinstance(candidates, list) or not isinstance(evidence_map, dict):
+        raise VerificationError("invalid client target inventory accumulator")
+    inventory = []
+    for candidate in candidates:
+        target = candidate[-1]
+        if not isinstance(target, str) or not target.startswith("L") or not target.endswith(";"):
+            raise VerificationError("invalid client target descriptor")
+        resource = f"{target[1:-1]}.class"
+        evidence = tuple(sorted(evidence_map.get(resource, ())))
+        if not evidence:
+            evidence = (("absent-from-server-artifact-corpus", resource, ""),)
+        inventory.append((*candidate, evidence))
+    return tuple(inventory)
+
+
 def _scan_mixin_archive(
     label: str,
     payload: Path | bytes,
@@ -1416,6 +1500,18 @@ def _scan_mixin_archive(
                     )
             names = set(member_counts)
             result["archive_scopes"] = int(result["archive_scopes"]) + 1
+            class_evidence = result.get("client_target_class_evidence")
+            if not isinstance(class_evidence, dict):
+                raise VerificationError("invalid client target class evidence accumulator")
+            for name in sorted(names):
+                if not name.endswith(".class"):
+                    continue
+                descriptor = f"L{name[:-6]};"
+                if _client_target_classification(descriptor) is None:
+                    continue
+                class_evidence.setdefault(name, []).append(
+                    (label, name, _hash_bytes(archive.read(name), "sha256"))
+                )
             for resource in _declared_mixin_configs(archive, names):
                 if resource not in names:
                     raise VerificationError(
@@ -1494,15 +1590,13 @@ def _scan_mixin_archive(
                                 targets,
                             )
                         )
-                        if any(
-                            target.startswith("Lnet/minecraft/client/")
-                            for target in targets
-                        ):
-                            client_targets = result["client_target_candidates"]
-                            if not isinstance(client_targets, list):
-                                raise VerificationError(
-                                    "invalid client target accumulator"
-                                )
+                        client_targets = result["client_target_candidates"]
+                        if not isinstance(client_targets, list):
+                            raise VerificationError("invalid client target accumulator")
+                        for target in targets:
+                            classification = _client_target_classification(target)
+                            if classification is None:
+                                continue
                             client_targets.append(
                                 (
                                     label,
@@ -1514,6 +1608,8 @@ def _scan_mixin_archive(
                                     class_hash,
                                     target_form,
                                     targets,
+                                    classification,
+                                    target,
                                 )
                             )
                         if has_mixin and (
@@ -1557,8 +1653,8 @@ def _scan_mixin_archive(
 
 
 def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     manifest = verify_manifest(root_path)
     provenance = verify_install_provenance(
         root_path, install_path, verify_files=False
@@ -1661,7 +1757,12 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
 
     runtime_hashes: dict[str, str] = {}
     for relative, expected_hash in SABLE_RUNTIME_SHA256.items():
-        actual_hash = _hash_file(install_path / relative, "sha256")
+        runtime_path = _verified_regular_file(
+            install_path,
+            _safe_relative_path(relative, "Sable runtime evidence"),
+            "Sable runtime evidence",
+        )
+        actual_hash = _hash_file(runtime_path, "sha256")
         if actual_hash != expected_hash:
             raise VerificationError(
                 f"Sable runtime hash mismatch for {relative}: "
@@ -1679,6 +1780,7 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "mixin_config_hashes": {},
         "mixin_corpus_entries": [],
         "client_target_candidates": [],
+        "client_target_class_evidence": {},
     }
     archive_queue: list[tuple[str, Path | bytes]] = [
         (metadata_relative, archive_path)
@@ -1724,11 +1826,31 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
             "Sable exhaustive mixin corpus digest changed: "
             f"expected {REVIEWED_MIXIN_CORPUS_SHA256}, got {corpus_digest}"
         )
-    client_targets = tuple(scan["client_target_candidates"])
-    if client_targets != REVIEWED_CLIENT_TARGET_INVENTORY:
+    client_targets = _finalize_client_target_inventory(scan)
+    client_target_digest = _hash_bytes(
+        json.dumps(
+            client_targets,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8"),
+        "sha256",
+    )
+    target_descriptors = tuple(candidate[-2] for candidate in client_targets)
+    expected_client_target_summary = (
+        REVIEWED_CLIENT_TARGET_COUNT,
+        REVIEWED_CLIENT_TARGET_INVENTORY_SHA256,
+        REVIEWED_CLIENT_TARGETS,
+    )
+    actual_client_target_summary = (
+        len(client_targets),
+        client_target_digest,
+        target_descriptors,
+    )
+    if actual_client_target_summary != expected_client_target_summary:
         raise VerificationError(
             "Sable exhaustive client target inventory changed: "
-            f"expected {REVIEWED_CLIENT_TARGET_INVENTORY}, got {client_targets}"
+            f"expected={expected_client_target_summary} "
+            f"actual={actual_client_target_summary}"
         )
 
     return {
@@ -1749,6 +1871,8 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
         "mixin_corpus_count": len(corpus_entries),
         "mixin_corpus_sha256": corpus_digest,
         "client_target_candidates": client_targets,
+        "client_target_count": len(client_targets),
+        "client_target_sha256": client_target_digest,
         "mixin_config_identities": tuple(
             (label, resource, config_hash)
             for (label, resource), config_hash in sorted(
@@ -1759,8 +1883,8 @@ def verify_sable_source_evidence(root: Path | str, install: Path | str) -> dict:
 
 
 def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) -> dict:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     metadata = _read_toml(root_path / IDAS_COMPAT_METADATA)
     if metadata.get("filename") != IDAS_COMPAT_FILENAME:
         raise VerificationError("IDAS compat filename changed")
@@ -2012,7 +2136,11 @@ def parse_console_records(console_text: str) -> tuple[LogRecord, ...]:
 
 
 def _severe_console_projection(
-    records: Sequence[LogRecord], *, console: bool = False
+    records: Sequence[LogRecord],
+    *,
+    console: bool = False,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
     projection = []
     for record in records:
@@ -2020,7 +2148,11 @@ def _severe_console_projection(
             "\n".join((record.message, *record.continuations))
         ):
             continue
-        canonical = canonical_record_tuple(record)
+        canonical = canonical_record_tuple(
+            record,
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
         continuations = []
         for line in canonical[4]:
             normalized_line = line.rstrip(" ")
@@ -2041,10 +2173,65 @@ def _severe_console_projection(
 
 
 def _validate_console_projection(
-    console_records: Sequence[LogRecord], latest_records: Sequence[LogRecord]
+    console_records: Sequence[LogRecord],
+    latest_records: Sequence[LogRecord],
+    debug_records: Sequence[LogRecord],
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[str, int]:
-    console_projection = _severe_console_projection(console_records, console=True)
-    latest_projection = _severe_console_projection(latest_records)
+    console_projection = _severe_console_projection(
+        console_records,
+        console=True,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
+    latest_projection = _severe_console_projection(
+        latest_records,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
+    debug_projection = _severe_console_projection(
+        debug_records,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
+    latest_payload = json.dumps(
+        sorted(Counter(latest_projection).items()),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    latest_actual = (
+        len(latest_projection),
+        _hash_bytes(latest_payload, "sha256"),
+    )
+    latest_expected = (
+        REVIEWED_CONSOLE_SEVERE_COUNT,
+        REVIEWED_CONSOLE_SEVERE_SHA256,
+    )
+    if latest_actual != latest_expected:
+        raise VerificationError(
+            "latest.log severe corpus changed: "
+            f"expected={latest_expected} actual={latest_actual}"
+        )
+    debug_payload = json.dumps(
+        sorted(Counter(debug_projection).items()),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    debug_actual = (
+        len(debug_projection),
+        _hash_bytes(debug_payload, "sha256"),
+    )
+    debug_expected = (
+        REVIEWED_DEBUG_SEVERE_COUNT,
+        REVIEWED_DEBUG_SEVERE_SHA256,
+    )
+    if debug_actual != debug_expected:
+        raise VerificationError(
+            "debug.log severe corpus changed: "
+            f"expected={debug_expected} actual={debug_actual}"
+        )
     console_errors = Counter(
         record for record in console_projection if record[1] in ("ERROR", "FATAL")
     )
@@ -2120,22 +2307,67 @@ def _normalized_record_thread(record: LogRecord) -> str:
     return record.thread
 
 
-def _normalize_continuation_line(line: str) -> str:
-    normalized = re.sub(r"jar%23\d+", "jar%23N", line)
+def _normalize_absolute_roots(
+    value: str,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
+) -> str:
+    replacements: list[tuple[str, str]] = []
+    if install_root is not None:
+        replacements.append((os.path.abspath(os.fspath(install_root)), "<INSTALL>"))
+    if workspace_root is not None:
+        workspace = os.path.abspath(os.fspath(workspace_root))
+        replacements.append((os.path.join(workspace, "server-test"), "<INSTALL>"))
+        replacements.append((workspace, "<WORKSPACE>"))
+    normalized = value
+    for source, marker in sorted(
+        set(replacements), key=lambda replacement: len(replacement[0]), reverse=True
+    ):
+        normalized = normalized.replace(source, marker)
+    return normalized
+
+
+def _normalize_continuation_line(
+    line: str,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
+) -> str:
+    normalized = _normalize_absolute_roots(
+        line, workspace_root=workspace_root, install_root=install_root
+    )
+    normalized = re.sub(r"jar%23\d+", "jar%23N", normalized)
     return re.sub(
         r"\$Anonymous\$[0-9a-fA-F]+", "$Anonymous$<ANON>", normalized
     )
 
 
-def _normalize_record_message(record: LogRecord) -> str:
+def _normalize_record_message(
+    record: LogRecord,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
+) -> str:
+    message = _normalize_absolute_roots(
+        record.message,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
     if (
-        record.level == "WARN"
-        and record.logger == "net.neoforged.jarjar.selection.JarSelector/"
+        record.level == "DEBUG"
+        and record.logger == "mixin/"
+        and re.fullmatch(
+            r"Renaming synthetic method .+ to md[0-9a-f]{6}\$[^\r\n]+ "
+            r"in [^\r\n]+ from mod [^\r\n]+",
+            message,
+        )
     ):
         return re.sub(
-            r"(?<=Mod File: )/.*?/server-test/mods/",
-            "<INSTALL>/mods/",
-            record.message,
+            r"(?<= to )md[0-9a-f]{6}(?=\$)",
+            "md<SESSION>",
+            message,
+            count=1,
         )
     if (
         record.level == "WARN"
@@ -2144,35 +2376,56 @@ def _normalize_record_message(record: LogRecord) -> str:
         return re.sub(
             r"\$\$Lambda/0x[0-9a-fA-F]+",
             "$$Lambda/0x<ADDR>",
-            record.message,
+            message,
         )
     if record.level == "WARN" and record.logger == "ModernFix/":
-        if re.fullmatch(r"Initial datapack load took \d+\.\d+ s", record.message):
+        if re.fullmatch(r"Initial datapack load took \d+\.\d+ s", message):
             return "Initial datapack load took <SECONDS> s"
         if re.fullmatch(
-            r"Dedicated server took \d+\.\d+ seconds to load", record.message
+            r"Dedicated server took \d+\.\d+ seconds to load", message
         ):
             return "Dedicated server took <SECONDS> seconds to load"
-    return record.message
+    return message
 
 
 def canonical_record_tuple(
     record: LogRecord,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[str, str, str, str, tuple[str, ...]]:
     return (
         _normalized_record_thread(record),
         record.level,
         record.logger,
-        _normalize_record_message(record),
-        tuple(_normalize_continuation_line(line) for line in record.continuations),
+        _normalize_record_message(
+            record,
+            workspace_root=workspace_root,
+            install_root=install_root,
+        ),
+        tuple(
+            _normalize_continuation_line(
+                line,
+                workspace_root=workspace_root,
+                install_root=install_root,
+            )
+            for line in record.continuations
+        ),
     )
 
 
 def warning_multiset_evidence(
     records: Sequence[LogRecord],
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[str, int, int]:
     fingerprints = Counter(
-        canonical_record_fingerprint(record)
+        canonical_record_fingerprint(
+            record,
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
         for record in records
         if record.level == "WARN"
     )
@@ -2188,9 +2441,17 @@ def warning_multiset_evidence(
 
 
 def _validate_reviewed_warning_multiset(
-    records: Sequence[LogRecord], label: str
+    records: Sequence[LogRecord],
+    label: str,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> None:
-    actual = warning_multiset_evidence(records)
+    actual = warning_multiset_evidence(
+        records,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
     expected = (
         REVIEWED_WARNING_MULTISET_SHA256,
         REVIEWED_WARNING_TOTAL,
@@ -2228,8 +2489,19 @@ def _canonical_tuple_sha256(
     return _hash_bytes(payload, "sha256")
 
 
-def canonical_record_fingerprint(record: LogRecord) -> str:
-    return _canonical_tuple_sha256(canonical_record_tuple(record))
+def canonical_record_fingerprint(
+    record: LogRecord,
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
+) -> str:
+    return _canonical_tuple_sha256(
+        canonical_record_tuple(
+            record,
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
+    )
 
 
 def _allowance_fingerprint(allowance: LogAllowance) -> str:
@@ -2568,13 +2840,28 @@ def _error_fatal_projection(
 
 
 def _accepted_warning_projection(
-    records: Sequence[LogRecord], indices: Sequence[int]
+    records: Sequence[LogRecord],
+    indices: Sequence[int],
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[tuple[str, str, str, str, tuple[str, ...]], ...]:
-    return tuple(canonical_record_tuple(records[index]) for index in indices)
+    return tuple(
+        canonical_record_tuple(
+            records[index],
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
+        for index in indices
+    )
 
 
 def _validate_canonical_log_pair(
-    latest_records: Sequence[LogRecord], debug_records: Sequence[LogRecord]
+    latest_records: Sequence[LogRecord],
+    debug_records: Sequence[LogRecord],
+    *,
+    workspace_root: Path | str | None = None,
+    install_root: Path | str | None = None,
 ) -> tuple[
     Counter[str],
     Counter[str],
@@ -2599,11 +2886,19 @@ def _validate_canonical_log_pair(
         require_every_selected=True,
     )
     latest_error_projection = tuple(
-        canonical_record_tuple(latest_records[index])
+        canonical_record_tuple(
+            latest_records[index],
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
         for index in latest_error_indices
     )
     debug_error_projection = tuple(
-        canonical_record_tuple(debug_records[index])
+        canonical_record_tuple(
+            debug_records[index],
+            workspace_root=workspace_root,
+            install_root=install_root,
+        )
         for index in debug_error_indices
     )
     if latest_error_projection != debug_error_projection:
@@ -2615,8 +2910,18 @@ def _validate_canonical_log_pair(
             "latest.log and debug.log canonical ERROR/FATAL identities differ"
         )
 
-    _validate_reviewed_warning_multiset(latest_records, "latest.log")
-    _validate_reviewed_warning_multiset(debug_records, "debug.log")
+    _validate_reviewed_warning_multiset(
+        latest_records,
+        "latest.log",
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
+    _validate_reviewed_warning_multiset(
+        debug_records,
+        "debug.log",
+        workspace_root=workspace_root,
+        install_root=install_root,
+    )
     warning_allowances = project_warning_allowances()
     warning_identities = {
         (allowance.level, allowance.logger, allowance.message)
@@ -2639,8 +2944,16 @@ def _validate_canonical_log_pair(
         require_every_selected=False,
     )
     if _accepted_warning_projection(
-        latest_records, latest_warning_indices
-    ) != _accepted_warning_projection(debug_records, debug_warning_indices):
+        latest_records,
+        latest_warning_indices,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    ) != _accepted_warning_projection(
+        debug_records,
+        debug_warning_indices,
+        workspace_root=workspace_root,
+        install_root=install_root,
+    ):
         raise VerificationError(
             "latest.log and debug.log canonical accepted WARN projections differ"
         )
@@ -2674,7 +2987,10 @@ def verify_sable_runtime_dist_cleaner_evidence(
     latest_records = parse_log_records(latest_text)
     debug_records = parse_log_records(debug_text)
     _, _, latest_error_indices, debug_error_indices = _validate_canonical_log_pair(
-        latest_records, debug_records
+        latest_records,
+        debug_records,
+        workspace_root=root,
+        install_root=install,
     )
 
     requirement = project_sable_error_requirement()
@@ -3015,8 +3331,8 @@ def validate_known_residual_warnings(log_text: str) -> Counter[str]:
 
 
 def verify_jdt_evidence(root: Path | str, install: Path | str) -> None:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     resolved = resolve_source_jars(
         root_path, install_path, JDT_ARTIFACT_SHA256.keys()
     )
@@ -3043,17 +3359,26 @@ def verify_jdt_evidence(root: Path | str, install: Path | str) -> None:
             )
 
     for relative, expected_hash in JDT_RUNTIME_SHA256.items():
-        runtime_path = install_path / relative
+        runtime_path = _verified_regular_file(
+            install_path,
+            _safe_relative_path(relative, "JDT runtime evidence"),
+            "JDT runtime evidence",
+        )
         actual_hash = _hash_file(runtime_path, "sha256")
         if actual_hash != expected_hash:
             raise VerificationError(
                 f"JDT runtime hash mismatch for {relative}: expected {expected_hash}, got {actual_hash}"
             )
 
-    for config_path in (
-        root_path / "config" / "justdirethings-server.toml",
-        install_path / "config" / "justdirethings-server.toml",
+    for config_root, config_label in (
+        (root_path, "source JDT config"),
+        (install_path, "installed JDT config"),
     ):
+        config_path = _verified_regular_file(
+            config_root,
+            PurePosixPath("config/justdirethings-server.toml"),
+            config_label,
+        )
         actual_hash = _hash_file(config_path, "sha256")
         if actual_hash != JDT_CONFIG_SHA256:
             raise VerificationError(
@@ -3065,8 +3390,8 @@ def verify_jdt_evidence(root: Path | str, install: Path | str) -> None:
 def verify_boot_run(
     root: Path | str, install: Path | str, nonce: str, status: int
 ) -> dict[str, object]:
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     verify_install_provenance(root_path, install_path, verify_files=False)
     verify_jdt_evidence(root_path, install_path)
     log_text = _read_strict_utf8(
@@ -3093,7 +3418,10 @@ def verify_boot_run(
     debug_records = parse_log_records(debug_text)
     console_records = parse_console_records(boot_text)
     errors, warnings, _, _ = _validate_canonical_log_pair(
-        latest_records, debug_records
+        latest_records,
+        debug_records,
+        workspace_root=root_path,
+        install_root=install_path,
     )
     latest_warning_check = validate_known_residual_warnings(log_text)
     debug_warning_check = validate_known_residual_warnings(debug_text)
@@ -3104,7 +3432,11 @@ def verify_boot_run(
     if errors[sable.label] != len(sable.latest_record_indices):
         raise VerificationError("Sable canonical error count differs from source proof")
     console_digest, console_count = _validate_console_projection(
-        console_records, latest_records
+        console_records,
+        latest_records,
+        debug_records,
+        workspace_root=root_path,
+        install_root=install_path,
     )
     return {
         "errors": errors,
@@ -3117,7 +3449,7 @@ def verify_boot_run(
 
 
 def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
-    root_path = Path(root).resolve()
+    root_path = _validated_root(root, "pack root")
     script_path = (
         root_path
         / "kubejs"
@@ -3188,8 +3520,8 @@ def verify_installed_quest_audit(
 ) -> str:
     if re.fullmatch(r"[A-Za-z0-9._-]+", nonce) is None:
         raise VerificationError("installed quest audit nonce is malformed")
-    root_path = Path(root).resolve()
-    install_path = Path(install).resolve()
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
     quest_root = root_path / "config" / "ftbquests" / "quests"
     expected_source = _render_quest_item_audit(quest_root)
     placeholder = "__AFTERLIGHT_BOOT_NONCE__"
@@ -3225,7 +3557,7 @@ def validate_boot_markers(
         raise VerificationError(f"server exit status {status} is not a graceful exit")
     records = parse_log_records(log_text)
     root_path = (
-        Path(root).resolve()
+        _validated_root(root, "pack root")
         if root is not None
         else Path(__file__).resolve().parents[1]
     )
@@ -3440,6 +3772,13 @@ def _cli_verify_manifest(args: argparse.Namespace) -> None:
     )
 
 
+def _cli_verify_install_root(args: argparse.Namespace) -> None:
+    install = _validated_root(
+        Path(args.install), "install root", must_exist=not args.allow_missing
+    )
+    print(f"INSTALL ROOT: OK {install}")
+
+
 def _cli_verify_provenance(args: argparse.Namespace) -> None:
     result = verify_install_provenance(Path(args.root), Path(args.install))
     verify_reviewed_server_artifact_inventory(result)
@@ -3476,6 +3815,10 @@ def build_parser() -> argparse.ArgumentParser:
     manifest = subparsers.add_parser("verify-manifest")
     manifest.add_argument("--root", default=".")
     manifest.set_defaults(handler=_cli_verify_manifest)
+    install_root = subparsers.add_parser("verify-install-root")
+    install_root.add_argument("--install", required=True)
+    install_root.add_argument("--allow-missing", action="store_true")
+    install_root.set_defaults(handler=_cli_verify_install_root)
     provenance = subparsers.add_parser("verify-provenance")
     provenance.add_argument("--root", default=".")
     provenance.add_argument("--install", required=True)

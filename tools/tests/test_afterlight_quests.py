@@ -11,10 +11,15 @@ import zipfile
 from pathlib import Path
 
 
+tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
+
+
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+
+from live_install_support import requires_live_install
 
 
 class QuestCompilerTests(unittest.TestCase):
@@ -1066,6 +1071,7 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(unsigned_literals, [])
         self.assertEqual(missing_signed_conversion, [])
 
+    @requires_live_install(ROOT)
     def test_task_six_registry_targets_exist_in_installed_jars(self) -> None:
         targets = {
             "item": {
@@ -1598,6 +1604,7 @@ class QuestCompilerTests(unittest.TestCase):
             errors = self.quests.validate_quests(quest_root, mods_dir)
             self.assertTrue(any("missing localization" in error for error in errors))
 
+    @requires_live_install(ROOT)
     def test_current_quest_corpus_validates(self) -> None:
         errors = self.quests.validate_quests(
             ROOT / "config" / "ftbquests" / "quests",

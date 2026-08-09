@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 import rc_hygiene
+from live_install_support import requires_live_install
 
 
 KUBEJS_DATA = ROOT / "kubejs" / "data"
@@ -261,6 +262,7 @@ def air_item_paths(value, path=()):
     return matches
 
 
+@requires_live_install(ROOT)
 class ReviewedConfigFixtureTests(unittest.TestCase):
     def test_reviewed_configs_reverse_to_clean_generated_fingerprints(self) -> None:
         config_root = ROOT / "config"
@@ -359,6 +361,7 @@ class ReviewedConfigFixtureTests(unittest.TestCase):
         verifier(ROOT)
 
 
+@requires_live_install(ROOT)
 class JarOverrideFixtureTests(unittest.TestCase):
     def test_oritech_turbofuel_changes_only_fluid_ingredient_serializer(self) -> None:
         resource = "data/oritech/recipe/mixing/compat/create/turbofuel.json"
@@ -728,6 +731,7 @@ class JarOverrideFixtureTests(unittest.TestCase):
         self.assertEqual(source_jar("idas_compat").name, rc_hygiene.IDAS_COMPAT_FILENAME)
 
 
+@requires_live_install(ROOT)
 class ModMetadataFixtureTests(unittest.TestCase):
     def test_terralith_is_pinned_to_reviewed_262_artifact(self) -> None:
         metadata = tomllib.loads((ROOT / "mods" / "terralith.pw.toml").read_text())
@@ -750,6 +754,7 @@ class ModMetadataFixtureTests(unittest.TestCase):
         self.assertEqual(source_jar("lithostitched").name, metadata["filename"])
 
 
+@requires_live_install(ROOT)
 class JdtLifecycleFixtureTests(unittest.TestCase):
     def test_warning_allowance_is_bound_to_reviewed_bytecode_and_runtime(self) -> None:
         rc_hygiene.verify_jdt_evidence(ROOT, INSTALL_ROOT)
@@ -769,6 +774,7 @@ class JdtLifecycleFixtureTests(unittest.TestCase):
         self.assertEqual(list((ROOT / "mods").glob("*.jar")), [])
 
 
+@requires_live_install(ROOT)
 class CleanBootSignatureFixtureTests(unittest.TestCase):
     def test_clean_boot_has_no_repaired_signatures_and_exact_known_residuals(self) -> None:
         log_text = LATEST_LOG.read_text(encoding="utf-8", errors="replace")

@@ -172,7 +172,7 @@ def write_manifest_entry_fixture(
 
 def valid_boot_log(nonce: str) -> str:
     hygiene = hygiene_module()
-    digest = "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773"
+    digest, item_count = hygiene.quest_audit_expectation(ROOT)
     return "\n".join(
         (
             "[08Aug2026 11:59:58.000] [modloading-worker-0/INFO] "
@@ -186,7 +186,7 @@ def valid_boot_log(nonce: str) -> str:
             "[net.minecraft.server.dedicated.DedicatedServer/]: "
             'Done (12.345s)! For help, type "help"',
             "[08Aug2026 12:00:01.000] [Server thread/INFO] [KubeJS Server/]: "
-            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} 219 {nonce}",
+            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {item_count} {nonce}",
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
             "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
@@ -1619,6 +1619,9 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                 ),
                 mock.patch.object(hygiene, "resolve_source_jar", return_value=target),
                 mock.patch.object(
+                    hygiene, "IDAS_COMPAT_SIZE", target.stat().st_size
+                ),
+                mock.patch.object(
                     hygiene, "IDAS_COMPAT_SHA256", sha256_bytes(target.read_bytes())
                 ),
                 mock.patch.object(
@@ -1638,6 +1641,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         )
         mutations = (
             ("sourceSha256", "0" * 64),
+            ("sourceLength", 1239),
             ("candidateCount", 3),
             ("auditDigest", "0" * 64),
         )
@@ -1673,6 +1677,9 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                             hygiene, "resolve_source_jar", return_value=target
                         ),
                         mock.patch.object(
+                            hygiene, "IDAS_COMPAT_SIZE", target.stat().st_size
+                        ),
+                        mock.patch.object(
                             hygiene,
                             "IDAS_COMPAT_SHA256",
                             sha256_bytes(target.read_bytes()),
@@ -1692,46 +1699,68 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                         )
 
     @requires_live_install(ROOT)
-    def test_idas_compat_verifier_rejects_negative_test_hash_change(self) -> None:
+    def test_idas_compat_verifier_rejects_source_tree_or_release_provenance_change(
+        self,
+    ) -> None:
         hygiene = hygiene_module()
         source = hygiene.resolve_source_jar(
             ROOT, ROOT / "server-test", hygiene.IDAS_COMPAT_METADATA
         )
         with tempfile.TemporaryDirectory() as temporary:
-            target = Path(temporary) / hygiene.IDAS_COMPAT_FILENAME
-            with zipfile.ZipFile(source) as archive:
-                provenance = json.loads(
-                    archive.read("META-INF/afterlight-provenance.json")
-                )
-            provenance["negativeTestSources"][
-                "ReviewedTemplateProvenanceTest.java"
-            ] = "0" * 64
-            payload = json.dumps(provenance, sort_keys=True).encode("utf-8")
-            rewrite_zip_fixture(
-                source,
-                target,
-                {"META-INF/afterlight-provenance.json": payload},
-            )
-            resource_hashes = dict(hygiene.IDAS_COMPAT_RESOURCE_SHA256)
-            resource_hashes["META-INF/afterlight-provenance.json"] = sha256_bytes(
-                payload
-            )
-            with (
-                mock.patch.object(
-                    hygiene, "_read_toml", return_value=idas_compat_metadata(hygiene)
-                ),
-                mock.patch.object(hygiene, "resolve_source_jar", return_value=target),
-                mock.patch.object(
-                    hygiene, "IDAS_COMPAT_SHA256", sha256_bytes(target.read_bytes())
-                ),
-                mock.patch.object(
-                    hygiene, "IDAS_COMPAT_RESOURCE_SHA256", resource_hashes
-                ),
-                self.assertRaisesRegex(
-                    hygiene.VerificationError, "embedded source provenance"
-                ),
+            for field, value in (
+                ("sourceTreeSha256", "0" * 64),
+                ("sourceTreeDigestSchema", 1),
+                ("releaseBuild", False),
             ):
-                hygiene.verify_idas_compat_source_evidence(ROOT, ROOT / "server-test")
+                with self.subTest(field=field):
+                    with zipfile.ZipFile(source) as archive:
+                        provenance = json.loads(
+                            archive.read("META-INF/afterlight-provenance.json")
+                        )
+                    provenance[field] = value
+                    payload = json.dumps(provenance, sort_keys=True).encode("utf-8")
+                    target = Path(temporary) / f"changed-{field}.jar"
+                    rewrite_zip_fixture(
+                        source,
+                        target,
+                        {"META-INF/afterlight-provenance.json": payload},
+                    )
+                    resource_hashes = dict(hygiene.IDAS_COMPAT_RESOURCE_SHA256)
+                    resource_hashes[
+                        "META-INF/afterlight-provenance.json"
+                    ] = sha256_bytes(payload)
+                    with (
+                        mock.patch.object(
+                            hygiene,
+                            "_read_toml",
+                            return_value=idas_compat_metadata(hygiene),
+                        ),
+                        mock.patch.object(
+                            hygiene, "resolve_source_jar", return_value=target
+                        ),
+                        mock.patch.object(
+                            hygiene,
+                            "IDAS_COMPAT_SIZE",
+                            target.stat().st_size,
+                        ),
+                        mock.patch.object(
+                            hygiene,
+                            "IDAS_COMPAT_SHA256",
+                            sha256_bytes(target.read_bytes()),
+                        ),
+                        mock.patch.object(
+                            hygiene,
+                            "IDAS_COMPAT_RESOURCE_SHA256",
+                            resource_hashes,
+                        ),
+                        self.assertRaisesRegex(
+                            hygiene.VerificationError,
+                            "embedded source provenance",
+                        ),
+                    ):
+                        hygiene.verify_idas_compat_source_evidence(
+                            ROOT, ROOT / "server-test"
+                        )
 
     @requires_live_install(ROOT)
     def test_idas_compat_verifier_rejects_extra_archive_payload(self) -> None:
@@ -1751,6 +1780,9 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                     hygiene, "_read_toml", return_value=idas_compat_metadata(hygiene)
                 ),
                 mock.patch.object(hygiene, "resolve_source_jar", return_value=target),
+                mock.patch.object(
+                    hygiene, "IDAS_COMPAT_SIZE", target.stat().st_size
+                ),
                 mock.patch.object(
                     hygiene, "IDAS_COMPAT_SHA256", sha256_bytes(target.read_bytes())
                 ),
@@ -1915,8 +1947,11 @@ class CurrentBootProjectionNegativeTests(unittest.TestCase):
             self.verify(self.latest, substituted)
 
     def test_idas_compat_verifier_rejects_same_count_audit_substitution(self) -> None:
+        expected_digest = self.hygiene.IDAS_COMPAT_REVIEWED_TEMPLATES[
+            "idas:underground_camp/underground_camp1"
+        ]["auditDigest"]
         changed = self.hygiene.IDAS_COMPAT_CAMP_MESSAGE.replace(
-            "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+            expected_digest,
             "0" * 64,
         )
         latest = self.latest.replace(self.hygiene.IDAS_COMPAT_CAMP_MESSAGE, changed, 1)
@@ -2414,7 +2449,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773",
+                "f2ac0534ecf9f6a31c2d2099d3bd6fa67e719433d560697d51c69bb3a599be67",
                 219,
             ),
         )
@@ -2522,9 +2557,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
                 verifier(ROOT, install, nonce)
 
     def test_zero_and_mutated_quest_digests_are_rejected(self) -> None:
-        digest = (
-            "6b955ba1fefce05237027e6d9cb5f125bc4efd2b804ebf559c9417b957f36773"
-        )
+        digest, _ = self.hygiene.quest_audit_expectation(ROOT)
         for replacement in ("0" * 64, "1" + digest[1:]):
             with self.subTest(replacement=replacement):
                 self.assert_pair_rejected(

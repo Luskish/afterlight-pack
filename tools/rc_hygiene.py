@@ -159,10 +159,10 @@ SABLE_SERVER_MIXIN_COUNT = 5
 SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
 REVIEWED_SERVER_ARTIFACT_COUNT = 157
 REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
-    "bd4c6f9d850ac5fb63ff85af2c2c5738b9997054fa0c104b7155f5959d1e7e93"
+    "3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67"
 )
 REVIEWED_MIXIN_CORPUS_SHA256 = (
-    "4edbbf17adc509bf5c98c43a7d1d9a1408ca43473857f60c2debd016783fdfc0"
+    "8f4b4b1736db5b6d91e30159b30059710476595100f0fb72dae423a5ddf841af"
 )
 REVIEWED_CLIENT_TARGET_COUNT = 20
 REVIEWED_CLIENT_TARGET_INVENTORY_SHA256 = (
@@ -206,59 +206,60 @@ SABLE_RUNTIME_SHA256 = {
 }
 
 IDAS_COMPAT_METADATA = "mods/afterlight-idas-compat.pw.toml"
-IDAS_COMPAT_FILENAME = "afterlight_idas_compat-0.1.1+1.21.1.jar"
+IDAS_COMPAT_VERSION = "0.1.2+1.21.1"
+IDAS_COMPAT_FILENAME = "afterlight_idas_compat-0.1.2+1.21.1.jar"
 IDAS_COMPAT_URL = (
     "https://github.com/Luskish/afterlight-idas-compat/releases/download/"
-    "v0.1.1/afterlight_idas_compat-0.1.1%2B1.21.1.jar"
+    "v0.1.2/afterlight_idas_compat-0.1.2%2B1.21.1.jar"
 )
 IDAS_COMPAT_SHA512 = (
-    "af39e726630f7fbfd2465cdb0dc6001e3ab7ea3f9180192e999530a8f9ed4afb"
-    "35410b7707eea4d3d967ae68314229418d0ee7d18ce5dfb8cf0e946ae12beb43"
+    "f9bf2f432098babe88e13b5bea3ba631d433500f8d10f7b146d800f60cc2b46c"
+    "6b4acc5dcce07f00561205880a75d27a2639d25fc35ae3a5f32aa0b5cd6cc892"
 )
-IDAS_COMPAT_SHA256 = "086ac4a56becba5ec2e7708855f09eef74613300f235601c18e033a35adac324"
-IDAS_COMPAT_SOURCE_COMMIT = "02c0254513afdcaff65af0c50f8339013f0cc045"
+IDAS_COMPAT_SHA256 = "51ec890b6f079994c1fcc1a348a99a6ab359993e5bc83fe1d71ed8986da37f2b"
+IDAS_COMPAT_SIZE = 39392
+IDAS_COMPAT_SOURCE_COMMIT = "b3d43520e2119296324faedccc2bf4fda4fd587f"
+IDAS_COMPAT_SOURCE_TREE_SHA256 = (
+    "6c264d8fb9d3ef1a9ce61e6aa5b80cf0ef806988dd7389713f5eea91e55081d4"
+)
 IDAS_COMPAT_REVIEWED_TEMPLATES = {
     "idas:underground_camp/underground_camp_deep1": {
         "sourceSha256": "652e2bbac736f171c102342547538430a2f5327de38319503fc4bd323e7ee7da",
+        "sourceLength": 1213,
         "candidateCount": 1,
-        "auditDigest": "79fe677f9e4c30ea95806383468977e42b46e79dd2f47a7748d089ceacec29b5",
+        "auditDigest": "5bdae5e78f79a6f01fa99f65a940ddda00618218c1f5d3976ce473bf1f460830",
     },
     "idas:underground_camp/underground_camp1": {
         "sourceSha256": "0d7ecc5059d0d94d8cde9621d5358df1a9b89bf7dc27e93fd564668064aceb8a",
+        "sourceLength": 1238,
         "candidateCount": 2,
-        "auditDigest": "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+        "auditDigest": "198210096c1bacea6802e639ce1f649a540fcdbedfb2b6e21dacadbf5e77f234",
     },
     "idas:tudor_pub/tudor_pub": {
         "sourceSha256": "36e2bbc9ae46052b84d97819a50a65c1233064af4708a724e94ebaffdb424c3f",
+        "sourceLength": 62199,
         "candidateCount": 8,
-        "auditDigest": "9e9afaf0cdd2470ef45319d2f18f7205d1939a3165f57daa6c2927f9633fd9d1",
+        "auditDigest": "071ed0a79840f3600668b04dffdf02fc8cba4805f79ff58f3de429ed2a8d8107",
     },
     "idas:tudor_pub/tudor_pub_bottom": {
         "sourceSha256": "67a0d8447e8ec42c1eef447111bc3d40bd71e089395fa5472ae754ed88052bd2",
+        "sourceLength": 19879,
         "candidateCount": 9,
-        "auditDigest": "4dfd6abd605d244e35aa8be0235746a2e48cbf3e9d5e133553810750c2af0cc0",
+        "auditDigest": "9fac0222c1f0c56de2a9100a2de3a34d83bd14259884d72962616c4d86377f27",
     },
-}
-IDAS_COMPAT_NEGATIVE_TEST_SOURCES = {
-    "src/test/java/dev/afterlight/idascompat/MixinContractTest.java": (
-        "a280e9dc046f5d3cc61944921c646cf753cca70a2578dec2c7a873fd2464a321"
-    ),
-    "src/test/java/dev/afterlight/idascompat/ReviewedTemplateProvenanceTest.java": (
-        "8bbb91acfdcfc784e38084205e63459ad55bc1b8de7f3d7d9decd2a9f4296b1b"
-    ),
 }
 IDAS_COMPAT_RESOURCE_SHA256 = {
     "META-INF/LICENSE": (
         "b5b105b0aec29aa2fd5d1b53d75339152409f6905873ca9a4f1b47a9def4e00e"
     ),
     "META-INF/MANIFEST.MF": (
-        "48384fd9721266d062824a40e3f9259180931578dbae5bd796d8e72191e3b0a9"
+        "ed53c0c2a482c08ed1c531a4306d2b6d1b71831a9c80e16638191870862868b1"
     ),
     "META-INF/afterlight-provenance.json": (
-        "71ee94ca374321b312358e8d5d102cb01aa457f656264c2a0460d0a213b20e00"
+        "cc6861039400a44331c3a19c149b61d4499897028976beb5c2a70d8d52f6839e"
     ),
     "META-INF/neoforge.mods.toml": (
-        "f59532e083771083ed0f6fef3cef680817444e7b98ab0db05613d7f6c1b93a91"
+        "99439a71bdb9f4f39192175e995f5e3bed13402b4734ff709cb6868e4dde72ba"
     ),
     "afterlight_idas_compat.mixins.json": (
         "f1ea036959fde1aed3d5626343b11b328bad56d2174795b8cd9c065e2812fece"
@@ -267,55 +268,73 @@ IDAS_COMPAT_RESOURCE_SHA256 = {
         "092d27ea4f2020ad8bc7296101cfd86356637f8ba44420ef5eba3308a387ffb3"
     ),
     "dev/afterlight/idascompat/IdasArtifactVerifier$Authentication.class": (
-        "bb7a547ed6edc292c4ae659cf6480cf35b70defce528e57eadc2b06b3b242491"
+        "8acd9a29f3767813c2b4200de2f781a2646b71508afa19464f2a98eb096bd12b"
+    ),
+    "dev/afterlight/idascompat/AuthenticatedStructureResourceLoader$Digester.class": (
+        "70b98340fd5f336e8bd45ffc3c3a1c3d306f069995b32ef2ca7515f661f8f89a"
+    ),
+    "dev/afterlight/idascompat/AuthenticatedStructureResourceLoader$Operations.class": (
+        "5ac90d61264960942a00cb5fe33c2f548657bd147136fb2edbd2fb462a74e39f"
+    ),
+    "dev/afterlight/idascompat/AuthenticatedStructureResourceLoader$Parser.class": (
+        "aa70b83fc49fc50a88270be966e04bea9e1b353d2670ee11db78ec17354866ca"
+    ),
+    "dev/afterlight/idascompat/AuthenticatedStructureResourceLoader$Sanitizer.class": (
+        "61ea7215ecb110882453f43392962379080f200012c9ee6472446d414f363597"
+    ),
+    "dev/afterlight/idascompat/AuthenticatedStructureResourceLoader.class": (
+        "7e24770ddf98729dd9a0e9eff0de1974969c79b0a0f2284efdbc8b2fd94eeafb"
+    ),
+    "dev/afterlight/idascompat/IdasArtifactVerifier$ArtifactHasher.class": (
+        "95a786175fa4385b4ce61b71c2a9f025deb80d7f7667a2d8b33a52aacef4a4c0"
+    ),
+    "dev/afterlight/idascompat/IdasArtifactVerifier$InstalledArtifact.class": (
+        "20a5adcc90749d7676c9cd390d31d2861f1d37c591ec91421c20ca4e6206a342"
+    ),
+    "dev/afterlight/idascompat/IdasArtifactVerifier$InstalledArtifactLookup.class": (
+        "1297f21840398c2df3d19a2faabeee18bc08813f9a8f5a8701ea81c786e4db9f"
     ),
     "dev/afterlight/idascompat/IdasArtifactVerifier.class": (
-        "bc541ecb87883de9d06da89938048437bbaba1ec9a20d48496454e2ffe6966ce"
-    ),
-    "dev/afterlight/idascompat/LoadedStructureResourceVerifier$Result.class": (
-        "2a6d7773378ac6b02688ef41fdfbdf265b132931a5ebe683bbb8f7697349437a"
-    ),
-    "dev/afterlight/idascompat/LoadedStructureResourceVerifier.class": (
-        "c32efa9134fed2f2dbb13744bdbeb6f06d8e3aca9eb9106c739a061b153885e3"
+        "da668afae36ea817bddbf74d8369c53295864ae3bc15dcced49f53be59d8a266"
     ),
     "dev/afterlight/idascompat/ReviewedTemplateRegistry$Approval.class": (
-        "9311a9c3a5cf1caf5b10057579f2eabf4bd0cd0bd8ed5f7188be2f7d001bd9e7"
+        "82bebeb6f807142f812ec5b1da545256d5848617cde15cc3a87126daf7177270"
     ),
     "dev/afterlight/idascompat/ReviewedTemplateRegistry.class": (
-        "f316326915ed96377da0e688231047b62cbc3e26617bc72c9ea49e3c88b412ad"
+        "80f511170eda44af8dd4f5dd5dfd80569b02cd3e35cbe47f4c821c1edd195bff"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Action.class": (
-        "55744b0e8f90c5b783cacfe301a03ccf57cae7e3bcd2eb1f9572a049c6bd4c2d"
+        "320bf3f1a40ba5ff80881bd0a1ca5ec523158ccb62a96e61944e9f1f56595ae8"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Inspection.class": (
-        "be34712da3ac9ddde4fb52127f215ec2c89ee6a7a484a928b67f89ec30f7d669"
+        "4b445f8333042a4c5f0996c829ca397d2e50af76bf20ef2e5019e46f8725cd5d"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Mutation.class": (
-        "253abc5280cba873bf4522958cb9e166ad64d26d5440805eabbb2cb29873b7e1"
+        "c410f98f8cdd590438f9ac5de5fb3d49d2843e1f72950233161cdca653f35ada"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Parent.class": (
-        "1fa253c3b36e136cb8a7a0ed91f59798c5c1b5c84ff100ff4caa51876abd6b4f"
+        "6f1e0099ce4746869b1ea58c61cb87a5a20fde8144c03e6486c17034355cb658"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Result.class": (
-        "96468a00dbe65fbc6226dfa32eb0571bd4a8cda55139f32765e831648cdd5cdd"
+        "723597f597a61e33e4bbac04ca4a9076afde1f3da134fe79e674b92161f97ec0"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Root.class": (
-        "6a89c2a3d24dda3d951f6f4f48a2a582c57bf5859a75746afad63a541f2e51fc"
+        "6568f8635e5366e380f38cf2fae84e379f020b9d2066737d4c2c7ade7f7c5f9b"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Shape.class": (
-        "b74c2d4b2288306baf4c2a2eddaf437d31d0c7a08d6c32915da7e99ffc361ee5"
+        "17921e5a0a8f3cf8031d442294dc936caa924fdbdb7aee8577b25559c772599b"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer$Unreviewed.class": (
-        "ddfaeda8ae8b581f5ea4c1aad99e63d1712d9c1cec9a358299069d477ce1f60a"
+        "b1fb27ad46692a41ce5331ad08065d43701df473f86a6307fe5ddb1d9658997a"
     ),
     "dev/afterlight/idascompat/StructureAirItemSanitizer.class": (
-        "f69edcd59ebb21449015b2e04ff075d18058b59effc436e52d0c4443b3703149"
+        "45bfe31e4d268fb2ddc48257e534526ff346a4a608cdd92d54490adc463de334"
     ),
     "dev/afterlight/idascompat/mixin/StructureTemplateAccessor.class": (
         "eeaef3dd31492cabec8db1d8dec79cd5aa0777c4ec4e048a4794fcf4b1361a86"
     ),
     "dev/afterlight/idascompat/mixin/StructureTemplateManagerMixin.class": (
-        "07caf35e586f56c7aff8157a1ded8600bb6b37ddb6e21045e22c25a6985551a2"
+        "014f4ecef2cedc8f79cb825bb75d3370a2da2ffb70cc2adcde3bb226f2e44a8f"
     ),
 }
 IDAS_COMPAT_LOGGER = "afterlight_idas_compat/STRUCTURE_SANITIZER/"
@@ -327,17 +346,17 @@ IDAS_COMPAT_READY_MESSAGE = (
 IDAS_COMPAT_CAMP_MESSAGE = (
     "AFTERLIGHT_IDAS_SANITIZED template=idas:underground_camp/underground_camp1 "
     "replacements=2 "
-    "digest=772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06"
+    "digest=198210096c1bacea6802e639ce1f649a540fcdbedfb2b6e21dacadbf5e77f234"
 )
 IDAS_COMPAT_BOOT_SANITIZED_MESSAGES = (
     "AFTERLIGHT_IDAS_SANITIZED template=idas:underground_camp/underground_camp_deep1 "
     "replacements=1 "
-    "digest=79fe677f9e4c30ea95806383468977e42b46e79dd2f47a7748d089ceacec29b5",
+    "digest=5bdae5e78f79a6f01fa99f65a940ddda00618218c1f5d3976ce473bf1f460830",
     IDAS_COMPAT_CAMP_MESSAGE,
     "AFTERLIGHT_IDAS_SANITIZED template=idas:tudor_pub/tudor_pub replacements=8 "
-    "digest=9e9afaf0cdd2470ef45319d2f18f7205d1939a3165f57daa6c2927f9633fd9d1",
+    "digest=071ed0a79840f3600668b04dffdf02fc8cba4805f79ff58f3de429ed2a8d8107",
     "AFTERLIGHT_IDAS_SANITIZED template=idas:tudor_pub/tudor_pub_bottom replacements=9 "
-    "digest=4dfd6abd605d244e35aa8be0235746a2e48cbf3e9d5e133553810750c2af0cc0",
+    "digest=9fac0222c1f0c56de2a9100a2de3a34d83bd14259884d72962616c4d86377f27",
 )
 
 
@@ -1904,6 +1923,12 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         )
 
     artifact = resolve_source_jar(root_path, install_path, IDAS_COMPAT_METADATA)
+    artifact_size = artifact.stat().st_size
+    if artifact_size != IDAS_COMPAT_SIZE:
+        raise VerificationError(
+            "IDAS compat artifact size mismatch: "
+            f"expected {IDAS_COMPAT_SIZE}, got {artifact_size}"
+        )
     artifact_sha256 = _hash_file(artifact, "sha256")
     if artifact_sha256 != IDAS_COMPAT_SHA256:
         raise VerificationError(
@@ -1967,17 +1992,19 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
     if "client" in mixin_config:
         raise VerificationError("IDAS compat gained a client-only mixin list")
     expected_provenance = {
-        "schema": 1,
+        "schema": 3,
+        "sourceTreeDigestSchema": 2,
         "sourceRepository": (
             "https://github.com/Luskish/afterlight-idas-compat"
         ),
         "sourceCommit": IDAS_COMPAT_SOURCE_COMMIT,
-        "version": "0.1.1+1.21.1",
+        "sourceTreeSha256": IDAS_COMPAT_SOURCE_TREE_SHA256,
+        "releaseBuild": True,
+        "version": IDAS_COMPAT_VERSION,
         "idasArtifactSha256": (
             "7f5031dd90ae0b32d7fe5c6c47c877cac1eb95a178bc78d196cb24c17ce82522"
         ),
         "reviewedTemplates": IDAS_COMPAT_REVIEWED_TEMPLATES,
-        "negativeTestSources": IDAS_COMPAT_NEGATIVE_TEST_SOURCES,
     }
     if provenance != expected_provenance:
         raise VerificationError(
@@ -1988,7 +2015,7 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
         raise VerificationError("IDAS compat mod metadata shape changed")
     if mods[0].get("modId") != "afterlight_idas_compat" or mods[0].get(
         "version"
-    ) != "0.1.1+1.21.1":
+    ) != IDAS_COMPAT_VERSION:
         raise VerificationError("IDAS compat mod identity changed")
     dependencies = mod_metadata.get("dependencies", {}).get(
         "afterlight_idas_compat", []
@@ -2009,12 +2036,14 @@ def verify_idas_compat_source_evidence(root: Path | str, install: Path | str) ->
     ]:
         raise VerificationError("IDAS compat IDAS dependency pin changed")
     return {
+        "artifact_size": artifact_size,
         "artifact_sha256": artifact_sha256,
         "artifact_sha512": IDAS_COMPAT_SHA512,
         "resource_sha256": resource_hashes,
         "source_commit": provenance["sourceCommit"],
+        "source_tree_sha256": provenance["sourceTreeSha256"],
+        "release_build": provenance["releaseBuild"],
         "reviewed_templates": provenance["reviewedTemplates"],
-        "negative_test_sources": provenance["negativeTestSources"],
     }
 
 

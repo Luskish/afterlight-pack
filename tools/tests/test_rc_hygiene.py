@@ -262,6 +262,49 @@ def air_item_paths(value, path=()):
     return matches
 
 
+class ImmutableReleasePinTests(unittest.TestCase):
+    def test_idas_compat_is_pinned_to_immutable_v012_release(self) -> None:
+        metadata = tomllib.loads(
+            (ROOT / "mods" / "afterlight-idas-compat.pw.toml").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            metadata,
+            {
+                "name": "AFTERLIGHT IDAS Compatibility",
+                "filename": "afterlight_idas_compat-0.1.2+1.21.1.jar",
+                "side": "both",
+                "download": {
+                    "url": (
+                        "https://github.com/Luskish/afterlight-idas-compat/"
+                        "releases/download/v0.1.2/"
+                        "afterlight_idas_compat-0.1.2%2B1.21.1.jar"
+                    ),
+                    "hash-format": "sha512",
+                    "hash": (
+                        "f9bf2f432098babe88e13b5bea3ba631d433500f8d10f7b146d800f60cc2b46"
+                        "c6b4acc5dcce07f00561205880a75d27a2639d25fc35ae3a5f32aa0b5cd6cc892"
+                    ),
+                },
+            },
+        )
+        self.assertEqual(rc_hygiene.IDAS_COMPAT_VERSION, "0.1.2+1.21.1")
+        self.assertEqual(rc_hygiene.IDAS_COMPAT_SIZE, 39392)
+        self.assertEqual(
+            rc_hygiene.IDAS_COMPAT_SHA256,
+            "51ec890b6f079994c1fcc1a348a99a6ab359993e5bc83fe1d71ed8986da37f2b",
+        )
+        self.assertEqual(
+            rc_hygiene.IDAS_COMPAT_SOURCE_COMMIT,
+            "b3d43520e2119296324faedccc2bf4fda4fd587f",
+        )
+        self.assertEqual(
+            rc_hygiene.IDAS_COMPAT_SOURCE_TREE_SHA256,
+            "6c264d8fb9d3ef1a9ce61e6aa5b80cf0ef806988dd7389713f5eea91e55081d4",
+        )
+
+
 @requires_live_install(ROOT)
 class ReviewedConfigFixtureTests(unittest.TestCase):
     def test_reviewed_configs_reverse_to_clean_generated_fingerprints(self) -> None:
@@ -684,48 +727,51 @@ class JarOverrideFixtureTests(unittest.TestCase):
 
     def test_idas_compat_release_is_source_authenticated_and_data_free(self) -> None:
         evidence = rc_hygiene.verify_idas_compat_source_evidence(ROOT, INSTALL_ROOT)
+        self.assertEqual(evidence["artifact_size"], 39392)
         self.assertEqual(
             evidence["artifact_sha256"],
-            "086ac4a56becba5ec2e7708855f09eef74613300f235601c18e033a35adac324",
+            "51ec890b6f079994c1fcc1a348a99a6ab359993e5bc83fe1d71ed8986da37f2b",
         )
         self.assertEqual(
             evidence["artifact_sha512"],
-            "af39e726630f7fbfd2465cdb0dc6001e3ab7ea3f9180192e999530a8f9ed4afb35410b7707eea4d3d967ae68314229418d0ee7d18ce5dfb8cf0e946ae12beb43",
+            "f9bf2f432098babe88e13b5bea3ba631d433500f8d10f7b146d800f60cc2b46c6b4acc5dcce07f00561205880a75d27a2639d25fc35ae3a5f32aa0b5cd6cc892",
         )
         self.assertEqual(
             evidence["source_commit"],
-            "02c0254513afdcaff65af0c50f8339013f0cc045",
+            "b3d43520e2119296324faedccc2bf4fda4fd587f",
         )
+        self.assertEqual(
+            evidence["source_tree_sha256"],
+            "6c264d8fb9d3ef1a9ce61e6aa5b80cf0ef806988dd7389713f5eea91e55081d4",
+        )
+        self.assertIs(evidence["release_build"], True)
         self.assertEqual(
             evidence["reviewed_templates"],
             {
                 "idas:underground_camp/underground_camp_deep1": {
                     "sourceSha256": "652e2bbac736f171c102342547538430a2f5327de38319503fc4bd323e7ee7da",
+                    "sourceLength": 1213,
                     "candidateCount": 1,
-                    "auditDigest": "79fe677f9e4c30ea95806383468977e42b46e79dd2f47a7748d089ceacec29b5",
+                    "auditDigest": "5bdae5e78f79a6f01fa99f65a940ddda00618218c1f5d3976ce473bf1f460830",
                 },
                 "idas:underground_camp/underground_camp1": {
                     "sourceSha256": "0d7ecc5059d0d94d8cde9621d5358df1a9b89bf7dc27e93fd564668064aceb8a",
+                    "sourceLength": 1238,
                     "candidateCount": 2,
-                    "auditDigest": "772fe478261727163979ddd04ae3d69220c35b02c09c7046974f96d99d5b0b06",
+                    "auditDigest": "198210096c1bacea6802e639ce1f649a540fcdbedfb2b6e21dacadbf5e77f234",
                 },
                 "idas:tudor_pub/tudor_pub": {
                     "sourceSha256": "36e2bbc9ae46052b84d97819a50a65c1233064af4708a724e94ebaffdb424c3f",
+                    "sourceLength": 62199,
                     "candidateCount": 8,
-                    "auditDigest": "9e9afaf0cdd2470ef45319d2f18f7205d1939a3165f57daa6c2927f9633fd9d1",
+                    "auditDigest": "071ed0a79840f3600668b04dffdf02fc8cba4805f79ff58f3de429ed2a8d8107",
                 },
                 "idas:tudor_pub/tudor_pub_bottom": {
                     "sourceSha256": "67a0d8447e8ec42c1eef447111bc3d40bd71e089395fa5472ae754ed88052bd2",
+                    "sourceLength": 19879,
                     "candidateCount": 9,
-                    "auditDigest": "4dfd6abd605d244e35aa8be0235746a2e48cbf3e9d5e133553810750c2af0cc0",
+                    "auditDigest": "9fac0222c1f0c56de2a9100a2de3a34d83bd14259884d72962616c4d86377f27",
                 },
-            },
-        )
-        self.assertEqual(
-            evidence["negative_test_sources"],
-            {
-                "src/test/java/dev/afterlight/idascompat/MixinContractTest.java": "a280e9dc046f5d3cc61944921c646cf753cca70a2578dec2c7a873fd2464a321",
-                "src/test/java/dev/afterlight/idascompat/ReviewedTemplateProvenanceTest.java": "8bbb91acfdcfc784e38084205e63459ad55bc1b8de7f3d7d9decd2a9f4296b1b",
             },
         )
         self.assertEqual(source_jar("idas_compat").name, rc_hygiene.IDAS_COMPAT_FILENAME)

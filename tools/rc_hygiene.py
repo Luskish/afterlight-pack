@@ -3752,8 +3752,23 @@ GATE_AUDIT_RELATIVE = PurePosixPath(
 GATE_AUDIT_SHA256_PLACEHOLDER = b"__AFTERLIGHT_GATE_AUDIT_SHA256__"
 GATE_AUDIT_NONCE_PLACEHOLDER = b"__AFTERLIGHT_GATE_BOOT_NONCE__"
 GATE_AUDIT_RECIPE_COUNT = 11
-SEAL_REFERENCE_PATTERN = re.compile(r"ascendancy_seal|AFTERLIGHT\.SEAL")
-SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs")
+SEAL_LITERAL_PATTERN = re.compile(r"ascendancy_seal")
+SEAL_CODE_REFERENCE_PATTERN = re.compile(
+    r"ascendancy_seal|\bSEAL\b|AFTERLIGHT\s*\["
+)
+SEAL_BINARY_REFERENCE_PATTERN = re.compile(
+    rb"ascendancy_seal|AFTERLIGHT(?:\.SEAL|\s*\[[^\]]*SEAL)"
+)
+SEAL_JSON_ESCAPE_PATTERN = re.compile(r"\\u([0-9A-Fa-f]{4})")
+SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs", "mods")
+SEAL_CODE_SUFFIXES = frozenset((".js", ".jsx", ".mjs", ".ts", ".tsx"))
+SEAL_ARCHIVE_MAX_DEPTH = 8
+SEAL_ARCHIVE_MAX_MEMBERS = 50_000
+SEAL_ARCHIVE_MAX_MEMBER_BYTES = 128 * 1024 * 1024
+SEAL_ARCHIVE_MAX_EXPANDED_BYTES = 512 * 1024 * 1024
+SEAL_ARCHIVE_MAX_TOTAL_MEMBERS = 1_000_000
+SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES = 4 * 1024 * 1024 * 1024
+SEAL_ARCHIVE_MAX_COMPRESSION_RATIO = 500
 EXPECTED_SEAL_OCCURRENCES = Counter(
     (
         (
@@ -3770,7 +3785,7 @@ EXPECTED_SEAL_OCCURRENCES = Counter(
         ),
         (
             "kubejs/assets/kubejs/lang/en_us.json",
-            '"item.kubejs.ascendancy_seal": "Ascendancy Seal",',
+            'json-key:$["item.kubejs.ascendancy_seal"]',
         ),
         (
             "kubejs/server_scripts/afterlight/_constants.js",
@@ -3849,7 +3864,8 @@ def _snbt_seal_occurrences(value: object, path: str = "$") -> tuple[str, ...]:
             key_text = str(key)
             child_path = _snbt_child_path(path, key_text)
             occurrences.extend(
-                f"snbt-key:{child_path}" for _match in SEAL_REFERENCE_PATTERN.finditer(key_text)
+                f"snbt-key:{child_path}"
+                for _match in SEAL_LITERAL_PATTERN.finditer(key_text)
             )
             occurrences.extend(_snbt_seal_occurrences(child, child_path))
     elif isinstance(value, list):
@@ -3857,24 +3873,122 @@ def _snbt_seal_occurrences(value: object, path: str = "$") -> tuple[str, ...]:
             occurrences.extend(_snbt_seal_occurrences(child, f"{path}[]"))
     elif isinstance(value, str):
         occurrences.extend(
-            f"snbt:{path}={value}" for _match in SEAL_REFERENCE_PATTERN.finditer(value)
+            f"snbt:{path}={value}"
+            for _match in SEAL_LITERAL_PATTERN.finditer(value)
         )
     return tuple(occurrences)
 
 
-def _seal_occurrences(root: Path, label: str) -> tuple[tuple[str, str], ...]:
-    occurrences: list[tuple[str, str]] = []
+class _JsonObject(list[tuple[str, object]]):
+    pass
 
-    def scan_text(relative_label: str, payload: bytes) -> None:
-        try:
-            text = payload.decode("utf-8")
-        except UnicodeDecodeError:
-            return
-        textual_matches = tuple(SEAL_REFERENCE_PATTERN.finditer(text))
-        if not textual_matches:
-            return
+
+def _json_seal_occurrences(value: object, path: str = "$") -> tuple[str, ...]:
+    occurrences: list[str] = []
+    if isinstance(value, _JsonObject):
+        for key, child in value:
+            child_path = _snbt_child_path(path, key)
+            occurrences.extend(
+                f"json-key:{child_path}"
+                for _match in SEAL_LITERAL_PATTERN.finditer(key)
+            )
+            occurrences.extend(_json_seal_occurrences(child, child_path))
+    elif isinstance(value, list):
+        for child in value:
+            occurrences.extend(_json_seal_occurrences(child, f"{path}[]"))
+    elif isinstance(value, str):
+        occurrences.extend(
+            f"json:{path}={value}"
+            for _match in SEAL_LITERAL_PATTERN.finditer(value)
+        )
+    return tuple(occurrences)
+
+
+def _decode_json_unicode_escapes(text: str) -> str:
+    return SEAL_JSON_ESCAPE_PATTERN.sub(
+        lambda match: chr(int(match.group(1), 16)), text
+    )
+
+
+def _seal_archive_review_labels(root: Path) -> dict[str, str]:
+    mods_root = root / "mods"
+    if not mods_root.is_dir():
+        return {}
+    labels: dict[str, str] = {}
+    for metadata_path in sorted(mods_root.glob("*.pw.toml")):
+        metadata_relative = metadata_path.relative_to(root).as_posix()
+        metadata = _read_toml(metadata_path)
+        filename = _safe_relative_path(
+            str(metadata.get("filename", "")),
+            f"Seal archive filename for {metadata_relative}",
+        )
+        if len(filename.parts) != 1:
+            raise VerificationError(
+                f"Seal archive filename must be a basename: {metadata_relative}"
+            )
+        installed_relative = (PurePosixPath("mods") / filename).as_posix()
+        prior = labels.get(installed_relative)
+        if prior is not None:
+            raise VerificationError(
+                "duplicate Seal archive filename in metadata: "
+                f"{installed_relative} ({prior}, {metadata_relative})"
+            )
+        labels[installed_relative] = metadata_relative
+    return labels
+
+
+def _seal_occurrences(
+    root: Path,
+    label: str,
+    archive_review_labels: dict[str, str] | None = None,
+) -> tuple[tuple[str, str], ...]:
+    occurrences: list[tuple[str, str]] = []
+    archive_budget = {"members": 0, "expanded_bytes": 0}
+    review_labels = archive_review_labels or {}
+
+    def scan_payload(relative_label: str, payload: bytes) -> None:
         member_label = relative_label.rsplit("!", 1)[-1]
-        if PurePosixPath(member_label).suffix == ".snbt":
+        suffix = PurePosixPath(member_label).suffix.lower()
+
+        if suffix in (".json", ".mcmeta"):
+            if not (b"ascendancy_seal" in payload or b"\\u" in payload):
+                return
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                raise VerificationError(
+                    "Seal source corpus cannot decode potential "
+                    f"{label} JSON {relative_label}: {error}"
+                ) from error
+            decoded_escapes = _decode_json_unicode_escapes(text)
+            if not (
+                SEAL_LITERAL_PATTERN.search(text)
+                or SEAL_LITERAL_PATTERN.search(decoded_escapes)
+            ):
+                return
+            try:
+                semantic = _json_seal_occurrences(
+                    json.loads(text, object_pairs_hook=_JsonObject)
+                )
+            except json.JSONDecodeError as error:
+                raise VerificationError(
+                    f"cannot parse {label} Seal source JSON {relative_label}: {error}"
+                ) from error
+            occurrences.extend((relative_label, item) for item in semantic)
+            return
+
+        if suffix == ".snbt":
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                if b"ascendancy_seal" in payload:
+                    raise VerificationError(
+                        f"cannot decode {label} Seal source SNBT {relative_label}: {error}"
+                    ) from error
+                return
+            textual_matches = tuple(SEAL_LITERAL_PATTERN.finditer(text))
+            if not textual_matches:
+                return
             try:
                 semantic = _snbt_seal_occurrences(_parse_snbt(text))
             except ValueError as error:
@@ -3884,13 +3998,247 @@ def _seal_occurrences(root: Path, label: str) -> tuple[tuple[str, str], ...]:
             if len(semantic) != len(textual_matches):
                 raise VerificationError(
                     f"cannot account for every {label} Seal source SNBT reference: "
-                    f"{relative_label} text={len(textual_matches)} semantic={len(semantic)}"
+                    f"{relative_label} text={len(textual_matches)} "
+                    f"semantic={len(semantic)}"
                 )
             occurrences.extend((relative_label, item) for item in semantic)
             return
-        for line in text.splitlines():
-            matches = tuple(SEAL_REFERENCE_PATTERN.finditer(line))
-            occurrences.extend((relative_label, line.strip()) for _match in matches)
+
+        if suffix in SEAL_CODE_SUFFIXES:
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                if SEAL_BINARY_REFERENCE_PATTERN.search(payload) or b"SEAL" in payload:
+                    raise VerificationError(
+                        f"cannot decode {label} Seal source code {relative_label}: {error}"
+                    ) from error
+                return
+            for line in text.splitlines():
+                if SEAL_CODE_REFERENCE_PATTERN.search(line):
+                    occurrences.append((relative_label, line.strip()))
+            return
+
+        for match in SEAL_BINARY_REFERENCE_PATTERN.finditer(payload):
+            occurrences.append((relative_label, f"binary:offset={match.start()}"))
+
+    def stream_has_seal_candidate(
+        archive: zipfile.ZipFile,
+        info: zipfile.ZipInfo,
+        member: PurePosixPath,
+    ) -> bool:
+        suffix = member.suffix.lower()
+        needles = [b"ascendancy_seal", b"AFTERLIGHT"]
+        if suffix in SEAL_CODE_SUFFIXES:
+            needles.append(b"SEAL")
+        if suffix in (".json", ".mcmeta"):
+            needles.append(b"\\u")
+        tail = b""
+        tail_size = max(len(needle) for needle in needles) - 1
+        try:
+            with archive.open(info) as source:
+                while True:
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        return False
+                    window = tail + chunk
+                    if any(needle in window for needle in needles):
+                        return True
+                    tail = window[-tail_size:]
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot stream {label} Seal source archive member "
+                f"{info.filename}: {error}"
+            ) from error
+
+    def read_archive_member(
+        archive: zipfile.ZipFile,
+        info: zipfile.ZipInfo,
+        relative_label: str,
+    ) -> bytes:
+        try:
+            with archive.open(info) as source:
+                payload = source.read(SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1)
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot read {label} Seal source archive member "
+                f"{relative_label}: {error}"
+            ) from error
+        if len(payload) > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+            raise VerificationError(
+                f"Seal source archive member size exceeds limit: {relative_label}"
+            )
+        if len(payload) != info.file_size:
+            raise VerificationError(
+                f"Seal source archive member size changed while reading: "
+                f"{relative_label} metadata={info.file_size} actual={len(payload)}"
+            )
+        return payload
+
+    def scan_archive(
+        relative_label: str,
+        review_label: str,
+        source: Path | bytes,
+        depth: int,
+    ) -> None:
+        if depth > SEAL_ARCHIVE_MAX_DEPTH:
+            raise VerificationError(
+                f"Seal source archive nesting depth exceeds limit: {relative_label}"
+            )
+        archive_source: Path | io.BytesIO = (
+            source if isinstance(source, Path) else io.BytesIO(source)
+        )
+        try:
+            with zipfile.ZipFile(archive_source) as archive:
+                member_infos = archive.infolist()
+                if len(member_infos) > SEAL_ARCHIVE_MAX_MEMBERS:
+                    raise VerificationError(
+                        f"Seal source archive member count exceeds limit: "
+                        f"{relative_label} count={len(member_infos)}"
+                    )
+                archive_budget["members"] += len(member_infos)
+                if archive_budget["members"] > SEAL_ARCHIVE_MAX_TOTAL_MEMBERS:
+                    raise VerificationError(
+                        "Seal source archive aggregate member count exceeds limit: "
+                        f"{archive_budget['members']}"
+                    )
+
+                expanded_bytes = 0
+                for info in member_infos:
+                    if info.file_size < 0 or info.compress_size < 0:
+                        raise VerificationError(
+                            f"invalid Seal source archive member size: "
+                            f"{relative_label}!{info.filename}"
+                        )
+                    if info.file_size > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+                        raise VerificationError(
+                            "Seal source archive member size exceeds limit: "
+                            f"{relative_label}!{info.filename} size={info.file_size}"
+                        )
+                    if info.file_size:
+                        if info.compress_size == 0:
+                            raise VerificationError(
+                                "Seal source archive compression ratio is unbounded: "
+                                f"{relative_label}!{info.filename}"
+                            )
+                        ratio = info.file_size / info.compress_size
+                        if ratio > SEAL_ARCHIVE_MAX_COMPRESSION_RATIO:
+                            raise VerificationError(
+                                "Seal source archive compression ratio exceeds limit: "
+                                f"{relative_label}!{info.filename} ratio={ratio:.2f}"
+                            )
+                    expanded_bytes += info.file_size
+
+                if expanded_bytes > SEAL_ARCHIVE_MAX_EXPANDED_BYTES:
+                    raise VerificationError(
+                        "Seal source archive expanded bytes exceed limit: "
+                        f"{relative_label} bytes={expanded_bytes}"
+                    )
+                archive_budget["expanded_bytes"] += expanded_bytes
+                if (
+                    archive_budget["expanded_bytes"]
+                    > SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES
+                ):
+                    raise VerificationError(
+                        "Seal source archive aggregate expanded bytes exceed limit: "
+                        f"{archive_budget['expanded_bytes']}"
+                    )
+
+                member_counts = Counter(info.filename for info in member_infos)
+                reviewed_payloads: dict[str, bytes] = {}
+                for name, count in sorted(member_counts.items()):
+                    if count == 1:
+                        continue
+                    infos = tuple(
+                        info for info in member_infos if info.filename == name
+                    )
+                    reviewed = REVIEWED_DUPLICATE_ZIP_MEMBERS.get(
+                        (review_label, name)
+                    )
+                    if reviewed is None or reviewed[0] != count:
+                        raise VerificationError(
+                            "duplicate archive member is not an exact reviewed "
+                            f"exception: {relative_label}!{name} count={count}"
+                        )
+                    identities = {
+                        _zip_member_alias_identity(info) for info in infos
+                    }
+                    if len(identities) != 1:
+                        raise VerificationError(
+                            "duplicate archive member metadata differs across "
+                            f"reviewed aliases: {relative_label}!{name} count={count}"
+                        )
+                    reviewed_payload = _read_reviewed_zip_alias(
+                        archive, infos, member_infos, review_label, name
+                    )
+                    payload_hash = _hash_bytes(reviewed_payload, "sha256")
+                    if payload_hash != reviewed[1]:
+                        raise VerificationError(
+                            "duplicate archive member is not an exact reviewed "
+                            f"exception: {relative_label}!{name} count={count} "
+                            f"hash={payload_hash}"
+                        )
+                    reviewed_payloads[name] = reviewed_payload
+
+                scanned_names: set[str] = set()
+                for info in sorted(member_infos, key=lambda item: item.filename):
+                    if info.filename in scanned_names:
+                        continue
+                    scanned_names.add(info.filename)
+                    if "\\" in info.filename or "\x00" in info.filename:
+                        raise VerificationError(
+                            f"unsafe archive member in {label} Seal source file: "
+                            f"{relative_label}!{info.filename}"
+                        )
+                    canonical_name = (
+                        info.filename[:-1]
+                        if info.is_dir() and info.filename.endswith("/")
+                        else info.filename
+                    )
+                    try:
+                        member = _safe_relative_path(
+                            canonical_name,
+                            f"{label} Seal source archive member",
+                        )
+                    except VerificationError as error:
+                        raise VerificationError(
+                            f"unsafe archive member in {label} Seal source file: "
+                            f"{relative_label}!{info.filename}"
+                        ) from error
+                    if info.is_dir():
+                        continue
+                    member_label = f"{relative_label}!{member.as_posix()}"
+                    member_review_label = f"{review_label}!/{member.as_posix()}"
+                    payload = reviewed_payloads.get(info.filename)
+                    archive_suffix = member.suffix.lower() in (".jar", ".zip")
+                    if archive_suffix:
+                        if payload is None:
+                            payload = read_archive_member(archive, info, member_label)
+                        if not zipfile.is_zipfile(io.BytesIO(payload)):
+                            raise VerificationError(
+                                f"cannot inspect {label} nested Seal source archive "
+                                f"{member_label}: invalid ZIP"
+                            )
+                        scan_archive(
+                            member_label,
+                            member_review_label,
+                            payload,
+                            depth + 1,
+                        )
+                        continue
+                    if payload is not None:
+                        scan_payload(member_label, payload)
+                    elif stream_has_seal_candidate(archive, info, member):
+                        scan_payload(
+                            member_label,
+                            read_archive_member(archive, info, member_label),
+                        )
+        except VerificationError:
+            raise
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source archive "
+                f"{relative_label}: {error}"
+            ) from error
 
     for root_name in SEAL_SCAN_ROOTS:
         scan_root = root / root_name
@@ -3932,38 +4280,27 @@ def _seal_occurrences(root: Path, label: str) -> tuple[tuple[str, str], ...]:
                 path = _verified_regular_file(
                     root, relative, f"{label} Seal source file"
                 )
-                try:
-                    payload = path.read_bytes()
-                except OSError as error:
-                    raise VerificationError(
-                        f"cannot read {label} Seal source file {relative.as_posix()}: {error}"
-                    ) from error
                 if zipfile.is_zipfile(path):
-                    try:
-                        with zipfile.ZipFile(path) as archive:
-                            names = [entry.filename for entry in archive.infolist()]
-                            if len(names) != len(set(names)):
-                                raise VerificationError(
-                                    f"duplicate archive member in {label} Seal source file: {relative.as_posix()}"
-                                )
-                            for entry in sorted(archive.infolist(), key=lambda item: item.filename):
-                                if entry.is_dir():
-                                    continue
-                                member = PurePosixPath(entry.filename)
-                                if member.is_absolute() or ".." in member.parts:
-                                    raise VerificationError(
-                                        f"unsafe archive member in {label} Seal source file: {entry.filename}"
-                                    )
-                                scan_text(
-                                    f"{relative.as_posix()}!{entry.filename}",
-                                    archive.read(entry),
-                                )
-                    except (OSError, zipfile.BadZipFile) as error:
-                        raise VerificationError(
-                            f"cannot inspect {label} Seal source archive {relative.as_posix()}: {error}"
-                        ) from error
+                    scan_archive(
+                        relative.as_posix(),
+                        review_labels.get(relative.as_posix(), relative.as_posix()),
+                        path,
+                        1,
+                    )
+                elif relative.suffix.lower() in (".jar", ".zip"):
+                    raise VerificationError(
+                        f"cannot inspect {label} Seal source archive "
+                        f"{relative.as_posix()}: invalid ZIP"
+                    )
                 else:
-                    scan_text(relative.as_posix(), payload)
+                    try:
+                        payload = path.read_bytes()
+                    except OSError as error:
+                        raise VerificationError(
+                            f"cannot read {label} Seal source file "
+                            f"{relative.as_posix()}: {error}"
+                        ) from error
+                    scan_payload(relative.as_posix(), payload)
     return tuple(occurrences)
 
 
@@ -3972,9 +4309,12 @@ def verify_seal_sources(
 ) -> dict[str, object]:
     root_path = _validated_root(root, "pack root")
     install_path = _validated_root(install, "install root")
+    archive_review_labels = _seal_archive_review_labels(root_path)
     inventories = {
         "root": _seal_occurrences(root_path, "repository"),
-        "install": _seal_occurrences(install_path, "installed"),
+        "install": _seal_occurrences(
+            install_path, "installed", archive_review_labels
+        ),
     }
     for label, inventory in inventories.items():
         actual = Counter(inventory)

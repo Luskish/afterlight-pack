@@ -11,6 +11,8 @@ ServerEvents.loaded(event => {
   const server = event.server
   const level = server.overworld()
   const registries = server.registryAccess()
+  let positiveChecks = 0
+  let negativeChecks = 0
 
   function afterlightRecipe(id) {
     const optional = server.getRecipeManager().byKey(ResourceLocation.parse(id))
@@ -52,10 +54,12 @@ ServerEvents.loaded(event => {
 
   function afterlightAssertMatch(recipe, input, label) {
     if (!recipe.matches(input, level)) throw new Error(`${label} did not match`)
+    positiveChecks++
   }
 
   function afterlightAssertNoMatch(recipe, input, label) {
     if (recipe.matches(input, level)) throw new Error(`${label} matched unexpectedly`)
+    negativeChecks++
   }
 
   function afterlightAssertOnlySealRemainder(recipe, input, label) {
@@ -208,6 +212,29 @@ ServerEvents.loaded(event => {
     if (!ItemStack.isSameItemSameComponents(assembled, expectedOutput) || assembled.getCount() !== 1) {
       throw new Error(`${spec.id} assembled output changed`)
     }
+    if (spec.id === 'kubejs:gate/component/kinetic_frame') {
+      let noMatchRejectedCanonical = false
+      try {
+        afterlightAssertNoMatch(recipe, input, 'no-match helper self-test canonical input')
+      } catch (error) {
+        noMatchRejectedCanonical = String(error).includes('matched unexpectedly')
+      }
+      if (!noMatchRejectedCanonical) throw new Error('afterlightAssertNoMatch helper self-test failed')
+
+      let selfTestPattern = spec.pattern.slice()
+      selfTestPattern[0] = ' ' + selfTestPattern[0].substring(1)
+      let matchRejectedInvalid = false
+      try {
+        afterlightAssertMatch(
+          recipe,
+          afterlightMechanicalInput(selfTestPattern, spec.keys),
+          'match helper self-test invalid input'
+        )
+      } catch (error) {
+        matchRejectedInvalid = String(error).includes('did not match')
+      }
+      if (!matchRejectedInvalid) throw new Error('afterlightAssertMatch helper self-test failed')
+    }
 
     const mirrored = spec.pattern.map(row => row.split('').reverse().join(''))
     afterlightAssertNoMatch(recipe, afterlightMechanicalInput(mirrored, spec.keys), `${spec.id} mirrored input`)
@@ -233,7 +260,21 @@ ServerEvents.loaded(event => {
     for (let row = 0; row < spec.pattern.length; row++) {
       for (let column = 0; column < spec.pattern[row].length; column++) {
         let character = spec.pattern[row][column]
-        if (character === ' ') continue
+        if (character === ' ') {
+          let insertedPattern = spec.pattern.slice()
+          insertedPattern[row] = insertedPattern[row].substring(0, column)
+            + 'X'
+            + insertedPattern[row].substring(column + 1)
+          let insertedKeys = {}
+          Object.keys(spec.keys).forEach(key => { insertedKeys[key] = spec.keys[key] })
+          insertedKeys.X = 'minecraft:barrier'
+          afterlightAssertNoMatch(
+            recipe,
+            afterlightMechanicalInput(insertedPattern, insertedKeys),
+            `${spec.id} empty slot insertion ${row},${column}`
+          )
+          continue
+        }
         let deletedPattern = spec.pattern.slice()
         deletedPattern[row] = deletedPattern[row].substring(0, column)
           + ' '
@@ -476,6 +517,9 @@ ServerEvents.loaded(event => {
   producerIds[AFTERLIGHT.STABILIZER].sort()
   if (producerIds[AFTERLIGHT.STABILIZER].join('|') !== approvedStabilizers.join('|')) {
     throw new Error(`stabilizer producer set changed: ${producerIds[AFTERLIGHT.STABILIZER].join(', ')}`)
+  }
+  if (positiveChecks !== 14 || negativeChecks !== 368) {
+    throw new Error(`Gate audit check cardinality changed: ${positiveChecks} positive, ${negativeChecks} negative`)
   }
 
   const auditSha256 = '__AFTERLIGHT_GATE_AUDIT_SHA256__'

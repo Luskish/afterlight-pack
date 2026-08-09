@@ -3456,6 +3456,12 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         "afterlightAssertOnlySealRemainder",
     )
     EXECUTABLE_CONTRACTS = {
+        "empty-insertion": (
+            "if (character === ' ') {",
+            "let insertedPattern = spec.pattern.slice()",
+            "insertedKeys.X = 'minecraft:barrier'",
+            "afterlightAssertNoMatch( recipe, afterlightMechanicalInput(insertedPattern, insertedKeys),",
+        ),
         "deletion": (
             "let deletedPattern = spec.pattern.slice()",
             "afterlightAssertNoMatch( recipe, afterlightMechanicalInput(deletedPattern, spec.keys),",
@@ -3499,6 +3505,13 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             "afterlightAssertMatch( recipe, countTwoInput, `${spec.id} unsupported count-two KeepAction characterization`",
             "if (mergedCount !== 3) throw new Error(`${spec.id} unsupported count-two KeepAction merge changed to ${mergedCount}`)",
         ),
+        "runtime-cardinality": (
+            "let positiveChecks = 0",
+            "let negativeChecks = 0",
+            "positiveChecks++",
+            "negativeChecks++",
+            "if (positiveChecks !== 14 || negativeChecks !== 368) {",
+        ),
     }
     EXPECTED_SEAL_OCCURRENCES = Counter(
         (
@@ -3516,7 +3529,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             ),
             (
                 "kubejs/assets/kubejs/lang/en_us.json",
-                '"item.kubejs.ascendancy_seal": "Ascendancy Seal",',
+                'json-key:$["item.kubejs.ascendancy_seal"]',
             ),
             (
                 "kubejs/server_scripts/afterlight/_constants.js",
@@ -3617,6 +3630,65 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             Path("kubejs/data/afterlight/recipe/unauthorized.json"),
             '{"type":"minecraft:crafting_shapeless","result":{"id":"kubejs:ascendancy_seal"}}\n',
         ),
+        (
+            "dynamic-alias",
+            Path("kubejs/server_scripts/afterlight/unauthorized_alias.js"),
+            "const seal = AFTERLIGHT['SEAL']\n"
+            "PlayerEvents.loggedIn(event => event.player.give(seal))\n",
+        ),
+        (
+            "destructured-alias",
+            Path("kubejs/server_scripts/afterlight/unauthorized_destructure.js"),
+            "const { SEAL: seal } = AFTERLIGHT\n"
+            "PlayerEvents.loggedIn(event => event.player.give(seal))\n",
+        ),
+        (
+            "encoded-json",
+            Path("kubejs/data/afterlight/recipe/unauthorized_encoded.json"),
+            '{"result":{"id":"kubejs:\\u0061scendancy_seal"}}\n',
+        ),
+    )
+    UNAUTHORIZED_ARCHIVE_SEAL_SOURCES = (
+        (
+            "recipe",
+            "data/afterlight/recipe/unauthorized.json",
+            b'{"type":"minecraft:crafting_shapeless","result":{"id":"kubejs:ascendancy_seal"}}\n',
+        ),
+        (
+            "loot",
+            "data/afterlight/loot_table/unauthorized.json",
+            b'{"pools":[{"entries":[{"type":"minecraft:item","name":"kubejs:ascendancy_seal"}]}]}\n',
+        ),
+        (
+            "trade",
+            "data/afterlight/trade/unauthorized.json",
+            b'{"result":{"id":"kubejs:ascendancy_seal"}}\n',
+        ),
+        (
+            "grant",
+            "afterlight/UnauthorizedGrant.class",
+            b"\xca\xfe\xba\xbe\x00\x00kubejs:ascendancy_seal\x00\xff",
+        ),
+        (
+            "quest-reward",
+            "data/afterlight/ftbquests/unauthorized.snbt",
+            b'{ rewards: [{ type: "item" item: { id: "kubejs:ascendancy_seal" } }] }\n',
+        ),
+        (
+            "generated-data",
+            "data/afterlight/generated/unauthorized.json",
+            b'{"output":"kubejs:ascendancy_seal"}\n',
+        ),
+        (
+            "encoded-json",
+            "data/afterlight/recipe/unauthorized_encoded.json",
+            b'{"result":{"id":"kubejs:\\u0061scendancy_seal"}}\n',
+        ),
+        (
+            "invalid-utf8-encoded-json",
+            "data/afterlight/recipe/unauthorized_invalid_utf8.json",
+            b'\xff{"result":{"id":"kubejs:\\u0061scendancy_seal"}}\n',
+        ),
     )
 
     def setUp(self) -> None:
@@ -3626,7 +3698,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
     def copy_seal_corpus(self, base: Path) -> tuple[Path, Path]:
         root = base / "pack"
         install = base / "install"
-        for root_name in ("config", "global_packs", "kubejs"):
+        for root_name in ("config", "global_packs", "kubejs", "mods"):
             shutil.copytree(ROOT / root_name, root / root_name)
             shutil.copytree(ROOT / root_name, install / root_name)
         return root, install
@@ -3652,6 +3724,73 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             "missing or duplicated executable adversarial contracts",
         )
 
+    def assert_runtime_matrix_contract(self, source: str) -> None:
+        executable = self.executable_source(source)
+        self.assertIn(
+            "function afterlightAssertMatch(recipe, input, label) { if (!recipe.matches(input, level)) throw new Error(`${label} did not match`) positiveChecks++ }",
+            executable,
+        )
+        self.assertIn(
+            "function afterlightAssertNoMatch(recipe, input, label) { if (recipe.matches(input, level)) throw new Error(`${label} matched unexpectedly`) negativeChecks++ }",
+            executable,
+        )
+        schematic_match = re.search(
+            r"const wrongSchematics = \[(?P<body>.*?)\] const mechanicalRecipes",
+            executable,
+        )
+        self.assertIsNotNone(schematic_match)
+        self.assertEqual(
+            tuple(re.findall(r"'([^']+)'", schematic_match.group("body"))),
+            (
+                "kubejs:schematic_kinetic_frame",
+                "kubejs:schematic_industrial_anchor",
+                "kubejs:schematic_isotopic_core",
+                "kubejs:schematic_lattice_matrix",
+            ),
+        )
+        component_occupied = 4 * 25
+        gate_pattern = (
+            "CCAAPPS",
+            "CC B AA",
+            "A PKS S",
+            "P IUO S",
+            "A SLP P",
+            "CA   CS",
+            "SSPPACC",
+        )
+        gate_occupied = sum(character != " " for row in gate_pattern for character in row)
+        gate_empty = 49 - gate_occupied
+        expected_positive = 5 + 3 + 3 + 3
+        expected_negative = (
+            5
+            + 5 * 3
+            + component_occupied * 2
+            + gate_occupied * 2
+            + gate_empty
+            + 4 * 3
+            + 6
+            + 3 * 2
+            + 3
+            + 3 * 8
+            + (3 + 3 + 4)
+        )
+        self.assertEqual((expected_positive, expected_negative), (14, 368))
+        self.assertIn(
+            f"if (positiveChecks !== {expected_positive} || negativeChecks !== {expected_negative}) {{",
+            executable,
+        )
+        self.assertIn(
+            "throw new Error(`Gate audit check cardinality changed: ${positiveChecks} positive, ${negativeChecks} negative`)",
+            executable,
+        )
+        self.assertIn("afterlightAssertNoMatch helper self-test failed", executable)
+        self.assertIn("afterlightAssertMatch helper self-test failed", executable)
+        self.assertEqual(executable.count("for (let turn = 1; turn <= 3; turn++)"), 1)
+        self.assertEqual(
+            executable.count("for (let wrongSlot = 0; wrongSlot < 9; wrongSlot++)"),
+            1,
+        )
+
     def test_adversarial_assertions_extend_the_same_listener_and_marker(self) -> None:
         self.assertEqual(self.source.count("ServerEvents.loaded("), 1)
         self.assertEqual(self.source.count("[AFTERLIGHT GATE RECIPE AUDIT] OK"), 1)
@@ -3660,6 +3799,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             self.EXPECTED_HELPERS,
         )
         self.assert_executable_contract(self.source)
+        self.assert_runtime_matrix_contract(self.source)
         executable = self.executable_source(self.source)
         marker = executable.index("[AFTERLIGHT GATE RECIPE AUDIT] OK")
         for snippets in self.EXECUTABLE_CONTRACTS.values():
@@ -3685,9 +3825,45 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                         with self.assertRaises(AssertionError):
                             self.assert_executable_contract(changed)
 
+    def test_runtime_matrix_control_flow_mutations_fail_closed(self) -> None:
+        self.assert_runtime_matrix_contract(self.source)
+        mutations = (
+            (
+                "no-op no-match helper",
+                re.sub(
+                    r"function afterlightAssertNoMatch\(recipe, input, label\) \{.*?\n  \}",
+                    "function afterlightAssertNoMatch(recipe, input, label) {}",
+                    self.source,
+                    count=1,
+                    flags=re.DOTALL,
+                ),
+            ),
+            (
+                "empty schematic inventory",
+                re.sub(
+                    r"const wrongSchematics = \[.*?\n  \]",
+                    "const wrongSchematics = []",
+                    self.source,
+                    count=1,
+                    flags=re.DOTALL,
+                ),
+            ),
+            ("short rotation loop", self.source.replace("turn <= 3", "turn <= 2", 1)),
+            ("short Seal-slot loop", self.source.replace("wrongSlot < 9", "wrongSlot < 8", 1)),
+        )
+        for label, changed in mutations:
+            with self.subTest(label=label):
+                self.assertNotEqual(changed, self.source)
+                with self.assertRaises(AssertionError):
+                    self.assert_runtime_matrix_contract(changed)
+
     def test_repository_and_installed_seal_source_scans_fail_closed(self) -> None:
         verifier = getattr(self.hygiene, "verify_seal_sources", None)
         self.assertTrue(callable(verifier), "Seal source verifier is missing")
+        self.assertEqual(
+            self.hygiene.SEAL_SCAN_ROOTS,
+            ("config", "global_packs", "kubejs", "mods"),
+        )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
             result = verifier(root, install)
@@ -3766,6 +3942,85 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                         ):
                             verifier(root, install)
                         unauthorized.unlink()
+
+            for source_class, member, payload in self.UNAUTHORIZED_ARCHIVE_SEAL_SOURCES:
+                with self.subTest(source_class=source_class, location="installed-mod"):
+                    archive = install / "mods" / f"unauthorized-{source_class}.jar"
+                    with zipfile.ZipFile(archive, "w") as output:
+                        output.writestr(member, payload)
+                    with self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "Seal source corpus",
+                    ):
+                        verifier(root, install)
+                    archive.unlink()
+
+    def test_seal_archive_scan_is_recursive_bounded_and_duplicate_safe(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_seal_corpus(Path(temporary))
+            verifier = self.hygiene.verify_seal_sources
+
+            duplicate = install / "mods" / "unreviewed-duplicate.jar"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(duplicate, "w") as output:
+                    output.writestr("META-INF/LICENSE.txt", b"first")
+                    output.writestr("META-INF/LICENSE.txt", b"second")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "duplicate archive member",
+            ):
+                verifier(root, install)
+            duplicate.unlink()
+
+            unsafe_directory = install / "mods" / "unsafe-directory.jar"
+            with zipfile.ZipFile(unsafe_directory, "w") as output:
+                output.writestr("../escape/", b"")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "unsafe archive member",
+            ):
+                verifier(root, install)
+            unsafe_directory.unlink()
+
+            nested_payload = io.BytesIO()
+            with zipfile.ZipFile(nested_payload, "w") as nested:
+                nested.writestr(
+                    "data/afterlight/recipe/unauthorized.json",
+                    b'{"result":{"id":"kubejs:ascendancy_seal"}}\n',
+                )
+            outer = install / "mods" / "unauthorized-nested.jar"
+            with zipfile.ZipFile(outer, "w") as output:
+                output.writestr("META-INF/jarjar/unauthorized.jar", nested_payload.getvalue())
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            outer.unlink()
+
+            bounded = install / "mods" / "bounded.jar"
+            with zipfile.ZipFile(bounded, "w", compression=zipfile.ZIP_DEFLATED) as output:
+                output.writestr("one.txt", b"A" * 4096)
+                output.writestr("two.txt", b"B" * 4096)
+            for constant, value, message in (
+                ("SEAL_ARCHIVE_MAX_MEMBERS", 1, "member count"),
+                ("SEAL_ARCHIVE_MAX_MEMBER_BYTES", 1, "member size"),
+                ("SEAL_ARCHIVE_MAX_EXPANDED_BYTES", 1, "expanded bytes"),
+                ("SEAL_ARCHIVE_MAX_TOTAL_MEMBERS", 1, "aggregate member count"),
+                ("SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES", 1, "aggregate expanded bytes"),
+                ("SEAL_ARCHIVE_MAX_COMPRESSION_RATIO", 2, "compression ratio"),
+            ):
+                with self.subTest(constant=constant), mock.patch.object(
+                    self.hygiene,
+                    constant,
+                    value,
+                ), self.assertRaisesRegex(
+                    self.hygiene.VerificationError,
+                    message,
+                ):
+                    verifier(root, install)
+            bounded.unlink()
 
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(

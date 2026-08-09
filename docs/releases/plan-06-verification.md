@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: the pinned-schema breaker correction is based exactly on `9748a45c15abcc12e4ae120d2eddd987974ba1fb` and has the fresh offline gate recorded below. Controller `verify-pack`, a live boot on the exact breaker-correction commit, exact-head independent review, detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
+Status: Task 4 breaker-correction code SHA `cbdc9867503f38ee032268deaad50490fe88d0d1` is accepted. Its controller-owned exact-parent offline gate, `VERIFY: ALL GREEN`, authenticated live gate, and final breaker re-review are recorded below. This tracked docs-only evidence child still requires two detached boots on its own SHA, integration with controller `dev`, exact-SHA `dev` CI, `main` promotion, green `main` CI, and Pages parity. Manual client, multiplayer, voice, gameplay, update, rollback, and VPS acceptance remains unclaimed.
 
 ## Delivered Scope
 
@@ -125,7 +125,38 @@ GENERATED STATE: CLEAN
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 ```
 
-No authored quest file, ID, corpus total, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No Packwiz command or live server ran. Any exact-head evidence for the parent commit does not validate this child. Controller `verify-pack`, a fresh exact-final-commit authenticated live boot, review, and integration remain pending.
+No authored quest file, ID, corpus total, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed in the breaker correction. The exact code parent subsequently completed the controller gate and final re-review recorded below.
+
+## Accepted Breaker Correction Exact-Parent Gate
+
+The controller ran the following gates against exact code SHA `cbdc9867503f38ee032268deaad50490fe88d0d1` before this evidence-only child:
+
+```text
+DIRECT TYPED-REFERENCE REGRESSION: 1 passed
+FOCUSED REVIEW CLASSES: 108 tests, OK (skipped=2 intentional live)
+FULL OFFLINE SUITE: 321 tests, OK (skipped=77 intentional live)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+VERIFY: ALL GREEN
+PACK SHA-256: 3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1
+INDEX SHA-256: 07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f
+PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
+SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f98c59805606208be0e8d9c67 code-corpus-sha256=7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258
+QUEST AUDIT BYTES: OK sha256=04c739d9e88d311a623df7b6e5ccdb84386108a7e32145d6749218c82e3bfd7f
+GATE AUDIT BYTES: OK sha256=5d4342904d7b7be4c705e306c6d6a6a510f0a2a89256b03b5940a8c62571e2dd
+BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
+Ran 321 live tests
+OK
+SERVER BOOT: OK
+QUEST IDENTITY INVENTORY: records=3135 sha256=6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede
+```
+
+The controller's `./tools/verify-pack.sh` invocation printed `VERIFY: ALL GREEN`. All 321 live tests passed with zero skips, and the harness printed `SERVER BOOT: OK`.
+
+Authenticated run `local-20260809T224249Z-27705-2229` used nonce `1786315371-27705-21179` and reached `Done (31.526s)!`. Its runtime Gate marker reported digest `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725` with count 11. Its runtime quest item marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2` with count 237. FTB Quests loaded 6 chapter groups, 46 chapters, 313 quests, and 6 reward tables. All three files under `server-test/logs/kubejs/` contained zero `ERROR` or `FATAL` records.
+
+The final breaker re-review returned `READY`, confirmed the one remaining finding addressed, and found no new breakage. This evidence commit does not inherit the parent live run. Remaining automated work is two detached boots on the evidence commit itself, integration of the accepted Plan 06 branch with controller `dev`, exact-SHA `dev` CI, `main` promotion, green `main` CI, and Pages parity. Manual client, multiplayer, voice, gameplay, update, rollback, and VPS acceptance remains unclaimed and belongs to Plan 07 or the 1.0 manual matrix. Plan 07 architecture commit `1df3d74a781bff43fc8502eb88aaf089ff0814eb` is accepted locally after final scoped breaker re-review returned `READY`, addressed all four findings, found zero new Critical or Important findings, and left no load-bearing residual. Local controller `dev` fast-forwarded to that exact SHA but has not pushed.
 
 ## Prior Automated Gate
 

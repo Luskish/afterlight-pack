@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from collections import Counter
 from dataclasses import fields
 from pathlib import Path
 
@@ -450,6 +451,112 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "answering-sky", "stay", "return", "build", "choice-is-not-a-lock",
         "afterlight",
     )
+    CHAPTER_TITLES = {
+        "FE9B015A32C6D980": "Five Impossible Parts",
+        "6671EBE257F914CB": "The Cascade Truth",
+        "6C4AE5CE13773438": "Gate of Return",
+        "245BADE04399406C": "Afterlight",
+    }
+    QUEST_TITLES = {
+        "8055C66103106D86": "Kinetic Frame",
+        "D2FE1624DCCE878F": "Industrial Anchor",
+        "50775CE87FAA4EB7": "Isotopic Core",
+        "FF064705A3CAB2E6": "Lattice Matrix",
+        "39C1F24EABBB34A3": "Undercurrent Stabilizer",
+        "144473B8267DBC28": "Five Impossible Parts",
+        "5468299A2A931991": "Eleven-Second Window",
+        "FEA7B2C8F11BB7A3": "Inbound Address",
+        "8EEFDD9E6CFB69E6": "The Order I Gave",
+        "29D7871AFBE3A54A": "The Warning I Deleted",
+        "701505FDCCA53DFA": "Decision Engine",
+        "462B11BD8C58BF6F": "The Cascade Truth",
+        "36D0902A2921C44E": "Monument Footprint",
+        "66AD5C821947DF8E": "Separate Grid",
+        "1A68D1245CD980BD": "Gate of Return Core",
+        "6F3663F4C6D20255": "Anchor and Contain",
+        "53B9BC5F498953D5": "Eleven Seconds",
+        "B1C9557D2F51238F": "Gate of Return",
+        "51649E106286AA63": "Answering Sky",
+        "FECCF0521DFCBED5": "Stay",
+        "9B523415541BD700": "Return",
+        "4DD9F3D1913499F3": "Build",
+        "FEE7B9B28787F8CC": "Choice Is Not a Lock",
+        "FE6A0AC031F7F484": "Afterlight",
+    }
+    EXPECTED_SEAL_OCCURRENCES = Counter((
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            'icon: { id: "kubejs:ascendancy_seal" }',
+        ),
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+        ),
+        (
+            "kubejs/assets/kubejs/lang/en_us.json",
+            '"item.kubejs.ascendancy_seal": "Ascendancy Seal",',
+        ),
+        (
+            "kubejs/server_scripts/afterlight/_constants.js",
+            "SEAL: 'kubejs:ascendancy_seal',",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:diamond', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:ender_eye', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "I: 'minecraft:iron_ingot', R: 'minecraft:redstone', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "countTwoKeys.Z = Item.of(AFTERLIGHT.SEAL, 2)",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+            '"kubejs:ascendancy_seal",',
+        ),
+        (
+            "kubejs/startup_scripts/afterlight/registry.js",
+            "event.create('ascendancy_seal')",
+        ),
+    ))
     TASKS = {
         "8055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
         "D2FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
@@ -562,6 +669,102 @@ class Plan06ActIVContractTests(unittest.TestCase):
         missing = sorted(expected - self.chapters.keys())
         self.assertEqual(missing, [], f"missing generated Act IV chapters: {missing}")
 
+    def assert_regenerated_outputs_match(
+        self,
+        catalog: list[object] | None = None,
+    ) -> None:
+        catalog = self.quests.build_catalog() if catalog is None else catalog
+        committed_state = json.loads(
+            (self.quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
+        )
+        managed_chapters = {
+            f"{chapter_id}.snbt" for chapter_id in committed_state["chapters"]
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            isolated_root = Path(temporary)
+            shutil.copytree(ROOT / "config", isolated_root / "config")
+            shutil.copytree(ROOT / "mods", isolated_root / "mods")
+            shutil.copytree(
+                ROOT / "kubejs" / "startup_scripts",
+                isolated_root / "kubejs" / "startup_scripts",
+            )
+            isolated_quest_root = isolated_root / "config" / "ftbquests" / "quests"
+            written = self.quests.write_catalog(catalog, isolated_quest_root)
+            self.assertEqual({path.name for path in written}, managed_chapters)
+            for filename in sorted(managed_chapters):
+                self.assertEqual(
+                    (isolated_quest_root / "chapters" / filename).read_bytes(),
+                    (self.quest_root / "chapters" / filename).read_bytes(),
+                    f"generated chapter drift: {filename}",
+                )
+            for relative in (
+                Path("lang/en_us.snbt"),
+                Path(".afterlight-managed.json"),
+            ):
+                self.assertEqual(
+                    (isolated_quest_root / relative).read_bytes(),
+                    (self.quest_root / relative).read_bytes(),
+                    f"generated quest output drift: {relative}",
+                )
+            audit_relative = Path(
+                "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+            )
+            self.assertEqual(
+                (isolated_root / audit_relative).read_bytes(),
+                (ROOT / audit_relative).read_bytes(),
+                f"generated quest output drift: {audit_relative}",
+            )
+
+    def seal_occurrence_inventory(self, root: Path) -> tuple[tuple[str, str], ...]:
+        occurrences = []
+        pattern = re.compile(r"ascendancy_seal|AFTERLIGHT\.SEAL")
+        for root_name in ("config", "global_packs", "kubejs"):
+            for path in sorted((root / root_name).rglob("*")):
+                if not path.is_file():
+                    continue
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    continue
+                for line in text.splitlines():
+                    matches = tuple(pattern.finditer(line))
+                    occurrences.extend(
+                        (path.relative_to(root).as_posix(), line.strip())
+                        for _match in matches
+                    )
+        return tuple(occurrences)
+
+    def assert_seal_occurrence_inventory(self, root: Path) -> None:
+        actual = Counter(self.seal_occurrence_inventory(root))
+        unexpected = actual - self.EXPECTED_SEAL_OCCURRENCES
+        missing = self.EXPECTED_SEAL_OCCURRENCES - actual
+        self.assertEqual(unexpected, Counter(), f"unexpected Seal occurrences: {unexpected}")
+        self.assertEqual(missing, Counter(), f"missing Seal occurrences: {missing}")
+
+    def assert_exact_act_iv_titles(
+        self,
+        catalog: list[object],
+        localization: dict[str, object],
+    ) -> None:
+        catalog_chapters = {chapter.id: chapter for chapter in catalog}
+        catalog_quests = {
+            quest.id: quest
+            for chapter in catalog
+            for quest in chapter.quests
+        }
+        for chapter_id, expected_title in self.CHAPTER_TITLES.items():
+            self.assertEqual(catalog_chapters[chapter_id].title, expected_title)
+            self.assertEqual(
+                localization[f"chapter.{chapter_id}.title"],
+                expected_title,
+            )
+        for quest_id, expected_title in self.QUEST_TITLES.items():
+            self.assertEqual(catalog_quests[quest_id].title, expected_title)
+            self.assertEqual(
+                localization[f"quest.{quest_id}.title"],
+                expected_title,
+            )
+
     def test_catalog_uses_exact_act_iv_slugs_and_derived_ids(self) -> None:
         catalog = {chapter.id: chapter for chapter in self.quests.build_catalog()}
         for chapter_index, (chapter_id, chapter_slug, _order, _icon, quest_ids) in enumerate(self.CHAPTERS):
@@ -574,6 +777,24 @@ class Plan06ActIVContractTests(unittest.TestCase):
                 for relative_slug in self.QUEST_SLUGS[first_slug:first_slug + 6]
             ])
             self.assertEqual(tuple(quest.id for quest in chapter.quests), quest_ids)
+
+    def test_catalog_and_committed_localization_use_exact_act_iv_titles(self) -> None:
+        self.assert_exact_act_iv_titles(self.quests.build_catalog(), self.localization)
+
+    def test_full_catalog_regeneration_is_byte_identical_to_committed_output(self) -> None:
+        self.assert_regenerated_outputs_match()
+
+    def test_full_catalog_regeneration_rejects_unbuilt_task_data_mutation(self) -> None:
+        catalog = self.quests.build_catalog()
+        kinetic = next(
+            quest
+            for chapter in catalog
+            for quest in chapter.quests
+            if quest.id == "8055C66103106D86"
+        )
+        kinetic.tasks[0].data["count"] = self.quests.SnbtLong(2)
+        with self.assertRaisesRegex(AssertionError, "FE9B015A32C6D980"):
+            self.assert_regenerated_outputs_match(catalog)
 
     def test_generated_act_iv_chapters_have_exact_order_and_ids(self) -> None:
         self.assert_generated_act_iv_exists()
@@ -696,22 +917,28 @@ class Plan06ActIVContractTests(unittest.TestCase):
         quest_id, reward = seal_rewards[0]
         self.assertEqual(quest_id, "FE6A0AC031F7F484")
         self.assertEqual(self.reward_contract(reward), self.REWARDS[quest_id][0])
-        for path in (self.quest_root / "reward_tables").glob("*.snbt"):
-            self.assertNotIn("kubejs:ascendancy_seal", path.read_text(encoding="utf-8"))
-        for path in (ROOT / "kubejs" / "data").rglob("*.json"):
-            self.assertNotIn("kubejs:ascendancy_seal", path.read_text(encoding="utf-8"))
-        scripts = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in (ROOT / "kubejs" / "server_scripts").rglob("*.js")
-        )
-        forbidden_sources = (
-            r"\.give\s*\([^\n]*(?:AFTERLIGHT\.SEAL|ascendancy_seal)",
-            r"event\.(?:shaped|shapeless)\s*\(\s*(?:AFTERLIGHT\.SEAL|['\"]kubejs:ascendancy_seal)",
-            r"mechanical_crafting\s*\(\s*(?:AFTERLIGHT\.SEAL|['\"]kubejs:ascendancy_seal)",
-            r"(?:loot|trade)[^\n]*(?:AFTERLIGHT\.SEAL|ascendancy_seal)",
-        )
-        for pattern in forbidden_sources:
-            self.assertNotRegex(scripts, pattern)
+        self.assert_seal_occurrence_inventory(ROOT)
+
+    def test_seal_occurrence_inventory_rejects_new_text_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            isolated_root = Path(temporary)
+            for root_name in ("config", "global_packs", "kubejs"):
+                shutil.copytree(ROOT / root_name, isolated_root / root_name)
+            mutation = (
+                isolated_root
+                / "kubejs"
+                / "server_scripts"
+                / "afterlight"
+                / "reviewer_seal_source.js"
+            )
+            mutation.write_text(
+                "ServerEvents.recipes(event => {\n"
+                "  event.custom({ result: { id: 'kubejs:ascendancy_seal' } })\n"
+                "})\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(AssertionError):
+                self.assert_seal_occurrence_inventory(isolated_root)
 
 
 class QuestCompilerTests(unittest.TestCase):

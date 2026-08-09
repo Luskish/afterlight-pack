@@ -4669,12 +4669,36 @@ def _seal_occurrences(
                     )
                 else:
                     try:
-                        payload = path.read_bytes()
+                        raw_size = path.stat().st_size
+                    except OSError as error:
+                        raise VerificationError(
+                            f"cannot inspect {label} Seal source file "
+                            f"{relative.as_posix()}: {error}"
+                        ) from error
+                    if raw_size > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+                        raise VerificationError(
+                            "Seal source raw file size exceeds limit: "
+                            f"{relative.as_posix()} size={raw_size}"
+                        )
+                    try:
+                        with path.open("rb") as source:
+                            payload = source.read(SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1)
                     except OSError as error:
                         raise VerificationError(
                             f"cannot read {label} Seal source file "
                             f"{relative.as_posix()}: {error}"
                         ) from error
+                    if len(payload) > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+                        raise VerificationError(
+                            "Seal source raw file size exceeds limit: "
+                            f"{relative.as_posix()}"
+                        )
+                    if len(payload) != raw_size:
+                        raise VerificationError(
+                            "Seal source raw file size changed while reading: "
+                            f"{relative.as_posix()} metadata={raw_size} "
+                            f"actual={len(payload)}"
+                        )
                     scan_payload(relative.as_posix(), payload)
     return tuple(occurrences)
 
@@ -4719,21 +4743,11 @@ def verify_seal_sources(
 
 
 SIGNED_SAFE_FTB_ID = re.compile(r"^[0-7][0-9A-F]{15}$")
-QUEST_IDENTITY_TARGET_FIELDS = (
-    "advancement",
-    "biome",
-    "command",
-    "dimension",
-    "entity",
-    "fluid",
-    "item",
-    "stage",
-    "stat",
-    "structure",
-    "table_id",
-)
-QUEST_IDENTITY_REQUIRED_ITEM_COMPONENTS = {
-    "enderio:conduit": ("enderio:conduit",),
+QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT = {
+    "data": [],
+    "maxSpells": "5",
+    "mustEquip": "1b",
+    "spellWheel": "1b",
 }
 
 
@@ -4763,33 +4777,84 @@ def _quest_identity_type(value: object, label: str) -> str:
     return value
 
 
-def _quest_identity_target(value: dict) -> str:
-    targets: list[tuple[str, object]] = []
-    for field in QUEST_IDENTITY_TARGET_FIELDS:
-        if field not in value:
-            continue
-        target = value[field]
-        if field == "item" and isinstance(target, dict):
-            item_id = target.get("id")
-            normalized_item = {"id": item_id}
-            components = target.get("components")
-            required_components = QUEST_IDENTITY_REQUIRED_ITEM_COMPONENTS.get(
-                item_id, ()
-            )
-            if isinstance(components, dict) and required_components:
-                normalized_item["components"] = {
-                    key: components[key]
-                    for key in required_components
-                    if key in components
-                }
-            target = normalized_item
-        targets.append((field, target))
+def _quest_identity_copy(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _quest_identity_copy(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_quest_identity_copy(child) for child in value]
+    return value
+
+
+def _quest_identity_item(value: object, label: str) -> dict:
+    item = _quest_identity_mapping(_quest_identity_copy(value), label)
+    if item.get("id") != "irons_spellbooks:copper_spell_book":
+        return item
+    components = item.get("components")
+    if not isinstance(components, dict):
+        return item
+    if (
+        components.get("irons_spellbooks:spell_container")
+        == QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT
+    ):
+        components.pop("irons_spellbooks:spell_container")
+        if not components:
+            item.pop("components")
+    return item
+
+
+def _quest_identity_object(
+    value: object,
+    label: str,
+    kind: str,
+) -> dict:
+    identity = _quest_identity_mapping(_quest_identity_copy(value), label)
+    if kind == "table_reward" and "type" not in identity and "item" in identity:
+        identity["type"] = "item"
+    if identity.get("type") == "item":
+        identity["item"] = _quest_identity_item(
+            identity.get("item"), f"{label} item"
+        )
+        if kind == "task":
+            identity.setdefault("count", "1L")
+        else:
+            identity.setdefault("count", "1")
+    if kind == "table_reward":
+        identity.setdefault("weight", "1.0f")
+    return identity
+
+
+def _quest_identity_json(value: object) -> str:
     return json.dumps(
-        targets,
+        value,
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
     )
+
+
+def _quest_identity_order_index(value: dict, label: str) -> int:
+    order_index = value.get("order_index")
+    if not isinstance(order_index, str) or re.fullmatch(r"-?[0-9]+", order_index) is None:
+        raise VerificationError(f"{label} order_index must be an integer")
+    return int(order_index)
+
+
+def _quest_identity_order_ranks(
+    values: Sequence[tuple[str, str, int]],
+) -> dict[str, int]:
+    by_scope: dict[str, list[tuple[int, str]]] = {}
+    for identifier, scope, order_index in values:
+        by_scope.setdefault(scope, []).append((order_index, identifier))
+    ranks: dict[str, int] = {}
+    for scope, entries in by_scope.items():
+        order_indices = [order_index for order_index, _identifier in entries]
+        if len(set(order_indices)) != len(order_indices):
+            raise VerificationError(
+                f"quest identity corpus {scope} has duplicate order_index values"
+            )
+        for rank, (_order_index, identifier) in enumerate(sorted(entries)):
+            ranks[identifier] = rank
+    return ranks
 
 
 def _quest_identity_parse(root: Path, relative: PurePosixPath, label: str) -> dict:
@@ -4821,11 +4886,19 @@ def _quest_identity_inventory(root: Path, label: str) -> tuple[tuple[str, ...], 
         group_id = _quest_identity_id(
             group.get("id"), f"{label} chapter group {position} ID"
         )
-        records.append(("group", group_id))
+        records.append(
+            (
+                "group",
+                f"{position:08d}",
+                group_id,
+                _quest_identity_json(group),
+            )
+        )
 
     chapter_directory = _validated_root(
         quest_root / "chapters", f"{label} chapter directory"
     )
+    chapters: list[tuple[Path, PurePosixPath, dict, str, str, str, int]] = []
     for path in sorted(chapter_directory.glob("*.snbt")):
         relative = PurePosixPath(path.relative_to(root).as_posix())
         chapter = _quest_identity_parse(root, relative, f"{label} chapter")
@@ -4839,7 +4912,35 @@ def _quest_identity_inventory(root: Path, label: str) -> tuple[tuple[str, ...], 
             chapter.get("group"), f"{label} chapter {relative.name} group"
         )
         stem = _quest_identity_id(path.stem, f"{label} chapter file stem")
-        records.append(("chapter", stem, chapter_id, filename, group_id))
+        order_index = _quest_identity_order_index(
+            chapter, f"{label} chapter {chapter_id}"
+        )
+        chapters.append(
+            (path, relative, chapter, chapter_id, filename, group_id, order_index)
+        )
+
+    chapter_ranks = _quest_identity_order_ranks(
+        tuple(
+            (chapter_id, group_id, order_index)
+            for _path, _relative, _chapter, chapter_id, _filename, group_id, order_index
+            in chapters
+        )
+    )
+    for path, relative, chapter, chapter_id, filename, group_id, _order_index in chapters:
+        chapter_semantics = _quest_identity_copy(chapter)
+        chapter_semantics.pop("quests", None)
+        chapter_semantics.pop("order_index", None)
+        records.append(
+            (
+                "chapter",
+                path.stem,
+                chapter_id,
+                filename,
+                group_id,
+                f"{chapter_ranks[chapter_id]:08d}",
+                _quest_identity_json(chapter_semantics),
+            )
+        )
         quests = _quest_identity_list(
             chapter.get("quests"), f"{label} chapter {chapter_id} quests"
         )
@@ -4852,16 +4953,34 @@ def _quest_identity_inventory(root: Path, label: str) -> tuple[tuple[str, ...], 
                 quest.get("id"),
                 f"{label} chapter {chapter_id} quest {quest_position} ID",
             )
-            records.append(("quest", chapter_id, quest_id))
+            quest_semantics = _quest_identity_copy(quest)
+            quest_semantics.pop("tasks", None)
+            quest_semantics.pop("rewards", None)
+            records.append(
+                (
+                    "quest",
+                    chapter_id,
+                    f"{quest_position:08d}",
+                    quest_id,
+                    _quest_identity_json(quest_semantics),
+                )
+            )
             dependencies = _quest_identity_list(
                 quest.get("dependencies", []),
                 f"{label} quest {quest_id} dependencies",
             )
-            for dependency_value in dependencies:
+            for dependency_position, dependency_value in enumerate(dependencies):
                 dependency = _quest_identity_id(
                     dependency_value, f"{label} quest {quest_id} dependency"
                 )
-                records.append(("dependency", quest_id, dependency))
+                records.append(
+                    (
+                        "dependency",
+                        quest_id,
+                        f"{dependency_position:08d}",
+                        dependency,
+                    )
+                )
             for kind in ("tasks", "rewards"):
                 values = _quest_identity_list(
                     quest.get(kind), f"{label} quest {quest_id} {kind}"
@@ -4880,26 +4999,84 @@ def _quest_identity_inventory(root: Path, label: str) -> tuple[tuple[str, ...], 
                         identity.get("type"),
                         f"{label} quest {quest_id} {singular} {identity_id} type",
                     )
+                    normalized_identity = _quest_identity_object(
+                        identity,
+                        f"{label} quest {quest_id} {singular} {identity_id}",
+                        singular,
+                    )
                     records.append(
                         (
                             singular,
                             quest_id,
+                            f"{position:08d}",
                             identity_id,
                             identity_type,
-                            _quest_identity_target(identity),
+                            _quest_identity_json(normalized_identity),
                         )
                     )
 
     table_directory = _validated_root(
         quest_root / "reward_tables", f"{label} reward table directory"
     )
+    tables: list[tuple[Path, dict, str, int]] = []
     for path in sorted(table_directory.glob("*.snbt")):
         relative = PurePosixPath(path.relative_to(root).as_posix())
         table = _quest_identity_parse(root, relative, f"{label} reward table")
         table_id = _quest_identity_id(
             table.get("id"), f"{label} reward table {relative.name} ID"
         )
-        records.append(("reward_table", path.stem, table_id))
+        order_index = _quest_identity_order_index(
+            table, f"{label} reward table {table_id}"
+        )
+        tables.append((path, table, table_id, order_index))
+
+    table_ranks = _quest_identity_order_ranks(
+        tuple(
+            (table_id, "reward_tables", order_index)
+            for _path, _table, table_id, order_index in tables
+        )
+    )
+    for path, table, table_id, _order_index in tables:
+        table_semantics = _quest_identity_copy(table)
+        table_semantics.pop("filename", None)
+        table_semantics.pop("title", None)
+        table_semantics.pop("order_index", None)
+        loot_crate = table_semantics.get("loot_crate")
+        if isinstance(loot_crate, dict):
+            glow = loot_crate.get("glow")
+            if glow is True or glow == "1b":
+                loot_crate["glow"] = True
+            elif glow is False or glow == "0b":
+                loot_crate["glow"] = False
+        table_rewards = _quest_identity_list(
+            table_semantics.get("rewards"), f"{label} reward table {table_id} rewards"
+        )
+        normalized_rewards: list[dict] = []
+        for position, reward_value in enumerate(table_rewards):
+            reward = _quest_identity_object(
+                reward_value,
+                f"{label} reward table {table_id} reward {position}",
+                "table_reward",
+            )
+            reward_id = _quest_identity_id(
+                reward.get("id"),
+                f"{label} reward table {table_id} reward {position} ID",
+            )
+            _quest_identity_type(
+                reward.get("type"),
+                f"{label} reward table {table_id} reward {reward_id} type",
+            )
+            normalized_rewards.append(reward)
+        table_semantics["rewards"] = normalized_rewards
+        records.append(
+            (
+                "reward_table",
+                path.stem,
+                table_id,
+                f"{table_ranks[table_id]:08d}",
+                _quest_identity_json(table_semantics),
+            )
+        )
 
     return tuple(sorted(records))
 

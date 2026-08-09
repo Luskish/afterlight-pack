@@ -15,6 +15,7 @@ import zipfile
 from collections import Counter
 from dataclasses import fields
 from pathlib import Path
+from unittest import mock
 
 
 tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
@@ -1305,6 +1306,76 @@ class QuestCompilerTests(unittest.TestCase):
     def audit_item_count(self, item_id: str = "example:widget") -> int:
         return len(self.quests.KUBEJS_ITEM_ALLOWLIST | {item_id})
 
+    def make_unsafe_migration_corpus(
+        self, base: Path
+    ) -> tuple[Path, Path, Path]:
+        quest_root = self.make_quest_root(base)
+        mods_dir = base / "mods"
+        mods_dir.mkdir()
+        unsafe_chapter = quest_root / "chapters" / "FEDCBA9876543210.snbt"
+        unsafe_chapter.write_text(
+            "{\n"
+            '\tfilename: "FEDCBA9876543210"\n'
+            '\tgroup: "4525BB3160467FCB"\n'
+            '\tid: "FEDCBA9876543210"\n'
+            "\tquests: [{\n"
+            '\t\tid: "EEDCBA9876543210"\n'
+            '\t\tnote: "FEDCBA9876543210 is authored prose"\n'
+            '\t\tcomponent_probe: { value: "FEDCBA9876543210" }\n'
+            '\t\tresource_probe: "example:FEDCBA9876543210"\n'
+            '\t\ttasks: [{\n'
+            '\t\t\tid: "DEDCBA9876543210"\n'
+            '\t\t\ttype: "item"\n'
+            '\t\t\titem: { count: 1, id: "minecraft:bread", components: { '
+            '"minecraft:custom_data": { probe: "FEDCBA9876543210" } } }\n'
+            '\t\t\tcount: 1L\n'
+            '\t\t}]\n'
+            '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n'
+            "\t}\n"
+            "\t{\n"
+            '\t\tid: "3EDCBA9876543210"\n'
+            '\t\tdependencies: ["EEDCBA9876543210"]\n'
+            '\t\ttasks: [{ id: "2EDCBA9876543210", type: "checkmark" }]\n'
+            '\t\trewards: []\n'
+            "\t}]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "unrelated.txt").write_text(
+            "FEDCBA9876543210 stays unrelated\n",
+            encoding="utf-8",
+        )
+        language = quest_root / "lang" / "en_us.snbt"
+        language_source = language.read_text(encoding="utf-8").rstrip()
+        language.write_text(
+            language_source[:-1]
+            + '\tchapter.FEDCBA9876543210.title: "FEDCBA9876543210 stays prose"\n'
+            + '\tquest.EEDCBA9876543210.title: "Unsafe"\n'
+            + '\tquest.EEDCBA9876543210.quest_desc: ["FEDCBA9876543210 stays prose"]\n'
+            + '\tquest.3EDCBA9876543210.title: "Dependent"\n'
+            + '\tquest.3EDCBA9876543210.quest_desc: ["Dependency fixture"]\n'
+            + "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / ".afterlight-managed.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "chapters": ["FEDCBA9876543210"],
+                    "localization_keys": [
+                        "chapter.FEDCBA9876543210.title",
+                        "quest.EEDCBA9876543210.title",
+                        "quest.EEDCBA9876543210.quest_desc",
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return quest_root, mods_dir, unsafe_chapter
+
     def test_stable_id_uses_signed_safe_truncated_uppercase_sha256(self) -> None:
         raw = int(
             hashlib.sha256(b"quest:story/act-iv/afterlight").hexdigest()[:16],
@@ -1375,6 +1446,7 @@ class QuestCompilerTests(unittest.TestCase):
             chapter_path.write_text(
                 "{\n"
                 '\tfilename: "1234567890ABCDEF"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
                 '\tid: "1234567890ABCDEF"\n'
                 '\tquests: [{\n'
                 '\t\tid: "234567890ABCDEF0"\n'
@@ -1405,6 +1477,137 @@ class QuestCompilerTests(unittest.TestCase):
                 'id: "1369E4AACBCDF5A1"',
                 reward_table.read_text(encoding="utf-8"),
             )
+
+    def test_signed_id_migration_preserves_id_shaped_authored_values(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            migrated = quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            self.assertFalse(unsafe_chapter.exists())
+            self.assertTrue(migrated.is_file())
+            chapter_text = migrated.read_text(encoding="utf-8")
+            language_text = (quest_root / "lang" / "en_us.snbt").read_text(
+                encoding="utf-8"
+            )
+            managed_state = json.loads(
+                (quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
+            )
+            self.assertIn('id: "7EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "6EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "5EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "4EDCBA9876543210"', chapter_text)
+            self.assertIn('note: "FEDCBA9876543210 is authored prose"', chapter_text)
+            self.assertIn('component_probe: { value: "FEDCBA9876543210" }', chapter_text)
+            self.assertIn(
+                '"minecraft:custom_data": { probe: "FEDCBA9876543210" }',
+                chapter_text,
+            )
+            self.assertIn('resource_probe: "example:FEDCBA9876543210"', chapter_text)
+            self.assertIn('dependencies: ["6EDCBA9876543210"]', chapter_text)
+            self.assertEqual(
+                (quest_root / "unrelated.txt").read_text(encoding="utf-8"),
+                "FEDCBA9876543210 stays unrelated\n",
+            )
+            self.assertIn(
+                'chapter.7EDCBA9876543210.title: "FEDCBA9876543210 stays prose"',
+                language_text,
+            )
+            self.assertIn(
+                'quest.6EDCBA9876543210.quest_desc: ["FEDCBA9876543210 stays prose"]',
+                language_text,
+            )
+            self.assertEqual(managed_state["chapters"], ["7EDCBA9876543210"])
+            self.assertIn(
+                "quest.6EDCBA9876543210.title",
+                managed_state["localization_keys"],
+            )
+
+    def test_signed_id_migration_recovers_after_interrupted_writes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            transaction = builder._migration_transaction_directory(quest_root)
+            self.assertFalse(transaction.is_relative_to(quest_root))
+            real_replace = builder.os.replace
+            quest_writes = 0
+
+            def interrupt_second_quest_write(source, target):
+                nonlocal quest_writes
+                target_path = Path(target)
+                try:
+                    target_path.relative_to(quest_root)
+                except ValueError:
+                    return real_replace(source, target)
+                quest_writes += 1
+                if quest_writes == 2:
+                    raise OSError("injected migration write interruption")
+                return real_replace(source, target)
+
+            with mock.patch.object(
+                builder.os,
+                "replace",
+                side_effect=interrupt_second_quest_write,
+            ), self.assertRaisesRegex(OSError, "write interruption"):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertTrue((transaction / builder.MIGRATION_JOURNAL_NAME).is_file())
+            self.assertFalse(
+                (quest_root / builder.MIGRATION_JOURNAL_NAME).exists()
+            )
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(transaction.exists())
+            self.assertTrue(
+                (quest_root / "chapters" / "7EDCBA9876543210.snbt").is_file()
+            )
+            self.assertFalse(
+                (quest_root / "chapters" / "FEDCBA9876543210.snbt").exists()
+            )
+
+    def test_signed_id_migration_recovers_after_interrupted_path_move(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            transaction = builder._migration_transaction_directory(quest_root)
+            migrated_chapter = (
+                quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            )
+            real_path_replace = Path.replace
+
+            def interrupt_after_target_copy(source: Path, target: Path):
+                if source == unsafe_chapter:
+                    shutil.copy2(source, target)
+                    raise OSError("injected migration path interruption")
+                return real_path_replace(source, target)
+
+            with mock.patch.object(
+                Path,
+                "replace",
+                autospec=True,
+                side_effect=interrupt_after_target_copy,
+            ), self.assertRaisesRegex(OSError, "path interruption"):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertTrue(unsafe_chapter.is_file())
+            self.assertTrue(migrated_chapter.is_file())
+            self.assertTrue((transaction / builder.MIGRATION_JOURNAL_NAME).is_file())
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(transaction.exists())
+            self.assertFalse(unsafe_chapter.exists())
+            self.assertTrue(migrated_chapter.is_file())
 
     def test_snbt_long_converts_hex_ids_to_signed_java_longs(self) -> None:
         self.assertEqual(

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import tempfile
 import zipfile
@@ -13,13 +14,15 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
-FTB_ID_TOKEN = re.compile(r"(?<![0-9A-F])([0-9A-F]{16})(?![0-9A-F])")
-NEGATIVE_TABLE_ID_TOKEN = re.compile(
-    r"(?P<prefix>\btable_id\s*:\s*)-(?P<value>[0-9]+)L\b"
+FTB_LOCALIZATION_KEY = re.compile(
+    r"^(?P<prefix>(?:chapter|chapter_group|quest|task|reward)\.)"
+    r"(?P<identifier>[0-9A-F]{16})(?P<suffix>\..+)$"
 )
 MAX_FTB_ID = (1 << 63) - 1
 RESOURCE_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MANAGED_STATE_NAME = ".afterlight-managed.json"
+MIGRATION_JOURNAL_NAME = "journal.json"
+MIGRATION_TRANSACTION_VERSION = 1
 DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
@@ -108,6 +111,7 @@ class _SnbtToken:
     kind: str
     value: str
     offset: int
+    end: int
 
 
 @dataclass(frozen=True)
@@ -218,13 +222,6 @@ def ftb_safe_id(identifier: str) -> str:
 def stable_id(kind: str, slug: str) -> str:
     digest = hashlib.sha256(f"{kind}:{slug}".encode("utf-8")).hexdigest()[:16].upper()
     return ftb_safe_id(digest)
-
-
-def _migrate_negative_table_id(match: re.Match[str]) -> str:
-    signed_value = -int(match.group("value"))
-    unsigned_identifier = f"{signed_value & ((1 << 64) - 1):016X}"
-    safe_value = int(ftb_safe_id(unsigned_identifier), 16)
-    return f"{match.group('prefix')}{safe_value}L"
 
 
 def assert_no_id_collisions(catalog: Sequence[ChapterSpec]) -> None:
@@ -462,60 +459,7 @@ def _managed_state(chapters: Iterable[str], localization_keys: Iterable[str]) ->
 
 
 def normalize_quest_corpus_ids(quest_root: Path) -> int:
-    paths = sorted(quest_root.rglob("*.snbt"))
-    state_path = quest_root / MANAGED_STATE_NAME
-    if state_path.is_file():
-        paths.append(state_path)
-    sources = {path: path.read_text(encoding="utf-8") for path in paths}
-    identifiers = {
-        match.group(1)
-        for text in sources.values()
-        for match in FTB_ID_TOKEN.finditer(text)
-    }
-    target_sources: dict[str, set[str]] = {}
-    for identifier in identifiers:
-        target_sources.setdefault(ftb_safe_id(identifier), set()).add(identifier)
-    collisions = {
-        target: sorted(originals)
-        for target, originals in target_sources.items()
-        if len(originals) > 1
-    }
-    if collisions:
-        raise ValueError(f"FTB signed-safe ID migration collisions: {collisions}")
-
-    migrations = {
-        identifier: ftb_safe_id(identifier)
-        for identifier in identifiers
-        if ftb_safe_id(identifier) != identifier
-    }
-    chapter_moves: list[tuple[Path, Path]] = []
-    for path in sorted((quest_root / "chapters").glob("*.snbt")):
-        if not HEX_ID.fullmatch(path.stem):
-            continue
-        target_id = ftb_safe_id(path.stem)
-        if target_id == path.stem:
-            continue
-        target = path.with_name(f"{target_id}.snbt")
-        if target.exists():
-            raise ValueError(
-                f"FTB signed-safe chapter migration target already exists: {target}"
-            )
-        chapter_moves.append((path, target))
-
-    changed = 0
-    for path, text in sources.items():
-        migrated = FTB_ID_TOKEN.sub(
-            lambda match: migrations.get(match.group(1), match.group(1)),
-            text,
-        )
-        migrated = NEGATIVE_TABLE_ID_TOKEN.sub(_migrate_negative_table_id, migrated)
-        if migrated != text:
-            _atomic_write(path, migrated)
-            changed += 1
-    for source, target in chapter_moves:
-        source.replace(target)
-        changed += 1
-    return changed
+    return _normalize_quest_corpus_ids_transaction(quest_root)
 
 
 def write_catalog(catalog: Sequence[ChapterSpec], quest_root: Path) -> list[Path]:
@@ -586,7 +530,7 @@ def _tokenize_snbt(text: str) -> list[_SnbtToken]:
             cursor += 1
             continue
         if character in punctuation:
-            tokens.append(_SnbtToken(character, character, cursor))
+            tokens.append(_SnbtToken(character, character, cursor, cursor + 1))
             cursor += 1
             continue
         if character == '"':
@@ -610,7 +554,7 @@ def _tokenize_snbt(text: str) -> list[_SnbtToken]:
                 value = json.loads(raw)
             except json.JSONDecodeError as error:
                 raise SnbtParseError(f"invalid string at offset {start}: {error}") from error
-            tokens.append(_SnbtToken("string", value, start))
+            tokens.append(_SnbtToken("string", value, start, cursor))
             continue
         start = cursor
         while (
@@ -621,7 +565,7 @@ def _tokenize_snbt(text: str) -> list[_SnbtToken]:
             cursor += 1
         if cursor == start:
             raise SnbtParseError(f"unexpected character {text[cursor]!r} at offset {cursor}")
-        tokens.append(_SnbtToken("bare", text[start:cursor], start))
+        tokens.append(_SnbtToken("bare", text[start:cursor], start, cursor))
     return tokens
 
 
@@ -711,6 +655,612 @@ class _SnbtParser:
 
 def _parse_snbt(text: str) -> Any:
     return _SnbtParser(text).parse()
+
+
+class _SnbtPathScanner:
+    def __init__(self, text: str) -> None:
+        self.tokens = _tokenize_snbt(text)
+        self.cursor = 0
+        self.scalars: list[tuple[tuple[str | int, ...], _SnbtToken]] = []
+        self.keys: list[tuple[tuple[str | int, ...], _SnbtToken]] = []
+
+    def scan(
+        self,
+    ) -> tuple[
+        tuple[tuple[tuple[str | int, ...], _SnbtToken], ...],
+        tuple[tuple[tuple[str | int, ...], _SnbtToken], ...],
+    ]:
+        self._scan_value(())
+        if self.cursor != len(self.tokens):
+            token = self.tokens[self.cursor]
+            raise SnbtParseError(
+                f"trailing token {token.value!r} at offset {token.offset}"
+            )
+        return tuple(self.scalars), tuple(self.keys)
+
+    def _peek(self) -> _SnbtToken | None:
+        return self.tokens[self.cursor] if self.cursor < len(self.tokens) else None
+
+    def _take(self, kind: str | None = None) -> _SnbtToken:
+        token = self._peek()
+        if token is None:
+            raise SnbtParseError("unexpected end of input")
+        if kind is not None and token.kind != kind:
+            raise SnbtParseError(
+                f"expected {kind!r}, found {token.value!r} at offset {token.offset}"
+            )
+        self.cursor += 1
+        return token
+
+    def _discard_commas(self) -> None:
+        while self._peek() is not None and self._peek().kind == ",":
+            self.cursor += 1
+
+    def _scan_value(self, path: tuple[str | int, ...]) -> None:
+        token = self._peek()
+        if token is None:
+            raise SnbtParseError("expected value, found end of input")
+        if token.kind == "{":
+            self._take("{")
+            self._discard_commas()
+            while self._peek() is not None and self._peek().kind != "}":
+                key_token = self._take()
+                if key_token.kind not in {"bare", "string"}:
+                    raise SnbtParseError(
+                        f"expected compound key at offset {key_token.offset}"
+                    )
+                self.keys.append((path, key_token))
+                self._take(":")
+                self._scan_value((*path, key_token.value))
+                self._discard_commas()
+            self._take("}")
+            return
+        if token.kind == "[":
+            self._take("[")
+            self._discard_commas()
+            index = 0
+            while self._peek() is not None and self._peek().kind != "]":
+                self._scan_value((*path, index))
+                index += 1
+                self._discard_commas()
+            self._take("]")
+            return
+        if token.kind not in {"bare", "string"}:
+            raise SnbtParseError(
+                f"expected value, found {token.value!r} at offset {token.offset}"
+            )
+        self.scalars.append((path, self._take()))
+
+
+def _migration_localization_key(value: str) -> str:
+    match = FTB_LOCALIZATION_KEY.fullmatch(value)
+    if match is None:
+        return value
+    identifier = match.group("identifier")
+    return (
+        f"{match.group('prefix')}{ftb_safe_id(identifier)}{match.group('suffix')}"
+    )
+
+
+def _migration_snbt_role(
+    relative: Path,
+    path: tuple[str | int, ...],
+) -> str | None:
+    if relative == Path("chapter_groups.snbt"):
+        if (
+            len(path) == 3
+            and path[0] == "chapter_groups"
+            and isinstance(path[1], int)
+            and path[2] == "id"
+        ):
+            return "definition"
+        return None
+
+    if len(relative.parts) == 2 and relative.parts[0] == "chapters":
+        if path == ("id",):
+            return "definition"
+        if path in (("filename",), ("group",)):
+            return "identity"
+        if (
+            len(path) == 3
+            and path[0] == "quests"
+            and isinstance(path[1], int)
+            and path[2] == "id"
+        ):
+            return "definition"
+        if (
+            len(path) == 4
+            and path[0] == "quests"
+            and isinstance(path[1], int)
+            and path[2] == "dependencies"
+            and isinstance(path[3], int)
+        ):
+            return "identity"
+        if (
+            len(path) == 5
+            and path[0] == "quests"
+            and isinstance(path[1], int)
+            and path[2] in {"tasks", "rewards"}
+            and isinstance(path[3], int)
+        ):
+            if path[4] == "id":
+                return "definition"
+            if path[4] == "table_id":
+                return "table_reference"
+        return None
+
+    if len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
+        if path == ("id",):
+            return "definition"
+        if (
+            len(path) == 3
+            and path[0] == "rewards"
+            and isinstance(path[1], int)
+        ):
+            if path[2] == "id":
+                return "definition"
+            if path[2] == "table_id":
+                return "table_reference"
+    return None
+
+
+def _migration_table_reference(value: str) -> str:
+    match = re.fullmatch(r"(-?[0-9]+)L", value)
+    if match is None:
+        raise ValueError(f"malformed reward table reference: {value!r}")
+    signed_value = int(match.group(1))
+    if signed_value >= 0:
+        return value
+    unsigned_identifier = f"{signed_value & ((1 << 64) - 1):016X}"
+    return f"{int(ftb_safe_id(unsigned_identifier), 16)}L"
+
+
+def _migration_token_text(token: _SnbtToken, value: str) -> str:
+    return _escape(value) if token.kind == "string" else value
+
+
+def _migration_apply_replacements(
+    text: str,
+    replacements: Sequence[tuple[_SnbtToken, str]],
+) -> str:
+    migrated = text
+    previous_offset = len(text)
+    for token, value in sorted(
+        replacements, key=lambda replacement: replacement[0].offset, reverse=True
+    ):
+        if token.end > previous_offset:
+            raise ValueError("overlapping FTB ID migration replacements")
+        migrated = (
+            migrated[: token.offset]
+            + _migration_token_text(token, value)
+            + migrated[token.end :]
+        )
+        previous_offset = token.offset
+    return migrated
+
+
+def _migration_scan_snbt(
+    relative: Path,
+    text: str,
+) -> tuple[str, tuple[tuple[str, str], ...]]:
+    scalar_tokens, key_tokens = _SnbtPathScanner(text).scan()
+    replacements: list[tuple[_SnbtToken, str]] = []
+    definitions: list[tuple[str, str]] = []
+    for path, token in scalar_tokens:
+        role = _migration_snbt_role(relative, path)
+        if role in {"definition", "identity"}:
+            if token.kind != "string" or HEX_ID.fullmatch(token.value) is None:
+                raise ValueError(
+                    f"malformed FTB identity in {relative} at {path}: {token.value!r}"
+                )
+            target = ftb_safe_id(token.value)
+            if role == "definition":
+                definitions.append((target, f"{relative}:{path}"))
+            if target != token.value:
+                replacements.append((token, target))
+        elif role == "table_reference":
+            target = _migration_table_reference(token.value)
+            if target != token.value:
+                replacements.append((token, target))
+
+    if relative.parts and relative.parts[0] == "lang":
+        for parent_path, token in key_tokens:
+            if parent_path:
+                continue
+            target = _migration_localization_key(token.value)
+            if target != token.value:
+                replacements.append((token, target))
+
+    return _migration_apply_replacements(text, replacements), tuple(definitions)
+
+
+def _migration_managed_state(text: str, path: Path) -> str:
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid managed quest state {path}: {error}") from error
+    if not isinstance(data, dict):
+        raise ValueError(f"invalid managed quest state {path}: root must be an object")
+    chapters = data.get("chapters")
+    localization_keys = data.get("localization_keys")
+    if not isinstance(chapters, list) or not all(
+        isinstance(value, str) for value in chapters
+    ):
+        raise ValueError(f"invalid managed chapter list in {path}")
+    if not isinstance(localization_keys, list) or not all(
+        isinstance(value, str) for value in localization_keys
+    ):
+        raise ValueError(f"invalid managed localization list in {path}")
+    migrated_chapters = [
+        ftb_safe_id(value) if HEX_ID.fullmatch(value) else value for value in chapters
+    ]
+    migrated_keys = [_migration_localization_key(value) for value in localization_keys]
+    if migrated_chapters == chapters and migrated_keys == localization_keys:
+        return text
+    data["chapters"] = migrated_chapters
+    data["localization_keys"] = migrated_keys
+    return json.dumps(data, indent=2, sort_keys=True) + "\n"
+
+
+def _migration_file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _migration_transaction_directory(quest_root: Path) -> Path:
+    root_key = hashlib.sha256(
+        os.fsencode(str(quest_root.resolve()))
+    ).hexdigest()
+    return (
+        Path(tempfile.gettempdir())
+        / "afterlight-quest-id-migrations"
+        / root_key
+    )
+
+
+def _migration_relative_path(value: object, label: str) -> Path:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"invalid migration {label}: {value!r}")
+    relative = Path(value)
+    if relative.is_absolute() or ".." in relative.parts or "." in relative.parts:
+        raise ValueError(f"unsafe migration {label}: {value!r}")
+    return relative
+
+
+def _replace_migration_file(source: Path, target: Path, mode: int) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".migration", dir=target.parent
+    )
+    temp_path = Path(temp_name)
+    try:
+        with source.open("rb") as input_handle, os.fdopen(descriptor, "wb") as output_handle:
+            shutil.copyfileobj(input_handle, output_handle)
+            output_handle.flush()
+            os.fsync(output_handle.fileno())
+        os.chmod(temp_path, mode)
+        os.replace(temp_path, target)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _migration_apply_transaction(quest_root: Path, transaction: Path) -> int:
+    journal_path = transaction / MIGRATION_JOURNAL_NAME
+    try:
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid FTB ID migration journal {journal_path}: {error}") from error
+    if not isinstance(journal, dict) or journal.get("version") != MIGRATION_TRANSACTION_VERSION:
+        raise ValueError(f"invalid FTB ID migration journal version: {journal_path}")
+    if journal.get("quest_root") != str(quest_root.resolve()):
+        raise ValueError(f"FTB ID migration journal root mismatch: {journal_path}")
+    writes = journal.get("writes")
+    moves = journal.get("moves")
+    changed = journal.get("changed")
+    if not isinstance(writes, list) or not isinstance(moves, list) or not isinstance(changed, int):
+        raise ValueError(f"invalid FTB ID migration journal operations: {journal_path}")
+
+    move_by_source: dict[Path, dict[str, object]] = {}
+    for move in moves:
+        if not isinstance(move, dict):
+            raise ValueError(f"invalid FTB ID migration move: {move!r}")
+        source_relative = _migration_relative_path(move.get("source"), "move source")
+        _migration_relative_path(move.get("target"), "move target")
+        move_by_source[source_relative] = move
+
+    for write in writes:
+        if not isinstance(write, dict):
+            raise ValueError(f"invalid FTB ID migration write: {write!r}")
+        target_relative = _migration_relative_path(write.get("target"), "write target")
+        payload_relative = _migration_relative_path(write.get("payload"), "write payload")
+        before_sha256 = write.get("before_sha256")
+        after_sha256 = write.get("after_sha256")
+        mode = write.get("mode")
+        if not all(
+            isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value)
+            for value in (before_sha256, after_sha256)
+        ) or not isinstance(mode, int):
+            raise ValueError(f"invalid FTB ID migration write metadata: {write!r}")
+        payload = transaction / "stage" / payload_relative
+        if not payload.is_file() or _migration_file_sha256(payload) != after_sha256:
+            raise ValueError(f"invalid staged FTB ID migration payload: {payload}")
+        target = quest_root / target_relative
+        move = move_by_source.get(target_relative)
+        if move is not None:
+            move_target = quest_root / _migration_relative_path(
+                move.get("target"), "move target"
+            )
+            if move_target.exists():
+                if _migration_file_sha256(move_target) != after_sha256:
+                    raise ValueError(
+                        f"FTB ID migration target changed during recovery: {move_target}"
+                    )
+                if target.exists() and _migration_file_sha256(target) != after_sha256:
+                    raise ValueError(
+                        f"FTB ID migration source changed during recovery: {target}"
+                    )
+                continue
+        if not target.is_file():
+            raise ValueError(f"FTB ID migration write target is missing: {target}")
+        current_sha256 = _migration_file_sha256(target)
+        if current_sha256 == after_sha256:
+            continue
+        if current_sha256 != before_sha256:
+            raise ValueError(f"FTB ID migration write target changed: {target}")
+        _replace_migration_file(payload, target, mode)
+
+    for move in moves:
+        source_relative = _migration_relative_path(move.get("source"), "move source")
+        target_relative = _migration_relative_path(move.get("target"), "move target")
+        after_sha256 = move.get("after_sha256")
+        if not isinstance(after_sha256, str):
+            raise ValueError(f"invalid FTB ID migration move hash: {move!r}")
+        source = quest_root / source_relative
+        target = quest_root / target_relative
+        if source.exists():
+            if _migration_file_sha256(source) != after_sha256:
+                raise ValueError(f"FTB ID migration source changed: {source}")
+            if target.exists() and _migration_file_sha256(target) != after_sha256:
+                raise ValueError(f"FTB ID migration target changed: {target}")
+            source.replace(target)
+        elif not target.is_file() or _migration_file_sha256(target) != after_sha256:
+            raise ValueError(f"FTB ID migration move is incomplete: {source} -> {target}")
+
+    _validate_migrated_quest_corpus(quest_root)
+    journal_path.unlink()
+    shutil.rmtree(transaction)
+    try:
+        transaction.parent.rmdir()
+    except OSError:
+        pass
+    return changed
+
+
+def _validate_migrated_quest_corpus(quest_root: Path) -> None:
+    parsed_files: dict[Path, Any] = {}
+    definition_owners: dict[str, list[str]] = {}
+    for path in sorted(quest_root.rglob("*.snbt")):
+        relative = path.relative_to(quest_root)
+        text = path.read_text(encoding="utf-8")
+        parsed_files[relative] = _parse_snbt(text)
+        migrated, definitions = _migration_scan_snbt(relative, text)
+        if migrated != text:
+            raise ValueError(f"incomplete signed-safe FTB ID migration in {path}")
+        for identifier, owner in definitions:
+            definition_owners.setdefault(identifier, []).append(owner)
+    collisions = {
+        identifier: owners
+        for identifier, owners in definition_owners.items()
+        if len(owners) > 1
+    }
+    if collisions:
+        raise ValueError(f"FTB signed-safe ID migration collisions: {collisions}")
+
+    group_data = parsed_files.get(Path("chapter_groups.snbt"))
+    if not isinstance(group_data, Mapping) or not isinstance(
+        group_data.get("chapter_groups"), list
+    ):
+        raise ValueError("migrated chapter group registry is malformed")
+    group_ids = {
+        group.get("id")
+        for group in group_data["chapter_groups"]
+        if isinstance(group, Mapping) and isinstance(group.get("id"), str)
+    }
+    quest_ids: set[str] = set()
+    dependencies: list[tuple[str, str]] = []
+    table_references: list[tuple[str, int]] = []
+    for relative, chapter in parsed_files.items():
+        if len(relative.parts) != 2 or relative.parts[0] != "chapters":
+            continue
+        if not isinstance(chapter, Mapping):
+            raise ValueError(f"migrated chapter is malformed: {relative}")
+        chapter_id = chapter.get("id")
+        if chapter_id != chapter.get("filename") or chapter_id != relative.stem:
+            raise ValueError(f"migrated chapter path identity mismatch: {relative}")
+        if chapter.get("group") not in group_ids:
+            raise ValueError(f"migrated chapter group is unresolved: {relative}")
+        quests = chapter.get("quests")
+        if not isinstance(quests, list):
+            raise ValueError(f"migrated chapter quest list is malformed: {relative}")
+        for quest in quests:
+            if not isinstance(quest, Mapping) or not isinstance(quest.get("id"), str):
+                raise ValueError(f"migrated quest is malformed: {relative}")
+            quest_id = quest["id"]
+            quest_ids.add(quest_id)
+            for dependency in quest.get("dependencies", []):
+                if not isinstance(dependency, str):
+                    raise ValueError(f"migrated dependency is malformed: {relative}")
+                dependencies.append((quest_id, dependency))
+            for reward in quest.get("rewards", []):
+                if not isinstance(reward, Mapping):
+                    raise ValueError(f"migrated reward is malformed: {relative}")
+                table_id = reward.get("table_id")
+                if table_id is not None:
+                    match = re.fullmatch(r"([0-9]+)L", str(table_id))
+                    if match is None:
+                        raise ValueError(f"migrated table reference is malformed: {relative}")
+                    table_references.append((quest_id, int(match.group(1))))
+
+    unresolved_dependencies = [
+        (quest_id, dependency)
+        for quest_id, dependency in dependencies
+        if dependency not in quest_ids
+    ]
+    if unresolved_dependencies:
+        raise ValueError(
+            f"migrated quest dependencies are unresolved: {unresolved_dependencies[:20]}"
+        )
+
+    table_ids = {
+        int(table["id"], 16)
+        for relative, table in parsed_files.items()
+        if len(relative.parts) == 2
+        and relative.parts[0] == "reward_tables"
+        and isinstance(table, Mapping)
+        and isinstance(table.get("id"), str)
+    }
+    unresolved_tables = [
+        (quest_id, table_id)
+        for quest_id, table_id in table_references
+        if table_id not in table_ids
+    ]
+    if unresolved_tables:
+        raise ValueError(
+            f"migrated reward table references are unresolved: {unresolved_tables[:20]}"
+        )
+
+    state_path = quest_root / MANAGED_STATE_NAME
+    if state_path.is_file():
+        chapters, localization_keys = _load_managed_state(state_path)
+        invalid_chapters = sorted(
+            identifier
+            for identifier in chapters
+            if HEX_ID.fullmatch(identifier) is None or ftb_safe_id(identifier) != identifier
+        )
+        invalid_keys = sorted(
+            key for key in localization_keys if _migration_localization_key(key) != key
+        )
+        if invalid_chapters or invalid_keys:
+            raise ValueError(
+                "managed quest state migration is incomplete: "
+                f"chapters={invalid_chapters} localization_keys={invalid_keys}"
+            )
+
+
+def _migration_build_transaction(quest_root: Path, transaction: Path) -> bool:
+    transformed: dict[Path, str] = {}
+    definition_owners: dict[str, list[str]] = {}
+    for path in sorted(quest_root.rglob("*.snbt")):
+        relative = path.relative_to(quest_root)
+        text = path.read_text(encoding="utf-8")
+        migrated, definitions = _migration_scan_snbt(relative, text)
+        if migrated != text:
+            transformed[relative] = migrated
+        for identifier, owner in definitions:
+            definition_owners.setdefault(identifier, []).append(owner)
+
+    state_path = quest_root / MANAGED_STATE_NAME
+    if state_path.is_file():
+        state_text = state_path.read_text(encoding="utf-8")
+        migrated_state = _migration_managed_state(state_text, state_path)
+        if migrated_state != state_text:
+            transformed[Path(MANAGED_STATE_NAME)] = migrated_state
+
+    collisions = {
+        identifier: owners
+        for identifier, owners in definition_owners.items()
+        if len(owners) > 1
+    }
+    if collisions:
+        raise ValueError(f"FTB signed-safe ID migration collisions: {collisions}")
+
+    moves: list[tuple[Path, Path]] = []
+    for path in sorted((quest_root / "chapters").glob("*.snbt")):
+        if HEX_ID.fullmatch(path.stem) is None:
+            continue
+        target_id = ftb_safe_id(path.stem)
+        if target_id == path.stem:
+            continue
+        target = path.with_name(f"{target_id}.snbt")
+        if target.exists():
+            raise ValueError(
+                f"FTB signed-safe chapter migration target already exists: {target}"
+            )
+        moves.append((path.relative_to(quest_root), target.relative_to(quest_root)))
+
+    if not transformed and not moves:
+        return False
+
+    transaction.parent.mkdir(parents=True, exist_ok=True)
+    setup = Path(
+        tempfile.mkdtemp(prefix=f".{transaction.name}.", dir=transaction.parent)
+    )
+    try:
+        stage = setup / "stage"
+        shutil.copytree(quest_root, stage)
+        for relative, content in transformed.items():
+            _atomic_write(stage / relative, content)
+        for source_relative, target_relative in moves:
+            (stage / source_relative).replace(stage / target_relative)
+        _validate_migrated_quest_corpus(stage)
+
+        move_targets = dict(moves)
+        write_relatives = sorted(set(transformed) | {source for source, _target in moves})
+        writes: list[dict[str, object]] = []
+        for relative in write_relatives:
+            payload_relative = move_targets.get(relative, relative)
+            source = quest_root / relative
+            payload = stage / payload_relative
+            writes.append(
+                {
+                    "target": relative.as_posix(),
+                    "payload": payload_relative.as_posix(),
+                    "before_sha256": _migration_file_sha256(source),
+                    "after_sha256": _migration_file_sha256(payload),
+                    "mode": stat.S_IMODE(source.stat().st_mode),
+                }
+            )
+        journal_moves = [
+            {
+                "source": source.as_posix(),
+                "target": target.as_posix(),
+                "after_sha256": _migration_file_sha256(stage / target),
+            }
+            for source, target in moves
+        ]
+        _atomic_write(
+            setup / MIGRATION_JOURNAL_NAME,
+            json.dumps(
+                {
+                    "version": MIGRATION_TRANSACTION_VERSION,
+                    "quest_root": str(quest_root.resolve()),
+                    "changed": len(transformed) + len(moves),
+                    "writes": writes,
+                    "moves": journal_moves,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+        )
+        if transaction.exists():
+            raise ValueError(f"FTB ID migration transaction already exists: {transaction}")
+        os.replace(setup, transaction)
+    finally:
+        if setup.exists():
+            shutil.rmtree(setup)
+    return True
+
+
+def _normalize_quest_corpus_ids_transaction(quest_root: Path) -> int:
+    transaction = _migration_transaction_directory(quest_root)
+    journal = transaction / MIGRATION_JOURNAL_NAME
+    if transaction.exists() and not journal.is_file():
+        shutil.rmtree(transaction)
+    if journal.is_file():
+        return _migration_apply_transaction(quest_root, transaction)
+    if not _migration_build_transaction(quest_root, transaction):
+        return 0
+    return _migration_apply_transaction(quest_root, transaction)
 
 
 def _id_values(value: Any, item_context: bool = False) -> Iterable[tuple[Any, bool]]:

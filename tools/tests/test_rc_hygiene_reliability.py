@@ -4297,6 +4297,9 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             with zipfile.ZipFile(bounded, "w", compression=zipfile.ZIP_DEFLATED) as output:
                 output.writestr("one.txt", b"A" * 4096)
                 output.writestr("two.txt", b"B" * 4096)
+            bounded_only = Path(temporary) / "bounded-only"
+            (bounded_only / "mods").mkdir(parents=True)
+            shutil.copy2(bounded, bounded_only / "mods/bounded.jar")
             for constant, value, message in (
                 ("SEAL_ARCHIVE_MAX_MEMBERS", 1, "member count"),
                 ("SEAL_ARCHIVE_MAX_MEMBER_BYTES", 1, "member size"),
@@ -4313,7 +4316,10 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                     self.hygiene.VerificationError,
                     message,
                 ):
-                    verifier(root, install)
+                    if constant == "SEAL_ARCHIVE_MAX_MEMBER_BYTES":
+                        self.hygiene._seal_occurrences(bounded_only, "fixture")
+                    else:
+                        verifier(root, install)
             bounded.unlink()
 
     def test_seal_compression_scan_is_bounded_and_fail_closed(self) -> None:
@@ -4394,7 +4400,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             for compressed_path in compressed_paths:
                 compressed_path.write_bytes(bounded_payload)
             for constant, value, message in (
-                ("SEAL_ARCHIVE_MAX_MEMBER_BYTES", 1, "compressed payload"),
+                ("SEAL_ARCHIVE_MAX_MEMBER_BYTES", 1, "raw file size"),
                 ("SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES", 1, "expanded bytes"),
                 ("SEAL_ARCHIVE_MAX_COMPRESSION_RATIO", 2, "payload ratio"),
                 ("SEAL_ARCHIVE_MAX_DEPTH", 0, "nesting depth"),
@@ -4408,6 +4414,32 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                     message,
                 ):
                     verifier(root, install)
+
+    def test_oversized_raw_seal_source_is_rejected_before_read_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            oversized = root / "config/oversized.bin"
+            oversized.parent.mkdir(parents=True)
+            with oversized.open("wb") as handle:
+                handle.truncate(self.hygiene.SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1)
+
+            real_read_bytes = Path.read_bytes
+
+            def reject_oversized_read(path: Path) -> bytes:
+                if path == oversized:
+                    raise AssertionError("oversized raw file reached read_bytes")
+                return real_read_bytes(path)
+
+            with mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=reject_oversized_read,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "raw file size exceeds limit",
+            ):
+                self.hygiene._seal_occurrences(root, "fixture")
 
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(
@@ -4450,6 +4482,65 @@ class QuestIdentityStabilityTests(unittest.TestCase):
         shutil.copytree(source, install / "config/ftbquests/quests")
         return root, install
 
+    def swap_compounds(self, text: str, first_id: str, second_id: str) -> str:
+        def compound_span(identifier: str) -> tuple[int, int]:
+            marker = f'id: "{identifier}"'
+            marker_offset = text.index(marker)
+            start = text.rfind("{", 0, marker_offset)
+            self.assertGreaterEqual(start, 0)
+            depth = 0
+            in_string = False
+            escaped = False
+            for offset in range(start, len(text)):
+                character = text[offset]
+                if in_string:
+                    if character == '"' and not escaped:
+                        in_string = False
+                    escaped = character == "\\" and not escaped
+                    if character != "\\":
+                        escaped = False
+                    continue
+                if character == '"':
+                    in_string = True
+                elif character == "{":
+                    depth += 1
+                elif character == "}":
+                    depth -= 1
+                    if depth == 0:
+                        return start, offset + 1
+            self.fail(f"unterminated compound for {identifier}")
+
+        first_start, first_end = compound_span(first_id)
+        second_start, second_end = compound_span(second_id)
+        if second_start < first_start:
+            first_start, second_start = second_start, first_start
+            first_end, second_end = second_end, first_end
+        first = text[first_start:first_end]
+        middle = text[first_end:second_start]
+        second = text[second_start:second_end]
+        return text[:first_start] + second + middle + first + text[second_end:]
+
+    def assert_install_mutation_rejected(
+        self,
+        root: Path,
+        install: Path,
+        relative: str,
+        mutate,
+    ) -> None:
+        path = install / "config/ftbquests/quests" / relative
+        source = path.read_text(encoding="utf-8")
+        changed = mutate(source)
+        self.assertNotEqual(changed, source)
+        path.write_text(changed, encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "quest identity corpus",
+            ):
+                self.hygiene.verify_quest_identity_stability(root, install)
+        finally:
+            path.write_text(source, encoding="utf-8")
+
     def test_semantic_quest_identity_survives_ftb_reformatting(self) -> None:
         verifier = getattr(self.hygiene, "verify_quest_identity_stability", None)
         self.assertTrue(callable(verifier), "quest identity verifier is missing")
@@ -4467,7 +4558,7 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             self.assertGreater(result["count"], 1000)
             self.assertRegex(result["sha256"], r"^[0-9a-f]{64}$")
 
-    def test_quest_identity_ignores_runtime_item_component_defaults(self) -> None:
+    def test_quest_identity_ignores_exact_runtime_item_component_default(self) -> None:
         verifier = self.hygiene.verify_quest_identity_stability
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_quest_corpus(Path(temporary))
@@ -4476,7 +4567,8 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             changed = source.replace(
                 'item: { count: 1, id: "irons_spellbooks:copper_spell_book" }',
                 'item: { count: 1, id: "irons_spellbooks:copper_spell_book", '
-                'components: { "minecraft:custom_data": { normalized: true } } }',
+                'components: { "irons_spellbooks:spell_container": { data: [], '
+                'maxSpells: 5, mustEquip: 1b, spellWheel: 1b } } }',
                 1,
             )
             self.assertNotEqual(changed, source)
@@ -4485,6 +4577,256 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             result = verifier(root, install)
 
             self.assertEqual(result["root"], result["install"])
+
+    def test_quest_identity_accepts_characterized_ftb_save_normalizations(self) -> None:
+        verifier = self.hygiene.verify_quest_identity_stability
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+            quest_root = install / "config/ftbquests/quests"
+
+            postgame = quest_root / "chapters/3FF4AF7B0C73F058.snbt"
+            postgame_text = postgame.read_text(encoding="utf-8")
+            postgame_text = postgame_text.replace(
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }\n'
+                "\t\t\t\t\tcount: 1L",
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+                1,
+            )
+            postgame_text = postgame_text.replace(
+                'item: { count: 1, id: "create:creative_motor" }\n'
+                "\t\t\t\t\tcount: 1",
+                'item: { count: 1, id: "create:creative_motor" }',
+                1,
+            )
+            postgame.write_text(postgame_text, encoding="utf-8")
+
+            spellbook = quest_root / "chapters/11D0B654D6E9B714.snbt"
+            spellbook_text = spellbook.read_text(encoding="utf-8").replace(
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book" }',
+                'item: { count: 1, id: "irons_spellbooks:copper_spell_book", '
+                'components: { "irons_spellbooks:spell_container": { data: [], '
+                'maxSpells: 5, mustEquip: 1b, spellWheel: 1b } } }',
+                1,
+            )
+            spellbook.write_text(spellbook_text, encoding="utf-8")
+
+            cache = quest_root / "reward_tables/ascendancy_cache.snbt"
+            cache_text = cache.read_text(encoding="utf-8")
+            cache_text = cache_text.replace('\n\tfilename: "ascendancy_cache"', "", 1)
+            cache_text = cache_text.replace('\n\ttitle: "Ascendancy Cache"', "", 1)
+            cache_text = cache_text.replace("\n\t\t\ttype: \"item\"", "", 1)
+            cache_text = cache_text.replace(
+                'item: { count: 1, id: "minecraft:netherite_scrap" }\n'
+                "\t\t\tcount: 1",
+                'item: { count: 1, id: "minecraft:netherite_scrap" }',
+                1,
+            )
+            cache_text = cache_text.replace("\n\t\tglow: true", "\n\t\tglow: 1b", 1)
+            cache.write_text(cache_text, encoding="utf-8")
+
+            depot = quest_root / "reward_tables/depot_early.snbt"
+            depot_text = depot.read_text(encoding="utf-8").replace(
+                "\n\t\t\tweight: 1.0f", "", 1
+            )
+            depot.write_text(depot_text, encoding="utf-8")
+
+            for relative, original, compacted in (
+                ("chapters/758F5AEF697F7EFD.snbt", 20, 7),
+                ("chapters/7C611E8A94BC5CE5.snbt", 21, 8),
+                ("chapters/099200314296766A.snbt", 22, 9),
+                ("reward_tables/depot_early.snbt", 10, 3),
+                ("reward_tables/depot_mid.snbt", 11, 4),
+                ("reward_tables/depot_late.snbt", 12, 5),
+            ):
+                path = quest_root / relative
+                source = path.read_text(encoding="utf-8")
+                changed = source.replace(
+                    f"order_index: {original}", f"order_index: {compacted}", 1
+                )
+                self.assertNotEqual(changed, source)
+                path.write_text(changed, encoding="utf-8")
+
+            result = verifier(root, install)
+
+            self.assertEqual(result["root"], result["install"])
+
+    def test_quest_identity_rejects_every_gameplay_semantic_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_quest_corpus(Path(temporary))
+
+            cases = (
+                (
+                    "chapter group order",
+                    "chapter_groups.snbt",
+                    lambda text: text.replace(
+                        '\t\t{ id: "4525BB3160467FCB" }\n'
+                        '\t\t{ id: "4A20F33642175B95" }',
+                        '\t\t{ id: "4A20F33642175B95" }\n'
+                        '\t\t{ id: "4525BB3160467FCB" }',
+                        1,
+                    ),
+                ),
+                (
+                    "chapter order",
+                    "chapters/245BADE04399406C.snbt",
+                    lambda text: text.replace("order_index: 19", "order_index: -1", 1),
+                ),
+                (
+                    "duplicate chapter order",
+                    "chapters/5538973B3F8B1C72.snbt",
+                    lambda text: text.replace("order_index: 5", "order_index: 4", 1),
+                ),
+                (
+                    "quest order",
+                    "chapters/245BADE04399406C.snbt",
+                    lambda text: self.swap_compounds(
+                        text, "7ECCF0521DFCBED5", "1B523415541BD700"
+                    ),
+                ),
+                (
+                    "dependency order",
+                    "chapters/245BADE04399406C.snbt",
+                    lambda text: text.replace(
+                        'dependencies: ["7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"]',
+                        'dependencies: ["1B523415541BD700", "7ECCF0521DFCBED5", "4DD9F3D1913499F3"]',
+                        1,
+                    ),
+                ),
+                (
+                    "progression mode",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: text.replace(
+                        'progression_mode: "linear"',
+                        'progression_mode: "flexible"',
+                        1,
+                    ),
+                ),
+                (
+                    "optional flag",
+                    "chapters/245BADE04399406C.snbt",
+                    lambda text: text.replace("optional: true", "optional: false", 1),
+                ),
+                (
+                    "repeat flag",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: text.replace("can_repeat: true", "can_repeat: false", 1),
+                ),
+                (
+                    "repeat cooldown",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: text.replace(
+                        "repeat_cooldown: 3600", "repeat_cooldown: 3599", 1
+                    ),
+                ),
+                (
+                    "consume items",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: text.replace(
+                        "consume_items: true", "consume_items: false", 1
+                    ),
+                ),
+                (
+                    "forge energy value",
+                    "chapters/2FD06A1068D554E9.snbt",
+                    lambda text: text.replace(
+                        "value: 100000000L", "value: 99999999L", 1
+                    ),
+                ),
+                (
+                    "forge energy max input",
+                    "chapters/2FD06A1068D554E9.snbt",
+                    lambda text: text.replace(
+                        "max_input: 1000000L", "max_input: 999999L", 1
+                    ),
+                ),
+                (
+                    "task order",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: self.swap_compounds(
+                        text, "552233E3840472BD", "0FD70329B302D235"
+                    ),
+                ),
+                (
+                    "reward order",
+                    "chapters/3FF4AF7B0C73F058.snbt",
+                    lambda text: self.swap_compounds(
+                        text, "0761B2A37B66A358", "3BC27479AA455615"
+                    ),
+                ),
+                (
+                    "Seal reward count",
+                    "chapters/245BADE04399406C.snbt",
+                    lambda text: text.replace(
+                        'item: { count: 1, id: "kubejs:ascendancy_seal" }\n'
+                        "\t\t\t\t\tcount: 1",
+                        'item: { count: 2, id: "kubejs:ascendancy_seal" }\n'
+                        "\t\t\t\t\tcount: 2",
+                        1,
+                    ),
+                ),
+                (
+                    "uncharacterized item component",
+                    "chapters/11D0B654D6E9B714.snbt",
+                    lambda text: text.replace(
+                        'item: { count: 1, id: "irons_spellbooks:copper_spell_book" }',
+                        'item: { count: 1, id: "irons_spellbooks:copper_spell_book", '
+                        'components: { "minecraft:custom_data": { changed: true } } }',
+                        1,
+                    ),
+                ),
+                (
+                    "reward table order",
+                    "reward_tables/depot_early.snbt",
+                    lambda text: text.replace("order_index: 10", "order_index: -1", 1),
+                ),
+                (
+                    "duplicate reward table order",
+                    "reward_tables/ascendancy_cache_rare.snbt",
+                    lambda text: text.replace("order_index: 1", "order_index: 0", 1),
+                ),
+                (
+                    "reward table entry order",
+                    "reward_tables/ascendancy_cache.snbt",
+                    lambda text: self.swap_compounds(
+                        text, "1E89C8CA695BE7F0", "77AC1E2B09A203AC"
+                    ),
+                ),
+                (
+                    "reward table reward ID",
+                    "reward_tables/ascendancy_cache.snbt",
+                    lambda text: text.replace(
+                        'id: "1E89C8CA695BE7F0"', 'id: "0000000000000002"', 1
+                    ),
+                ),
+                (
+                    "reward table item",
+                    "reward_tables/ascendancy_cache.snbt",
+                    lambda text: text.replace(
+                        'id: "kubejs:requisition_chit"',
+                        'id: "minecraft:apple"',
+                        1,
+                    ),
+                ),
+                (
+                    "reward table count",
+                    "reward_tables/ascendancy_cache.snbt",
+                    lambda text: text.replace("count: 6", "count: 7", 2),
+                ),
+                (
+                    "reward table weight",
+                    "reward_tables/ascendancy_cache.snbt",
+                    lambda text: text.replace("weight: 30.0f", "weight: 29.0f", 1),
+                ),
+            )
+
+            for label, relative, mutate in cases:
+                with self.subTest(label=label):
+                    self.assert_install_mutation_rejected(
+                        root,
+                        install,
+                        relative,
+                        mutate,
+                    )
 
     def test_quest_identity_rejects_silent_ftb_id_replacement(self) -> None:
         verifier = getattr(self.hygiene, "verify_quest_identity_stability", None)

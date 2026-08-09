@@ -4,11 +4,11 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: the current Task 4 candidate and its complete local post-fix gate are complete. Commit `0ba8e8c5cee0ca3bff92883fc1bf654ac83ae75b` is superseded by the signed-safe ID, compressed-archive, runtime task-type, and post-save identity fixes recorded here. Exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
+Status: base commit `ba8e9430c0c803eec7b5ddd3cb47cd0eac1114ed` has the complete local gate recorded below. The independent-review fixes after that base have complete offline evidence and a source-bound saved-corpus comparison. No new live boot, exact-SHA CI, `main` fast-forward, or Pages parity is claimed for those fixes here.
 
 ## Delivered Scope
 
-- Story Chapters 17 through 20 complete Act IV without changing any accepted Task 1 through Task 3 ID or dependency.
+- Story Chapters 17 through 20 preserve accepted Task 1 through Task 3 identities and dependencies, with one explicit exception: the repository-wide signed-safe migration changes every high-bit FTB identity plus its schema-owned references so FTB Quests can save them without replacement.
 - `Beyond Afterlight` adds the six specified postgame quests, fourteen item tasks, and nine rewards.
 - The three introductory postgame quests preserve every checked item. Only Kinetic Blessing, Lattice Blessing, and Industrial Blessing repeat, each with a 3,600-second cooldown and consuming submission tasks.
 - Every Act IV and postgame quest uses explicit linear progression. The three Chapter 20 response quests remain optional and nonexclusive, and `Choice Is Not a Lock` still converges through `one_completed`.
@@ -18,8 +18,8 @@ Status: the current Task 4 candidate and its complete local post-fix gate are co
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
 - Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits.
 - The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
-- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler migrates high-bit IDs and their serialized negative reward-table references, rejects collisions, and validates the complete corpus before generation. This prevents FTB Quests 2101.1.30 from silently replacing IDs during save.
-- The post-shutdown quest-identity oracle compares 1,525 semantic records across repository and installed corpora. It binds groups, chapter files, quests, dependencies, tasks, rewards, reward tables, target items, table references, stages, and both authored EnderIO conduit components while ignoring formatting and injected default item components.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler stages and validates the complete migration before replacement, journals outside shipped pack content, resumes interrupted writes and chapter moves, and rewrites only FTB identity fields, dependency references, table references, managed-state IDs, and FTB localization-key ID segments.
+- The post-shutdown quest-identity oracle compares 1,525 canonical gameplay records across repository and installed corpora. It binds chapter-group order, relative chapter and reward-table order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Its only save normalizations are 130 omitted item-task outer `count: 1L` fields, 14 omitted item-reward `count: 1` fields, omitted item type on 43 reward-table entries, omitted default weight on 15 depot entries, one exact Iron's Spells spell-book component, omitted reward-table filename and title, numeric glow encoding, three chapter and three reward-table order-index compactions that preserve relative order, and SNBT formatting.
 - The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
 
 ## Test-First Evidence
@@ -42,9 +42,11 @@ The next review found two further scanner bypasses: a ZIP with arbitrary prefixe
 
 The first post-fix boot then exposed runtime data corruption rather than a test-only issue. FTB Quests rewrote every high-bit ID because its installed bytecode uses signed `Long.parseLong(..., 16)`, and it replaced the affected Seal reward with a default apple. Three signed-safe RED tests drove the compiler migration, then the complete 586-occurrence corpus was regenerated. The next boot exposed the retired Act I `energy` alias becoming `custom`; installed bytecode proved `forge_energy` is the registered NeoForge type. Both defects are now covered by static and post-shutdown semantic regressions.
 
+Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue. The expanded source oracle still contains 1,525 records and matches the saved research corpus with SHA-256 `b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1`. The review-fix offline gate passes all 283 tests with 77 intentional live skips, and static quest validation reports 46 chapters, 313 quests, 334 tasks, and 436 rewards. This is source-bound research and offline evidence only, not a new live boot claim.
+
 ## Automated Gate
 
-All earlier runtime evidence is superseded because the Gate source, Packwiz index, and Seal verifier changed after those runs. The final local post-fix gate completed on 2026-08-09 with these exact outcomes:
+The following local gate completed on 2026-08-09 before the independent-review fixes above. It remains exact historical evidence for base commit `ba8e9430c0c803eec7b5ddd3cb47cd0eac1114ed`, but it does not certify the current review-fix commit:
 
 ```text
 BUILD QUESTS: OK (37 compiler-managed chapters written)

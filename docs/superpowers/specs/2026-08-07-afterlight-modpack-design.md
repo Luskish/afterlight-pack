@@ -112,7 +112,7 @@ Ascendancy (fallen civilization) · Cascade (the catastrophe) · Undercurrent (t
 
 ### Gating model
 
-Soft-gated by default (visible early, no locked recipes). **Exactly four hard gates:** (1) Gate component recipes: stage-unlocked by quest completion; (2) Deep Vault entry: found key item; (3) the finale; (4) Draconic Evolution: stage-gated behind story completion (doubles as beta-stability insulation). Implemented via FTB Quests stages + XMod Compat + KubeJS stages.
+Soft-gated by default (visible early, no locked recipes). **Exactly four hard gates:** (1) each Gate component recipe consumes its matching uncraftable schematic; (2) Deep Vault entry requires the recovered physical key; (3) the Gate of Return recipe consumes its uncraftable blueprint and the five completed components; (4) all Draconic entry recipes require and return a transferable Ascendancy Seal awarded only after the finale. Exact FTB Quests dependencies record progression. Stages remain recovery evidence only and are never the authoritative recipe gate.
 
 ## 7. Integration layer (KubeJS): scope
 
@@ -121,16 +121,16 @@ Every script serves story, unification, the automation on-ramp, or a documented 
 1. **Unification:** AlmostUnified + tag surgery: one item family for ores/ingots/dusts across Mekanism/IE/Create/GTCEu
 2. **Bridge recipes:** each major mod's machines can process into neighbors' ecosystems where sensible (Create crushing → Mekanism dirty dust path; IE diesel → Powah/Mekanism fuel chains; etc.)
 3. **Loot injection (LootJS):** Ascendancy Caches, memory-lore items, and Gate schematic fragments into dungeon/boss loot
-4. **Story tech:** Gate-stage multiblocks via Modular Machinery Reborn + KubeJS recipes consuming certified automation outputs; Requisition Chit items; stage wiring; ECHO screen-lines on quest events
+4. **Story tech:** deterministic Create Mechanical Crafting and KubeJS recipes consuming physical schematics, certified automation outputs, and the Undercurrent stabilizer; Requisition Chit items; exact quest dependencies; ECHO screen-lines on quest events. Modular Machinery Reborn is not a story-critical output path unless a formed, processing, restart-safe machine is proven with a client-backed operational test.
 5. **Balance passes:** only where a mod trivializes another's role (documented per-change)
 
 ## 8. Repo, toolchain, distribution, server
 
 - **Repo:** packwiz pack-as-code git repo: `pack.toml` + per-mod `.pw.toml`, `config/`, `defaultconfigs/`, `kubejs/`, `config/ftbquests/quests/**.snbt` (quest text in `quests/lang/en_us.snbt`), custom datapacks. No jars in git.
 - **Dev loop:** `packwiz serve` → dev Prism instance; ProbeJS typings; in-game FTB Quests editor writes SNBT directly into repo; KubeJS server scripts hot-reload via `/reload`
-- **CI (GitHub Actions):** packwiz refresh check → `.mrpack` + CurseForge zip artifacts → headless server-boot smoke test (itzg image health check)
-- **Distribution:** (a) **primary:** Prism instance zip with packwiz-installer-bootstrap pointed at GitHub Pages: auto-sync every launch; (b) **zip lane:** versioned `.mrpack`/CF zip releases; (c) **dragnet:** AutoModpack on the server for one-jar friends
-- **VPS:** itzg/docker-minecraft-server, `PACKWIZ_URL` at the same GitHub Pages source; `git push` + restart = server updated in lockstep. 10–12GB heap, Java 21, Chunky pregen playbook, automated backups, `docker compose` one-command setup doc
+- **CI (GitHub Actions):** Packwiz refresh integrity, unit and quest validation, exact headless server boot, exports without public artifact upload, distribution inspection, secret and punctuation scans, and current-run failure evidence
+- **Distribution:** (a) **primary:** Prism instance zip with checksum-pinned Packwiz bootstrap and installer pointed at GitHub Pages; (b) **friends-only zip lane:** versioned `.mrpack` and CurseForge ZIP files because current exports can embed third-party JARs. AutoModpack is disabled until every exact client artifact has affirmative redistribution permission.
+- **VPS:** exact digest-pinned itzg images, no runtime `PACKWIZ_URL`, one `/data` bind, separate backups and secrets, explicit full-SHA staging after exact GitHub CI acceptance and Pages parity, 10 GB max heap with nonheap headroom, Chunky interlocks, authenticated backup bundles, and transactional install, update, rollback, and empty-host recovery
 - **Licensing hygiene (publish-grade):** every mod fetched via packwiz from CurseForge/Modrinth (no rehosting); track per-mod licenses; custom content (quests, scripts, datapacks, art) original or properly licensed; no copyrighted audio unless licensed (Music Triggers ships only with cleared tracks)
 
 ## 9. Performance & defaults
@@ -143,7 +143,7 @@ Every script serves story, unification, the automation on-ramp, or a documented 
 
 - Clean client boot < 3 min on target hardware; zero startup errors that matter (triaged log)
 - Headless server boot green in CI on every push
-- All three hard gates verified openable; every Certification line hand-tested
+- All four hard gates verified openable; every Certification line hand-tested
 - Chapters 1–8 quest flow played through on dev instance before friends join
 - **Launch model:** go live when ch 1–8 (~60–80 hrs of content) are polished; later chapters ship via auto-update mid-season (quest SNBT syncs without world resets)
 

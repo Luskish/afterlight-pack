@@ -3322,6 +3322,25 @@ class GateRecipeAuditNegativeTests(unittest.TestCase):
             ):
                 self.hygiene.verify_installed_gate_audit(root, install, "fresh")
 
+    def test_install_rejects_mutated_raw_bytes_without_overwrite(self) -> None:
+        if not self.require_gate_api():
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_gate_source(Path(temporary))
+            source = (root / self.RELATIVE).read_bytes()
+            mutated = source.replace(b"Item.exists", b"Item.missing", 1)
+            self.assertNotEqual(mutated, source)
+            target = install / self.RELATIVE
+            target.write_bytes(mutated)
+
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "installed Gate audit pre-substitution bytes differ from root source",
+            ):
+                self.hygiene._install_rendered_gate_audit(root, install, "fresh")
+
+            self.assertEqual(target.read_bytes(), mutated)
+
     def test_stale_installed_digest_and_nonce_are_rejected(self) -> None:
         if not self.require_gate_api():
             return

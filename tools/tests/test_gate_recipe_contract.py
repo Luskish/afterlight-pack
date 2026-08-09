@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ast
 import re
 import unittest
+from collections import Counter
 from pathlib import Path
 
 
@@ -107,6 +109,59 @@ DRACONIC = (
     ),
 )
 
+GATE_RECIPE_SCRIPTS = (
+    "gate_components.js",
+    "gate_assembly.js",
+    "gate_draconic.js",
+)
+
+APPROVED_GATE_RECIPE_IDS = frozenset(
+    {
+        "kubejs:gate/component/kinetic_frame",
+        "kubejs:gate/component/industrial_anchor",
+        "kubejs:gate/component/isotopic_core",
+        "kubejs:gate/component/lattice_matrix",
+        "kubejs:gate/stabilizer/occultism",
+        "kubejs:gate/stabilizer/irons_spellbooks",
+        "kubejs:gate/stabilizer/malum",
+        "kubejs:gate/gate_of_return_core",
+        "kubejs:gated/draconium_core",
+        "kubejs:gated/dislocator",
+        "kubejs:gated/module_core",
+    }
+)
+
+APPROVED_EVENT_CALL_COUNTS = Counter(
+    {
+        "recipes.create.mechanical_crafting": 5,
+        "shapeless": 3,
+        "shaped": 3,
+        "remove": 3,
+    }
+)
+
+APPROVED_PRODUCER_COUNTS = {
+    "kubejs:gate_kinetic_frame": 1,
+    "kubejs:gate_industrial_anchor": 1,
+    "kubejs:gate_isotopic_core": 1,
+    "kubejs:gate_lattice_matrix": 1,
+    "kubejs:undercurrent_stabilizer": 3,
+    "kubejs:gate_of_return_core": 1,
+    "draconicevolution:draconium_core": 1,
+    "draconicevolution:dislocator": 1,
+    "draconicevolution:module_core": 1,
+}
+
+RECIPE_ID_PATTERN = re.compile(r"\.id\s*\(\s*(['\"])([^'\"]+)\1\s*\)")
+EVENT_CALL_PATTERN = re.compile(
+    r"\bevent\.(recipes\.create\.mechanical_crafting|shaped|shapeless|remove)\s*\("
+)
+ANY_EVENT_CALL_PATTERN = re.compile(r"\bevent\.([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*\(")
+PRODUCER_MAP_PATTERN = re.compile(
+    r"\bconst\s+expectedProducerCount\s*=\s*(\{[^{}]*\})",
+    re.DOTALL,
+)
+
 NON_KUBEJS_INPUTS = {
     item_id
     for _recipe_id, _output, keys in COMPONENTS
@@ -132,6 +187,44 @@ class GateRecipeContractTests(unittest.TestCase):
 
     def assert_fragment(self, source: str, fragment: str) -> None:
         self.assertIn(compact(fragment), compact(source))
+
+    def test_registration_has_exact_eleven_test_owned_recipe_ids(self) -> None:
+        sources = {
+            name: self.read_script(name)
+            for name in GATE_RECIPE_SCRIPTS
+        }
+        recipe_ids = [
+            match.group(2)
+            for source in sources.values()
+            for match in RECIPE_ID_PATTERN.finditer(source)
+        ]
+        event_calls = Counter(
+            match.group(1)
+            for source in sources.values()
+            for match in ANY_EVENT_CALL_PATTERN.finditer(source)
+        )
+        recognized_calls = Counter(
+            match.group(1)
+            for source in sources.values()
+            for match in EVENT_CALL_PATTERN.finditer(source)
+        )
+
+        self.assertEqual(len(recipe_ids), 11)
+        self.assertEqual(len(recipe_ids), len(set(recipe_ids)))
+        self.assertEqual(frozenset(recipe_ids), APPROVED_GATE_RECIPE_IDS)
+        self.assertEqual(event_calls, APPROVED_EVENT_CALL_COUNTS)
+        self.assertEqual(recognized_calls, APPROVED_EVENT_CALL_COUNTS)
+
+    def test_audit_producer_cardinality_matches_test_owned_map(self) -> None:
+        source = self.read_script("gate_recipe_audit.js")
+        declarations = list(PRODUCER_MAP_PATTERN.finditer(source))
+        self.assertEqual(len(declarations), 1)
+        expression = ast.parse(declarations[0].group(1), mode="eval").body
+        self.assertIsInstance(expression, ast.Dict)
+        keys = [ast.literal_eval(key) for key in expression.keys]
+        values = [ast.literal_eval(value) for value in expression.values]
+        self.assertEqual(len(keys), len(set(keys)))
+        self.assertEqual(dict(zip(keys, values)), APPROVED_PRODUCER_COUNTS)
 
     def test_four_component_recipes_are_exact_and_asymmetric(self) -> None:
         source = self.read_script("gate_components.js")

@@ -2488,18 +2488,44 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
 
     def test_optional_lan_warning_presence_must_agree_across_logs(self) -> None:
         def remove_optional_warning(log_text: str) -> str:
-            lines = tuple(
-                line
-                for line in log_text.splitlines()
-                if "LanServerPinger: No route to host" in line
+            lines = log_text.splitlines(keepends=True)
+            matches = tuple(
+                line for line in lines if "LanServerPinger: No route to host" in line
             )
-            self.assertEqual(len(lines), 1)
-            return log_text.replace(lines[0] + "\n", "", 1)
+            self.assertLessEqual(len(matches), 1)
+            return "".join(line for line in lines if line not in matches)
 
         without_latest = remove_optional_warning(self.latest)
         without_debug = remove_optional_warning(self.debug)
-        self.assert_pair_rejected(without_latest, self.debug)
-        self.assert_pair_rejected(self.latest, without_debug)
+        optional_warning = (
+            "[08Aug2026 12:00:00.000] [LanServerPinger #1/WARN] "
+            "[net.minecraft.client.server.LanServerPinger/]: "
+            "LanServerPinger: No route to host"
+        )
+        with_latest = self.inject_after_ignored_info(
+            without_latest, optional_warning
+        )
+        with_debug = self.inject_after_ignored_info(without_debug, optional_warning)
+
+        def validate_pair(latest: str, debug: str) -> None:
+            self.hygiene._validate_canonical_log_pair(
+                self.hygiene.parse_log_records(latest),
+                self.hygiene.parse_log_records(debug),
+                workspace_root=ROOT,
+                install_root=ROOT / "server-test",
+            )
+
+        validate_pair(without_latest, without_debug)
+        validate_pair(with_latest, with_debug)
+        for latest, debug in (
+            (with_latest, without_debug),
+            (without_latest, with_debug),
+        ):
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "optional environmental WARN presence differs",
+            ):
+                validate_pair(latest, debug)
 
     def test_malformed_error_and_fatal_headers_in_both_logs_are_rejected(self) -> None:
         variants = (
@@ -2646,7 +2672,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
     ) -> None:
         old_workspace = str(ROOT)
         audit_expectation = self.hygiene.quest_audit_expectation(ROOT)
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary).resolve() / "AFTERLIGHT review"
             install = workspace / "isolated runtime"
             encoded_workspace = quote(str(workspace), safe="/:")

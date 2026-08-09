@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "23643435F7BE74AC"
-	group: "CA20F33642175B95"
+	group: "4A20F33642175B95"
 	icon: { id: "create:goggles" }
 	id: "23643435F7BE74AC"
 	images: [ ]
@@ -21,7 +21,7 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "BA85B0E7FC46FF8D"
+				{ id: "3A85B0E7FC46FF8D"
 				type: "item"
 				item: { count: 2, id: "kubejs:requisition_chit" }
 				count: 2 }
@@ -52,14 +52,14 @@
 			x: 4.0d
 			y: -1.0d
 			tasks: [
-				{ id: "B0AB36FDC819F88D"
+				{ id: "30AB36FDC819F88D"
 				type: "item"
 				item: { count: 1, id: "create:water_wheel" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "8E1521F4A0657DB0"
+				{ id: "0E1521F4A0657DB0"
 				type: "item"
 				item: { count: 3, id: "kubejs:requisition_chit" }
 				count: 3 }
@@ -71,21 +71,21 @@
 			x: 4.0d
 			y: 1.0d
 			tasks: [
-				{ id: "F20D499A961B4611"
+				{ id: "720D499A961B4611"
 				type: "item"
 				item: { count: 1, id: "create:mechanical_press" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "8996E0285C078F87"
+				{ id: "0996E0285C078F87"
 				type: "item"
 				item: { count: 3, id: "kubejs:requisition_chit" }
 				count: 3 }
 			]
 		}
 		{
-			id: "93E278CD695BCE11"
+			id: "13E278CD695BCE11"
 			dependencies: ["692967044603050B", "490AEF80C130D8DD"]
 			x: 6.0d
 			y: 0.0d
@@ -99,28 +99,28 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "AD81B356A63D234C"
+				{ id: "2D81B356A63D234C"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }
 				count: 10 }
-				{ id: "85902F2A422BEAD2"
+				{ id: "05902F2A422BEAD2"
 				type: "xp"
 				xp: 150 }
 			]
 		}
 		{
 			id: "5ADAE277C9FEF0F1"
-			dependencies: ["93E278CD695BCE11"]
+			dependencies: ["13E278CD695BCE11"]
 			x: 8.0d
 			y: 0.0d
 			shape: "hexagon"
 			size: 1.2d
 			tasks: [
-				{ id: "CA877C92BABA8EEF"
+				{ id: "4A877C92BABA8EEF"
 				type: "checkmark" }
 			]
 			rewards: [
-				{ id: "EA57B27BBB5DCC26"
+				{ id: "6A57B27BBB5DCC26"
 				type: "item"
 				item: { count: 10, id: "kubejs:requisition_chit" }
 				count: 10 }

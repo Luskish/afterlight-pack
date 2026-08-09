@@ -31,7 +31,7 @@ config/ftbquests/quests/
 ```
 
 **Critical rules you must follow:**
-- All IDs are **16-character uppercase hex strings** using only characters `0-9` and `A-F` (e.g. `7D7A8EEC0E898ED8`). Never use `G`, `H`, or other non-hex characters.
+- All IDs are **16-character uppercase hex strings** using only characters `0-9` and `A-F`, and the first character must be `0` through `7` (e.g. `7D7A8EEC0E898ED8`). FTB Quests 2101.1.30 parses string IDs with signed `Long.parseLong(..., 16)` and silently replaces high-bit IDs beginning with `8` through `F`.
 - Quests live *inside* chapter files, not as separate files
 - Localization is separate: quest/chapter titles and descriptions go in `lang/*.snbt`
 - Reward `type` values are **plain strings** without namespace prefix: use `"item"`, `"command"`, `"custom"`, NOT `"ftbquests:item"`
@@ -206,7 +206,7 @@ Dependency requirement modes: `"all_completed"`, `"one_completed"`, `"all_starte
 | Structure | `"structure"` | `structure` |
 | Stage | `"stage"` | `stage` |
 | Fluid | `"fluid"` | `fluid`, `amount` |
-| Energy | `"energy"` | `value` |
+| Forge Energy | `"forge_energy"` | `value` |
 
 **Item task**: the `item` field is an object with `id` and optionally `count` and `components`. The outer `count` field (long) is the total number required:
 ```snbt
@@ -337,7 +337,7 @@ See `references/styling.md` for the full property list.
 ## Design Best Practices
 
 1. **Plan layout first**: sketch quest positions on a grid before writing SNBT
-2. **Valid hex IDs only**: 16 chars, `0-9` and `A-F` only. Never use `G`-`Z`.
+2. **Signed-safe hex IDs only**: 16 chars, first char `0`-`7`, remaining chars `0`-`9` or `A`-`F`. Never use `8`-`F` as the first char or `G`-`Z` anywhere.
 3. **Leverage chapter defaults**: set shapes, consume_items at chapter level
 4. **Progressive visibility**: use `hide_until_deps_visible` to avoid overwhelming players
 5. **Localize everything**: keep all text in `lang/` files using `key: "value"` format

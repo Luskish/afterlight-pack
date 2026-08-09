@@ -2,7 +2,7 @@
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
 	filename: "4CEEFB108A0EECF8"
-	group: "C8F8381D9519D002"
+	group: "48F8381D9519D002"
 	icon: { id: "twilightforest:twilight_scepter" }
 	id: "4CEEFB108A0EECF8"
 	images: [ ]
@@ -10,8 +10,8 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "C261DA792971891F"
-			dependencies: ["4B24516D89E13CFF", "87475C3BA1A4143F"]
+			id: "4261DA792971891F"
+			dependencies: ["4B24516D89E13CFF", "07475C3BA1A4143F"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -21,7 +21,7 @@
 					dimension: "twilightforest:twilight_forest"
 				}
 				{
-					id: "C9C1604F7AC50FE7"
+					id: "49C1604F7AC50FE7"
 					type: "dimension"
 					dimension: "aether:the_aether"
 				}
@@ -36,8 +36,8 @@
 			]
 		}
 		{
-			id: "970433D6BE7EA6C8"
-			dependencies: ["C261DA792971891F"]
+			id: "170433D6BE7EA6C8"
+			dependencies: ["4261DA792971891F"]
 			x: 2.0d
 			y: -2.0d
 			tasks: [
@@ -59,7 +59,7 @@
 		}
 		{
 			id: "46D366F3759D2106"
-			dependencies: ["970433D6BE7EA6C8"]
+			dependencies: ["170433D6BE7EA6C8"]
 			x: 4.0d
 			y: -2.0d
 			tasks: [
@@ -86,7 +86,7 @@
 			y: -2.0d
 			tasks: [
 				{
-					id: "A1376A199B82246E"
+					id: "21376A199B82246E"
 					type: "advancement"
 					advancement: "twilightforest:progress_hydra"
 					criterion: ""
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "A47DE99054E7449F"
+					id: "247DE99054E7449F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,8 +102,8 @@
 			]
 		}
 		{
-			id: "F5F9827EFEAF090E"
-			dependencies: ["C261DA792971891F"]
+			id: "75F9827EFEAF090E"
+			dependencies: ["4261DA792971891F"]
 			x: 2.0d
 			y: 2.0d
 			tasks: [
@@ -125,12 +125,12 @@
 		}
 		{
 			id: "317C0D9B82BCD3C6"
-			dependencies: ["F5F9827EFEAF090E"]
+			dependencies: ["75F9827EFEAF090E"]
 			x: 4.0d
 			y: 2.0d
 			tasks: [
 				{
-					id: "D5280FEE063B71CB"
+					id: "55280FEE063B71CB"
 					type: "advancement"
 					advancement: "aether:silver_dungeon"
 					criterion: ""
@@ -138,7 +138,7 @@
 			]
 			rewards: [
 				{
-					id: "F28CEB8F9497C363"
+					id: "728CEB8F9497C363"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -180,7 +180,7 @@
 			]
 			rewards: [
 				{
-					id: "E919078360354D9A"
+					id: "6919078360354D9A"
 					type: "loot"
 					table_id: 6745737485865812687L
 				}

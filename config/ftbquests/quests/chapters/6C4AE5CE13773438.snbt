@@ -17,7 +17,7 @@
 			y: -1.0d
 			tasks: [
 				{
-					id: "951A464CC4D650A3"
+					id: "151A464CC4D650A3"
 					type: "item"
 					item: { count: 1, id: "create:mechanical_crafter" }
 					count: 49L
@@ -26,7 +26,7 @@
 			]
 			rewards: [
 				{
-					id: "AE04D1554265FEA8"
+					id: "2E04D1554265FEA8"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -41,7 +41,7 @@
 			y: 1.0d
 			tasks: [
 				{
-					id: "EE494144394F75AF"
+					id: "6E494144394F75AF"
 					type: "forge_energy"
 					value: 1000000000L
 					max_input: 1000000L
@@ -49,7 +49,7 @@
 			]
 			rewards: [
 				{
-					id: "C58DF86CC9EDDE39"
+					id: "458DF86CC9EDDE39"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -64,7 +64,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "D68026383F54186C"
+					id: "568026383F54186C"
 					type: "item"
 					item: { count: 1, id: "kubejs:gate_of_return_core" }
 					count: 1L
@@ -73,7 +73,7 @@
 			]
 			rewards: [
 				{
-					id: "926E7CA01AF02331"
+					id: "126E7CA01AF02331"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -88,13 +88,13 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "9FDF7F09F581B25C"
+					id: "1FDF7F09F581B25C"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "F70F4FA96AD8846F"
+					id: "770F4FA96AD8846F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -109,7 +109,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "E45F98B8FAD4A1E5"
+					id: "645F98B8FAD4A1E5"
 					type: "checkmark"
 				}
 			]
@@ -123,7 +123,7 @@
 			]
 		}
 		{
-			id: "B1C9557D2F51238F"
+			id: "31C9557D2F51238F"
 			dependencies: ["53B9BC5F498953D5"]
 			progression_mode: "linear"
 			x: 9.0d
@@ -136,9 +136,9 @@
 			]
 			rewards: [
 				{
-					id: "990883BE42910C33"
+					id: "190883BE42910C33"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "779DED635B727FA4"
@@ -147,7 +147,7 @@
 					count: 56
 				}
 				{
-					id: "A8D2BAFFE36060DF"
+					id: "28D2BAFFE36060DF"
 					type: "xp"
 					xp: 1500
 				}

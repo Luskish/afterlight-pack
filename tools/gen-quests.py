@@ -8,14 +8,16 @@ IDs are generated fresh on each run, so DO NOT re-run over edited files.
 """
 import os, io
 
+from afterlight_quests import ftb_safe_id
+
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 LANG = {}
 _used = set()
 
 def hid():
     while True:
-        i = os.urandom(8).hex().upper()
-        if i not in _used and i[0] in '0123456789ABCDEF':
+        i = ftb_safe_id(os.urandom(8).hex().upper())
+        if i not in _used:
             _used.add(i)
             return i
 

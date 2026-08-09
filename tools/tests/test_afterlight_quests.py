@@ -7,7 +7,9 @@ import json
 import os
 import re
 import shutil
+import stat
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +17,7 @@ import zipfile
 from collections import Counter
 from dataclasses import fields
 from pathlib import Path
+from unittest import mock
 
 
 tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
@@ -39,11 +42,11 @@ class Plan06GateDependencyTests(unittest.TestCase):
     }
     CERTIFICATION_FINALES = (
         "5ADAE277C9FEF0F1",
-        "B107D8813D59B2FF",
+        "3107D8813D59B2FF",
         "66CDE7B061D8DA5C",
         "42EE25F560AE65CD",
-        "E1F5D15817ED5EFD",
-        "FC9EA276C2D84333",
+        "61F5D15817ED5EFD",
+        "7C9EA276C2D84333",
     )
 
     @classmethod
@@ -148,7 +151,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
         chapter = self.quests.ChapterSpec(
             slug="story/test-linear",
             title="Linear Test",
-            group=self.quests.GroupSpec("test", "Test", "AAAAAAAAAAAAAAAA"),
+            group=self.quests.GroupSpec("test", "Test", "2AAAAAAAAAAAAAAA"),
             icon="minecraft:stone_pickaxe",
             order_index=0,
             quests=(quest,),
@@ -171,28 +174,28 @@ class Plan06GateDependencyTests(unittest.TestCase):
                 self.CERTIFICATION_FINALES,
                 (("74AB10F5C91F1022", "checkmark", {}),),
             ),
-            "F1B2919DF12C6845": (
+            "71B2919DF12C6845": (
                 (
-                    "90EDD2BED35BE9E3",
+                    "10EDD2BED35BE9E3",
                     "752C3E53CA89C92D",
-                    "A1A99D99B372916F",
+                    "21A99D99B372916F",
                     "3497EFDF016FAFD7",
                 ),
                 (
-                    ("BA12D2169F1CB1B8", "item", "kubejs:schematic_kinetic_frame"),
-                    ("F4435064B9C0A86F", "item", "kubejs:schematic_industrial_anchor"),
-                    ("830D638C9452FB47", "item", "kubejs:schematic_isotopic_core"),
+                    ("3A12D2169F1CB1B8", "item", "kubejs:schematic_kinetic_frame"),
+                    ("74435064B9C0A86F", "item", "kubejs:schematic_industrial_anchor"),
+                    ("030D638C9452FB47", "item", "kubejs:schematic_isotopic_core"),
                     ("23F46A9140462F95", "item", "kubejs:schematic_lattice_matrix"),
                 ),
             ),
-            "AD6ACF1CCBC7B4F2": (
+            "2D6ACF1CCBC7B4F2": (
                 (
-                    "8CE6F6160F721A8A",
-                    "98EABED18B5B2ECF",
+                    "0CE6F6160F721A8A",
+                    "18EABED18B5B2ECF",
                     *self.CERTIFICATION_FINALES,
-                    "E524EE78235F0942",
+                    "6524EE78235F0942",
                 ),
-                (("BBFA32444B48A6A0", "checkmark", {}),),
+                (("3BFA32444B48A6A0", "checkmark", {}),),
             ),
         }
 
@@ -217,7 +220,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     next(chapter for chapter in self.catalog if quest in chapter.quests)
                 ))
 
-        four_keys = self.quests_by_id["F1B2919DF12C6845"]
+        four_keys = self.quests_by_id["71B2919DF12C6845"]
         for task in four_keys.tasks:
             with self.subTest(four_keys_task=task.id):
                 self.assertIn("count", task.data)
@@ -240,17 +243,17 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     {"id": "74AB10F5C91F1022", "type": "checkmark"},
                 ),
             },
-            "F1B2919DF12C6845": {
+            "71B2919DF12C6845": {
                 "dependencies": (
-                    "90EDD2BED35BE9E3",
+                    "10EDD2BED35BE9E3",
                     "752C3E53CA89C92D",
-                    "A1A99D99B372916F",
+                    "21A99D99B372916F",
                     "3497EFDF016FAFD7",
                 ),
                 "progression_mode": "linear",
                 "tasks": (
                     {
-                        "id": "BA12D2169F1CB1B8",
+                        "id": "3A12D2169F1CB1B8",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -260,7 +263,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                         "consume_items": False,
                     },
                     {
-                        "id": "F4435064B9C0A86F",
+                        "id": "74435064B9C0A86F",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -270,7 +273,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                         "consume_items": False,
                     },
                     {
-                        "id": "830D638C9452FB47",
+                        "id": "030D638C9452FB47",
                         "type": "item",
                         "item": {
                             "count": "1",
@@ -291,16 +294,16 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     },
                 ),
             },
-            "AD6ACF1CCBC7B4F2": {
+            "2D6ACF1CCBC7B4F2": {
                 "dependencies": (
-                    "8CE6F6160F721A8A",
-                    "98EABED18B5B2ECF",
+                    "0CE6F6160F721A8A",
+                    "18EABED18B5B2ECF",
                     *self.CERTIFICATION_FINALES,
-                    "E524EE78235F0942",
+                    "6524EE78235F0942",
                 ),
                 "progression_mode": "linear",
                 "tasks": (
-                    {"id": "BBFA32444B48A6A0", "type": "checkmark"},
+                    {"id": "3BFA32444B48A6A0", "type": "checkmark"},
                 ),
             },
         }
@@ -333,10 +336,10 @@ class Plan06GateDependencyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = Path(temp_dir) / "quests"
             shutil.copytree(source_root, quest_root)
-            chapter_path = quest_root / "chapters" / "C402713763771CFA.snbt"
+            chapter_path = quest_root / "chapters" / "4402713763771CFA.snbt"
             original = chapter_path.read_text(encoding="utf-8")
             mutated = original.replace(
-                '"90EDD2BED35BE9E3"',
+                '"10EDD2BED35BE9E3"',
                 '"0000000000000000"',
                 1,
             )
@@ -345,7 +348,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 AssertionError,
-                "generated dependencies differ for F1B2919DF12C6845",
+                "generated dependencies differ for 71B2919DF12C6845",
             ):
                 self.assert_generated_authoritative_gate_graph(quest_root)
 
@@ -354,8 +357,8 @@ class Plan06GateDependencyTests(unittest.TestCase):
             chapter.id: chapter
             for chapter in self.catalog
         }
-        infrastructure = chapters["D070DE6E2B300F4B"]
-        architect = chapters["C402713763771CFA"]
+        infrastructure = chapters["5070DE6E2B300F4B"]
+        architect = chapters["4402713763771CFA"]
 
         for chapter in (infrastructure, architect):
             for quest in chapter.quests:
@@ -367,7 +370,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
                     )
 
         self.assertEqual(
-            getattr(self.quests_by_id["E524EE78235F0942"], "progression_mode", None),
+            getattr(self.quests_by_id["6524EE78235F0942"], "progression_mode", None),
             "linear",
         )
         self.assertEqual(
@@ -391,7 +394,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
         self.assertEqual(
             (counts.chapters, counts.quests, counts.tasks, counts.rewards),
-            (45, 307, 320, 427),
+            (46, 313, 334, 436),
         )
         self.assertEqual(len(reward_tables), 6)
         for item_id, _display_name in self.GATE_ITEMS.values():
@@ -401,13 +404,13 @@ class Plan06GateDependencyTests(unittest.TestCase):
 class Plan06ActIVContractTests(unittest.TestCase):
     CHAPTERS = (
         (
-            "FE9B015A32C6D980",
+            "7E9B015A32C6D980",
             "story/17-five-impossible-parts",
             16,
             "kubejs:gate_kinetic_frame",
             (
-                "8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7",
-                "FF064705A3CAB2E6", "39C1F24EABBB34A3", "144473B8267DBC28",
+                "0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7",
+                "7F064705A3CAB2E6", "39C1F24EABBB34A3", "144473B8267DBC28",
             ),
         ),
         (
@@ -416,7 +419,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             17,
             "minecraft:echo_shard",
             (
-                "5468299A2A931991", "FEA7B2C8F11BB7A3", "8EEFDD9E6CFB69E6",
+                "5468299A2A931991", "7EA7B2C8F11BB7A3", "0EEFDD9E6CFB69E6",
                 "29D7871AFBE3A54A", "701505FDCCA53DFA", "462B11BD8C58BF6F",
             ),
         ),
@@ -427,7 +430,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             "kubejs:gate_of_return_core",
             (
                 "36D0902A2921C44E", "66AD5C821947DF8E", "1A68D1245CD980BD",
-                "6F3663F4C6D20255", "53B9BC5F498953D5", "B1C9557D2F51238F",
+                "6F3663F4C6D20255", "53B9BC5F498953D5", "31C9557D2F51238F",
             ),
         ),
         (
@@ -436,8 +439,8 @@ class Plan06ActIVContractTests(unittest.TestCase):
             19,
             "kubejs:ascendancy_seal",
             (
-                "51649E106286AA63", "FECCF0521DFCBED5", "9B523415541BD700",
-                "4DD9F3D1913499F3", "FEE7B9B28787F8CC", "FE6A0AC031F7F484",
+                "51649E106286AA63", "7ECCF0521DFCBED5", "1B523415541BD700",
+                "4DD9F3D1913499F3", "7EE7B9B28787F8CC", "7E6A0AC031F7F484",
             ),
         ),
     )
@@ -452,21 +455,21 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "afterlight",
     )
     CHAPTER_TITLES = {
-        "FE9B015A32C6D980": "Five Impossible Parts",
+        "7E9B015A32C6D980": "Five Impossible Parts",
         "6671EBE257F914CB": "The Cascade Truth",
         "6C4AE5CE13773438": "Gate of Return",
         "245BADE04399406C": "Afterlight",
     }
     QUEST_TITLES = {
-        "8055C66103106D86": "Kinetic Frame",
-        "D2FE1624DCCE878F": "Industrial Anchor",
+        "0055C66103106D86": "Kinetic Frame",
+        "52FE1624DCCE878F": "Industrial Anchor",
         "50775CE87FAA4EB7": "Isotopic Core",
-        "FF064705A3CAB2E6": "Lattice Matrix",
+        "7F064705A3CAB2E6": "Lattice Matrix",
         "39C1F24EABBB34A3": "Undercurrent Stabilizer",
         "144473B8267DBC28": "Five Impossible Parts",
         "5468299A2A931991": "Eleven-Second Window",
-        "FEA7B2C8F11BB7A3": "Inbound Address",
-        "8EEFDD9E6CFB69E6": "The Order I Gave",
+        "7EA7B2C8F11BB7A3": "Inbound Address",
+        "0EEFDD9E6CFB69E6": "The Order I Gave",
         "29D7871AFBE3A54A": "The Warning I Deleted",
         "701505FDCCA53DFA": "Decision Engine",
         "462B11BD8C58BF6F": "The Cascade Truth",
@@ -475,13 +478,13 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "1A68D1245CD980BD": "Gate of Return Core",
         "6F3663F4C6D20255": "Anchor and Contain",
         "53B9BC5F498953D5": "Eleven Seconds",
-        "B1C9557D2F51238F": "Gate of Return",
+        "31C9557D2F51238F": "Gate of Return",
         "51649E106286AA63": "Answering Sky",
-        "FECCF0521DFCBED5": "Stay",
-        "9B523415541BD700": "Return",
+        "7ECCF0521DFCBED5": "Stay",
+        "1B523415541BD700": "Return",
         "4DD9F3D1913499F3": "Build",
-        "FEE7B9B28787F8CC": "Choice Is Not a Lock",
-        "FE6A0AC031F7F484": "Afterlight",
+        "7EE7B9B28787F8CC": "Choice Is Not a Lock",
+        "7E6A0AC031F7F484": "Afterlight",
     }
     EXPECTED_SEAL_OCCURRENCES = Counter((
         (
@@ -490,6 +493,10 @@ class Plan06ActIVContractTests(unittest.TestCase):
         ),
         (
             "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+        ),
+        (
+            "config/ftbquests/quests/chapters/3FF4AF7B0C73F058.snbt",
             'item: { count: 1, id: "kubejs:ascendancy_seal" }',
         ),
         (
@@ -558,82 +565,82 @@ class Plan06ActIVContractTests(unittest.TestCase):
         ),
     ))
     TASKS = {
-        "8055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
-        "D2FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
+        "0055C66103106D86": ("586F94BC6A6D08EA", "item", "kubejs:gate_kinetic_frame", "1L"),
+        "52FE1624DCCE878F": ("262F1E36525F23DC", "item", "kubejs:gate_industrial_anchor", "1L"),
         "50775CE87FAA4EB7": ("1FAFC12F3779D20A", "item", "kubejs:gate_isotopic_core", "1L"),
-        "FF064705A3CAB2E6": ("56F8BDF69E27EB09", "item", "kubejs:gate_lattice_matrix", "1L"),
+        "7F064705A3CAB2E6": ("56F8BDF69E27EB09", "item", "kubejs:gate_lattice_matrix", "1L"),
         "39C1F24EABBB34A3": ("123B3D197A42CCEC", "item", "kubejs:undercurrent_stabilizer", "1L"),
         "144473B8267DBC28": ("42F99C5AFE250994", "checkmark", None, None),
-        "5468299A2A931991": ("F69EB9F91F23A058", "checkmark", None, None),
-        "FEA7B2C8F11BB7A3": ("338D9A310F981342", "checkmark", None, None),
-        "8EEFDD9E6CFB69E6": ("1ADC93AFE7A07EE2", "checkmark", None, None),
+        "5468299A2A931991": ("769EB9F91F23A058", "checkmark", None, None),
+        "7EA7B2C8F11BB7A3": ("338D9A310F981342", "checkmark", None, None),
+        "0EEFDD9E6CFB69E6": ("1ADC93AFE7A07EE2", "checkmark", None, None),
         "29D7871AFBE3A54A": ("476CF5B621B2F5DC", "checkmark", None, None),
-        "701505FDCCA53DFA": ("F2B91DC86514B2F4", "checkmark", None, None),
-        "462B11BD8C58BF6F": ("9F72EF1FDDBEFDB1", "checkmark", None, None),
-        "36D0902A2921C44E": ("951A464CC4D650A3", "item", "create:mechanical_crafter", "49L"),
-        "66AD5C821947DF8E": ("EE494144394F75AF", "forge_energy", None, "1000000000L"),
-        "1A68D1245CD980BD": ("D68026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
-        "6F3663F4C6D20255": ("9FDF7F09F581B25C", "checkmark", None, None),
-        "53B9BC5F498953D5": ("E45F98B8FAD4A1E5", "checkmark", None, None),
-        "B1C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
-        "51649E106286AA63": ("C15BBA206B34805E", "checkmark", None, None),
-        "FECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
-        "9B523415541BD700": ("490D864D07C16993", "checkmark", None, None),
+        "701505FDCCA53DFA": ("72B91DC86514B2F4", "checkmark", None, None),
+        "462B11BD8C58BF6F": ("1F72EF1FDDBEFDB1", "checkmark", None, None),
+        "36D0902A2921C44E": ("151A464CC4D650A3", "item", "create:mechanical_crafter", "49L"),
+        "66AD5C821947DF8E": ("6E494144394F75AF", "forge_energy", None, "1000000000L"),
+        "1A68D1245CD980BD": ("568026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
+        "6F3663F4C6D20255": ("1FDF7F09F581B25C", "checkmark", None, None),
+        "53B9BC5F498953D5": ("645F98B8FAD4A1E5", "checkmark", None, None),
+        "31C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
+        "51649E106286AA63": ("415BBA206B34805E", "checkmark", None, None),
+        "7ECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
+        "1B523415541BD700": ("490D864D07C16993", "checkmark", None, None),
         "4DD9F3D1913499F3": ("3D07F572A39DCE89", "checkmark", None, None),
-        "FEE7B9B28787F8CC": ("57D5E84BE50C3815", "checkmark", None, None),
-        "FE6A0AC031F7F484": ("2BFD5EB16E861768", "checkmark", None, None),
+        "7EE7B9B28787F8CC": ("57D5E84BE50C3815", "checkmark", None, None),
+        "7E6A0AC031F7F484": ("2BFD5EB16E861768", "checkmark", None, None),
     }
     DEPENDENCIES = {
-        "8055C66103106D86": ("72446D404001B38D", "90EDD2BED35BE9E3"),
-        "D2FE1624DCCE878F": ("72446D404001B38D", "752C3E53CA89C92D"),
-        "50775CE87FAA4EB7": ("72446D404001B38D", "A1A99D99B372916F"),
-        "FF064705A3CAB2E6": ("72446D404001B38D", "3497EFDF016FAFD7"),
-        "39C1F24EABBB34A3": ("72446D404001B38D", "87338DE0FE8114CF"),
-        "144473B8267DBC28": ("8055C66103106D86", "D2FE1624DCCE878F", "50775CE87FAA4EB7", "FF064705A3CAB2E6", "39C1F24EABBB34A3"),
+        "0055C66103106D86": ("72446D404001B38D", "10EDD2BED35BE9E3"),
+        "52FE1624DCCE878F": ("72446D404001B38D", "752C3E53CA89C92D"),
+        "50775CE87FAA4EB7": ("72446D404001B38D", "21A99D99B372916F"),
+        "7F064705A3CAB2E6": ("72446D404001B38D", "3497EFDF016FAFD7"),
+        "39C1F24EABBB34A3": ("72446D404001B38D", "07338DE0FE8114CF"),
+        "144473B8267DBC28": ("0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7", "7F064705A3CAB2E6", "39C1F24EABBB34A3"),
         "5468299A2A931991": ("144473B8267DBC28",),
-        "FEA7B2C8F11BB7A3": ("5468299A2A931991",),
-        "8EEFDD9E6CFB69E6": ("FEA7B2C8F11BB7A3",),
-        "29D7871AFBE3A54A": ("FEA7B2C8F11BB7A3",),
-        "701505FDCCA53DFA": ("8EEFDD9E6CFB69E6", "29D7871AFBE3A54A"),
+        "7EA7B2C8F11BB7A3": ("5468299A2A931991",),
+        "0EEFDD9E6CFB69E6": ("7EA7B2C8F11BB7A3",),
+        "29D7871AFBE3A54A": ("7EA7B2C8F11BB7A3",),
+        "701505FDCCA53DFA": ("0EEFDD9E6CFB69E6", "29D7871AFBE3A54A"),
         "462B11BD8C58BF6F": ("701505FDCCA53DFA",),
         "36D0902A2921C44E": ("462B11BD8C58BF6F",),
         "66AD5C821947DF8E": ("462B11BD8C58BF6F",),
         "1A68D1245CD980BD": ("36D0902A2921C44E", "66AD5C821947DF8E"),
         "6F3663F4C6D20255": ("1A68D1245CD980BD",),
         "53B9BC5F498953D5": ("6F3663F4C6D20255",),
-        "B1C9557D2F51238F": ("53B9BC5F498953D5",),
-        "51649E106286AA63": ("B1C9557D2F51238F",),
-        "FECCF0521DFCBED5": ("51649E106286AA63",),
-        "9B523415541BD700": ("51649E106286AA63",),
+        "31C9557D2F51238F": ("53B9BC5F498953D5",),
+        "51649E106286AA63": ("31C9557D2F51238F",),
+        "7ECCF0521DFCBED5": ("51649E106286AA63",),
+        "1B523415541BD700": ("51649E106286AA63",),
         "4DD9F3D1913499F3": ("51649E106286AA63",),
-        "FEE7B9B28787F8CC": ("FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"),
-        "FE6A0AC031F7F484": ("FEE7B9B28787F8CC",),
+        "7EE7B9B28787F8CC": ("7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"),
+        "7E6A0AC031F7F484": ("7EE7B9B28787F8CC",),
     }
     REWARDS = {
-        "8055C66103106D86": (("FDDF59C2E8611A33", "item", "kubejs:requisition_chit", 2),),
-        "D2FE1624DCCE878F": (("F73BE066DAA64F1E", "item", "kubejs:requisition_chit", 2),),
-        "50775CE87FAA4EB7": (("D1D958EF8F96550A", "item", "kubejs:requisition_chit", 2),),
-        "FF064705A3CAB2E6": (("FC2E41070C0D4EAD", "item", "kubejs:requisition_chit", 2),),
+        "0055C66103106D86": (("7DDF59C2E8611A33", "item", "kubejs:requisition_chit", 2),),
+        "52FE1624DCCE878F": (("773BE066DAA64F1E", "item", "kubejs:requisition_chit", 2),),
+        "50775CE87FAA4EB7": (("51D958EF8F96550A", "item", "kubejs:requisition_chit", 2),),
+        "7F064705A3CAB2E6": (("7C2E41070C0D4EAD", "item", "kubejs:requisition_chit", 2),),
         "39C1F24EABBB34A3": (("49E08ADA36D12C00", "item", "kubejs:requisition_chit", 2),),
-        "144473B8267DBC28": (("95F642B272CAD5D9", "loot", "-7824471455364680287L"), ("7C74A9AE020CCF88", "item", "kubejs:requisition_chit", 48), ("7841DFAAC02FE09C", "xp", 1200)),
+        "144473B8267DBC28": (("15F642B272CAD5D9", "loot", "1398900581490095521L"), ("7C74A9AE020CCF88", "item", "kubejs:requisition_chit", 48), ("7841DFAAC02FE09C", "xp", 1200)),
         "5468299A2A931991": (("130C9C02580F8AB2", "item", "kubejs:requisition_chit", 2),),
-        "FEA7B2C8F11BB7A3": (("E4779A4097A21E24", "item", "kubejs:requisition_chit", 2),),
-        "8EEFDD9E6CFB69E6": (("B4DA7BDA11FF15E1", "item", "kubejs:requisition_chit", 2),),
+        "7EA7B2C8F11BB7A3": (("64779A4097A21E24", "item", "kubejs:requisition_chit", 2),),
+        "0EEFDD9E6CFB69E6": (("34DA7BDA11FF15E1", "item", "kubejs:requisition_chit", 2),),
         "29D7871AFBE3A54A": (("4265DC5E29DD495C", "item", "kubejs:requisition_chit", 2),),
-        "701505FDCCA53DFA": (("A0946798C9D438A5", "item", "kubejs:requisition_chit", 2),),
-        "462B11BD8C58BF6F": (("E5574664D0C5BFBC", "loot", "-7824471455364680287L"), ("8684D2673EF2793C", "item", "kubejs:requisition_chit", 48), ("1D8B00F2E259D4E9", "xp", 1200)),
-        "36D0902A2921C44E": (("AE04D1554265FEA8", "item", "kubejs:requisition_chit", 2),),
-        "66AD5C821947DF8E": (("C58DF86CC9EDDE39", "item", "kubejs:requisition_chit", 2),),
-        "1A68D1245CD980BD": (("926E7CA01AF02331", "item", "kubejs:requisition_chit", 2),),
-        "6F3663F4C6D20255": (("F70F4FA96AD8846F", "item", "kubejs:requisition_chit", 2),),
+        "701505FDCCA53DFA": (("20946798C9D438A5", "item", "kubejs:requisition_chit", 2),),
+        "462B11BD8C58BF6F": (("65574664D0C5BFBC", "loot", "1398900581490095521L"), ("0684D2673EF2793C", "item", "kubejs:requisition_chit", 48), ("1D8B00F2E259D4E9", "xp", 1200)),
+        "36D0902A2921C44E": (("2E04D1554265FEA8", "item", "kubejs:requisition_chit", 2),),
+        "66AD5C821947DF8E": (("458DF86CC9EDDE39", "item", "kubejs:requisition_chit", 2),),
+        "1A68D1245CD980BD": (("126E7CA01AF02331", "item", "kubejs:requisition_chit", 2),),
+        "6F3663F4C6D20255": (("770F4FA96AD8846F", "item", "kubejs:requisition_chit", 2),),
         "53B9BC5F498953D5": (("001A3DF980939775", "item", "kubejs:requisition_chit", 2),),
-        "B1C9557D2F51238F": (("990883BE42910C33", "loot", "-7824471455364680287L"), ("779DED635B727FA4", "item", "kubejs:requisition_chit", 56), ("A8D2BAFFE36060DF", "xp", 1500)),
+        "31C9557D2F51238F": (("190883BE42910C33", "loot", "1398900581490095521L"), ("779DED635B727FA4", "item", "kubejs:requisition_chit", 56), ("28D2BAFFE36060DF", "xp", 1500)),
         "51649E106286AA63": (("3ECE7555E764EAA5", "item", "kubejs:requisition_chit", 2),),
-        "FECCF0521DFCBED5": (("12FBAB4FE746C88E", "item", "kubejs:requisition_chit", 2),),
-        "9B523415541BD700": (("AD79CF5A30CA4A11", "item", "kubejs:requisition_chit", 2),),
+        "7ECCF0521DFCBED5": (("12FBAB4FE746C88E", "item", "kubejs:requisition_chit", 2),),
+        "1B523415541BD700": (("2D79CF5A30CA4A11", "item", "kubejs:requisition_chit", 2),),
         "4DD9F3D1913499F3": (("0E16CBC697464BBA", "item", "kubejs:requisition_chit", 2),),
-        "FEE7B9B28787F8CC": (("537620C3635C6D97", "item", "kubejs:requisition_chit", 2),),
-        "FE6A0AC031F7F484": (("DF14A45FDAFFC3A0", "item", "kubejs:ascendancy_seal", 1), ("95452D9C24ED0D2D", "loot", "-7327459831431184939L"), ("1E16545B7559C9DC", "item", "kubejs:requisition_chit", 64), ("01D54F268FBE2DDF", "xp", 2000), ("B80A062F62764247", "gamestage", "afterlight_story_complete")),
+        "7EE7B9B28787F8CC": (("537620C3635C6D97", "item", "kubejs:requisition_chit", 2),),
+        "7E6A0AC031F7F484": (("5F14A45FDAFFC3A0", "item", "kubejs:ascendancy_seal", 1), ("15452D9C24ED0D2D", "loot", "1895912205423590869L"), ("1E16545B7559C9DC", "item", "kubejs:requisition_chit", 64), ("01D54F268FBE2DDF", "xp", 2000), ("380A062F62764247", "gamestage", "afterlight_story_complete")),
     }
 
     @classmethod
@@ -790,10 +797,10 @@ class Plan06ActIVContractTests(unittest.TestCase):
             quest
             for chapter in catalog
             for quest in chapter.quests
-            if quest.id == "8055C66103106D86"
+            if quest.id == "0055C66103106D86"
         )
         kinetic.tasks[0].data["count"] = self.quests.SnbtLong(2)
-        with self.assertRaisesRegex(AssertionError, "FE9B015A32C6D980"):
+        with self.assertRaisesRegex(AssertionError, "7E9B015A32C6D980"):
             self.assert_regenerated_outputs_match(catalog)
 
     def test_generated_act_iv_chapters_have_exact_order_and_ids(self) -> None:
@@ -808,7 +815,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
 
     def test_generated_graph_tasks_and_response_semantics_are_exact(self) -> None:
         self.assert_generated_act_iv_exists()
-        response_ids = {"FECCF0521DFCBED5", "9B523415541BD700", "4DD9F3D1913499F3"}
+        response_ids = {"7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"}
         for quest_id, expected_task in self.TASKS.items():
             quest = self.quests_by_id[quest_id]
             self.assertEqual(tuple(quest.get("dependencies", ())), self.DEPENDENCIES[quest_id])
@@ -816,7 +823,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
             self.assertEqual(quest.get("optional"), True if quest_id in response_ids else None)
             self.assertEqual(
                 quest.get("dependency_requirement"),
-                "one_completed" if quest_id == "FEE7B9B28787F8CC" else None,
+                "one_completed" if quest_id == "7EE7B9B28787F8CC" else None,
             )
             self.assertEqual(len(quest["tasks"]), 1)
             task = quest["tasks"][0]
@@ -847,7 +854,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         all_quests = [quest for chapter in self.chapters.values() for quest in chapter["quests"]]
         all_tasks = [task for quest in all_quests for task in quest["tasks"]]
         all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
-        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (45, 307, 320, 427))
+        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (46, 313, 334, 436))
         self.assertEqual(
             (
                 len(act_iv),
@@ -896,7 +903,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         self.assertIn("same architecture", cascade_truth)
         self.assertIn("different memory", cascade_truth)
         self.assertIn("I remain responsible", cascade_truth)
-        afterlight = descriptions["FE6A0AC031F7F484"]
+        afterlight = descriptions["7E6A0AC031F7F484"]
         self.assertIn("future fork", afterlight)
         self.assertIn("ambiguity", afterlight)
         for task_id, *_task_contract in self.TASKS.values():
@@ -915,7 +922,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         ]
         self.assertEqual(len(seal_rewards), 1)
         quest_id, reward = seal_rewards[0]
-        self.assertEqual(quest_id, "FE6A0AC031F7F484")
+        self.assertEqual(quest_id, "7E6A0AC031F7F484")
         self.assertEqual(self.reward_contract(reward), self.REWARDS[quest_id][0])
         self.assert_seal_occurrence_inventory(ROOT)
 
@@ -941,6 +948,286 @@ class Plan06ActIVContractTests(unittest.TestCase):
                 self.assert_seal_occurrence_inventory(isolated_root)
 
 
+class Plan06PostgameContractTests(unittest.TestCase):
+    CHAPTER_ID = "3FF4AF7B0C73F058"
+    CHAPTER_SLUG = "story/postgame-beyond-afterlight"
+    QUESTS = (
+        ("480D3EAD1B1EA51B", "beyond-the-seal", "Beyond the Seal"),
+        ("3549F08263C17499", "three-entries", "Three Entries"),
+        ("58CB670EA52B1BCE", "chaotic-proof", "Chaotic Proof"),
+        ("077BB9C525F29F6D", "kinetic-blessing", "Kinetic Blessing"),
+        ("6E81867AC3F34C6B", "lattice-blessing", "Lattice Blessing"),
+        ("14FAB67A6CE71A00", "industrial-blessing", "Industrial Blessing"),
+    )
+    TASKS = {
+        "480D3EAD1B1EA51B": (
+            ("1CCF9FFC57852557", "kubejs:ascendancy_seal", "1L", False),
+        ),
+        "3549F08263C17499": (
+            ("552233E3840472BD", "draconicevolution:draconium_core", "1L", False),
+            ("0FD70329B302D235", "draconicevolution:dislocator", "1L", False),
+            ("069798564A2943FA", "draconicevolution:module_core", "1L", False),
+        ),
+        "58CB670EA52B1BCE": (
+            ("506E30469C21EC85", "draconicevolution:chaotic_core", "1L", False),
+        ),
+        "077BB9C525F29F6D": (
+            ("55BDDB1245A09683", "create:precision_mechanism", "256L", True),
+            ("3CEEEDECBD7D1D36", "create:railway_casing", "64L", True),
+            ("2FB04E1016BE7915", "draconicevolution:chaotic_core", "1L", True),
+        ),
+        "6E81867AC3F34C6B": (
+            ("336DA1497068D7D5", "ae2:quantum_entangled_singularity", "64L", True),
+            ("2853E2D7FD71500D", "ae2:cell_component_256k", "16L", True),
+            ("15F6D0E7985B20A8", "draconicevolution:chaotic_core", "1L", True),
+        ),
+        "14FAB67A6CE71A00": (
+            ("48CA55FFEC0E520A", "mekanism:alloy_atomic", "64L", True),
+            ("03CABFBA9933EB0E", "immersiveengineering:heavy_engineering", "64L", True),
+            ("289A3672715F5EA0", "draconicevolution:chaotic_core", "1L", True),
+        ),
+    }
+    DEPENDENCIES = {
+        "480D3EAD1B1EA51B": ("7E6A0AC031F7F484",),
+        "3549F08263C17499": ("480D3EAD1B1EA51B",),
+        "58CB670EA52B1BCE": ("3549F08263C17499",),
+        "077BB9C525F29F6D": ("58CB670EA52B1BCE",),
+        "6E81867AC3F34C6B": ("58CB670EA52B1BCE",),
+        "14FAB67A6CE71A00": ("58CB670EA52B1BCE",),
+    }
+    REWARDS = {
+        "480D3EAD1B1EA51B": (
+            ("57178803C8835935", "item", "kubejs:requisition_chit", 4),
+        ),
+        "3549F08263C17499": (
+            ("47AFC900EB5531B5", "item", "kubejs:requisition_chit", 8),
+        ),
+        "58CB670EA52B1BCE": (
+            ("0761B2A37B66A358", "loot", "1895912205423590869L"),
+            ("3BC27479AA455615", "item", "kubejs:requisition_chit", 16),
+            ("48AA57E507A53AE6", "xp", 1000),
+        ),
+        "077BB9C525F29F6D": (
+            ("14373B49E45A97AC", "item", "create:creative_motor", 1),
+        ),
+        "6E81867AC3F34C6B": (
+            ("76163DC425B7683B", "item", "ae2:creative_energy_cell", 1),
+        ),
+        "14FAB67A6CE71A00": (
+            ("0318F8EC25721760", "item", "mekanism:creative_energy_cube", 1),
+            (
+                "69677E965C9E0109",
+                "item",
+                "immersiveengineering:capacitor_creative",
+                1,
+            ),
+        ),
+    }
+    REPEATABLE = {
+        "077BB9C525F29F6D",
+        "6E81867AC3F34C6B",
+        "14FAB67A6CE71A00",
+    }
+    ACT_IV_CHAPTER_IDS = {
+        "7E9B015A32C6D980",
+        "6671EBE257F914CB",
+        "6C4AE5CE13773438",
+        "245BADE04399406C",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.quest_root = ROOT / "config" / "ftbquests" / "quests"
+        cls.chapters = {}
+        cls.quests_by_id = {}
+        for path in sorted((cls.quest_root / "chapters").glob("*.snbt")):
+            chapter = _parse_snbt(path.read_text(encoding="utf-8"))
+            cls.chapters[chapter["id"]] = chapter
+            cls.quests_by_id.update(
+                {quest["id"]: quest for quest in chapter["quests"]}
+            )
+        cls.localization = _parse_snbt(
+            (cls.quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8")
+        )
+
+    def postgame_chapter(self) -> dict[str, object]:
+        chapter = self.chapters.get(self.CHAPTER_ID)
+        self.assertIsNotNone(
+            chapter,
+            "generated Beyond Afterlight chapter is missing",
+        )
+        return chapter
+
+    def reward_contract(self, reward: dict[str, object]) -> tuple[object, ...]:
+        reward_type = reward["type"]
+        if reward_type == "item":
+            return reward["id"], reward_type, reward["item"]["id"], int(reward["count"])
+        if reward_type == "loot":
+            return reward["id"], reward_type, reward["table_id"]
+        if reward_type == "xp":
+            return reward["id"], reward_type, int(reward["xp"])
+        self.fail(f"unexpected postgame reward type {reward_type}")
+
+    def test_catalog_uses_exact_postgame_slugs_ids_titles_and_metadata(self) -> None:
+        catalog = {chapter.id: chapter for chapter in self.quests.build_catalog()}
+        self.assertIsNotNone(
+            catalog.get(self.CHAPTER_ID),
+            "Beyond Afterlight catalog entry is missing",
+        )
+        chapter = catalog[self.CHAPTER_ID]
+        self.assertEqual(chapter.slug, self.CHAPTER_SLUG)
+        self.assertEqual(chapter.title, "Beyond Afterlight")
+        self.assertEqual(chapter.group.resolved_id, "4525BB3160467FCB")
+        self.assertEqual(chapter.order_index, 20)
+        self.assertEqual(chapter.icon, "draconicevolution:chaotic_core")
+        self.assertEqual(
+            tuple((quest.id, quest.slug, quest.title) for quest in chapter.quests),
+            tuple(
+                (quest_id, f"{self.CHAPTER_SLUG}/{relative_slug}", title)
+                for quest_id, relative_slug, title in self.QUESTS
+            ),
+        )
+        for quest in chapter.quests:
+            self.assertEqual(
+                tuple(task.id for task in quest.tasks),
+                tuple(task[0] for task in self.TASKS[quest.id]),
+            )
+            self.assertEqual(
+                tuple(reward.id for reward in quest.rewards),
+                tuple(reward[0] for reward in self.REWARDS[quest.id]),
+            )
+
+    def test_generated_postgame_graph_tasks_and_repeatability_are_exact(self) -> None:
+        chapter = self.postgame_chapter()
+        self.assertEqual(chapter["filename"], self.CHAPTER_ID)
+        self.assertEqual(chapter["group"], "4525BB3160467FCB")
+        self.assertEqual(int(chapter["order_index"]), 20)
+        self.assertEqual(chapter["icon"], {"id": "draconicevolution:chaotic_core"})
+        self.assertEqual(
+            tuple(quest["id"] for quest in chapter["quests"]),
+            tuple(quest_id for quest_id, _slug, _title in self.QUESTS),
+        )
+        for quest_id, expected_tasks in self.TASKS.items():
+            quest = self.quests_by_id[quest_id]
+            self.assertEqual(tuple(quest.get("dependencies", ())), self.DEPENDENCIES[quest_id])
+            self.assertEqual(quest.get("progression_mode"), "linear")
+            self.assertEqual(quest.get("can_repeat"), quest_id in self.REPEATABLE or None)
+            self.assertEqual(
+                quest.get("repeat_cooldown"),
+                "3600" if quest_id in self.REPEATABLE else None,
+            )
+            self.assertEqual(len(quest["tasks"]), len(expected_tasks))
+            for task, expected in zip(quest["tasks"], expected_tasks):
+                task_id, item_id, count, consumes = expected
+                self.assertEqual(task["id"], task_id)
+                self.assertEqual(task["type"], "item")
+                self.assertEqual(task["item"]["id"], item_id)
+                self.assertEqual(task["count"], count)
+                self.assertIs(task["consume_items"], consumes)
+
+    def test_generated_postgame_rewards_and_corpus_totals_are_exact(self) -> None:
+        chapter = self.postgame_chapter()
+        for quest_id, expected_rewards in self.REWARDS.items():
+            self.assertEqual(
+                tuple(
+                    self.reward_contract(reward)
+                    for reward in self.quests_by_id[quest_id]["rewards"]
+                ),
+                expected_rewards,
+                quest_id,
+            )
+        all_quests = [quest for item in self.chapters.values() for quest in item["quests"]]
+        all_tasks = [task for quest in all_quests for task in quest["tasks"]]
+        all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
+        self.assertEqual(
+            (len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)),
+            (46, 313, 334, 436),
+        )
+        self.assertEqual(
+            (
+                len(chapter["quests"]),
+                sum(len(quest["tasks"]) for quest in chapter["quests"]),
+                sum(len(quest["rewards"]) for quest in chapter["quests"]),
+            ),
+            (6, 14, 9),
+        )
+        self.assertEqual(len(tuple((self.quest_root / "reward_tables").glob("*.snbt"))), 6)
+
+    def test_endgame_team_safety_and_postgame_isolation_are_static_contracts(self) -> None:
+        postgame = self.postgame_chapter()
+        endgame = [
+            self.chapters[chapter_id]
+            for chapter_id in (*sorted(self.ACT_IV_CHAPTER_IDS), self.CHAPTER_ID)
+        ]
+        endgame_quests = [quest for chapter in endgame for quest in chapter["quests"]]
+        self.assertTrue(all(quest.get("progression_mode") == "linear" for quest in endgame_quests))
+        self.assertFalse(
+            any(task["type"] == "gamestage" for quest in endgame_quests for task in quest["tasks"])
+        )
+        endgame_text = "\n".join(
+            (self.quest_root / "chapters" / f"{chapter['id']}.snbt").read_text(encoding="utf-8")
+            for chapter in endgame
+        )
+        self.assertNotIn("team_reward", endgame_text)
+        self.assertNotIn("team_stage", endgame_text)
+        self.assertIn(
+            "default_reward_team: false",
+            (self.quest_root / "data.snbt").read_text(encoding="utf-8"),
+        )
+        response_ids = {"7ECCF0521DFCBED5", "1B523415541BD700", "4DD9F3D1913499F3"}
+        self.assertTrue(all(self.quests_by_id[quest_id].get("optional") is True for quest_id in response_ids))
+        convergence = self.quests_by_id["7EE7B9B28787F8CC"]
+        self.assertEqual(set(convergence["dependencies"]), response_ids)
+        self.assertEqual(convergence.get("dependency_requirement"), "one_completed")
+        postgame_ids = {quest_id for quest_id, _slug, _title in self.QUESTS}
+        for chapter in self.chapters.values():
+            for quest in chapter["quests"]:
+                if quest["id"] not in postgame_ids:
+                    self.assertTrue(postgame_ids.isdisjoint(quest.get("dependencies", ())))
+        self.assertEqual(
+            tuple(quest["id"] for quest in postgame["quests"] if quest.get("can_repeat")),
+            tuple(quest_id for quest_id, _slug, _title in self.QUESTS if quest_id in self.REPEATABLE),
+        )
+        seal_rewards = [
+            (quest["id"], reward)
+            for chapter in self.chapters.values()
+            for quest in chapter["quests"]
+            for reward in quest["rewards"]
+            if reward.get("item", {}).get("id") == "kubejs:ascendancy_seal"
+        ]
+        self.assertEqual(len(seal_rewards), 1)
+        self.assertEqual(seal_rewards[0][0], "7E6A0AC031F7F484")
+        self.assertEqual(int(seal_rewards[0][1]["count"]), 1)
+
+    def test_postgame_localization_and_manual_scope_are_explicit(self) -> None:
+        self.postgame_chapter()
+        self.assertEqual(
+            self.localization[f"chapter.{self.CHAPTER_ID}.title"],
+            "Beyond Afterlight",
+        )
+        for quest_id, _slug, title in self.QUESTS:
+            self.assertEqual(self.localization[f"quest.{quest_id}.title"], title)
+            description = " ".join(self.localization[f"quest.{quest_id}.quest_desc"])
+            self.assertTrue(description.strip())
+            self.assertNotIn("\u2014", description)
+        verification = ROOT / "docs" / "releases" / "plan-06-verification.md"
+        self.assertTrue(verification.is_file(), "Plan 06 verification record is missing")
+        verification_text = verification.read_text(encoding="utf-8")
+        for scenario in (
+            "Two-player claim",
+            "Late join",
+            "Replay",
+            "Team change",
+            "Seal transfer",
+        ):
+            self.assertIn(scenario, verification_text)
+        self.assertIn("Plan 07 manual acceptance", verification_text)
+        self.assertNotIn("\u2014", verification_text)
+
+
 class QuestCompilerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -948,6 +1235,20 @@ class QuestCompilerTests(unittest.TestCase):
             cls.quests = importlib.import_module("afterlight_quests")
         except ModuleNotFoundError as error:
             raise AssertionError("afterlight_quests package must exist") from error
+
+    def setUp(self) -> None:
+        self.migration_state = tempfile.TemporaryDirectory()
+        self.migration_environment = mock.patch.dict(
+            os.environ,
+            {
+                "AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": self.migration_state.name
+            },
+        )
+        self.migration_environment.start()
+
+    def tearDown(self) -> None:
+        self.migration_environment.stop()
+        self.migration_state.cleanup()
 
     def make_catalog(self, item_id: str = "example:widget", dependency: str = ""):
         group = self.quests.GroupSpec(
@@ -1001,7 +1302,7 @@ class QuestCompilerTests(unittest.TestCase):
         )
         (quest_root / "lang" / "en_us.snbt").write_text(
             '{\n\tchapter_group.4525BB3160467FCB.title: "The Story"\n'
-            '\tquest.AAAAAAAAAAAAAAAA.title: "Unmanaged"\n}\n',
+            '\tquest.2AAAAAAAAAAAAAAA.title: "Unmanaged"\n}\n',
             encoding="utf-8",
         )
         return quest_root
@@ -1021,12 +1322,1329 @@ class QuestCompilerTests(unittest.TestCase):
     def audit_item_count(self, item_id: str = "example:widget") -> int:
         return len(self.quests.KUBEJS_ITEM_ALLOWLIST | {item_id})
 
-    def test_stable_id_uses_truncated_uppercase_sha256(self) -> None:
-        expected = hashlib.sha256(b"quest:story/test/widget").hexdigest()[:16].upper()
+    def make_unsafe_migration_corpus(
+        self, base: Path
+    ) -> tuple[Path, Path, Path]:
+        quest_root = self.make_quest_root(base)
+        mods_dir = base / "mods"
+        mods_dir.mkdir()
+        unsafe_chapter = quest_root / "chapters" / "FEDCBA9876543210.snbt"
+        unsafe_chapter.write_text(
+            "{\n"
+            '\tfilename: "FEDCBA9876543210"\n'
+            '\tgroup: "4525BB3160467FCB"\n'
+            '\tid: "FEDCBA9876543210"\n'
+            "\tquests: [{\n"
+            '\t\tid: "EEDCBA9876543210"\n'
+            '\t\tnote: "FEDCBA9876543210 is authored prose"\n'
+            '\t\tcomponent_probe: { value: "FEDCBA9876543210" }\n'
+            '\t\tresource_probe: "example:FEDCBA9876543210"\n'
+            '\t\ttasks: [{\n'
+            '\t\t\tid: "DEDCBA9876543210"\n'
+            '\t\t\ttype: "item"\n'
+            '\t\t\titem: { count: 1, id: "minecraft:bread", components: { '
+            '"minecraft:custom_data": { probe: "FEDCBA9876543210" } } }\n'
+            '\t\t\tcount: 1L\n'
+            '\t\t}]\n'
+            '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n'
+            "\t}\n"
+            "\t{\n"
+            '\t\tid: "3EDCBA9876543210"\n'
+            '\t\tdependencies: ["EEDCBA9876543210"]\n'
+            '\t\ttasks: [{ id: "2EDCBA9876543210", type: "checkmark" }]\n'
+            '\t\trewards: []\n'
+            "\t}]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "unrelated.txt").write_text(
+            "FEDCBA9876543210 stays unrelated\n",
+            encoding="utf-8",
+        )
+        language = quest_root / "lang" / "en_us.snbt"
+        language_source = language.read_text(encoding="utf-8").rstrip().replace(
+            "quest.2AAAAAAAAAAAAAAA.title",
+            "custom.2AAAAAAAAAAAAAAA.title",
+        )
+        language.write_text(
+            language_source[:-1]
+            + '\tchapter.FEDCBA9876543210.title: "FEDCBA9876543210 stays prose"\n'
+            + '\tquest.EEDCBA9876543210.title: "Unsafe"\n'
+            + '\tquest.EEDCBA9876543210.quest_desc: ["FEDCBA9876543210 stays prose"]\n'
+            + '\tquest.3EDCBA9876543210.title: "Dependent"\n'
+            + '\tquest.3EDCBA9876543210.quest_desc: ["Dependency fixture"]\n'
+            + "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / ".afterlight-managed.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "chapters": ["FEDCBA9876543210"],
+                    "localization_keys": [
+                        "chapter.FEDCBA9876543210.title",
+                        "quest.EEDCBA9876543210.title",
+                        "quest.EEDCBA9876543210.quest_desc",
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return quest_root, mods_dir, unsafe_chapter
+
+    def make_typed_validation_corpus(
+        self, base: Path
+    ) -> tuple[Path, dict[str, str]]:
+        identifiers = {
+            "group": "1111111111111111",
+            "chapter": "2222222222222222",
+            "other_chapter": "3333333333333333",
+            "quest": "4444444444444444",
+            "dependent_quest": "5555555555555555",
+            "task": "6666666666666666",
+            "reward": "0777777777777777",
+            "link": "1234567890ABCDEF",
+            "image": "234567890ABCDEF0",
+            "chapter_image": "234567890ABCDEF1",
+            "quest_image": "234567890ABCDEF2",
+            "task_image": "234567890ABCDEF3",
+            "link_image": "234567890ABCDEF4",
+            "table": "34567890ABCDEF01",
+            "max_table": "7FFFFFFFFFFFFFFF",
+            "table_reward": "4567890ABCDEF012",
+        }
+        quest_root = base / "config" / "ftbquests" / "quests"
+        (quest_root / "chapters").mkdir(parents=True)
+        (quest_root / "lang").mkdir()
+        (quest_root / "reward_tables").mkdir()
+        (quest_root / "chapter_groups.snbt").write_text(
+            "{\n\tchapter_groups: [{ id: \""
+            + identifiers["group"]
+            + "\" }]\n}\n",
+            encoding="utf-8",
+        )
+        chapter = quest_root / "chapters" / f'{identifiers["chapter"]}.snbt'
+        chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["chapter"]}"\n'
+            f'\tautofocus_id: "{identifiers["quest"]}"\n'
+            "\timages: [\n"
+            f'\t\t{{ id: "{identifiers["image"]}", image: "example:test", '
+            f'dependency: "{identifiers["quest"]}", '
+            f'click: "#{identifiers["other_chapter"]}/page/2" }}\n'
+            f'\t\t{{ id: "{identifiers["chapter_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["other_chapter"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["quest_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["quest"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["task_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["task"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["link_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["link"]}/true" }}\n'
+            "\t]\n"
+            "\tquest_links: [{ id: \""
+            + identifiers["link"]
+            + "\", linked_quest: \""
+            + identifiers["quest"]
+            + "\" }]\n"
+            "\tquests: [\n"
+            f'\t\t{{ id: "{identifiers["quest"]}", '
+            f'tasks: [{{ id: "{identifiers["task"]}", type: "checkmark" }}], '
+            f'rewards: [{{ id: "{identifiers["reward"]}", type: "loot", '
+            f'table_id: {int(identifiers["max_table"], 16)}L }}] }}\n'
+            f'\t\t{{ id: "{identifiers["dependent_quest"]}", dependencies: ['
+            f'"{identifiers["group"]}", "{identifiers["other_chapter"]}", '
+            f'"{identifiers["quest"]}", "{identifiers["task"]}", '
+            f'"{identifiers["link"]}"], dep_control_pts: {{ '
+            f'{identifiers["quest"]}: [1.0d, 2.0d, 3.0d, 4.0d] }}, '
+            "tasks: [], rewards: [] }\n"
+            "\t]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        other_chapter = (
+            quest_root / "chapters" / f'{identifiers["other_chapter"]}.snbt'
+        )
+        other_chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["other_chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["other_chapter"]}"\n'
+            "\tquests: []\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "reward_tables" / "fixture.snbt").write_text(
+            "{\n"
+            f'\tid: "{identifiers["table"]}"\n'
+            "\trewards: [{ id: \""
+            + identifiers["table_reward"]
+            + "\", type: \"random\", table_id: "
+            + str(int(identifiers["max_table"], 16))
+            + "L }]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "reward_tables" / "max.snbt").write_text(
+            "{\n"
+            f'\tid: "{identifiers["max_table"]}"\n'
+            "\trewards: []\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "lang" / "en_us.snbt").write_text(
+            "{\n"
+            f'\tchapter_group.{identifiers["group"]}.title: "Group"\n'
+            f'\tchapter.{identifiers["chapter"]}.title: "Chapter"\n'
+            f'\tquest.{identifiers["quest"]}.title: "Quest"\n'
+            f'\ttask.{identifiers["task"]}.title: "Task"\n'
+            f'\treward.{identifiers["reward"]}.title: "Reward"\n'
+            f'\timage.{identifiers["image"]}.title: "Image"\n'
+            f'\tquest_link.{identifiers["link"]}.title: "Link"\n'
+            f'\treward_table.{identifiers["table"]}.title: "Table"\n'
+            "}\n",
+            encoding="utf-8",
+        )
+        return quest_root, identifiers
+
+    def write_simple_typed_chapters(
+        self,
+        quest_root: Path,
+        identifiers: dict[str, str],
+        reward_data: str,
+        *,
+        autofocus_id: str | None = None,
+        other_quest_id: str | None = None,
+    ) -> None:
+        autofocus = (
+            f'\tautofocus_id: "{autofocus_id}"\n'
+            if autofocus_id is not None
+            else ""
+        )
+        chapter = quest_root / "chapters" / f'{identifiers["chapter"]}.snbt'
+        chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["chapter"]}"\n'
+            + autofocus
+            + f'\timages: [{{ id: "{identifiers["image"]}", '
+            'image: "example:test" }]\n'
+            + f'\tquest_links: [{{ id: "{identifiers["link"]}", '
+            f'linked_quest: "{identifiers["quest"]}" }}]\n'
+            + "\tquests: [{\n"
+            f'\t\tid: "{identifiers["quest"]}"\n'
+            f'\t\ttasks: [{{ id: "{identifiers["task"]}", type: "checkmark" }}]\n'
+            f"\t\trewards: [{reward_data}]\n"
+            "\t}]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        other_quests = (
+            f'[{{ id: "{other_quest_id}", tasks: [], rewards: [] }}]'
+            if other_quest_id is not None
+            else "[]"
+        )
+        other_chapter = (
+            quest_root / "chapters" / f'{identifiers["other_chapter"]}.snbt'
+        )
+        other_chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["other_chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["other_chapter"]}"\n'
+            f"\tquests: {other_quests}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+    def test_stable_id_uses_signed_safe_truncated_uppercase_sha256(self) -> None:
+        raw = int(
+            hashlib.sha256(b"quest:story/act-iv/afterlight").hexdigest()[:16],
+            16,
+        )
+        expected = f"{raw & ((1 << 63) - 1):016X}"
         self.assertEqual(
-            self.quests.stable_id("quest", "story/test/widget"),
+            self.quests.stable_id("quest", "story/act-iv/afterlight"),
             expected,
         )
+        self.assertLess(int(expected, 16), 1 << 63)
+        self.assertEqual(
+            self.quests.ftb_safe_id("FFFFFFFFFFFFFFFF"),
+            "7FFFFFFFFFFFFFFF",
+        )
+
+    def test_write_catalog_migrates_existing_high_bit_ftb_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            unsafe_ids = {
+                "FEDCBA9876543210": "7EDCBA9876543210",
+                "EEDCBA9876543210": "6EDCBA9876543210",
+                "DEDCBA9876543210": "5EDCBA9876543210",
+                "CEDCBA9876543210": "4EDCBA9876543210",
+            }
+            unsafe_chapter = quest_root / "chapters" / "FEDCBA9876543210.snbt"
+            unsafe_chapter.write_text(
+                "{\n"
+                '\tfilename: "FEDCBA9876543210"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tid: "FEDCBA9876543210"\n'
+                "\tquests: [{\n"
+                '\t\tid: "EEDCBA9876543210"\n'
+                '\t\ttasks: [{ id: "DEDCBA9876543210", type: "checkmark" }]\n'
+                '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n'
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            language = quest_root / "lang" / "en_us.snbt"
+            language_source = language.read_text(encoding="utf-8").rstrip().replace(
+                "quest.2AAAAAAAAAAAAAAA.title",
+                "custom.2AAAAAAAAAAAAAAA.title",
+            )
+            language.write_text(
+                language_source[:-1]
+                + '\tchapter.FEDCBA9876543210.title: "Unsafe"\n'
+                + '\tquest.EEDCBA9876543210.title: "Unsafe"\n'
+                + '\tquest.EEDCBA9876543210.quest_desc: ["Unsafe"]\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+
+            self.quests.write_catalog([], quest_root)
+
+            self.assertFalse(unsafe_chapter.exists())
+            migrated = quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            self.assertTrue(migrated.is_file())
+            corpus = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in sorted(quest_root.rglob("*.snbt"))
+            )
+            for unsafe, safe in unsafe_ids.items():
+                self.assertNotIn(unsafe, corpus)
+                self.assertIn(safe, corpus)
+
+    def test_write_catalog_migrates_negative_reward_table_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_quest_root(Path(temp_dir))
+            language = quest_root / "lang" / "en_us.snbt"
+            language.write_text(
+                language.read_text(encoding="utf-8").replace(
+                    "quest.2AAAAAAAAAAAAAAA.title",
+                    "custom.2AAAAAAAAAAAAAAA.title",
+                ),
+                encoding="utf-8",
+            )
+            chapter_path = quest_root / "chapters" / "1234567890ABCDEF.snbt"
+            chapter_path.write_text(
+                "{\n"
+                '\tfilename: "1234567890ABCDEF"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tid: "1234567890ABCDEF"\n'
+                '\tquests: [{\n'
+                '\t\tid: "234567890ABCDEF0"\n'
+                '\t\ttasks: [ ]\n'
+                '\t\trewards: [{\n'
+                '\t\t\tid: "34567890ABCDEF01"\n'
+                '\t\t\ttype: "loot"\n'
+                '\t\t\ttable_id: -7824471455364680287L\n'
+                '\t\t}]\n'
+                '\t}]\n'
+                "}\n",
+                encoding="utf-8",
+            )
+            reward_table = quest_root / "reward_tables" / "cache.snbt"
+            reward_table.parent.mkdir()
+            reward_table.write_text(
+                '{\n\tid: "9369E4AACBCDF5A1"\n\trewards: [ ]\n}\n',
+                encoding="utf-8",
+            )
+
+            self.quests.write_catalog([], quest_root)
+
+            self.assertIn(
+                "table_id: 1398900581490095521L",
+                chapter_path.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                'id: "1369E4AACBCDF5A1"',
+                reward_table.read_text(encoding="utf-8"),
+            )
+
+    def test_signed_id_migration_preserves_id_shaped_authored_values(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            migrated = quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            self.assertFalse(unsafe_chapter.exists())
+            self.assertTrue(migrated.is_file())
+            chapter_text = migrated.read_text(encoding="utf-8")
+            language_text = (quest_root / "lang" / "en_us.snbt").read_text(
+                encoding="utf-8"
+            )
+            managed_state = json.loads(
+                (quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
+            )
+            self.assertIn('id: "7EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "6EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "5EDCBA9876543210"', chapter_text)
+            self.assertIn('id: "4EDCBA9876543210"', chapter_text)
+            self.assertIn('note: "FEDCBA9876543210 is authored prose"', chapter_text)
+            self.assertIn('component_probe: { value: "FEDCBA9876543210" }', chapter_text)
+            self.assertIn(
+                '"minecraft:custom_data": { probe: "FEDCBA9876543210" }',
+                chapter_text,
+            )
+            self.assertIn('resource_probe: "example:FEDCBA9876543210"', chapter_text)
+            self.assertIn('dependencies: ["6EDCBA9876543210"]', chapter_text)
+            self.assertEqual(
+                (quest_root / "unrelated.txt").read_text(encoding="utf-8"),
+                "FEDCBA9876543210 stays unrelated\n",
+            )
+            self.assertIn(
+                'chapter.7EDCBA9876543210.title: "FEDCBA9876543210 stays prose"',
+                language_text,
+            )
+            self.assertIn(
+                'quest.6EDCBA9876543210.quest_desc: ["FEDCBA9876543210 stays prose"]',
+                language_text,
+            )
+            self.assertEqual(managed_state["chapters"], ["7EDCBA9876543210"])
+            self.assertIn(
+                "quest.6EDCBA9876543210.title",
+                managed_state["localization_keys"],
+            )
+
+    def test_signed_id_migration_recovers_after_interrupted_writes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            transaction = builder._migration_transaction_directory(quest_root)
+            self.assertFalse(transaction.is_relative_to(quest_root))
+            real_replace = builder.os.replace
+            quest_writes = 0
+
+            def interrupt_second_quest_write(source, target):
+                nonlocal quest_writes
+                target_path = Path(target)
+                try:
+                    target_path.relative_to(quest_root)
+                except ValueError:
+                    return real_replace(source, target)
+                quest_writes += 1
+                if quest_writes == 2:
+                    raise OSError("injected migration write interruption")
+                return real_replace(source, target)
+
+            with mock.patch.object(
+                builder.os,
+                "replace",
+                side_effect=interrupt_second_quest_write,
+            ), self.assertRaisesRegex(OSError, "write interruption"):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertTrue((transaction / builder.MIGRATION_JOURNAL_NAME).is_file())
+            self.assertFalse(
+                (quest_root / builder.MIGRATION_JOURNAL_NAME).exists()
+            )
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(transaction.exists())
+            self.assertTrue(
+                (quest_root / "chapters" / "7EDCBA9876543210.snbt").is_file()
+            )
+            self.assertFalse(
+                (quest_root / "chapters" / "FEDCBA9876543210.snbt").exists()
+            )
+
+    def test_signed_id_migration_recovers_after_interrupted_path_move(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            transaction = builder._migration_transaction_directory(quest_root)
+            migrated_chapter = (
+                quest_root / "chapters" / "7EDCBA9876543210.snbt"
+            )
+            real_path_replace = Path.replace
+
+            def interrupt_after_target_copy(source: Path, target: Path):
+                if source == unsafe_chapter:
+                    shutil.copy2(source, target)
+                    raise OSError("injected migration path interruption")
+                return real_path_replace(source, target)
+
+            with mock.patch.object(
+                Path,
+                "replace",
+                autospec=True,
+                side_effect=interrupt_after_target_copy,
+            ), self.assertRaisesRegex(OSError, "path interruption"):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertTrue(unsafe_chapter.is_file())
+            self.assertTrue(migrated_chapter.is_file())
+            self.assertTrue((transaction / builder.MIGRATION_JOURNAL_NAME).is_file())
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(transaction.exists())
+            self.assertFalse(unsafe_chapter.exists())
+            self.assertTrue(migrated_chapter.is_file())
+
+    def test_signed_id_migration_covers_complete_ftb_identity_schema(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _mods_dir, unsafe_chapter = self.make_unsafe_migration_corpus(
+                Path(temp_dir)
+            )
+            source = unsafe_chapter.read_text(encoding="utf-8")
+            source = source.replace(
+                '\tgroup: "4525BB3160467FCB"\n',
+                '\tgroup: "4525BB3160467FCB"\n'
+                '\tautofocus_id: "EEDCBA9876543210"\n'
+                '\timages: [{\n'
+                '\t\tid: "A222222222222222"\n'
+                '\t\timage: "example:test"\n'
+                '\t\tdependency: "EEDCBA9876543210"\n'
+                '\t\tclick: "#EEDCBA9876543210/page/2"\n'
+                '\t\tclick_action: "open_quest:EEDCBA9876543210/true"\n'
+                '\t\thover: ["FEDCBA9876543210 stays image prose"]\n'
+                '\t\tauthored_data: { value: "FEDCBA9876543210" }\n'
+                '\t}\n'
+                '\t{ id: "1222222222222222", image: "example:test", '
+                'click: "https://example.invalid/FEDCBA9876543210" }\n'
+                '\t{ id: "1333333333333333", image: "example:test", '
+                'click: "custom:FEDCBA9876543210" }\n'
+                '\t{ id: "1444444444444444", image: "example:test", '
+                'click: "command:say FEDCBA9876543210" }]\n'
+                '\tquest_links: [{ id: "B111111111111111", linked_quest: "EEDCBA9876543210" }]\n'
+                '\tprose_map: { FEDCBA9876543210: "authored compound key" }\n',
+                1,
+            )
+            source = source.replace(
+                '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n',
+                '\t\trewards: [\n'
+                '\t\t\t{ id: "CEDCBA9876543210", type: "xp", xp: 1 }\n'
+                '\t\t\t{ id: "A555555555555555", type: "loot", table_id: -1L, '
+                'table_data: { rewards: [{ id: "B666666666666666", '
+                'type: "loot", table_id: -1L }] } }\n'
+                '\t\t\t{ id: "A777777777777777", type: "loot", table_id: -1L }\n'
+                '\t\t]\n',
+                1,
+            )
+            source = source.replace(
+                '\t\tdependencies: ["EEDCBA9876543210"]\n',
+                '\t\tdependencies: ["EEDCBA9876543210"]\n'
+                '\t\tdep_control_pts: { EEDCBA9876543210: '
+                '[1.0d, 2.0d, 3.0d, 4.0d] }\n',
+                1,
+            )
+            unsafe_chapter.write_text(source, encoding="utf-8")
+            reward_tables = quest_root / "reward_tables"
+            reward_tables.mkdir()
+            (reward_tables / "maximum.snbt").write_text(
+                "{\n"
+                '\tid: "FFFFFFFFFFFFFFFF"\n'
+                "\trewards: [{\n"
+                '\t\tid: "A333333333333333"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t\ttable_data: { rewards: [{\n"
+                '\t\t\tid: "B444444444444444"\n'
+                '\t\t\ttype: "loot"\n'
+                "\t\t\ttable_id: -1L\n"
+                "\t\t}] }\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            (reward_tables / "standalone.snbt").write_text(
+                "{\n"
+                '\tid: "0123456789ABCDEF"\n'
+                "\trewards: [{\n"
+                '\t\tid: "C888888888888888"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            language = quest_root / "lang/en_us.snbt"
+            language_source = language.read_text(encoding="utf-8").rstrip()
+            language.write_text(
+                language_source[:-1]
+                + '\timage.A222222222222222.title: "Image"\n'
+                + '\tquest_link.B111111111111111.title: "Link"\n'
+                + '\treward_table.FFFFFFFFFFFFFFFF.title: "Table"\n'
+                + '\tunknown.FFFFFFFFFFFFFFFF.title: "Preserved"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+
+            builder.normalize_quest_corpus_ids(quest_root)
+
+            migrated_path = quest_root / "chapters/7EDCBA9876543210.snbt"
+            migrated_text = migrated_path.read_text(encoding="utf-8")
+            migrated = builder._parse_snbt(migrated_text)
+            self.assertEqual(migrated["autofocus_id"], "6EDCBA9876543210")
+            self.assertEqual(migrated["quest_links"][0]["id"], "3111111111111111")
+            self.assertEqual(
+                migrated["quest_links"][0]["linked_quest"],
+                "6EDCBA9876543210",
+            )
+            image = migrated["images"][0]
+            self.assertEqual(image["id"], "2222222222222222")
+            self.assertEqual(image["click"], "#6EDCBA9876543210/page/2")
+            for location, actual, expected in (
+                (
+                    "image dependency",
+                    image["dependency"],
+                    "6EDCBA9876543210",
+                ),
+                (
+                    "image open_quest",
+                    image["click_action"],
+                    "open_quest:6EDCBA9876543210/true",
+                ),
+                (
+                    "quest dep_control_pts",
+                    "6EDCBA9876543210"
+                    in migrated["quests"][1]["dep_control_pts"],
+                    True,
+                ),
+            ):
+                with self.subTest(location=location):
+                    self.assertEqual(actual, expected)
+            self.assertEqual(
+                [entry["click"] for entry in migrated["images"][1:]],
+                [
+                    "https://example.invalid/FEDCBA9876543210",
+                    "custom:FEDCBA9876543210",
+                    "command:say FEDCBA9876543210",
+                ],
+            )
+            embedded = migrated["quests"][0]["rewards"][1]
+            external = migrated["quests"][0]["rewards"][2]
+            self.assertEqual(embedded["table_id"], "-1L")
+            self.assertEqual(embedded["id"], "2555555555555555")
+            self.assertEqual(
+                embedded["table_data"]["rewards"][0]["id"],
+                "3666666666666666",
+            )
+            self.assertEqual(
+                embedded["table_data"]["rewards"][0]["table_id"],
+                "9223372036854775807L",
+            )
+            self.assertEqual(external["table_id"], "9223372036854775807L")
+            migrated_table = builder._parse_snbt(
+                (reward_tables / "maximum.snbt").read_text(encoding="utf-8")
+            )
+            self.assertEqual(migrated_table["id"], "7FFFFFFFFFFFFFFF")
+            self.assertEqual(migrated_table["rewards"][0]["table_id"], "-1L")
+            self.assertEqual(
+                migrated_table["rewards"][0]["table_data"]["rewards"][0]["id"],
+                "3444444444444444",
+            )
+            self.assertEqual(
+                migrated_table["rewards"][0]["table_data"]["rewards"][0][
+                    "table_id"
+                ],
+                "9223372036854775807L",
+            )
+            standalone_table = builder._parse_snbt(
+                (reward_tables / "standalone.snbt").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                standalone_table["rewards"][0]["id"],
+                "4888888888888888",
+            )
+            self.assertEqual(
+                standalone_table["rewards"][0]["table_id"],
+                "9223372036854775807L",
+            )
+            migrated_language = language.read_text(encoding="utf-8")
+            self.assertIn("image.2222222222222222.title", migrated_language)
+            self.assertIn("quest_link.3111111111111111.title", migrated_language)
+            self.assertIn(
+                "reward_table.7FFFFFFFFFFFFFFF.title",
+                migrated_language,
+            )
+            self.assertIn("unknown.FFFFFFFFFFFFFFFF.title", migrated_language)
+            self.assertEqual(
+                image["hover"],
+                ["FEDCBA9876543210 stays image prose"],
+            )
+            self.assertEqual(
+                image["authored_data"],
+                {"value": "FEDCBA9876543210"},
+            )
+            self.assertNotIn("dep_control_pts", migrated)
+            self.assertIn(
+                'prose_map: { FEDCBA9876543210: "authored compound key" }',
+                migrated_text,
+            )
+
+    def test_signed_id_validator_is_independent_from_rewrite_classifier(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        relative = Path("chapters/1234567890ABCDEF.snbt")
+        base = {
+            "filename": "1234567890ABCDEF",
+            "group": "4525BB3160467FCB",
+            "id": "1234567890ABCDEF",
+            "images": [
+                {
+                    "id": "1111111111111111",
+                    "image": "example:test",
+                }
+            ],
+            "quest_links": [],
+            "quests": [
+                {
+                    "id": "234567890ABCDEF0",
+                    "tasks": [],
+                    "rewards": [],
+                }
+            ],
+        }
+        for location in (
+            "quest dep_control_pts",
+            "image dependency",
+            "image open_quest",
+            "legacy image open_quest",
+        ):
+            with self.subTest(location=location):
+                chapter = json.loads(json.dumps(base))
+                if location == "quest dep_control_pts":
+                    chapter["quests"][0]["dep_control_pts"] = {
+                        "F111111111111111": [1.0, 2.0, 3.0, 4.0]
+                    }
+                elif location == "image dependency":
+                    chapter["images"][0]["dependency"] = "F111111111111111"
+                elif location == "image open_quest":
+                    chapter["images"][0]["click_action"] = (
+                        "open_quest:F111111111111111/true"
+                    )
+                else:
+                    chapter["images"][0]["click"] = "#F111111111111111/page/2"
+                with mock.patch.object(
+                    builder,
+                    "_migration_snbt_role",
+                    return_value=None,
+                ):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "signed-safe FTB identity",
+                    ):
+                        builder._validate_known_ftb_identity_containers(
+                            relative,
+                            chapter,
+                        )
+
+    def test_migrated_oracle_binds_localization_to_exact_object_types(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+            language = quest_root / "lang/en_us.snbt"
+            language.write_text(
+                language.read_text(encoding="utf-8").replace(
+                    f'image.{identifiers["image"]}.title',
+                    f'image.{identifiers["quest"]}.title',
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                builder,
+                "_migration_localization_key",
+                side_effect=lambda value: value,
+            ), self.assertRaisesRegex(ValueError, "localization.*image"):
+                builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_uses_pinned_typed_reference_universes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        for autofocus_kind in ("quest", "link", "image"):
+            with self.subTest(autofocus_kind=autofocus_kind):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    chapter = (
+                        quest_root
+                        / "chapters"
+                        / f'{identifiers["chapter"]}.snbt'
+                    )
+                    chapter.write_text(
+                        chapter.read_text(encoding="utf-8").replace(
+                            f'autofocus_id: "{identifiers["quest"]}"',
+                            f'autofocus_id: "{identifiers[autofocus_kind]}"',
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_resolves_dep_control_points_only_to_quests(
+        self,
+    ) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            with mock.patch.object(
+                builder,
+                "_migration_snbt_role",
+                return_value=None,
+            ):
+                builder._validate_migrated_quest_corpus(quest_root)
+
+        for target_kind in ("task", "link", "chapter", "group"):
+            with self.subTest(target_kind=target_kind):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    chapter = (
+                        quest_root
+                        / "chapters"
+                        / f'{identifiers["chapter"]}.snbt'
+                    )
+                    chapter.write_text(
+                        chapter.read_text(encoding="utf-8").replace(
+                            f'{identifiers["quest"]}: '
+                            "[1.0d, 2.0d, 3.0d, 4.0d]",
+                            f'{identifiers[target_kind]}: '
+                            "[1.0d, 2.0d, 3.0d, 4.0d]",
+                            1,
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with mock.patch.object(
+                        builder,
+                        "_migration_snbt_role",
+                        return_value=None,
+                    ), self.assertRaisesRegex(ValueError, "dep_control_pts"):
+                        builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_rejects_cross_chapter_autofocus_and_unknown_legacy_click(
+        self,
+    ) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        other_quest = "0123456789ABCDEF"
+        reward_data_template = (
+            '{{ id: "{reward}", type: "loot", table_id: {table_id}L }}'
+        )
+        for case in ("cross-chapter autofocus", "unknown legacy click"):
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    reward_data = reward_data_template.format(
+                        reward=identifiers["reward"],
+                        table_id=int(identifiers["max_table"], 16),
+                    )
+                    self.write_simple_typed_chapters(
+                        quest_root,
+                        identifiers,
+                        reward_data,
+                        autofocus_id=(
+                            other_quest
+                            if case == "cross-chapter autofocus"
+                            else identifiers["quest"]
+                        ),
+                        other_quest_id=other_quest,
+                    )
+                    if case == "unknown legacy click":
+                        chapter = (
+                            quest_root
+                            / "chapters"
+                            / f'{identifiers["chapter"]}.snbt'
+                        )
+                        chapter.write_text(
+                            chapter.read_text(encoding="utf-8").replace(
+                                'image: "example:test"',
+                                'image: "example:test", '
+                                'click: "#0000000000000009/page/2"',
+                            ),
+                            encoding="utf-8",
+                        )
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "autofocus|legacy image click",
+                    ):
+                        builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_embedded_random_reward_sentinel_is_contextual(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        nested_reward = "567890ABCDEF0123"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                'table_id: -1L, table_data: { rewards: [{ '
+                f'id: "{nested_reward}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}] }} }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+
+            builder._validate_migrated_quest_corpus(quest_root)
+
+        malformed = (
+            (
+                "external-id-with-data",
+                'table_id: {table_id}L, table_data: {{ rewards: [] }}',
+            ),
+            ("missing-sentinel", "table_data: {{ rewards: [] }}"),
+            ("invalid-table-data", "table_id: -1L, table_data: []"),
+        )
+        for case, fields in malformed:
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    reward_data = (
+                        f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                        + fields.format(
+                            table_id=int(identifiers["max_table"], 16)
+                        )
+                        + " }"
+                    )
+                    self.write_simple_typed_chapters(
+                        quest_root,
+                        identifiers,
+                        reward_data,
+                        autofocus_id=identifiers["quest"],
+                    )
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "embedded reward table|table_data|sentinel",
+                    ):
+                        builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_recursive_reward_validation_has_depth_and_node_bounds(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        relative = Path("reward_tables/fixture.snbt")
+        nested = builder._parse_snbt(
+            "{ id: \"34567890ABCDEF01\", rewards: [{ "
+            "id: \"4567890ABCDEF012\", type: \"random\", table_id: -1L, "
+            "table_data: { rewards: [{ id: \"567890ABCDEF0123\", "
+            "type: \"xp\", xp: 1 }] } }] }"
+        )
+        with mock.patch.object(
+            builder,
+            "MIGRATION_REWARD_MAX_DEPTH",
+            0,
+            create=True,
+        ), self.assertRaisesRegex(ValueError, "reward table recursion depth"):
+            builder._validate_known_ftb_identity_containers(relative, nested)
+
+        wide = builder._parse_snbt(
+            "{ id: \"34567890ABCDEF01\", rewards: ["
+            "{ id: \"4567890ABCDEF012\", type: \"xp\", xp: 1 },"
+            "{ id: \"567890ABCDEF0123\", type: \"xp\", xp: 1 }] }"
+        )
+        with mock.patch.object(
+            builder,
+            "MIGRATION_REWARD_MAX_NODES",
+            1,
+            create=True,
+        ), self.assertRaisesRegex(ValueError, "reward node count"):
+            builder._validate_known_ftb_identity_containers(relative, wide)
+
+    def test_recursive_reward_oracle_resolves_nested_external_tables(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+            (quest_root / "reward_tables/fixture.snbt").write_text(
+                "{\n"
+                f'\tid: "{identifiers["table"]}"\n'
+                "\trewards: [{\n"
+                f'\t\tid: "{identifiers["table_reward"]}"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t\ttable_data: { rewards: [{\n"
+                '\t\t\tid: "567890ABCDEF0123"\n'
+                '\t\t\ttype: "loot"\n'
+                "\t\t\ttable_id: 9L\n"
+                "\t\t}] }\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "reward table references are unresolved",
+            ):
+                builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migration_preflights_all_payloads_before_repository_changes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            snapshots = {
+                write["target"]: (quest_root / write["target"]).read_bytes()
+                for write in journal["writes"]
+            }
+            final_write = journal["writes"][-1]
+            payload = transaction / "stage" / final_write["payload"]
+            payload.write_bytes(payload.read_bytes() + b"corrupt")
+            backup_payload = (
+                transaction
+                / builder.MIGRATION_STAGE_BACKUP_NAME
+                / final_write["payload"]
+            )
+            if backup_payload.exists():
+                backup_payload.write_bytes(b"corrupt backup payload")
+
+            with self.assertRaisesRegex(ValueError, "staged FTB ID migration payload"):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertEqual(
+                {
+                    target: (quest_root / target).read_bytes()
+                    for target in snapshots
+                },
+                snapshots,
+            )
+
+    def test_migration_rehashes_repaired_stage_before_repository_changes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            snapshots = {
+                write["target"]: (quest_root / write["target"]).read_bytes()
+                for write in journal["writes"]
+            }
+            final_write = journal["writes"][-1]
+            repaired_stage = transaction / "stage" / final_write["payload"]
+            repaired_stage.write_bytes(b"force repair from authenticated backup")
+            real_copy = builder._durable_copy_file
+
+            def corrupt_repaired_copy(source: Path, target: Path, mode: int) -> None:
+                real_copy(source, target, mode)
+                if target == repaired_stage:
+                    target.write_bytes(target.read_bytes() + b"corrupt after repair")
+
+            with mock.patch.object(
+                builder,
+                "_durable_copy_file",
+                side_effect=corrupt_repaired_copy,
+            ), self.assertRaisesRegex(
+                ValueError,
+                "staged FTB ID migration payload",
+            ):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertEqual(
+                {
+                    target: (quest_root / target).read_bytes()
+                    for target in snapshots
+                },
+                snapshots,
+            )
+
+    def test_migration_state_root_is_durable_and_checkout_independent(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            state_root = base / "state"
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base / "checkout"
+            )
+            with mock.patch.dict(
+                os.environ,
+                {"AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": str(state_root)},
+            ):
+                original = builder._migration_transaction_directory(quest_root)
+                relocated_base = base / "relocated"
+                (base / "checkout").rename(relocated_base)
+                relocated = relocated_base / "config/ftbquests/quests"
+                moved = builder._migration_transaction_directory(relocated)
+
+            self.assertTrue(original.is_relative_to(state_root))
+            self.assertEqual(moved, original)
+
+    def test_migration_recovers_truncated_journal_and_corrupt_stage(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            for fault in ("journal", "stage"):
+                with self.subTest(fault=fault):
+                    case = base / fault
+                    quest_root, mods_dir, _unsafe_chapter = (
+                        self.make_unsafe_migration_corpus(case)
+                    )
+                    transaction = case / "state/transaction"
+                    self.assertTrue(
+                        builder._migration_build_transaction(quest_root, transaction)
+                    )
+                    if fault == "journal":
+                        (transaction / builder.MIGRATION_JOURNAL_NAME).write_bytes(
+                            b'{"version":'
+                        )
+                    else:
+                        journal = json.loads(
+                            (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                                encoding="utf-8"
+                            )
+                        )
+                        payload = transaction / "stage" / journal["writes"][-1]["payload"]
+                        payload.write_bytes(b"corrupt staged payload")
+
+                    try:
+                        builder._migration_apply_transaction(quest_root, transaction)
+                    except ValueError as error:
+                        self.fail(f"migration recovery failed: {error}")
+
+                    self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+                    self.assertFalse(transaction.exists())
+
+    def test_migration_recovers_missing_target_and_cleans_orphan_temp(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            journal = json.loads(
+                (transaction / builder.MIGRATION_JOURNAL_NAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            write = next(
+                item
+                for item in journal["writes"]
+                if item["target"] == item["payload"]
+            )
+            target = quest_root / write["target"]
+            target.unlink()
+            orphan = target.parent / f".{target.name}.orphan.migration"
+            orphan.write_bytes(b"orphan")
+
+            try:
+                builder._migration_apply_transaction(quest_root, transaction)
+            except ValueError as error:
+                self.fail(f"missing-target recovery failed: {error}")
+
+            self.assertEqual(self.quests.validate_quests(quest_root, mods_dir), [])
+            self.assertFalse(orphan.exists())
+            self.assertFalse(transaction.exists())
+
+    def test_migration_detects_stage_change_after_preflight(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base
+            )
+            transaction = base / "state/transaction"
+            self.assertTrue(builder._migration_build_transaction(quest_root, transaction))
+            real_replace = builder._replace_migration_file
+            mutated = False
+
+            def mutate_after_preflight(
+                source: Path,
+                target: Path,
+                mode: int,
+                expected_sha256: str | None = None,
+            ):
+                nonlocal mutated
+                if not mutated and source.name == builder.MANAGED_STATE_NAME:
+                    payload = json.loads(source.read_text(encoding="utf-8"))
+                    payload["unrelated_probe"] = True
+                    source.write_text(
+                        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                if expected_sha256 is None:
+                    return real_replace(source, target, mode)
+                return real_replace(source, target, mode, expected_sha256)
+
+            with mock.patch.object(
+                builder,
+                "_replace_migration_file",
+                side_effect=mutate_after_preflight,
+            ), self.assertRaisesRegex(ValueError, "staged.*changed|payload.*hash"):
+                builder._migration_apply_transaction(quest_root, transaction)
+
+            self.assertTrue(mutated)
+            self.assertTrue(transaction.exists())
+
+    def test_migration_process_death_recovers_after_checkout_relocation(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            checkout = base / "checkout"
+            state_root = base / "state"
+            quest_root, mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                checkout
+            )
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(TOOLS)
+            environment["AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT"] = str(state_root)
+            with mock.patch.dict(os.environ, environment, clear=True):
+                transaction = builder._migration_transaction_directory(quest_root)
+            interrupt = (
+                "import os\n"
+                "from pathlib import Path\n"
+                "from afterlight_quests import builder\n"
+                f"root = Path({str(quest_root)!r})\n"
+                "real_replace = builder.os.replace\n"
+                "published = 0\n"
+                "def terminate(source, target):\n"
+                "    global published\n"
+                "    result = real_replace(source, target)\n"
+                "    try:\n"
+                "        Path(target).relative_to(root)\n"
+                "    except ValueError:\n"
+                "        return result\n"
+                "    published += 1\n"
+                "    if published == 1:\n"
+                "        os._exit(73)\n"
+                "    return result\n"
+                "builder.os.replace = terminate\n"
+                "builder.normalize_quest_corpus_ids(root)\n"
+            )
+            try:
+                interrupted = subprocess.run(
+                    [sys.executable, "-c", interrupt],
+                    cwd=ROOT,
+                    env=environment,
+                    check=False,
+                )
+                self.assertEqual(interrupted.returncode, 73)
+                self.assertTrue(transaction.exists())
+
+                relocated_checkout = base / "relocated"
+                checkout.rename(relocated_checkout)
+                relocated_root = relocated_checkout / "config/ftbquests/quests"
+                resumed = subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "from pathlib import Path; "
+                        "from afterlight_quests import builder; "
+                        f"builder.normalize_quest_corpus_ids(Path({str(relocated_root)!r}))",
+                    ],
+                    cwd=ROOT,
+                    env=environment,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(resumed.returncode, 0, resumed.stderr)
+                self.assertEqual(
+                    self.quests.validate_quests(
+                        relocated_root,
+                        relocated_checkout / "mods",
+                    ),
+                    [],
+                )
+                self.assertFalse(transaction.exists())
+            finally:
+                shutil.rmtree(transaction, ignore_errors=True)
+
+    def test_migration_fsyncs_state_and_target_directories(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            state_root = base / "state"
+            quest_root, _mods_dir, _unsafe_chapter = self.make_unsafe_migration_corpus(
+                base / "checkout"
+            )
+            real_fsync = builder.os.fsync
+            directory_fsyncs: list[tuple[int, int]] = []
+
+            def record_fsync(descriptor: int):
+                descriptor_stat = os.fstat(descriptor)
+                if stat.S_ISDIR(descriptor_stat.st_mode):
+                    directory_fsyncs.append(
+                        (descriptor_stat.st_dev, descriptor_stat.st_ino)
+                    )
+                return real_fsync(descriptor)
+
+            with mock.patch.dict(
+                os.environ,
+                {"AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": str(state_root)},
+            ), mock.patch.object(builder.os, "fsync", side_effect=record_fsync):
+                builder.normalize_quest_corpus_ids(quest_root)
+
+            self.assertGreaterEqual(len(set(directory_fsyncs)), 2)
 
     def test_snbt_long_converts_hex_ids_to_signed_java_longs(self) -> None:
         self.assertEqual(
@@ -1051,6 +2669,24 @@ class QuestCompilerTests(unittest.TestCase):
             self.quests.SnbtLong(-(1 << 63) - 1)
         with self.assertRaisesRegex(ValueError, "hex ID"):
             self.quests.SnbtLong.from_hex("10000000000000000")
+
+    def test_all_energy_tasks_use_the_registered_neoforge_type(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        energy_tasks = []
+        for path in sorted((ROOT / "config/ftbquests/quests/chapters").glob("*.snbt")):
+            parsed = _parse_snbt(path.read_text(encoding="utf-8"))
+            for quest in parsed["quests"]:
+                for task in quest["tasks"]:
+                    if task.get("type") in {"energy", "forge_energy"}:
+                        energy_tasks.append((quest["id"], task["id"], task["type"]))
+
+        self.assertTrue(energy_tasks)
+        self.assertNotIn("energy", {task_type for _quest, _task, task_type in energy_tasks})
+        self.assertIn(
+            ("752409F46D854A92", "14E2851EC7427F5A", "forge_energy"),
+            energy_tasks,
+        )
 
     def test_act_two_catalog_has_exact_shape_and_dependency_chain(self) -> None:
         catalog = self.quests.build_catalog()[:6]
@@ -1105,7 +2741,7 @@ class QuestCompilerTests(unittest.TestCase):
             all(chapter.group.resolved_id == "4525BB3160467FCB" for chapter in catalog)
         )
         self.assertEqual([chapter.order_index for chapter in catalog], [5, 6, 7, 8, 9, 10])
-        self.assertEqual(catalog[0].quests[0].dependency_ids, ("DA407B47132C07C6",))
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("5A407B47132C07C6",))
         for previous, current in zip(catalog, catalog[1:]):
             self.assertEqual(
                 current.quests[0].dependency_ids,
@@ -1246,24 +2882,24 @@ class QuestCompilerTests(unittest.TestCase):
             expected_quests,
         )
         self.assertEqual([chapter.order_index for chapter in catalog], [11, 12, 13, 14, 15])
-        self.assertEqual(catalog[0].quests[0].dependency_ids, ("836D1C6E20B78461",))
+        self.assertEqual(catalog[0].quests[0].dependency_ids, ("036D1C6E20B78461",))
         for previous, current in zip(catalog[:-1], catalog[1:-1]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
         self.assertEqual(
             catalog[-1].quests[0].dependency_ids,
             (
-                "90EDD2BED35BE9E3",
+                "10EDD2BED35BE9E3",
                 "752C3E53CA89C92D",
-                "A1A99D99B372916F",
+                "21A99D99B372916F",
                 "3497EFDF016FAFD7",
             ),
         )
         self.assertEqual(
             [chapter.quests[-1].id for chapter in catalog],
             [
-                "90EDD2BED35BE9E3",
+                "10EDD2BED35BE9E3",
                 "752C3E53CA89C92D",
-                "A1A99D99B372916F",
+                "21A99D99B372916F",
                 "3497EFDF016FAFD7",
                 "72446D404001B38D",
             ],
@@ -1396,7 +3032,7 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertIn("\t\t\trepeat_cooldown: 5", rendered)
 
     def test_dependency_requirement_renders_and_rejects_unknown_modes(self) -> None:
-        catalog = self.make_catalog(dependency="AAAAAAAAAAAAAAAA")
+        catalog = self.make_catalog(dependency="2AAAAAAAAAAAAAAA")
         catalog[0].quests[0].dependency_requirement = "one_completed"
 
         rendered = self.quests.render_chapter(catalog[0])
@@ -1416,7 +3052,7 @@ class QuestCompilerTests(unittest.TestCase):
         full_catalog = self.quests.build_catalog()
         catalog = [
             chapter for chapter in full_catalog
-            if chapter.group.resolved_id == "CA20F33642175B95"
+            if chapter.group.resolved_id == "4A20F33642175B95"
         ]
 
         self.assertEqual([chapter.title for chapter in catalog], [
@@ -1432,7 +3068,7 @@ class QuestCompilerTests(unittest.TestCase):
         ])
         self.assertEqual([len(chapter.quests) for chapter in catalog], [6, 6, 6, 6, 6, 6, 1, 1, 1])
         self.assertTrue(all(
-            chapter.group.resolved_id == "CA20F33642175B95"
+            chapter.group.resolved_id == "4A20F33642175B95"
             for chapter in catalog
         ))
         self.assertEqual([chapter.order_index for chapter in catalog], [1, 2, 3, 4, 5, 6, 20, 21, 22])
@@ -1442,7 +3078,7 @@ class QuestCompilerTests(unittest.TestCase):
                 chapter.group.resolved_id == "4525BB3160467FCB"
                 and chapter.order_index <= 15
             )
-            or chapter.group.resolved_id == "CA20F33642175B95"
+            or chapter.group.resolved_id == "4A20F33642175B95"
         ]
         self.assertEqual(
             (
@@ -1484,11 +3120,11 @@ class QuestCompilerTests(unittest.TestCase):
             infrastructure_proof.dependency_ids,
             (
                 "5ADAE277C9FEF0F1",
-                "B107D8813D59B2FF",
+                "3107D8813D59B2FF",
                 "66CDE7B061D8DA5C",
                 "42EE25F560AE65CD",
-                "E1F5D15817ED5EFD",
-                "FC9EA276C2D84333",
+                "61F5D15817ED5EFD",
+                "7C9EA276C2D84333",
             ),
         )
         self.assertEqual(len(infrastructure_proof.tasks), 1)
@@ -1686,7 +3322,7 @@ class QuestCompilerTests(unittest.TestCase):
 
     def test_task_six_catalog_has_exact_side_group_shape_and_finales(self) -> None:
         side_group_ids = {
-            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
         }
         catalog = [
             chapter for chapter in self.quests.build_catalog()
@@ -1711,38 +3347,38 @@ class QuestCompilerTests(unittest.TestCase):
             6, 6, 6, 5, 7, 7, 7, 7, 8, 6, 8, 11,
         ])
         self.assertEqual([chapter.id for chapter in catalog], [
-            "DCDF0BB344B02192",
-            "91D0B654D6E9B714",
+            "5CDF0BB344B02192",
+            "11D0B654D6E9B714",
             "045647E54F0A1D9E",
             "1A6C8CE2A6D208F9",
             "3C0EE28909760862",
-            "8A48AB2CC20BC026",
-            "FA26679C913AAF90",
+            "0A48AB2CC20BC026",
+            "7A26679C913AAF90",
             "5307E7406CB0DAE6",
             "4CEEFB108A0EECF8",
             "170AB7B39A0C4E47",
             "6A433C07EC56210B",
-            "EEFD817FBDA0461F",
+            "6EFD817FBDA0461F",
         ])
         self.assertEqual([chapter.quests[-1].id for chapter in catalog], [
             "051EA7B2A3B36BFD",
-            "DF26F92E726A22AC",
-            "C9286624F8D7D554",
-            "87338DE0FE8114CF",
+            "5F26F92E726A22AC",
+            "49286624F8D7D554",
+            "07338DE0FE8114CF",
             "4F4161F5B97E27ED",
             "3E1151169E81AD32",
             "7131E55FB7E21244",
             "505A306462A8BC7E",
             "0DAB608A7B083DB8",
             "26E98713CAC0A689",
-            "A31CFB60DB42BD03",
+            "231CFB60DB42BD03",
             "00EB5746A726C5B4",
         ])
         self.assertEqual(
             [chapter.group.resolved_id for chapter in catalog],
             ["51FF272F5030D2E6"] * 4
             + ["4DEAD1F5F7AB4DA3"] * 4
-            + ["C8F8381D9519D002"] * 4,
+            + ["48F8381D9519D002"] * 4,
         )
         full_catalog = self.quests.build_catalog()
         self.assertEqual(
@@ -1752,7 +3388,7 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
             ),
-            (36, 251, 263, 332),
+            (37, 257, 277, 341),
         )
 
     def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:
@@ -1763,8 +3399,8 @@ class QuestCompilerTests(unittest.TestCase):
         ars_finale = "7480D99D56556C8E"
         branch_finales = (
             "051EA7B2A3B36BFD",
-            "DF26F92E726A22AC",
-            "C9286624F8D7D554",
+            "5F26F92E726A22AC",
+            "49286624F8D7D554",
         )
 
         for title in ("Names in the Circuit", "Spells Under Load", "The Soul Ledger"):
@@ -1804,20 +3440,20 @@ class QuestCompilerTests(unittest.TestCase):
 
         self.assertEqual(parsed["id"], "6B2D7DB791D992C3")
         self.assertEqual([quest["id"] for quest in parsed["quests"]], [
-            "96783315E0833B1D",
+            "16783315E0833B1D",
             "747D181BE87A2429",
-            "9738976FB1A6167A",
-            "DEEFEE4A3873DE5C",
-            "F2CE68CEF727A313",
+            "1738976FB1A6167A",
+            "5EEFEE4A3873DE5C",
+            "72CE68CEF727A313",
         ])
         self.assertEqual(
             [task["id"] for quest in parsed["quests"] for task in quest["tasks"]],
             [
-                "E595488C9696FD3D",
-                "CC3B34BB975A26E4",
-                "F0386E249F64C241",
+                "6595488C9696FD3D",
+                "4C3B34BB975A26E4",
+                "70386E249F64C241",
                 "448C181914369553",
-                "88B818D0316B37F9",
+                "08B818D0316B37F9",
                 "1BE02019A215A7C4",
             ],
         )
@@ -1827,11 +3463,11 @@ class QuestCompilerTests(unittest.TestCase):
                 "300AB696B71C85DF",
                 "3AB2DC0BCB5633EE",
                 "3F4B8DA2BF026248",
-                "96B4C8E5A1B26706",
+                "16B4C8E5A1B26706",
                 "60C70F21C10E9726",
-                "DDF12C4395F6A64A",
-                "B75634D32BF15E2B",
-                "937D55E3FC4E0FC8",
+                "5DF12C4395F6A64A",
+                "375634D32BF15E2B",
+                "137D55E3FC4E0FC8",
             ],
         )
         key_tasks = [
@@ -1850,7 +3486,7 @@ class QuestCompilerTests(unittest.TestCase):
             "Everything in this wing is optional. Nothing in this wing is small. "
             "Bring the recovered Deep Vault Key and a hammer. "
             "The key opens the way; honest metallurgy does the rest.",
-            localization["quest.96783315E0833B1D.quest_desc"],
+            localization["quest.16783315E0833B1D.quest_desc"],
         )
 
     def test_task_six_side_graph_has_only_planned_story_dependency_and_is_acyclic(self) -> None:
@@ -1859,7 +3495,7 @@ class QuestCompilerTests(unittest.TestCase):
         catalog = self.quests.build_catalog()
         story_group_id = catalog[0].group.resolved_id
         side_group_ids = {
-            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+            "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
         }
         side_chapters = [
             chapter for chapter in catalog
@@ -1881,20 +3517,20 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(len(side_quest_ids), 84)
         self.assertEqual(
             side_quest_ids & story_dependencies,
-            {"87338DE0FE8114CF"},
+            {"07338DE0FE8114CF"},
         )
 
         deep_vault = [
             chapter for chapter in catalog
             if chapter.group.resolved_id == "4DEAD1F5F7AB4DA3"
         ]
-        self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("F2CE68CEF727A313",))
+        self.assertEqual(deep_vault[0].quests[0].dependency_ids, ("72CE68CEF727A313",))
         for previous, current in zip(deep_vault, deep_vault[1:]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
 
         atlas = [
             chapter for chapter in catalog
-            if chapter.group.resolved_id == "C8F8381D9519D002"
+            if chapter.group.resolved_id == "48F8381D9519D002"
         ]
         self.assertEqual(
             atlas[-1].quests[0].dependency_ids,
@@ -2098,7 +3734,7 @@ class QuestCompilerTests(unittest.TestCase):
         project_items: set[str] = set()
         for chapter in self.quests.build_catalog():
             if chapter.group.resolved_id not in {
-                "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "C8F8381D9519D002",
+                "51FF272F5030D2E6", "4DEAD1F5F7AB4DA3", "48F8381D9519D002",
             }:
                 continue
             project_items.add(chapter.icon)
@@ -2172,7 +3808,7 @@ class QuestCompilerTests(unittest.TestCase):
                 "2E19596E25ADFC17",
                 "692967044603050B",
                 "490AEF80C130D8DD",
-                "93E278CD695BCE11",
+                "13E278CD695BCE11",
                 "5ADAE277C9FEF0F1",
             ],
         )
@@ -2200,7 +3836,7 @@ class QuestCompilerTests(unittest.TestCase):
     def test_writer_preserves_unmanaged_files_and_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
-            unmanaged = quest_root / "chapters" / "AAAAAAAAAAAAAAAA.snbt"
+            unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
             unmanaged.write_text("unmanaged\n", encoding="utf-8")
             catalog = self.make_catalog()
 
@@ -2213,7 +3849,7 @@ class QuestCompilerTests(unittest.TestCase):
 
             self.assertEqual(written, [chapter_path])
             self.assertEqual(unmanaged.read_text(encoding="utf-8"), "unmanaged\n")
-            self.assertIn("quest.AAAAAAAAAAAAAAAA.title", first_language)
+            self.assertIn("quest.2AAAAAAAAAAAAAAA.title", first_language)
             self.assertIn(f"chapter.{catalog[0].id}.title", first_language)
 
             self.quests.write_catalog(catalog, quest_root)
@@ -2227,7 +3863,7 @@ class QuestCompilerTests(unittest.TestCase):
     def test_writer_removes_only_stale_compiler_managed_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
-            unmanaged = quest_root / "chapters" / "AAAAAAAAAAAAAAAA.snbt"
+            unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
             unmanaged.write_text("unmanaged\n", encoding="utf-8")
             catalog = self.make_catalog()
             managed_chapter = quest_root / "chapters" / f"{catalog[0].id}.snbt"
@@ -2481,14 +4117,14 @@ class QuestCompilerTests(unittest.TestCase):
             ),
             "unresolved dependency": lambda text, chapter, quest: text.replace(
                 f'id: "{quest.id}"',
-                f'id: "{quest.id}"\n\t\t\tdependencies: ["FFFFFFFFFFFFFFFF"]',
+                f'id: "{quest.id}"\n\t\t\tdependencies: ["7FFFFFFFFFFFFFFF"]',
                 1,
             ),
             "em dash": lambda text, chapter, quest: text.replace(
                 'filename:', 'note: "forbidden \u2014 punctuation"\n\tfilename:', 1
             ),
             "filename/id mismatch": lambda text, chapter, quest: text.replace(
-                f'filename: "{chapter.id}"', 'filename: "AAAAAAAAAAAAAAAA"', 1
+                f'filename: "{chapter.id}"', 'filename: "2AAAAAAAAAAAAAAA"', 1
             ),
             "malformed item ID": lambda text, chapter, quest: text.replace(
                 "example:widget", "Example:missing"
@@ -2557,6 +4193,31 @@ class QuestCompilerTests(unittest.TestCase):
             errors = self.quests.validate_quests(quest_root, mods_dir)
             self.assertTrue(any("malformed IDs" in error for error in errors), errors)
 
+    def test_validator_rejects_high_bit_ftb_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            mods_dir = base / "mods"
+            self.make_mod_jar(mods_dir)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            task_id = catalog[0].quests[0].tasks[0].id
+            chapter_path.write_text(
+                chapter_path.read_text(encoding="utf-8").replace(
+                    f'id: "{task_id}"',
+                    'id: "FFFFFFFFFFFFFFFF"',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            errors = self.quests.validate_quests(quest_root, mods_dir)
+            self.assertTrue(
+                any("signed-safe FTB ID" in error for error in errors),
+                errors,
+            )
+
     def test_validator_rejects_unbalanced_snbt(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -2588,7 +4249,7 @@ class QuestCompilerTests(unittest.TestCase):
                 chapter_path.read_text(encoding="utf-8").replace(
                     f'id: "{quest_id}"',
                     f'id: "{quest_id}"\n\t\t\tdependencies: [\n'
-                    '\t\t\t\t"FFFFFFFFFFFFFFFF"\n\t\t\t]',
+                    '\t\t\t\t"7FFFFFFFFFFFFFFF"\n\t\t\t]',
                     1,
                 ),
                 encoding="utf-8",

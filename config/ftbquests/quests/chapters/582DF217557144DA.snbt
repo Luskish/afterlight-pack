@@ -10,13 +10,13 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "D57DC7BACD462EFE"
-			dependencies: ["A1A99D99B372916F"]
+			id: "557DC7BACD462EFE"
+			dependencies: ["21A99D99B372916F"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BEA453ACE70727D9"
+					id: "3EA453ACE70727D9"
 					type: "item"
 					item: { count: 1, id: "oritech:exo_jetpack" }
 					count: 1L
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "85119726F772D973"
+					id: "05119726F772D973"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,12 +34,12 @@
 		}
 		{
 			id: "6770D80A33AA7CC7"
-			dependencies: ["D57DC7BACD462EFE"]
+			dependencies: ["557DC7BACD462EFE"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "83005E62D7F11D57"
+					id: "03005E62D7F11D57"
 					type: "advancement"
 					advancement: "aeronautics:head_in_the_clouds"
 					criterion: ""
@@ -55,7 +55,7 @@
 			]
 		}
 		{
-			id: "98A7CD636003AFE5"
+			id: "18A7CD636003AFE5"
 			dependencies: ["6770D80A33AA7CC7"]
 			x: 4.0d
 			y: 0.0d
@@ -78,7 +78,7 @@
 		}
 		{
 			id: "06029069587D765F"
-			dependencies: ["98A7CD636003AFE5"]
+			dependencies: ["18A7CD636003AFE5"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -92,7 +92,7 @@
 			]
 			rewards: [
 				{
-					id: "F7275C7C262A9638"
+					id: "77275C7C262A9638"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -100,13 +100,13 @@
 			]
 		}
 		{
-			id: "F1DD8E9040C4CBA3"
+			id: "71DD8E9040C4CBA3"
 			dependencies: ["06029069587D765F"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "B9C69BF4D90908A2"
+					id: "39C69BF4D90908A2"
 					type: "item"
 					item: { count: 1, id: "oritech:jetpack_elytra" }
 					count: 1L
@@ -115,7 +115,7 @@
 			]
 			rewards: [
 				{
-					id: "AF6A9F220ECAB382"
+					id: "2F6A9F220ECAB382"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -123,8 +123,8 @@
 			]
 		}
 		{
-			id: "A3C08FB037E35BDE"
-			dependencies: ["F1DD8E9040C4CBA3"]
+			id: "23C08FB037E35BDE"
+			dependencies: ["71DD8E9040C4CBA3"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -144,20 +144,20 @@
 			]
 		}
 		{
-			id: "F9B4A2CBDDE45176"
-			dependencies: ["A3C08FB037E35BDE"]
+			id: "79B4A2CBDDE45176"
+			dependencies: ["23C08FB037E35BDE"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "EFED0CC0D7A39EBC"
+					id: "6FED0CC0D7A39EBC"
 					type: "structure"
 					structure: "eternal_starlight:golem_forge"
 				}
 			]
 			rewards: [
 				{
-					id: "DEADB9933E1C8573"
+					id: "5EADB9933E1C8573"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -166,12 +166,12 @@
 		}
 		{
 			id: "793ED9746DE25AD2"
-			dependencies: ["F9B4A2CBDDE45176"]
+			dependencies: ["79B4A2CBDDE45176"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "EDBDAAFA6ACB3BFC"
+					id: "6DBDAAFA6ACB3BFC"
 					type: "kill"
 					entity: "eternal_starlight:the_gatekeeper"
 					value: 1L
@@ -187,7 +187,7 @@
 			]
 		}
 		{
-			id: "FDEA80315CFDE8AA"
+			id: "7DEA80315CFDE8AA"
 			dependencies: ["793ED9746DE25AD2"]
 			x: 16.0d
 			y: 0.0d
@@ -211,7 +211,7 @@
 		}
 		{
 			id: "3497EFDF016FAFD7"
-			dependencies: ["FDEA80315CFDE8AA"]
+			dependencies: ["7DEA80315CFDE8AA"]
 			x: 18.0d
 			y: 0.0d
 			tasks: [
@@ -227,10 +227,10 @@
 				{
 					id: "018D14893F6DE0CF"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "CC50616E9D9FAE02"
+					id: "4C50616E9D9FAE02"
 					type: "item"
 					item: { count: 34, id: "kubejs:requisition_chit" }
 					count: 34
@@ -241,13 +241,13 @@
 					xp: 800
 				}
 				{
-					id: "AA8880D7E6C0A05B"
+					id: "2A8880D7E6C0A05B"
 					type: "item"
 					item: { count: 1, id: "kubejs:schematic_lattice_matrix" }
 					count: 1
 				}
 				{
-					id: "A88082985A62A22A"
+					id: "288082985A62A22A"
 					type: "gamestage"
 					stage: "afterlight:gate_ae2"
 				}

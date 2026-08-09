@@ -1,17 +1,17 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "AD7CB8E643BDC03B"
+	filename: "2D7CB8E643BDC03B"
 	group: "4525BB3160467FCB"
 	icon: { id: "oritech:advanced_computing_engine" }
-	id: "AD7CB8E643BDC03B"
+	id: "2D7CB8E643BDC03B"
 	images: [ ]
 	order_index: 11
 	quest_links: [ ]
 	quests: [
 		{
-			id: "EA0FBE1789BEFD37"
-			dependencies: ["836D1C6E20B78461"]
+			id: "6A0FBE1789BEFD37"
+			dependencies: ["036D1C6E20B78461"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "9722A64B05E8F748"
-			dependencies: ["EA0FBE1789BEFD37"]
+			id: "1722A64B05E8F748"
+			dependencies: ["6A0FBE1789BEFD37"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "DA2D67A226C939A3"
+					id: "5A2D67A226C939A3"
 					type: "item"
 					item: { count: 1, id: "oritech:pulverizer_block" }
 					count: 1L
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "D3D1A5F68323B089"
-			dependencies: ["9722A64B05E8F748"]
+			id: "53D1A5F68323B089"
+			dependencies: ["1722A64B05E8F748"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -80,12 +80,12 @@
 		}
 		{
 			id: "2D3E39C0E15785D1"
-			dependencies: ["D3D1A5F68323B089"]
+			dependencies: ["53D1A5F68323B089"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "D0ADDD68F0D98397"
+					id: "50ADDD68F0D98397"
 					type: "item"
 					item: { count: 1, id: "oritech:assembler_block" }
 					count: 1L
@@ -102,13 +102,13 @@
 			]
 		}
 		{
-			id: "EE83735A4CE6877B"
+			id: "6E83735A4CE6877B"
 			dependencies: ["2D3E39C0E15785D1"]
 			x: 8.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "EDFB6F26C9FE5C0C"
+					id: "6DFB6F26C9FE5C0C"
 					type: "item"
 					item: { count: 1, id: "oritech:foundry_block" }
 					count: 1L
@@ -131,7 +131,7 @@
 			y: 1.0d
 			tasks: [
 				{
-					id: "A7A4A5D83FE7B5C1"
+					id: "27A4A5D83FE7B5C1"
 					type: "item"
 					item: { count: 1, id: "oritech:laser_arm_block" }
 					count: 1L
@@ -149,12 +149,12 @@
 		}
 		{
 			id: "761A07B7BE2502DE"
-			dependencies: ["EE83735A4CE6877B"]
+			dependencies: ["6E83735A4CE6877B"]
 			x: 10.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "B20DD121F7FEE583"
+					id: "320DD121F7FEE583"
 					type: "item"
 					item: { count: 1, id: "oritech:jetpack" }
 					count: 1L
@@ -163,7 +163,7 @@
 			]
 			rewards: [
 				{
-					id: "F30CC9F22719BE6A"
+					id: "730CC9F22719BE6A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -172,12 +172,12 @@
 		}
 		{
 			id: "4B68E6373A038832"
-			dependencies: ["EE83735A4CE6877B", "035F257B1640AD1D"]
+			dependencies: ["6E83735A4CE6877B", "035F257B1640AD1D"]
 			x: 10.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "8ADD935A676435E3"
+					id: "0ADD935A676435E3"
 					type: "item"
 					item: { count: 1, id: "oritech:reactor_controller" }
 					count: 1L
@@ -200,7 +200,7 @@
 			y: 1.0d
 			tasks: [
 				{
-					id: "9482D851ED4D0F4F"
+					id: "1482D851ED4D0F4F"
 					type: "item"
 					item: { count: 1, id: "oritech:prometheum_ingot" }
 					count: 16L
@@ -217,7 +217,7 @@
 			]
 		}
 		{
-			id: "90EDD2BED35BE9E3"
+			id: "10EDD2BED35BE9E3"
 			dependencies: ["5D88D33506B63870", "761A07B7BE2502DE"]
 			x: 14.0d
 			y: 0.0d
@@ -232,29 +232,29 @@
 			]
 			rewards: [
 				{
-					id: "AB028D5D7A21F763"
+					id: "2B028D5D7A21F763"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "B3A194CBD0316724"
+					id: "33A194CBD0316724"
 					type: "item"
 					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28
 				}
 				{
-					id: "D3630C5F4F47121A"
+					id: "53630C5F4F47121A"
 					type: "xp"
 					xp: 550
 				}
 				{
-					id: "8675D6672A5276BF"
+					id: "0675D6672A5276BF"
 					type: "item"
 					item: { count: 1, id: "kubejs:schematic_kinetic_frame" }
 					count: 1
 				}
 				{
-					id: "84C5E80BE826153B"
+					id: "04C5E80BE826153B"
 					type: "gamestage"
 					stage: "afterlight:gate_create"
 				}

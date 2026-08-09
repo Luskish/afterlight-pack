@@ -1,17 +1,17 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "EEFD817FBDA0461F"
-	group: "C8F8381D9519D002"
+	filename: "6EFD817FBDA0461F"
+	group: "48F8381D9519D002"
 	icon: { id: "mowziesmobs:wrought_helmet" }
-	id: "EEFD817FBDA0461F"
+	id: "6EFD817FBDA0461F"
 	images: [ ]
 	order_index: 4
 	quest_links: [ ]
 	quests: [
 		{
 			id: "37E7EE94AB9C2675"
-			dependencies: ["0DAB608A7B083DB8", "26E98713CAC0A689", "A31CFB60DB42BD03"]
+			dependencies: ["0DAB608A7B083DB8", "26E98713CAC0A689", "231CFB60DB42BD03"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -22,7 +22,7 @@
 			]
 			rewards: [
 				{
-					id: "A61977E8F7F9482F"
+					id: "261977E8F7F9482F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -44,7 +44,7 @@
 			]
 			rewards: [
 				{
-					id: "C0F1CBBCF902DA01"
+					id: "40F1CBBCF902DA01"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -52,7 +52,7 @@
 			]
 		}
 		{
-			id: "B38780DB7926F700"
+			id: "338780DB7926F700"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 4.0d
 			y: -3.0d
@@ -74,7 +74,7 @@
 			]
 		}
 		{
-			id: "F9F5F12B6BD564B1"
+			id: "79F5F12B6BD564B1"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 6.0d
 			y: -3.0d
@@ -88,7 +88,7 @@
 			]
 			rewards: [
 				{
-					id: "EDF7093E81236EB7"
+					id: "6DF7093E81236EB7"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -96,13 +96,13 @@
 			]
 		}
 		{
-			id: "ED9E08C372D0906F"
+			id: "6D9E08C372D0906F"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "CA027F3974856F88"
+					id: "4A027F3974856F88"
 					type: "advancement"
 					advancement: "bosses_of_mass_destruction:nether/gauntlet_defeat"
 					criterion: ""
@@ -118,7 +118,7 @@
 			]
 		}
 		{
-			id: "A752C3D5F803277A"
+			id: "2752C3D5F803277A"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 4.0d
 			y: 0.0d
@@ -132,7 +132,7 @@
 			]
 			rewards: [
 				{
-					id: "E9A4DBD008C50E23"
+					id: "69A4DBD008C50E23"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -140,7 +140,7 @@
 			]
 		}
 		{
-			id: "9B0CECC6538D34B5"
+			id: "1B0CECC6538D34B5"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 6.0d
 			y: 0.0d
@@ -154,7 +154,7 @@
 			]
 			rewards: [
 				{
-					id: "CE7AC1D518033EFD"
+					id: "4E7AC1D518033EFD"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -162,7 +162,7 @@
 			]
 		}
 		{
-			id: "C927B70BCF913116"
+			id: "4927B70BCF913116"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 8.0d
 			y: 0.0d
@@ -176,7 +176,7 @@
 			]
 			rewards: [
 				{
-					id: "E7D70A82C366D7D7"
+					id: "67D70A82C366D7D7"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -198,7 +198,7 @@
 			]
 			rewards: [
 				{
-					id: "C2CB9E8662AB1A80"
+					id: "42CB9E8662AB1A80"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -206,13 +206,13 @@
 			]
 		}
 		{
-			id: "EBA4692E12E8772A"
+			id: "6BA4692E12E8772A"
 			dependencies: ["37E7EE94AB9C2675"]
 			x: 4.0d
 			y: 3.0d
 			tasks: [
 				{
-					id: "D8B52186E14EE684"
+					id: "58B52186E14EE684"
 					type: "kill"
 					entity: "cataclysm:maledictus"
 					value: 1L
@@ -229,23 +229,23 @@
 		}
 		{
 			id: "00EB5746A726C5B4"
-			dependencies: ["499464BC3E160165", "B38780DB7926F700", "F9F5F12B6BD564B1", "ED9E08C372D0906F", "A752C3D5F803277A", "9B0CECC6538D34B5", "C927B70BCF913116", "1E1D393F0208BF48", "EBA4692E12E8772A"]
+			dependencies: ["499464BC3E160165", "338780DB7926F700", "79F5F12B6BD564B1", "6D9E08C372D0906F", "2752C3D5F803277A", "1B0CECC6538D34B5", "4927B70BCF913116", "1E1D393F0208BF48", "6BA4692E12E8772A"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "A2DD925EF1B3FA27"
+					id: "22DD925EF1B3FA27"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "9CEF628691C5AE9B"
+					id: "1CEF628691C5AE9B"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
-					id: "89E162AF71706FBA"
+					id: "09E162AF71706FBA"
 					type: "item"
 					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28

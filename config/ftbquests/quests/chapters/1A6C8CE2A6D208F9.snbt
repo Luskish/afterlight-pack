@@ -11,19 +11,19 @@
 	quests: [
 		{
 			id: "6363BCE8A71FA766"
-			dependencies: ["051EA7B2A3B36BFD", "DF26F92E726A22AC", "C9286624F8D7D554"]
+			dependencies: ["051EA7B2A3B36BFD", "5F26F92E726A22AC", "49286624F8D7D554"]
 			dependency_requirement: "one_completed"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "8D9CC065F9EC5F12"
+					id: "0D9CC065F9EC5F12"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "AD7649576953098A"
+					id: "2D7649576953098A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -31,7 +31,7 @@
 			]
 		}
 		{
-			id: "AD4915DD8FDA1D06"
+			id: "2D4915DD8FDA1D06"
 			dependencies: ["6363BCE8A71FA766"]
 			x: 2.0d
 			y: 0.0d
@@ -46,7 +46,7 @@
 			]
 			rewards: [
 				{
-					id: "84CE640DA656B6EF"
+					id: "04CE640DA656B6EF"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -55,7 +55,7 @@
 		}
 		{
 			id: "47311C112F22894D"
-			dependencies: ["AD4915DD8FDA1D06"]
+			dependencies: ["2D4915DD8FDA1D06"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -100,21 +100,21 @@
 			]
 		}
 		{
-			id: "87338DE0FE8114CF"
+			id: "07338DE0FE8114CF"
 			dependencies: ["1306DADA70B362F3"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "83C805BE3B5FFDE3"
+					id: "03C805BE3B5FFDE3"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "AACF875D536F5967"
+					id: "2ACF875D536F5967"
 					type: "loot"
-					table_id: -7327459831431184939L
+					table_id: 1895912205423590869L
 				}
 				{
 					id: "678D925244FFB0DF"
@@ -123,7 +123,7 @@
 					count: 20
 				}
 				{
-					id: "8C1D3A2E10E7A8A0"
+					id: "0C1D3A2E10E7A8A0"
 					type: "xp"
 					xp: 500
 				}

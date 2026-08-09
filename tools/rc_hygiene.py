@@ -8,9 +8,11 @@ import json
 import os
 import re
 import stat
+import struct
 import sys
 import tomllib
 import zipfile
+import zlib
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -19,12 +21,16 @@ from urllib.parse import quote
 
 try:
     from afterlight_quests.builder import (
+        _SnbtPathScanner,
+        _parse_snbt,
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
     )
 except ModuleNotFoundError:
     from tools.afterlight_quests.builder import (
+        _SnbtPathScanner,
+        _parse_snbt,
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
@@ -3583,6 +3589,8 @@ def verify_boot_run(
 ) -> dict[str, object]:
     root_path = _validated_root(root, "pack root")
     install_path = _validated_root(install, "install root")
+    seal_sources = verify_seal_sources(root_path, install_path)
+    quest_identity = verify_quest_identity_stability(root_path, install_path)
     gate_audit_sha256 = verify_installed_gate_audit(
         root_path, install_path, nonce
     )
@@ -3638,6 +3646,10 @@ def verify_boot_run(
         "warning_records": REVIEWED_WARNING_TOTAL,
         "audits": audits,
         "gate_audit_sha256": gate_audit_sha256,
+        "seal_source_sha256": seal_sources["sha256"],
+        "seal_code_corpus_sha256": seal_sources["code_corpus_sha256"],
+        "quest_identity_count": quest_identity["count"],
+        "quest_identity_sha256": quest_identity["sha256"],
         "console_severe_count": console_count,
         "console_severe_sha256": console_digest,
     }
@@ -3748,6 +3760,2570 @@ GATE_AUDIT_RELATIVE = PurePosixPath(
 GATE_AUDIT_SHA256_PLACEHOLDER = b"__AFTERLIGHT_GATE_AUDIT_SHA256__"
 GATE_AUDIT_NONCE_PLACEHOLDER = b"__AFTERLIGHT_GATE_BOOT_NONCE__"
 GATE_AUDIT_RECIPE_COUNT = 11
+SEAL_LITERAL_PATTERN = re.compile(r"ascendancy_seal")
+SEAL_CODE_REFERENCE_PATTERN = re.compile(
+    r"ascendancy_seal|\bSEAL\b|AFTERLIGHT\s*\["
+)
+SEAL_BINARY_REFERENCE_PATTERN = re.compile(
+    rb"ascendancy_seal|AFTERLIGHT(?:\.SEAL|\s*\[[^\]]*SEAL)"
+)
+SEAL_JSON_ESCAPE_PATTERN = re.compile(r"\\u([0-9A-Fa-f]{4})")
+SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs", "mods")
+SEAL_CODE_SUFFIXES = frozenset((".js", ".jsx", ".mjs", ".ts", ".tsx"))
+SEAL_CODE_MAX_FILE_BYTES = 4 * 1024 * 1024
+SEAL_CODE_MAX_TOTAL_BYTES = 8 * 1024 * 1024
+SEAL_CODE_MAX_FILES = 4_096
+SEAL_CODE_MAX_TOTAL_PATH_BYTES = 1024 * 1024
+SEAL_WALK_MAX_ENTRIES = 100_000
+SEAL_WALK_MAX_TOTAL_PATH_BYTES = 16 * 1024 * 1024
+SEAL_METADATA_MAX_FILE_BYTES = 1024 * 1024
+SEAL_METADATA_MAX_FILES = 4_096
+SEAL_METADATA_MAX_TOTAL_PATH_BYTES = 1024 * 1024
+SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
+SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
+EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
+EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
+    "7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258"
+)
+SEAL_RENDERED_CODE_RELATIVES = frozenset(
+    {
+        "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+    }
+)
+SEAL_ARCHIVE_MAX_DEPTH = 8
+SEAL_ARCHIVE_MAX_MEMBERS = 50_000
+SEAL_ARCHIVE_MAX_MEMBER_BYTES = 128 * 1024 * 1024
+SEAL_ARCHIVE_MAX_EXPANDED_BYTES = 512 * 1024 * 1024
+SEAL_ARCHIVE_MAX_TOTAL_MEMBERS = 1_000_000
+SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES = 4 * 1024 * 1024 * 1024
+SEAL_ARCHIVE_MAX_COMPRESSION_RATIO = 500
+SEAL_ARCHIVE_MAX_CENTRAL_DIRECTORY_BYTES = 64 * 1024 * 1024
+SEAL_ARCHIVE_MAX_ZIP64_RECORD_BYTES = 64 * 1024
+SEAL_SCAN_MAX_OCCURRENCES = 100_000
+EXPECTED_SEAL_OCCURRENCES = Counter(
+    (
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            "snbt:$.icon.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            "snbt:$.quests[].rewards[].item.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "config/ftbquests/quests/chapters/3FF4AF7B0C73F058.snbt",
+            "snbt:$.quests[].tasks[].item.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "kubejs/assets/kubejs/lang/en_us.json",
+            'json-key:$["item.kubejs.ascendancy_seal"]',
+        ),
+        (
+            "kubejs/server_scripts/afterlight/_constants.js",
+            "SEAL: 'kubejs:ascendancy_seal',",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:diamond', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:ender_eye', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "I: 'minecraft:iron_ingot', R: 'minecraft:redstone', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "countTwoKeys.Z = Item.of(AFTERLIGHT.SEAL, 2)",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+            '"kubejs:ascendancy_seal",',
+        ),
+        (
+            "kubejs/startup_scripts/afterlight/registry.js",
+            "event.create('ascendancy_seal')",
+        ),
+    )
+)
+
+
+@dataclass(frozen=True)
+class _SealZipMetadata:
+    members: int
+    central_directory_size: int
+    central_directory_offset: int
+
+
+@dataclass(frozen=True)
+class _SealWalkFile:
+    relative: PurePosixPath
+    snapshot: tuple[int, int, int, int, int]
+
+
+def _seal_file_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _seal_bounded_walk(
+    root: Path,
+    roots: Iterable[PurePosixPath],
+    label: str,
+) -> Iterable[_SealWalkFile]:
+    root = _validated_root(root, f"{label} Seal source traversal root")
+    entry_count = 0
+    total_path_bytes = 0
+    pending: list[
+        tuple[PurePosixPath, tuple[int, int, int, int, int]]
+    ] = []
+
+    def account(
+        relative: PurePosixPath,
+        value: os.stat_result,
+    ) -> tuple[int, int, int, int, int]:
+        nonlocal entry_count, total_path_bytes
+        entry_count += 1
+        if entry_count > SEAL_WALK_MAX_ENTRIES:
+            raise VerificationError(
+                f"Seal source traversal entry count exceeds limit: {entry_count}"
+            )
+        total_path_bytes += len(relative.as_posix().encode("utf-8"))
+        if total_path_bytes > SEAL_WALK_MAX_TOTAL_PATH_BYTES:
+            raise VerificationError(
+                "Seal source aggregate traversal path bytes exceeds limit: "
+                f"{total_path_bytes}"
+            )
+        return _seal_file_identity(value)
+
+    root_entries: list[
+        tuple[PurePosixPath, tuple[int, int, int, int, int]]
+    ] = []
+    for relative in roots:
+        canonical = _safe_relative_path(
+            relative.as_posix(), f"{label} Seal source root"
+        )
+        path = root / canonical
+        try:
+            root_stat = path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source root "
+                f"{canonical.as_posix()}: {error}"
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(
+                f"invalid {label} Seal source root: {canonical.as_posix()}"
+            )
+        root_entries.append((canonical, account(canonical, root_stat)))
+    pending.extend(sorted(root_entries, reverse=True))
+
+    while pending:
+        relative, expected_snapshot = pending.pop()
+        directory_path = root / relative
+        try:
+            before_scan = directory_path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        if (
+            stat.S_ISLNK(before_scan.st_mode)
+            or not stat.S_ISDIR(before_scan.st_mode)
+            or _seal_file_identity(before_scan) != expected_snapshot
+        ):
+            raise VerificationError(
+                f"{label} Seal source directory changed during traversal: "
+                f"{relative.as_posix()}"
+            )
+        children: list[
+            tuple[
+                PurePosixPath,
+                os.stat_result,
+                tuple[int, int, int, int, int],
+            ]
+        ] = []
+        try:
+            with os.scandir(directory_path) as entries:
+                for entry in entries:
+                    child_relative = _safe_relative_path(
+                        (relative / entry.name).as_posix(),
+                        f"{label} Seal source entry",
+                    )
+                    try:
+                        child_stat = entry.stat(follow_symlinks=False)
+                    except OSError as error:
+                        raise VerificationError(
+                            f"cannot inspect {label} Seal source entry "
+                            f"{child_relative.as_posix()}: {error}"
+                        ) from error
+                    if stat.S_ISLNK(child_stat.st_mode):
+                        raise VerificationError(
+                            f"symlink in {label} Seal source traversal: "
+                            f"{child_relative.as_posix()}"
+                        )
+                    if not (
+                        stat.S_ISDIR(child_stat.st_mode)
+                        or stat.S_ISREG(child_stat.st_mode)
+                    ):
+                        raise VerificationError(
+                            f"non-regular {label} Seal source entry: "
+                            f"{child_relative.as_posix()}"
+                        )
+                    snapshot = account(child_relative, child_stat)
+                    children.append((child_relative, child_stat, snapshot))
+        except VerificationError:
+            raise
+        except OSError as error:
+            raise VerificationError(
+                f"cannot scan {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        try:
+            after_scan = directory_path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot recheck {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        if _seal_file_identity(after_scan) != expected_snapshot:
+            raise VerificationError(
+                f"{label} Seal source directory changed during traversal: "
+                f"{relative.as_posix()}"
+            )
+        child_directories: list[
+            tuple[PurePosixPath, tuple[int, int, int, int, int]]
+        ] = []
+        for child_relative, child_stat, snapshot in sorted(
+            children, key=lambda child: child[0].as_posix()
+        ):
+            if stat.S_ISDIR(child_stat.st_mode):
+                child_directories.append((child_relative, snapshot))
+            else:
+                yield _SealWalkFile(child_relative, snapshot)
+        pending.extend(reversed(child_directories))
+
+
+class _SealStableFile:
+    def __init__(
+        self,
+        root: Path,
+        relative: PurePosixPath,
+        label: str,
+        *,
+        max_bytes: int | None = None,
+        size_kind: str = "file",
+        expected_identity: tuple[int, int, int, int, int] | None = None,
+    ) -> None:
+        self.root = root
+        self.relative = relative
+        self.label = label
+        self.max_bytes = max_bytes
+        self.size_kind = size_kind
+        self.expected_identity = expected_identity
+        self.path: Path | None = None
+        self.handle = None
+        self.snapshot: tuple[int, int, int, int, int] | None = None
+        self.initial_sha256: str | None = None
+
+    def _hash(self) -> str:
+        if self.handle is None:
+            raise VerificationError(f"closed stable descriptor for {self.label}")
+        self.handle.seek(0)
+        digest = hashlib.sha256()
+        for chunk in iter(lambda: self.handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+        self.handle.seek(0)
+        return digest.hexdigest()
+
+    def __enter__(self) -> "_SealStableFile":
+        root = _validated_root(self.root, f"{self.label} root")
+        target = root
+        target_stat = None
+        for part in self.relative.parts:
+            target /= part
+            try:
+                target_stat = target.lstat()
+            except OSError as error:
+                raise VerificationError(
+                    f"cannot inspect {self.label} path "
+                    f"{self.relative.as_posix()}: {error}"
+                ) from error
+            if stat.S_ISLNK(target_stat.st_mode):
+                raise VerificationError(
+                    f"symlink in {self.label} path: {self.relative.as_posix()}"
+                )
+        if target_stat is None or not stat.S_ISREG(target_stat.st_mode):
+            raise VerificationError(
+                f"non-regular {self.label} path: {self.relative.as_posix()}"
+            )
+        if target_stat.st_nlink != 1:
+            raise VerificationError(
+                f"unsafe link count for {self.label} path: "
+                f"{self.relative.as_posix()}"
+            )
+        if (
+            self.expected_identity is not None
+            and _seal_file_identity(target_stat) != self.expected_identity
+        ):
+            raise VerificationError(
+                f"{self.label} changed before open: {self.relative.as_posix()}"
+            )
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_NONBLOCK"):
+            flags |= os.O_NONBLOCK
+        try:
+            descriptor = os.open(target, flags)
+        except OSError as error:
+            raise VerificationError(
+                f"cannot open {self.label} path {self.relative.as_posix()}: {error}"
+            ) from error
+        try:
+            opened_stat = os.fstat(descriptor)
+            if (
+                target_stat is None
+                or not stat.S_ISREG(opened_stat.st_mode)
+                or opened_stat.st_nlink != 1
+                or (opened_stat.st_dev, opened_stat.st_ino)
+                != (target_stat.st_dev, target_stat.st_ino)
+            ):
+                raise VerificationError(
+                    f"{self.label} changed during open: {self.relative.as_posix()}"
+                )
+            if self.max_bytes is not None and opened_stat.st_size > self.max_bytes:
+                raise VerificationError(
+                    f"Seal source {self.size_kind} size exceeds limit: "
+                    f"{self.relative.as_posix()} size={opened_stat.st_size}"
+                )
+            self.path = target
+            self.snapshot = _seal_file_identity(opened_stat)
+            self.handle = os.fdopen(descriptor, "rb")
+            descriptor = -1
+            self.initial_sha256 = self._hash()
+            if _seal_file_identity(os.fstat(self.handle.fileno())) != self.snapshot:
+                raise VerificationError(
+                    f"{self.label} changed during initial hash: "
+                    f"{self.relative.as_posix()}"
+                )
+            return self
+        except BaseException:
+            if self.handle is not None:
+                self.handle.close()
+                self.handle = None
+            elif descriptor >= 0:
+                os.close(descriptor)
+            raise
+
+    @property
+    def size(self) -> int:
+        if self.snapshot is None:
+            raise VerificationError(f"closed stable descriptor for {self.label}")
+        return self.snapshot[2]
+
+    def read_bytes(self, limit: int) -> bytes:
+        if self.handle is None:
+            raise VerificationError(f"closed stable descriptor for {self.label}")
+        self.handle.seek(0)
+        payload = self.handle.read(limit + 1)
+        self.handle.seek(0)
+        if len(payload) > limit:
+            raise VerificationError(
+                f"Seal source {self.size_kind} size exceeds limit: "
+                f"{self.relative.as_posix()}"
+            )
+        if len(payload) != self.size:
+            raise VerificationError(
+                f"{self.label} size changed while reading: "
+                f"{self.relative.as_posix()} metadata={self.size} "
+                f"actual={len(payload)}"
+            )
+        return payload
+
+    def __exit__(self, exception_type, exception, traceback) -> bool:
+        stability_error: VerificationError | None = None
+        try:
+            if (
+                self.handle is None
+                or self.snapshot is None
+                or self.path is None
+                or self.initial_sha256 is None
+            ):
+                return False
+            before_final = os.fstat(self.handle.fileno())
+            if _seal_file_identity(before_final) != self.snapshot:
+                raise VerificationError(
+                    f"{self.label} changed during scan: {self.relative.as_posix()}"
+                )
+            final_sha256 = self._hash()
+            after_final = os.fstat(self.handle.fileno())
+            if (
+                _seal_file_identity(after_final) != self.snapshot
+                or final_sha256 != self.initial_sha256
+            ):
+                raise VerificationError(
+                    f"{self.label} changed during scan: {self.relative.as_posix()}"
+                )
+            try:
+                path_stat = self.path.lstat()
+            except OSError as error:
+                raise VerificationError(
+                    f"{self.label} path changed during scan: "
+                    f"{self.relative.as_posix()}: {error}"
+                ) from error
+            if stat.S_ISLNK(path_stat.st_mode):
+                raise VerificationError(
+                    f"symlink replaced {self.label} during scan: "
+                    f"{self.relative.as_posix()}"
+                )
+            if _seal_file_identity(path_stat) != self.snapshot:
+                raise VerificationError(
+                    f"{self.label} descriptor identity changed during scan: "
+                    f"{self.relative.as_posix()}"
+                )
+        except VerificationError as error:
+            stability_error = error
+        finally:
+            if self.handle is not None:
+                self.handle.close()
+                self.handle = None
+        if stability_error is not None:
+            if exception is not None:
+                raise stability_error from exception
+            raise stability_error
+        return False
+
+
+def _seal_zip_preflight(
+    source,
+    relative_label: str,
+    *,
+    required: bool,
+) -> _SealZipMetadata | None:
+    source.seek(0, os.SEEK_END)
+    archive_size = source.tell()
+    tail_size = min(
+        archive_size,
+        22 + 65535 + 20 + 12 + SEAL_ARCHIVE_MAX_ZIP64_RECORD_BYTES,
+    )
+    tail_offset = archive_size - tail_size
+    source.seek(tail_offset)
+    tail = source.read(tail_size)
+    source.seek(0)
+    if len(tail) != tail_size:
+        raise VerificationError(
+            f"Seal source ZIP metadata changed while reading: {relative_label}"
+        )
+
+    eocd_candidates: list[tuple[int, tuple[object, ...]]] = []
+    search_offset = 0
+    while True:
+        position = tail.find(b"PK\x05\x06", search_offset)
+        if position < 0:
+            break
+        search_offset = position + 1
+        if position + 22 > len(tail):
+            continue
+        fields = struct.unpack_from("<4s4H2LH", tail, position)
+        comment_length = fields[-1]
+        absolute = tail_offset + position
+        if absolute + 22 + comment_length == archive_size:
+            eocd_candidates.append((absolute, fields))
+
+    if not eocd_candidates:
+        source.seek(0)
+        prefix = source.read(min(4, archive_size))
+        source.seek(0)
+        looks_like_zip = (
+            prefix in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+            or any(
+                signature in tail
+                for signature in (
+                    b"PK\x05\x06",
+                    b"PK\x06\x06",
+                    b"PK\x06\x07",
+                )
+            )
+        )
+        if required or looks_like_zip:
+            raise VerificationError(
+                f"invalid or truncated Seal source ZIP metadata: {relative_label}"
+            )
+        return None
+    if len(eocd_candidates) != 1:
+        raise VerificationError(
+            f"duplicate Seal source ZIP end metadata: {relative_label}"
+        )
+
+    eocd_offset, fields = eocd_candidates[0]
+    (
+        _signature,
+        disk_number,
+        central_disk,
+        entries_on_disk,
+        total_entries,
+        central_size,
+        central_offset,
+        _comment_length,
+    ) = fields
+    if disk_number != 0 or central_disk != 0:
+        raise VerificationError(
+            f"multi-disk Seal source ZIP is unsupported: {relative_label}"
+        )
+    needs_zip64 = (
+        entries_on_disk == 0xFFFF
+        or total_entries == 0xFFFF
+        or central_size == 0xFFFFFFFF
+        or central_offset == 0xFFFFFFFF
+    )
+    locator_offset = eocd_offset - 20
+    locator = None
+    if locator_offset >= 0:
+        source.seek(locator_offset)
+        locator_bytes = source.read(20)
+        source.seek(0)
+        if len(locator_bytes) == 20 and locator_bytes.startswith(b"PK\x06\x07"):
+            locator = struct.unpack("<4sLQL", locator_bytes)
+
+    central_actual_offset: int
+    if needs_zip64:
+        if locator is None:
+            raise VerificationError(
+                f"missing Seal source ZIP64 locator: {relative_label}"
+            )
+        _locator_signature, locator_disk, zip64_relative_offset, disk_count = locator
+        if locator_disk != 0 or disk_count != 1:
+            raise VerificationError(
+                f"invalid Seal source ZIP64 disk metadata: {relative_label}"
+            )
+        record_search_start = max(
+            0,
+            locator_offset - (12 + SEAL_ARCHIVE_MAX_ZIP64_RECORD_BYTES),
+        )
+        source.seek(record_search_start)
+        record_region = source.read(locator_offset - record_search_start)
+        source.seek(0)
+        zip64_candidates: list[tuple[int, int]] = []
+        search_offset = 0
+        while True:
+            position = record_region.find(b"PK\x06\x06", search_offset)
+            if position < 0:
+                break
+            search_offset = position + 1
+            if position + 12 > len(record_region):
+                continue
+            record_size = struct.unpack_from("<Q", record_region, position + 4)[0]
+            absolute = record_search_start + position
+            if (
+                44 <= record_size <= SEAL_ARCHIVE_MAX_ZIP64_RECORD_BYTES
+                and absolute + 12 + record_size == locator_offset
+            ):
+                zip64_candidates.append((absolute, record_size))
+        if len(zip64_candidates) != 1:
+            raise VerificationError(
+                f"missing or duplicate Seal source ZIP64 end metadata: "
+                f"{relative_label}"
+            )
+        zip64_offset, zip64_record_size = zip64_candidates[0]
+        source.seek(zip64_offset)
+        zip64_record = source.read(12 + zip64_record_size)
+        source.seek(0)
+        if len(zip64_record) != 12 + zip64_record_size:
+            raise VerificationError(
+                f"truncated Seal source ZIP64 end metadata: {relative_label}"
+            )
+        (
+            _version_made,
+            _version_needed,
+            zip64_disk,
+            zip64_central_disk,
+            zip64_entries_on_disk,
+            zip64_total_entries,
+            zip64_central_size,
+            zip64_central_offset,
+        ) = struct.unpack_from("<2H2L4Q", zip64_record, 12)
+        if (
+            zip64_disk != 0
+            or zip64_central_disk != 0
+            or zip64_entries_on_disk != zip64_total_entries
+        ):
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 disk metadata: {relative_label}"
+            )
+        if entries_on_disk != 0xFFFF and entries_on_disk != zip64_entries_on_disk:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 member count: {relative_label}"
+            )
+        if total_entries != 0xFFFF and total_entries != zip64_total_entries:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 member count: {relative_label}"
+            )
+        if central_size != 0xFFFFFFFF and central_size != zip64_central_size:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 directory size: {relative_label}"
+            )
+        if central_offset != 0xFFFFFFFF and central_offset != zip64_central_offset:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 directory offset: {relative_label}"
+            )
+        total_entries = zip64_total_entries
+        entries_on_disk = zip64_entries_on_disk
+        central_size = zip64_central_size
+        central_offset = zip64_central_offset
+        archive_prefix = zip64_offset - central_size - central_offset
+        if archive_prefix < 0 or archive_prefix + zip64_relative_offset != zip64_offset:
+            raise VerificationError(
+                f"impossible Seal source ZIP64 offsets: {relative_label}"
+            )
+        central_actual_offset = archive_prefix + central_offset
+        if central_actual_offset + central_size != zip64_offset:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP64 directory boundary: "
+                f"{relative_label}"
+            )
+    else:
+        if locator is not None:
+            raise VerificationError(
+                f"unexpected Seal source ZIP64 locator: {relative_label}"
+            )
+        if entries_on_disk != total_entries:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP member count: {relative_label}"
+            )
+        archive_prefix = eocd_offset - central_size - central_offset
+        if archive_prefix < 0:
+            raise VerificationError(
+                f"impossible Seal source ZIP offsets: {relative_label}"
+            )
+        central_actual_offset = archive_prefix + central_offset
+        if central_actual_offset + central_size != eocd_offset:
+            raise VerificationError(
+                f"inconsistent Seal source ZIP directory boundary: "
+                f"{relative_label}"
+            )
+
+    if total_entries > SEAL_ARCHIVE_MAX_MEMBERS:
+        raise VerificationError(
+            f"Seal source archive member count exceeds limit: "
+            f"{relative_label} count={total_entries}"
+        )
+    if central_size > SEAL_ARCHIVE_MAX_CENTRAL_DIRECTORY_BYTES:
+        raise VerificationError(
+            f"Seal source archive central directory size exceeds limit: "
+            f"{relative_label} size={central_size}"
+        )
+    if central_actual_offset < 0 or central_actual_offset + central_size > archive_size:
+        raise VerificationError(
+            f"truncated Seal source ZIP central directory: {relative_label}"
+        )
+    source.seek(central_actual_offset)
+    central_directory = source.read(central_size)
+    source.seek(0)
+    if len(central_directory) != central_size:
+        raise VerificationError(
+            f"truncated Seal source ZIP central directory: {relative_label}"
+        )
+    position = 0
+    parsed_entries = 0
+    while position < len(central_directory):
+        if position + 46 > len(central_directory):
+            raise VerificationError(
+                f"truncated Seal source ZIP member metadata: {relative_label}"
+            )
+        member_fields = struct.unpack_from(
+            "<4s6H3L5H2L", central_directory, position
+        )
+        if member_fields[0] != b"PK\x01\x02":
+            raise VerificationError(
+                f"invalid Seal source ZIP central signature: {relative_label}"
+            )
+        filename_length = member_fields[10]
+        extra_length = member_fields[11]
+        comment_length = member_fields[12]
+        member_size = 46 + filename_length + extra_length + comment_length
+        if member_size < 46 or position + member_size > len(central_directory):
+            raise VerificationError(
+                f"truncated Seal source ZIP member metadata: {relative_label}"
+            )
+        position += member_size
+        parsed_entries += 1
+    if position != central_size or parsed_entries != total_entries:
+        raise VerificationError(
+            f"inconsistent Seal source ZIP central directory metadata: "
+            f"{relative_label} declared={total_entries} parsed={parsed_entries}"
+        )
+    return _SealZipMetadata(
+        members=total_entries,
+        central_directory_size=central_size,
+        central_directory_offset=central_actual_offset,
+    )
+
+
+def _snbt_child_path(path: str, key: str) -> str:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        return f"{path}.{key}"
+    return f"{path}[{json.dumps(key, ensure_ascii=False)}]"
+
+
+def _seal_semantic_occurrence_descriptors(
+    kind: str,
+    path: str,
+    value: str,
+    *,
+    include_value: bool,
+) -> Iterable[str]:
+    match_count = sum(1 for _match in SEAL_LITERAL_PATTERN.finditer(value))
+    if match_count == 0:
+        return
+    inline_chars = len(kind) + len(path) + 1
+    if include_value:
+        inline_chars += len(value) + 1
+    if match_count == 1 and inline_chars <= SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS:
+        descriptor = f"{kind}:{path}={value}" if include_value else f"{kind}:{path}"
+    else:
+        digest = hashlib.sha256()
+        for component in (kind, path, value):
+            digest.update(component.encode("utf-8"))
+            digest.update(b"\0")
+        descriptor = (
+            f"{kind}:matches={match_count}:path_chars={len(path)}:"
+            f"value_chars={len(value)}:sha256={digest.hexdigest()}"
+        )
+    for _position in range(match_count):
+        yield descriptor
+
+
+def _snbt_seal_occurrences(value: object, path: str = "$") -> Iterable[str]:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = _snbt_child_path(path, key_text)
+            yield from _seal_semantic_occurrence_descriptors(
+                "snbt-key",
+                child_path,
+                key_text,
+                include_value=False,
+            )
+            yield from _snbt_seal_occurrences(child, child_path)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _snbt_seal_occurrences(child, f"{path}[]")
+    elif isinstance(value, str):
+        yield from _seal_semantic_occurrence_descriptors(
+            "snbt",
+            path,
+            value,
+            include_value=True,
+        )
+
+
+class _JsonObject(list[tuple[str, object]]):
+    pass
+
+
+def _json_seal_occurrences(value: object, path: str = "$") -> Iterable[str]:
+    if isinstance(value, _JsonObject):
+        for key, child in value:
+            child_path = _snbt_child_path(path, key)
+            yield from _seal_semantic_occurrence_descriptors(
+                "json-key",
+                child_path,
+                key,
+                include_value=False,
+            )
+            yield from _json_seal_occurrences(child, child_path)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _json_seal_occurrences(child, f"{path}[]")
+    elif isinstance(value, str):
+        yield from _seal_semantic_occurrence_descriptors(
+            "json",
+            path,
+            value,
+            include_value=True,
+        )
+
+
+def _decode_json_unicode_escapes(text: str) -> str:
+    return SEAL_JSON_ESCAPE_PATTERN.sub(
+        lambda match: chr(int(match.group(1), 16)), text
+    )
+
+
+def _seal_archive_review_labels(root: Path) -> dict[str, str]:
+    mods_root = root / "mods"
+    try:
+        mods_root_stat = mods_root.lstat()
+    except FileNotFoundError:
+        return {}
+    except OSError as error:
+        raise VerificationError(
+            f"cannot inspect Seal archive metadata root: {error}"
+        ) from error
+    if stat.S_ISLNK(mods_root_stat.st_mode) or not stat.S_ISDIR(
+        mods_root_stat.st_mode
+    ):
+        raise VerificationError("invalid Seal archive metadata root")
+    metadata_files: list[_SealWalkFile] = []
+    metadata_count = 0
+    total_path_bytes = 0
+    total_content_bytes = 0
+    try:
+        with os.scandir(mods_root) as entries:
+            for entry in entries:
+                if not entry.name.endswith(".pw.toml"):
+                    continue
+                metadata_relative = _safe_relative_path(
+                    (PurePosixPath("mods") / entry.name).as_posix(),
+                    "Seal archive metadata",
+                )
+                metadata_count += 1
+                if metadata_count > SEAL_METADATA_MAX_FILES:
+                    raise VerificationError(
+                        "Seal archive metadata file count exceeds limit: "
+                        f"{metadata_count}"
+                    )
+                total_path_bytes += len(
+                    metadata_relative.as_posix().encode("utf-8")
+                )
+                if total_path_bytes > SEAL_METADATA_MAX_TOTAL_PATH_BYTES:
+                    raise VerificationError(
+                        "Seal archive aggregate metadata path bytes exceeds limit: "
+                        f"{total_path_bytes}"
+                    )
+                try:
+                    metadata_stat = entry.stat(follow_symlinks=False)
+                except OSError as error:
+                    raise VerificationError(
+                        "cannot inspect Seal archive metadata "
+                        f"{metadata_relative.as_posix()}: {error}"
+                    ) from error
+                if stat.S_ISLNK(metadata_stat.st_mode):
+                    raise VerificationError(
+                        "symlink in Seal archive metadata path: "
+                        f"{metadata_relative.as_posix()}"
+                    )
+                if not stat.S_ISREG(metadata_stat.st_mode):
+                    raise VerificationError(
+                        "non-regular Seal archive metadata path: "
+                        f"{metadata_relative.as_posix()}"
+                    )
+                if metadata_stat.st_size > SEAL_METADATA_MAX_FILE_BYTES:
+                    raise VerificationError(
+                        "Seal source metadata file size exceeds limit: "
+                        f"{metadata_relative.as_posix()} size={metadata_stat.st_size}"
+                    )
+                total_content_bytes += metadata_stat.st_size
+                if total_content_bytes > SEAL_METADATA_MAX_TOTAL_BYTES:
+                    raise VerificationError(
+                        "Seal archive aggregate metadata bytes exceeds limit: "
+                        f"{total_content_bytes}"
+                    )
+                metadata_files.append(
+                    _SealWalkFile(
+                        metadata_relative,
+                        _seal_file_identity(metadata_stat),
+                    )
+                )
+    except VerificationError:
+        raise
+    except OSError as error:
+        raise VerificationError(
+            f"cannot scan Seal archive metadata root: {error}"
+        ) from error
+    try:
+        final_mods_root_stat = mods_root.lstat()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot recheck Seal archive metadata root: {error}"
+        ) from error
+    if _seal_file_identity(final_mods_root_stat) != _seal_file_identity(
+        mods_root_stat
+    ):
+        raise VerificationError("Seal archive metadata root changed during scan")
+
+    labels: dict[str, str] = {}
+    for metadata_file in sorted(
+        metadata_files, key=lambda item: item.relative.as_posix()
+    ):
+        metadata_relative = metadata_file.relative
+        with _SealStableFile(
+            root,
+            metadata_relative,
+            "Seal archive metadata",
+            max_bytes=SEAL_METADATA_MAX_FILE_BYTES,
+            size_kind="metadata file",
+            expected_identity=metadata_file.snapshot,
+        ) as stable:
+            payload = stable.read_bytes(SEAL_METADATA_MAX_FILE_BYTES)
+            try:
+                metadata = tomllib.loads(payload.decode("utf-8"))
+            except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+                raise VerificationError(
+                    "cannot parse Seal archive metadata "
+                    f"{metadata_relative.as_posix()}: {error}"
+                ) from error
+        filename = _safe_relative_path(
+            str(metadata.get("filename", "")),
+            f"Seal archive filename for {metadata_relative.as_posix()}",
+        )
+        if len(filename.parts) != 1:
+            raise VerificationError(
+                "Seal archive filename must be a basename: "
+                f"{metadata_relative.as_posix()}"
+            )
+        installed_relative = (PurePosixPath("mods") / filename).as_posix()
+        prior = labels.get(installed_relative)
+        if prior is not None:
+            raise VerificationError(
+                "duplicate Seal archive filename in metadata: "
+                f"{installed_relative} ({prior}, {metadata_relative.as_posix()})"
+            )
+        labels[installed_relative] = metadata_relative.as_posix()
+    return labels
+
+
+def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
+    code_root = root / "kubejs"
+    try:
+        code_root_stat = code_root.lstat()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot inspect {label} Seal source code root: {error}"
+        ) from error
+    if stat.S_ISLNK(code_root_stat.st_mode) or not stat.S_ISDIR(
+        code_root_stat.st_mode
+    ):
+        raise VerificationError(f"invalid {label} Seal source code root")
+
+    inventory: dict[str, bytes] = {}
+    total_bytes = 0
+    file_count = 0
+    total_path_bytes = 0
+    for walked_file in _seal_bounded_walk(
+        root,
+        (PurePosixPath("kubejs"),),
+        label,
+    ):
+        relative = walked_file.relative
+        if relative.suffix.lower() not in SEAL_CODE_SUFFIXES:
+            continue
+        file_count += 1
+        if file_count > SEAL_CODE_MAX_FILES:
+            raise VerificationError(
+                f"Seal source code file count exceeds limit: {file_count}"
+            )
+        total_path_bytes += len(relative.as_posix().encode("utf-8"))
+        if total_path_bytes > SEAL_CODE_MAX_TOTAL_PATH_BYTES:
+            raise VerificationError(
+                "Seal source aggregate code path bytes exceeds limit: "
+                f"{total_path_bytes}"
+            )
+        with _SealStableFile(
+            root,
+            relative,
+            f"{label} Seal source code file",
+            max_bytes=SEAL_CODE_MAX_FILE_BYTES,
+            size_kind="code file",
+            expected_identity=walked_file.snapshot,
+        ) as stable:
+            payload = stable.read_bytes(SEAL_CODE_MAX_FILE_BYTES)
+        total_bytes += len(payload)
+        if total_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
+            raise VerificationError(
+                f"Seal source aggregate code bytes exceeds limit: "
+                f"{total_bytes}"
+            )
+        inventory[relative.as_posix()] = payload
+    return inventory
+
+
+def _seal_code_corpus_digest(inventory: dict[str, bytes]) -> str:
+    canonical = tuple(
+        (relative, _hash_bytes(payload, "sha256"))
+        for relative, payload in sorted(inventory.items())
+    )
+    return _hash_bytes(
+        json.dumps(
+            canonical, ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8"),
+        "sha256",
+    )
+
+
+def _seal_rendered_code_nonce(payload: bytes, relative: str) -> str:
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise VerificationError(
+            f"cannot decode rendered Seal source code {relative}: {error}"
+        ) from error
+    matches = re.findall(
+        r"^  const bootNonce = '([A-Za-z0-9._-]+)'$", text, re.MULTILINE
+    )
+    if len(matches) != 1:
+        raise VerificationError(
+            f"rendered Seal source code nonce changed: {relative}"
+        )
+    return matches[0]
+
+
+def _verify_seal_code_corpus(root: Path, install: Path) -> str:
+    root_inventory = _seal_code_inventory(root, "repository")
+    root_digest = _seal_code_corpus_digest(root_inventory)
+    if (
+        len(root_inventory) != EXPECTED_SEAL_CODE_CORPUS_COUNT
+        or root_digest != EXPECTED_SEAL_CODE_CORPUS_SHA256
+    ):
+        raise VerificationError(
+            "Seal source corpus code changed: "
+            f"expected_count={EXPECTED_SEAL_CODE_CORPUS_COUNT} "
+            f"actual_count={len(root_inventory)} "
+            f"expected_sha256={EXPECTED_SEAL_CODE_CORPUS_SHA256} "
+            f"actual_sha256={root_digest}"
+        )
+
+    install_inventory = _seal_code_inventory(install, "installed")
+    if set(install_inventory) != set(root_inventory):
+        raise VerificationError(
+            "Seal source corpus code paths differ between repository and install: "
+            f"missing={sorted(set(root_inventory) - set(install_inventory))} "
+            f"extra={sorted(set(install_inventory) - set(root_inventory))}"
+        )
+
+    rendered_nonces: list[str] = []
+    rendered_relatives: set[str] = set()
+    for relative, root_payload in sorted(root_inventory.items()):
+        installed_payload = install_inventory[relative]
+        if installed_payload == root_payload:
+            continue
+        if relative not in SEAL_RENDERED_CODE_RELATIVES:
+            raise VerificationError(
+                f"Seal source corpus code bytes differ: {relative}"
+            )
+        nonce = _seal_rendered_code_nonce(installed_payload, relative)
+        if relative == GATE_AUDIT_RELATIVE.as_posix():
+            verify_installed_gate_audit(root, install, nonce)
+        else:
+            placeholder = b"__AFTERLIGHT_BOOT_NONCE__"
+            if root_payload.count(placeholder) != 1:
+                raise VerificationError(
+                    "repository quest audit nonce placeholder count changed"
+                )
+            expected_rendered = root_payload.replace(
+                placeholder, nonce.encode("ascii"), 1
+            )
+            if installed_payload != expected_rendered:
+                raise VerificationError(
+                    "installed quest audit differs from authenticated "
+                    "code-corpus nonce substitution"
+                )
+        rendered_relatives.add(relative)
+        rendered_nonces.append(nonce)
+
+    if rendered_relatives and (
+        rendered_relatives != SEAL_RENDERED_CODE_RELATIVES
+        or len(set(rendered_nonces)) != 1
+    ):
+        raise VerificationError(
+            "Seal source corpus rendered code is incomplete or nonce-divergent: "
+            f"paths={sorted(rendered_relatives)} nonces={sorted(set(rendered_nonces))}"
+        )
+    return root_digest
+
+
+def _seal_occurrences(
+    root: Path,
+    label: str,
+    archive_review_labels: dict[str, str] | None = None,
+) -> tuple[tuple[str, str], ...]:
+    occurrences: list[tuple[str, str]] = []
+    archive_budget = {"members": 0, "expanded_bytes": 0}
+    review_labels = archive_review_labels or {}
+
+    def record_occurrences(values: Iterable[tuple[str, str]]) -> None:
+        for value in values:
+            if len(occurrences) >= SEAL_SCAN_MAX_OCCURRENCES:
+                raise VerificationError(
+                    "Seal source occurrence count exceeds limit: "
+                    f"{SEAL_SCAN_MAX_OCCURRENCES}"
+                )
+            occurrences.append(value)
+
+    def looks_like_zlib(payload: bytes) -> bool:
+        if len(payload) < 2:
+            return False
+        compression_method, flags = payload[0], payload[1]
+        return (
+            compression_method & 0x0F == 8
+            and compression_method >> 4 <= 7
+            and ((compression_method << 8) | flags) % 31 == 0
+        )
+
+    def account_compressed_payload(
+        relative_label: str,
+        payload: bytes,
+        expanded: bytes,
+        compression_depth: int,
+        kind: str,
+        review_label: str,
+    ) -> None:
+        if len(expanded) > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+            raise VerificationError(
+                f"Seal source compressed payload size exceeds limit: {relative_label}"
+            )
+        if expanded:
+            ratio = len(expanded) / len(payload)
+            if ratio > SEAL_ARCHIVE_MAX_COMPRESSION_RATIO:
+                raise VerificationError(
+                    "Seal source compressed payload ratio exceeds limit: "
+                    f"{relative_label} ratio={ratio:.2f}"
+                )
+        archive_budget["expanded_bytes"] += len(expanded)
+        if archive_budget["expanded_bytes"] > SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES:
+            raise VerificationError(
+                "Seal source archive aggregate expanded bytes exceeds limit: "
+                f"{archive_budget['expanded_bytes']}"
+            )
+        scan_payload(
+            f"{relative_label}!{kind}",
+            expanded,
+            compression_depth + 1,
+            review_label,
+        )
+
+    def scan_payload(
+        relative_label: str,
+        payload: bytes,
+        compression_depth: int = 0,
+        review_label: str | None = None,
+    ) -> None:
+        if compression_depth > SEAL_ARCHIVE_MAX_DEPTH:
+            raise VerificationError(
+                f"Seal source compression nesting depth exceeds limit: {relative_label}"
+            )
+        effective_review_label = review_label or relative_label
+        payload_source = io.BytesIO(payload)
+        zip_metadata = _seal_zip_preflight(
+            payload_source,
+            relative_label,
+            required=False,
+        )
+        if zip_metadata is not None:
+            scan_archive(
+                relative_label,
+                effective_review_label,
+                payload_source,
+                compression_depth + 1,
+                zip_metadata,
+            )
+            return
+        member_label = relative_label.rsplit("!", 1)[-1]
+        suffix = PurePosixPath(member_label).suffix.lower()
+        if payload.startswith(b"\x1f\x8b") or looks_like_zlib(payload):
+            if len(payload) > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+                raise VerificationError(
+                    f"Seal source compressed payload exceeds limit: {relative_label}"
+                )
+            trailing = b""
+            if payload.startswith(b"\x1f\x8b"):
+                kind = "gzip"
+                try:
+                    remaining_payload = payload
+                    expanded_parts: list[bytes] = []
+                    expanded_size = 0
+                    compressed_size = 0
+                    while remaining_payload.startswith(b"\x1f\x8b"):
+                        remaining_budget = (
+                            SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1 - expanded_size
+                        )
+                        if remaining_budget <= 0:
+                            raise VerificationError(
+                                "Seal source compressed payload size exceeds limit: "
+                                f"{relative_label}"
+                            )
+                        decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                        expanded_part = decompressor.decompress(
+                            remaining_payload,
+                            remaining_budget,
+                        )
+                        if decompressor.unconsumed_tail:
+                            raise VerificationError(
+                                "Seal source compressed payload size exceeds limit: "
+                                f"{relative_label}"
+                            )
+                        if not decompressor.eof:
+                            raise VerificationError(
+                                f"cannot decompress {label} Seal source payload "
+                                f"{relative_label}: incomplete gzip data"
+                            )
+                        consumed = len(remaining_payload) - len(
+                            decompressor.unused_data
+                        )
+                        if consumed <= 0:
+                            raise VerificationError(
+                                f"cannot decompress {label} Seal source payload "
+                                f"{relative_label}: empty gzip member"
+                            )
+                        expanded_parts.append(expanded_part)
+                        expanded_size += len(expanded_part)
+                        compressed_size += consumed
+                        remaining_payload = decompressor.unused_data
+                    expanded = b"".join(expanded_parts)
+                    compressed_payload = payload[:compressed_size]
+                    trailing = remaining_payload
+                except zlib.error as error:
+                    raise VerificationError(
+                        f"cannot decompress {label} Seal source payload "
+                        f"{relative_label}: {error}"
+                    ) from error
+            else:
+                kind = "zlib"
+                try:
+                    decompressor = zlib.decompressobj()
+                    expanded = decompressor.decompress(
+                        payload,
+                        SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1,
+                    )
+                    if decompressor.unconsumed_tail:
+                        raise VerificationError(
+                            "Seal source compressed payload size exceeds limit: "
+                            f"{relative_label}"
+                        )
+                    if not decompressor.eof:
+                        raise VerificationError(
+                            f"cannot decompress {label} Seal source payload "
+                            f"{relative_label}: incomplete zlib data"
+                        )
+                    compressed_size = len(payload) - len(decompressor.unused_data)
+                    compressed_payload = payload[:compressed_size]
+                    trailing = decompressor.unused_data
+                    remaining = SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1 - len(expanded)
+                    if remaining > 0:
+                        expanded += decompressor.flush(remaining)
+                except zlib.error as error:
+                    raise VerificationError(
+                        f"cannot decompress {label} Seal source payload "
+                        f"{relative_label}: {error}"
+                    ) from error
+            account_compressed_payload(
+                relative_label,
+                compressed_payload,
+                expanded,
+                compression_depth,
+                kind,
+                effective_review_label,
+            )
+            if trailing:
+                scan_payload(
+                    f"{relative_label}!{kind}-trailing",
+                    trailing,
+                    compression_depth + 1,
+                    effective_review_label,
+                )
+            return
+
+        if suffix in (".json", ".mcmeta"):
+            if not (b"ascendancy_seal" in payload or b"\\u" in payload):
+                return
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                raise VerificationError(
+                    "Seal source corpus cannot decode potential "
+                    f"{label} JSON {relative_label}: {error}"
+                ) from error
+            decoded_escapes = _decode_json_unicode_escapes(text)
+            if not (
+                SEAL_LITERAL_PATTERN.search(text)
+                or SEAL_LITERAL_PATTERN.search(decoded_escapes)
+            ):
+                return
+            try:
+                semantic = _json_seal_occurrences(
+                    json.loads(text, object_pairs_hook=_JsonObject)
+                )
+            except json.JSONDecodeError as error:
+                raise VerificationError(
+                    f"cannot parse {label} Seal source JSON {relative_label}: {error}"
+                ) from error
+            record_occurrences((relative_label, item) for item in semantic)
+            return
+
+        if suffix == ".snbt":
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                if b"ascendancy_seal" in payload:
+                    raise VerificationError(
+                        f"cannot decode {label} Seal source SNBT {relative_label}: {error}"
+                    ) from error
+                return
+            textual_count = 0
+            remaining_occurrences = SEAL_SCAN_MAX_OCCURRENCES - len(occurrences)
+            for _match in SEAL_LITERAL_PATTERN.finditer(text):
+                textual_count += 1
+                if textual_count > remaining_occurrences:
+                    raise VerificationError(
+                        "Seal source occurrence count exceeds limit: "
+                        f"{SEAL_SCAN_MAX_OCCURRENCES}"
+                    )
+            if not textual_count:
+                return
+            try:
+                semantic = _snbt_seal_occurrences(_parse_snbt(text))
+            except ValueError as error:
+                raise VerificationError(
+                    f"cannot parse {label} Seal source SNBT {relative_label}: {error}"
+                ) from error
+            semantic_count = 0
+            for item in semantic:
+                semantic_count += 1
+                record_occurrences(((relative_label, item),))
+            if semantic_count != textual_count:
+                raise VerificationError(
+                    f"cannot account for every {label} Seal source SNBT reference: "
+                    f"{relative_label} text={textual_count} "
+                    f"semantic={semantic_count}"
+                )
+            return
+
+        if suffix in SEAL_CODE_SUFFIXES:
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError as error:
+                if SEAL_BINARY_REFERENCE_PATTERN.search(payload) or b"SEAL" in payload:
+                    raise VerificationError(
+                        f"cannot decode {label} Seal source code {relative_label}: {error}"
+                    ) from error
+                return
+            for line in text.splitlines():
+                if SEAL_CODE_REFERENCE_PATTERN.search(line):
+                    record_occurrences(((relative_label, line.strip()),))
+            return
+
+        for match in SEAL_BINARY_REFERENCE_PATTERN.finditer(payload):
+            record_occurrences(
+                ((relative_label, f"binary:offset={match.start()}"),)
+            )
+
+    def stream_member_flags(
+        archive: zipfile.ZipFile,
+        info: zipfile.ZipInfo,
+        member: PurePosixPath,
+    ) -> tuple[bool, bool, bool]:
+        suffix = member.suffix.lower()
+        needles = [b"ascendancy_seal", b"AFTERLIGHT"]
+        if suffix in SEAL_CODE_SUFFIXES:
+            needles.append(b"SEAL")
+        if suffix in (".json", ".mcmeta"):
+            needles.append(b"\\u")
+        zip_signatures = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+        tail = b""
+        tail_size = max(
+            *(len(needle) for needle in needles),
+            *(len(signature) for signature in zip_signatures),
+        ) - 1
+        first_chunk = True
+        try:
+            with archive.open(info) as source:
+                while True:
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        return False, False, False
+                    compressed_payload = first_chunk and (
+                        chunk.startswith(b"\x1f\x8b") or looks_like_zlib(chunk)
+                    )
+                    first_chunk = False
+                    window = tail + chunk
+                    seal_candidate = any(needle in window for needle in needles)
+                    embedded_archive = any(
+                        signature in window for signature in zip_signatures
+                    )
+                    if seal_candidate or embedded_archive or compressed_payload:
+                        return seal_candidate, embedded_archive, compressed_payload
+                    tail = window[-tail_size:]
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot stream {label} Seal source archive member "
+                f"{info.filename}: {error}"
+            ) from error
+
+    def read_archive_member(
+        archive: zipfile.ZipFile,
+        info: zipfile.ZipInfo,
+        relative_label: str,
+    ) -> bytes:
+        try:
+            with archive.open(info) as source:
+                payload = source.read(SEAL_ARCHIVE_MAX_MEMBER_BYTES + 1)
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot read {label} Seal source archive member "
+                f"{relative_label}: {error}"
+            ) from error
+        if len(payload) > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+            raise VerificationError(
+                f"Seal source archive member size exceeds limit: {relative_label}"
+            )
+        if len(payload) != info.file_size:
+            raise VerificationError(
+                f"Seal source archive member size changed while reading: "
+                f"{relative_label} metadata={info.file_size} actual={len(payload)}"
+            )
+        return payload
+
+    def scan_archive(
+        relative_label: str,
+        review_label: str,
+        source,
+        depth: int,
+        metadata: _SealZipMetadata | None = None,
+    ) -> None:
+        if depth > SEAL_ARCHIVE_MAX_DEPTH:
+            raise VerificationError(
+                f"Seal source archive nesting depth exceeds limit: {relative_label}"
+            )
+        archive_source = source
+        try:
+            if metadata is None:
+                metadata = _seal_zip_preflight(
+                    archive_source,
+                    relative_label,
+                    required=True,
+                )
+            if metadata is None:
+                raise VerificationError(
+                    f"cannot inspect {label} Seal source archive "
+                    f"{relative_label}: invalid ZIP"
+                )
+            archive_source.seek(0)
+            with zipfile.ZipFile(archive_source) as archive:
+                member_infos = archive.infolist()
+                if (
+                    len(member_infos) != metadata.members
+                    or archive.start_dir != metadata.central_directory_offset
+                ):
+                    raise VerificationError(
+                        "Seal source ZIP metadata changed after preflight: "
+                        f"{relative_label}"
+                    )
+                if len(member_infos) > SEAL_ARCHIVE_MAX_MEMBERS:
+                    raise VerificationError(
+                        f"Seal source archive member count exceeds limit: "
+                        f"{relative_label} count={len(member_infos)}"
+                    )
+                archive_budget["members"] += len(member_infos)
+                if archive_budget["members"] > SEAL_ARCHIVE_MAX_TOTAL_MEMBERS:
+                    raise VerificationError(
+                        "Seal source archive aggregate member count exceeds limit: "
+                        f"{archive_budget['members']}"
+                    )
+
+                expanded_bytes = 0
+                for info in member_infos:
+                    if info.file_size < 0 or info.compress_size < 0:
+                        raise VerificationError(
+                            f"invalid Seal source archive member size: "
+                            f"{relative_label}!{info.filename}"
+                        )
+                    if info.file_size > SEAL_ARCHIVE_MAX_MEMBER_BYTES:
+                        raise VerificationError(
+                            "Seal source archive member size exceeds limit: "
+                            f"{relative_label}!{info.filename} size={info.file_size}"
+                        )
+                    if info.file_size:
+                        if info.compress_size == 0:
+                            raise VerificationError(
+                                "Seal source archive compression ratio is unbounded: "
+                                f"{relative_label}!{info.filename}"
+                            )
+                        ratio = info.file_size / info.compress_size
+                        if ratio > SEAL_ARCHIVE_MAX_COMPRESSION_RATIO:
+                            raise VerificationError(
+                                "Seal source archive compression ratio exceeds limit: "
+                                f"{relative_label}!{info.filename} ratio={ratio:.2f}"
+                            )
+                    expanded_bytes += info.file_size
+
+                if expanded_bytes > SEAL_ARCHIVE_MAX_EXPANDED_BYTES:
+                    raise VerificationError(
+                        "Seal source archive expanded bytes exceed limit: "
+                        f"{relative_label} bytes={expanded_bytes}"
+                    )
+                archive_budget["expanded_bytes"] += expanded_bytes
+                if (
+                    archive_budget["expanded_bytes"]
+                    > SEAL_ARCHIVE_MAX_TOTAL_EXPANDED_BYTES
+                ):
+                    raise VerificationError(
+                        "Seal source archive aggregate expanded bytes exceed limit: "
+                        f"{archive_budget['expanded_bytes']}"
+                    )
+
+                member_counts = Counter(info.filename for info in member_infos)
+                reviewed_payloads: dict[str, bytes] = {}
+                for name, count in sorted(member_counts.items()):
+                    if count == 1:
+                        continue
+                    infos = tuple(
+                        info for info in member_infos if info.filename == name
+                    )
+                    reviewed = REVIEWED_DUPLICATE_ZIP_MEMBERS.get(
+                        (review_label, name)
+                    )
+                    if reviewed is None or reviewed[0] != count:
+                        raise VerificationError(
+                            "duplicate archive member is not an exact reviewed "
+                            f"exception: {relative_label}!{name} count={count}"
+                        )
+                    identities = {
+                        _zip_member_alias_identity(info) for info in infos
+                    }
+                    if len(identities) != 1:
+                        raise VerificationError(
+                            "duplicate archive member metadata differs across "
+                            f"reviewed aliases: {relative_label}!{name} count={count}"
+                        )
+                    reviewed_payload = _read_reviewed_zip_alias(
+                        archive, infos, member_infos, review_label, name
+                    )
+                    payload_hash = _hash_bytes(reviewed_payload, "sha256")
+                    if payload_hash != reviewed[1]:
+                        raise VerificationError(
+                            "duplicate archive member is not an exact reviewed "
+                            f"exception: {relative_label}!{name} count={count} "
+                            f"hash={payload_hash}"
+                        )
+                    reviewed_payloads[name] = reviewed_payload
+
+                scanned_names: set[str] = set()
+                for info in sorted(member_infos, key=lambda item: item.filename):
+                    if info.filename in scanned_names:
+                        continue
+                    scanned_names.add(info.filename)
+                    if "\\" in info.filename or "\x00" in info.filename:
+                        raise VerificationError(
+                            f"unsafe archive member in {label} Seal source file: "
+                            f"{relative_label}!{info.filename}"
+                        )
+                    canonical_name = (
+                        info.filename[:-1]
+                        if info.is_dir() and info.filename.endswith("/")
+                        else info.filename
+                    )
+                    try:
+                        member = _safe_relative_path(
+                            canonical_name,
+                            f"{label} Seal source archive member",
+                        )
+                    except VerificationError as error:
+                        raise VerificationError(
+                            f"unsafe archive member in {label} Seal source file: "
+                            f"{relative_label}!{info.filename}"
+                        ) from error
+                    if info.is_dir():
+                        continue
+                    member_label = f"{relative_label}!{member.as_posix()}"
+                    member_review_label = f"{review_label}!/{member.as_posix()}"
+                    payload = reviewed_payloads.get(info.filename)
+                    declared_archive = member.suffix.lower() in (".jar", ".zip")
+                    if declared_archive:
+                        if payload is None:
+                            payload = read_archive_member(archive, info, member_label)
+                        nested_source = io.BytesIO(payload)
+                        nested_metadata = _seal_zip_preflight(
+                            nested_source,
+                            member_label,
+                            required=True,
+                        )
+                        scan_archive(
+                            member_label,
+                            member_review_label,
+                            nested_source,
+                            depth + 1,
+                            nested_metadata,
+                        )
+                        continue
+                    if payload is not None:
+                        nested_source = io.BytesIO(payload)
+                        nested_metadata = _seal_zip_preflight(
+                            nested_source,
+                            member_label,
+                            required=False,
+                        )
+                        if nested_metadata is not None:
+                            scan_archive(
+                                member_label,
+                                member_review_label,
+                                nested_source,
+                                depth + 1,
+                                nested_metadata,
+                            )
+                            continue
+                        scan_payload(
+                            member_label,
+                            payload,
+                            depth,
+                            member_review_label,
+                        )
+                        continue
+                    seal_candidate, embedded_archive, compressed_payload = stream_member_flags(
+                        archive, info, member
+                    )
+                    if not (seal_candidate or embedded_archive or compressed_payload):
+                        continue
+                    payload = read_archive_member(archive, info, member_label)
+                    if embedded_archive:
+                        nested_source = io.BytesIO(payload)
+                        nested_metadata = _seal_zip_preflight(
+                            nested_source,
+                            member_label,
+                            required=False,
+                        )
+                        if nested_metadata is not None:
+                            scan_archive(
+                                member_label,
+                                member_review_label,
+                                nested_source,
+                                depth + 1,
+                                nested_metadata,
+                            )
+                        elif seal_candidate or compressed_payload:
+                            scan_payload(
+                                member_label,
+                                payload,
+                                depth,
+                                member_review_label,
+                            )
+                    elif seal_candidate or compressed_payload:
+                        scan_payload(
+                            member_label,
+                            payload,
+                            depth,
+                            member_review_label,
+                        )
+        except VerificationError:
+            raise
+        except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source archive "
+                f"{relative_label}: {error}"
+            ) from error
+
+    scan_roots: list[PurePosixPath] = []
+    for root_name in SEAL_SCAN_ROOTS:
+        scan_root = root / root_name
+        try:
+            root_stat = scan_root.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source root {root_name}: {error}"
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(
+                f"invalid {label} Seal source root: {root_name}"
+            )
+        scan_roots.append(PurePosixPath(root_name))
+
+    code_scan_bytes = 0
+    for walked_file in _seal_bounded_walk(root, scan_roots, label):
+        relative = walked_file.relative
+        suffix = relative.suffix.lower()
+        is_code = suffix in SEAL_CODE_SUFFIXES
+        with _SealStableFile(
+            root,
+            relative,
+            f"{label} Seal source file",
+            max_bytes=SEAL_CODE_MAX_FILE_BYTES if is_code else None,
+            size_kind="code file" if is_code else "file",
+            expected_identity=walked_file.snapshot,
+        ) as stable:
+            declared_archive = suffix in (".jar", ".zip")
+            metadata = _seal_zip_preflight(
+                stable.handle,
+                relative.as_posix(),
+                required=declared_archive,
+            )
+            if metadata is not None:
+                scan_archive(
+                    relative.as_posix(),
+                    review_labels.get(relative.as_posix(), relative.as_posix()),
+                    stable.handle,
+                    1,
+                    metadata,
+                )
+                continue
+            raw_limit = (
+                SEAL_CODE_MAX_FILE_BYTES
+                if is_code
+                else SEAL_ARCHIVE_MAX_MEMBER_BYTES
+            )
+            if stable.size > raw_limit:
+                size_kind = "code file" if is_code else "raw file"
+                raise VerificationError(
+                    f"Seal source {size_kind} size exceeds limit: "
+                    f"{relative.as_posix()} size={stable.size}"
+                )
+            payload = stable.read_bytes(raw_limit)
+            if is_code:
+                code_scan_bytes += len(payload)
+                if code_scan_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
+                    raise VerificationError(
+                        "Seal source aggregate code bytes exceeds limit: "
+                        f"{code_scan_bytes}"
+                    )
+            scan_payload(relative.as_posix(), payload)
+    return tuple(occurrences)
+
+
+def verify_seal_sources(
+    root: Path | str, install: Path | str
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    code_corpus_sha256 = _verify_seal_code_corpus(root_path, install_path)
+    archive_review_labels = _seal_archive_review_labels(root_path)
+    inventories = {
+        "root": _seal_occurrences(root_path, "repository"),
+        "install": _seal_occurrences(
+            install_path, "installed", archive_review_labels
+        ),
+    }
+    for label, inventory in inventories.items():
+        actual = Counter(inventory)
+        unexpected = actual - EXPECTED_SEAL_OCCURRENCES
+        missing = EXPECTED_SEAL_OCCURRENCES - actual
+        if unexpected or missing:
+            raise VerificationError(
+                f"Seal source corpus {label} changed: "
+                f"unexpected={sorted(unexpected.items())} "
+                f"missing={sorted(missing.items())}"
+            )
+    if Counter(inventories["root"]) != Counter(inventories["install"]):
+        raise VerificationError("Seal source corpus root and install differ")
+    canonical = tuple(sorted(Counter(inventories["root"]).items()))
+    digest = _hash_bytes(
+        json.dumps(canonical, ensure_ascii=False, separators=(",", ":")).encode(
+            "utf-8"
+        ),
+        "sha256",
+    )
+    return {
+        **inventories,
+        "sha256": digest,
+        "code_corpus_sha256": code_corpus_sha256,
+    }
+
+
+SIGNED_SAFE_FTB_ID = re.compile(r"^[0-7][0-9A-F]{15}$")
+QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT = {
+    "data": [],
+    "maxSpells": "5",
+    "mustEquip": "1b",
+    "spellWheel": "1b",
+}
+QUEST_IDENTITY_ORDER_NORMALIZATIONS = {
+    "chapter": {
+        "099200314296766A": (22, 9),
+        "758F5AEF697F7EFD": (20, 7),
+        "7C611E8A94BC5CE5": (21, 8),
+    },
+    "reward_table": {
+        "17E69C9CFEA907D4": (10, 3),
+        "182578C414DC8A45": (11, 4),
+        "399722D6E7EF5835": (12, 5),
+    },
+}
+QUEST_IDENTITY_REVIEWED_REWARD_TABLES = {
+    "1369E4AACBCDF5A1": ("ascendancy_cache", "Ascendancy Cache"),
+    "5D9DAC80C11182CF": (
+        "ascendancy_cache_rare",
+        "Ascendancy Cache: Rare",
+    ),
+    "1A4FA21B1999BDD5": (
+        "ascendancy_cache_epic",
+        "Ascendancy Cache: Epic",
+    ),
+    "17E69C9CFEA907D4": ("depot_early", "Requisition Depot: Early"),
+    "182578C414DC8A45": ("depot_mid", "Requisition Depot: Mid"),
+    "399722D6E7EF5835": ("depot_late", "Requisition Depot: Late"),
+}
+QUEST_IDENTITY_DATA_SAVE_DEFAULTS = {
+    "fallback_locale": "",
+    "verify_on_load": False,
+    "presets": {
+        "goal": {"shape": "hexagon", "size": "2.0d"},
+        "info": {"shape": "gear", "size": "1.0d"},
+        "normal": {"shape": "square", "size": "1.0d"},
+    },
+}
+
+
+def _quest_identity_mapping(value: object, label: str) -> dict:
+    if not isinstance(value, dict):
+        raise VerificationError(f"{label} must be an SNBT compound")
+    return value
+
+
+def _quest_identity_list(value: object, label: str) -> list:
+    if not isinstance(value, list):
+        raise VerificationError(f"{label} must be an SNBT list")
+    return value
+
+
+def _quest_identity_id(value: object, label: str) -> str:
+    if not isinstance(value, str) or SIGNED_SAFE_FTB_ID.fullmatch(value) is None:
+        raise VerificationError(
+            f"{label} is not a signed-safe FTB ID: {value!r}"
+        )
+    return value
+
+
+def _quest_identity_type(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise VerificationError(f"{label} must be a non-empty string")
+    return value
+
+
+def _quest_identity_copy(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _quest_identity_copy(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_quest_identity_copy(child) for child in value]
+    return value
+
+
+def _quest_identity_repository_object(
+    value: object,
+    label: str,
+    kind: str,
+) -> dict:
+    identity = _quest_identity_mapping(_quest_identity_copy(value), label)
+    if identity.get("type") == "item":
+        expected_count = "1L" if kind == "task" else "1"
+        if "count" not in identity:
+            raise VerificationError(
+                f"repository {label} must retain explicit count {expected_count}"
+            )
+        item = _quest_identity_mapping(identity.get("item"), f"{label} item")
+        if (
+            item.get("id") == "irons_spellbooks:copper_spell_book"
+            and isinstance(item.get("components"), dict)
+            and item["components"].get("irons_spellbooks:spell_container")
+            == QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT
+        ):
+            raise VerificationError(
+                "repository Iron's Spells item contains an installed save default"
+            )
+    if kind == "table_reward":
+        if identity.get("type") != "item":
+            raise VerificationError(
+                f"repository {label} must retain explicit item type"
+            )
+        if "weight" not in identity:
+            raise VerificationError(
+                f"repository {label} must retain explicit reward weight"
+            )
+    return identity
+
+
+def _quest_identity_installed_item(
+    value: object,
+    repository_value: object,
+    label: str,
+) -> dict:
+    installed = _quest_identity_mapping(_quest_identity_copy(value), label)
+    repository = _quest_identity_mapping(
+        _quest_identity_copy(repository_value), f"repository {label}"
+    )
+    if repository.get("id") != "irons_spellbooks:copper_spell_book":
+        return installed
+    if "components" in repository:
+        return installed
+    components = installed.get("components")
+    if not isinstance(components, dict):
+        return installed
+    if (
+        components.get("irons_spellbooks:spell_container")
+        != QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT
+    ):
+        return installed
+    components.pop("irons_spellbooks:spell_container")
+    if not components:
+        installed.pop("components")
+    return installed
+
+
+def _quest_identity_installed_object(
+    value: object,
+    repository_value: object | None,
+    label: str,
+    kind: str,
+) -> dict:
+    identity = _quest_identity_mapping(_quest_identity_copy(value), label)
+    if not isinstance(repository_value, dict):
+        return identity
+    repository = _quest_identity_mapping(
+        _quest_identity_copy(repository_value), f"repository {label}"
+    )
+    if (
+        kind == "table_reward"
+        and "type" not in identity
+        and repository.get("type") == "item"
+        and "item" in identity
+    ):
+        identity["type"] = "item"
+    if identity.get("type") == "item" and repository.get("type") == "item":
+        identity["item"] = _quest_identity_installed_item(
+            identity.get("item"), repository.get("item"), f"{label} item"
+        )
+        expected_count = "1L" if kind == "task" else "1"
+        if "count" not in identity and repository.get("count") == expected_count:
+            identity["count"] = expected_count
+    if (
+        kind == "table_reward"
+        and "weight" not in identity
+        and repository.get("weight") == "1.0f"
+    ):
+        identity["weight"] = "1.0f"
+    return identity
+
+
+def _quest_identity_json(value: object) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def _quest_identity_order_index(value: dict, label: str) -> int:
+    order_index = value.get("order_index")
+    if not isinstance(order_index, str) or re.fullmatch(r"-?[0-9]+", order_index) is None:
+        raise VerificationError(f"{label} order_index must be an integer")
+    return int(order_index)
+
+
+def _quest_identity_require_unique_orders(
+    values: Sequence[tuple[str, str, int]],
+) -> None:
+    by_scope: dict[str, list[tuple[int, str]]] = {}
+    for identifier, scope, order_index in values:
+        by_scope.setdefault(scope, []).append((order_index, identifier))
+    for scope, entries in by_scope.items():
+        order_indices = [order_index for order_index, _identifier in entries]
+        if len(set(order_indices)) != len(order_indices):
+            raise VerificationError(
+                f"quest identity corpus {scope} has duplicate order_index values"
+            )
+
+
+def _quest_identity_canonical_order(
+    kind: str,
+    identifier: str,
+    order_index: int,
+    repository_orders: dict[str, int] | None,
+) -> int:
+    normalization = QUEST_IDENTITY_ORDER_NORMALIZATIONS[kind].get(identifier)
+    if repository_orders is None:
+        if normalization is not None and order_index != normalization[0]:
+            raise VerificationError(
+                f"repository {kind} {identifier} order_index changed: "
+                f"expected={normalization[0]} actual={order_index}"
+            )
+        return order_index
+    repository_order = repository_orders.get(identifier)
+    if repository_order is None:
+        return order_index
+    if normalization is None:
+        return order_index
+    if repository_order != normalization[0] or order_index not in normalization:
+        raise VerificationError(
+            f"installed {kind} {identifier} order_index is not characterized: "
+            f"repository={repository_order} installed={order_index}"
+        )
+    return repository_order
+
+
+def _quest_identity_parse(root: Path, relative: PurePosixPath, label: str) -> dict:
+    path = _verified_regular_file(root, relative, label)
+    try:
+        text = path.read_text(encoding="utf-8")
+        parsed = _parse_snbt(text)
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        raise VerificationError(
+            f"cannot parse {label} {relative.as_posix()}: {error}"
+        ) from error
+    return _quest_identity_mapping(parsed, label)
+
+
+def _quest_identity_localization_records(
+    root: Path,
+    quest_root: Path,
+    quest_relative: PurePosixPath,
+    label: str,
+) -> tuple[tuple[str, ...], ...]:
+    lang_root = _validated_root(quest_root / "lang", f"{label} localization root")
+    records: list[tuple[str, ...]] = []
+    for directory, directory_names, file_names in os.walk(
+        lang_root, followlinks=False
+    ):
+        directory_path = Path(directory)
+        directory_names.sort()
+        file_names.sort()
+        for name in directory_names:
+            child = directory_path / name
+            child_stat = child.lstat()
+            if stat.S_ISLNK(child_stat.st_mode) or not stat.S_ISDIR(
+                child_stat.st_mode
+            ):
+                raise VerificationError(
+                    f"invalid {label} localization directory: "
+                    f"{child.relative_to(lang_root).as_posix()}"
+                )
+        for name in file_names:
+            path = directory_path / name
+            relative = PurePosixPath(path.relative_to(root).as_posix())
+            if relative.suffix != ".snbt":
+                raise VerificationError(
+                    f"unexpected {label} localization file: {relative.as_posix()}"
+                )
+            verified = _verified_regular_file(
+                root, relative, f"{label} localization file"
+            )
+            try:
+                text = verified.read_text(encoding="utf-8")
+                parsed = _parse_snbt(text)
+                _scalars, key_tokens = _SnbtPathScanner(text).scan()
+            except (OSError, UnicodeDecodeError, ValueError) as error:
+                raise VerificationError(
+                    f"cannot parse {label} localization {relative.as_posix()}: "
+                    f"{error}"
+                ) from error
+            localization = _quest_identity_mapping(
+                parsed, f"{label} localization {relative.as_posix()}"
+            )
+            top_level_keys = [
+                token.value for parent_path, token in key_tokens if not parent_path
+            ]
+            if len(top_level_keys) != len(key_tokens):
+                raise VerificationError(
+                    f"nested compound in {label} localization {relative.as_posix()}"
+                )
+            if len(top_level_keys) != len(set(top_level_keys)):
+                raise VerificationError(
+                    f"duplicate key in {label} localization {relative.as_posix()}"
+                )
+            if set(top_level_keys) != set(localization):
+                raise VerificationError(
+                    f"unaccounted key in {label} localization {relative.as_posix()}"
+                )
+            localization_relative = path.relative_to(lang_root).as_posix()
+            records.append(
+                (
+                    "localization_file",
+                    localization_relative,
+                    f"{len(top_level_keys):08d}",
+                )
+            )
+            for key, value in localization.items():
+                if isinstance(value, str):
+                    records.append(
+                        (
+                            "localization_scalar",
+                            localization_relative,
+                            key,
+                            value,
+                        )
+                    )
+                    continue
+                if not isinstance(value, list) or not all(
+                    isinstance(item, str) for item in value
+                ):
+                    raise VerificationError(
+                        f"invalid {label} localization value for {key}"
+                    )
+                records.append(
+                    (
+                        "localization_array",
+                        localization_relative,
+                        key,
+                        f"{len(value):08d}",
+                    )
+                )
+                for position, item in enumerate(value):
+                    records.append(
+                        (
+                            "localization_text",
+                            localization_relative,
+                            key,
+                            f"{position:08d}",
+                            item,
+                        )
+                    )
+    return tuple(records)
+
+
+def _quest_identity_data(
+    value: object,
+    label: str,
+    repository_value: object | None,
+) -> dict:
+    data = _quest_identity_mapping(_quest_identity_copy(value), label)
+    if repository_value is None:
+        unexpected = sorted(set(data) & set(QUEST_IDENTITY_DATA_SAVE_DEFAULTS))
+        if unexpected:
+            raise VerificationError(
+                f"repository data.snbt contains installed save defaults: {unexpected}"
+            )
+        return data
+    repository = _quest_identity_mapping(
+        _quest_identity_copy(repository_value), "repository data.snbt"
+    )
+    for key, default in QUEST_IDENTITY_DATA_SAVE_DEFAULTS.items():
+        if key in repository or key not in data:
+            continue
+        if data[key] == default:
+            data.pop(key)
+    return data
+
+
+def _quest_identity_inventory(
+    root: Path,
+    label: str,
+    repository_reference: dict[str, object] | None = None,
+) -> tuple[tuple[tuple[str, ...], ...], dict[str, object]]:
+    quest_relative = PurePosixPath("config/ftbquests/quests")
+    quest_root = _validated_root(root / quest_relative, f"{label} quest root")
+    records: list[tuple[str, ...]] = []
+    is_repository = repository_reference is None
+    reference = repository_reference or {
+        "objects": {},
+        "chapter_orders": {},
+        "reward_table_orders": {},
+        "reward_tables": {},
+        "reward_table_glows": {},
+    }
+    objects = reference["objects"]
+    chapter_orders = reference["chapter_orders"]
+    reward_table_orders = reference["reward_table_orders"]
+    reward_tables = reference["reward_tables"]
+    reward_table_glows = reference["reward_table_glows"]
+    if not all(
+        isinstance(value, dict)
+        for value in (
+            objects,
+            chapter_orders,
+            reward_table_orders,
+            reward_tables,
+            reward_table_glows,
+        )
+    ):
+        raise VerificationError("invalid repository quest identity reference")
+
+    data_relative = quest_relative / "data.snbt"
+    data = _quest_identity_parse(root, data_relative, f"{label} data.snbt")
+    canonical_data = _quest_identity_data(
+        data,
+        f"{label} data.snbt",
+        None if is_repository else reference.get("data"),
+    )
+    if is_repository:
+        reference["data"] = _quest_identity_copy(canonical_data)
+    records.append(("data", _quest_identity_json(canonical_data)))
+    records.extend(
+        _quest_identity_localization_records(
+            root, quest_root, quest_relative, label
+        )
+    )
+
+    groups_relative = quest_relative / "chapter_groups.snbt"
+    groups_data = _quest_identity_parse(root, groups_relative, f"{label} chapter groups")
+    groups = _quest_identity_list(
+        groups_data.get("chapter_groups"), f"{label} chapter_groups"
+    )
+    for position, group_value in enumerate(groups):
+        group = _quest_identity_mapping(
+            group_value, f"{label} chapter group {position}"
+        )
+        group_id = _quest_identity_id(
+            group.get("id"), f"{label} chapter group {position} ID"
+        )
+        records.append(
+            (
+                "group",
+                f"{position:08d}",
+                group_id,
+                _quest_identity_json(group),
+            )
+        )
+
+    chapter_directory = _validated_root(
+        quest_root / "chapters", f"{label} chapter directory"
+    )
+    chapters: list[tuple[Path, PurePosixPath, dict, str, str, str, int]] = []
+    for path in sorted(chapter_directory.glob("*.snbt")):
+        relative = PurePosixPath(path.relative_to(root).as_posix())
+        chapter = _quest_identity_parse(root, relative, f"{label} chapter")
+        chapter_id = _quest_identity_id(
+            chapter.get("id"), f"{label} chapter {relative.name} ID"
+        )
+        filename = _quest_identity_id(
+            chapter.get("filename"), f"{label} chapter {relative.name} filename"
+        )
+        group_id = _quest_identity_id(
+            chapter.get("group"), f"{label} chapter {relative.name} group"
+        )
+        stem = _quest_identity_id(path.stem, f"{label} chapter file stem")
+        order_index = _quest_identity_order_index(
+            chapter, f"{label} chapter {chapter_id}"
+        )
+        chapters.append(
+            (path, relative, chapter, chapter_id, filename, group_id, order_index)
+        )
+
+    _quest_identity_require_unique_orders(
+        tuple(
+            (chapter_id, group_id, order_index)
+            for _path, _relative, _chapter, chapter_id, _filename, group_id, order_index
+            in chapters
+        )
+    )
+    for path, relative, chapter, chapter_id, filename, group_id, order_index in chapters:
+        canonical_order = _quest_identity_canonical_order(
+            "chapter",
+            chapter_id,
+            order_index,
+            None if is_repository else chapter_orders,
+        )
+        if is_repository:
+            chapter_orders[chapter_id] = order_index
+        chapter_semantics = _quest_identity_copy(chapter)
+        chapter_semantics.pop("quests", None)
+        chapter_semantics.pop("order_index", None)
+        records.append(
+            (
+                "chapter",
+                path.stem,
+                chapter_id,
+                filename,
+                group_id,
+                str(canonical_order),
+                _quest_identity_json(chapter_semantics),
+            )
+        )
+        quests = _quest_identity_list(
+            chapter.get("quests"), f"{label} chapter {chapter_id} quests"
+        )
+        for quest_position, quest_value in enumerate(quests):
+            quest = _quest_identity_mapping(
+                quest_value,
+                f"{label} chapter {chapter_id} quest {quest_position}",
+            )
+            quest_id = _quest_identity_id(
+                quest.get("id"),
+                f"{label} chapter {chapter_id} quest {quest_position} ID",
+            )
+            quest_semantics = _quest_identity_copy(quest)
+            quest_semantics.pop("tasks", None)
+            quest_semantics.pop("rewards", None)
+            records.append(
+                (
+                    "quest",
+                    chapter_id,
+                    f"{quest_position:08d}",
+                    quest_id,
+                    _quest_identity_json(quest_semantics),
+                )
+            )
+            dependencies = _quest_identity_list(
+                quest.get("dependencies", []),
+                f"{label} quest {quest_id} dependencies",
+            )
+            for dependency_position, dependency_value in enumerate(dependencies):
+                dependency = _quest_identity_id(
+                    dependency_value, f"{label} quest {quest_id} dependency"
+                )
+                records.append(
+                    (
+                        "dependency",
+                        quest_id,
+                        f"{dependency_position:08d}",
+                        dependency,
+                    )
+                )
+            for kind in ("tasks", "rewards"):
+                values = _quest_identity_list(
+                    quest.get(kind), f"{label} quest {quest_id} {kind}"
+                )
+                singular = kind[:-1]
+                for position, object_value in enumerate(values):
+                    identity = _quest_identity_mapping(
+                        object_value,
+                        f"{label} quest {quest_id} {singular} {position}",
+                    )
+                    identity_id = _quest_identity_id(
+                        identity.get("id"),
+                        f"{label} quest {quest_id} {singular} {position} ID",
+                    )
+                    object_key = (singular, identity_id)
+                    if is_repository:
+                        normalized_identity = _quest_identity_repository_object(
+                            identity,
+                            f"quest {quest_id} {singular} {identity_id}",
+                            singular,
+                        )
+                        if object_key in objects:
+                            raise VerificationError(
+                                f"duplicate repository quest identity object: {object_key}"
+                            )
+                        objects[object_key] = _quest_identity_copy(
+                            normalized_identity
+                        )
+                    else:
+                        normalized_identity = _quest_identity_installed_object(
+                            identity,
+                            objects.get(object_key),
+                            f"quest {quest_id} {singular} {identity_id}",
+                            singular,
+                        )
+                    identity_type = _quest_identity_type(
+                        normalized_identity.get("type"),
+                        f"{label} quest {quest_id} {singular} {identity_id} type",
+                    )
+                    records.append(
+                        (
+                            singular,
+                            quest_id,
+                            f"{position:08d}",
+                            identity_id,
+                            identity_type,
+                            _quest_identity_json(normalized_identity),
+                        )
+                    )
+
+    table_directory = _validated_root(
+        quest_root / "reward_tables", f"{label} reward table directory"
+    )
+    tables: list[tuple[Path, dict, str, int]] = []
+    for path in sorted(table_directory.glob("*.snbt")):
+        relative = PurePosixPath(path.relative_to(root).as_posix())
+        table = _quest_identity_parse(root, relative, f"{label} reward table")
+        table_id = _quest_identity_id(
+            table.get("id"), f"{label} reward table {relative.name} ID"
+        )
+        order_index = _quest_identity_order_index(
+            table, f"{label} reward table {table_id}"
+        )
+        tables.append((path, table, table_id, order_index))
+
+    _quest_identity_require_unique_orders(
+        tuple(
+            (table_id, "reward_tables", order_index)
+            for _path, _table, table_id, order_index in tables
+        )
+    )
+    observed_table_ids: set[str] = set()
+    for path, table, table_id, order_index in tables:
+        observed_table_ids.add(table_id)
+        canonical_order = _quest_identity_canonical_order(
+            "reward_table",
+            table_id,
+            order_index,
+            None if is_repository else reward_table_orders,
+        )
+        reviewed = QUEST_IDENTITY_REVIEWED_REWARD_TABLES.get(table_id)
+        if reviewed is None:
+            raise VerificationError(f"unreviewed reward table in {label}: {table_id}")
+        if is_repository:
+            actual_metadata = (table.get("filename"), table.get("title"))
+            if actual_metadata != reviewed or path.stem != reviewed[0]:
+                raise VerificationError(
+                    f"reviewed reward table metadata changed for {table_id}: "
+                    f"expected={reviewed} actual={actual_metadata} path={path.stem}"
+                )
+            reward_tables[table_id] = reviewed
+            reward_table_orders[table_id] = order_index
+        else:
+            repository_metadata = reward_tables.get(table_id)
+            if repository_metadata != reviewed:
+                raise VerificationError(
+                    f"repository reward table metadata is missing for {table_id}"
+                )
+            for key, expected in zip(("filename", "title"), reviewed, strict=True):
+                actual = table.get(key)
+                if actual is None:
+                    table[key] = expected
+                elif actual != expected:
+                    raise VerificationError(
+                        f"installed reviewed reward table {key} changed for "
+                        f"{table_id}: expected={expected!r} actual={actual!r}"
+                    )
+        table_semantics = _quest_identity_copy(table)
+        table_semantics.pop("order_index", None)
+        loot_crate = table_semantics.get("loot_crate")
+        if isinstance(loot_crate, dict):
+            glow = loot_crate.get("glow")
+            if is_repository:
+                if glow is not None and not isinstance(glow, bool):
+                    raise VerificationError(
+                        f"repository reward table glow encoding changed for {table_id}"
+                    )
+                reward_table_glows[table_id] = glow
+            else:
+                repository_glow = reward_table_glows.get(table_id)
+                if glow == "1b" and repository_glow is True:
+                    loot_crate["glow"] = True
+                elif glow == "0b" and repository_glow is False:
+                    loot_crate["glow"] = False
+        table_rewards = _quest_identity_list(
+            table_semantics.get("rewards"), f"{label} reward table {table_id} rewards"
+        )
+        normalized_rewards: list[dict] = []
+        for position, reward_value in enumerate(table_rewards):
+            raw_reward = _quest_identity_mapping(
+                reward_value,
+                f"{label} reward table {table_id} reward {position}",
+            )
+            reward_id = _quest_identity_id(
+                raw_reward.get("id"),
+                f"{label} reward table {table_id} reward {position} ID",
+            )
+            object_key = ("table_reward", reward_id)
+            if is_repository:
+                reward = _quest_identity_repository_object(
+                    raw_reward,
+                    f"reward table {table_id} reward {reward_id}",
+                    "table_reward",
+                )
+                if object_key in objects:
+                    raise VerificationError(
+                        f"duplicate repository quest identity object: {object_key}"
+                    )
+                objects[object_key] = _quest_identity_copy(reward)
+            else:
+                reward = _quest_identity_installed_object(
+                    raw_reward,
+                    objects.get(object_key),
+                    f"reward table {table_id} reward {reward_id}",
+                    "table_reward",
+                )
+            _quest_identity_type(
+                reward.get("type"),
+                f"{label} reward table {table_id} reward {reward_id} type",
+            )
+            normalized_rewards.append(reward)
+        table_semantics["rewards"] = normalized_rewards
+        records.append(
+            (
+                "reward_table",
+                path.stem,
+                table_id,
+                str(canonical_order),
+                _quest_identity_json(table_semantics),
+            )
+        )
+
+    if is_repository and observed_table_ids != set(
+        QUEST_IDENTITY_REVIEWED_REWARD_TABLES
+    ):
+        raise VerificationError(
+            "repository reviewed reward table set changed: "
+            f"expected={sorted(QUEST_IDENTITY_REVIEWED_REWARD_TABLES)} "
+            f"actual={sorted(observed_table_ids)}"
+        )
+    return tuple(sorted(records)), reference
+
+
+def verify_quest_identity_stability(
+    root: Path | str, install: Path | str
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    try:
+        root_inventory, repository_reference = _quest_identity_inventory(
+            root_path, "repository"
+        )
+        install_inventory, _reference = _quest_identity_inventory(
+            install_path,
+            "installed",
+            repository_reference,
+        )
+    except VerificationError as error:
+        raise VerificationError(f"quest identity corpus invalid: {error}") from error
+    inventories = {
+        "root": root_inventory,
+        "install": install_inventory,
+    }
+    root_counter = Counter(inventories["root"])
+    install_counter = Counter(inventories["install"])
+    if root_counter != install_counter:
+        unexpected = install_counter - root_counter
+        missing = root_counter - install_counter
+        raise VerificationError(
+            "quest identity corpus changed after FTB save: "
+            f"unexpected={sorted(unexpected.items())[:20]} "
+            f"missing={sorted(missing.items())[:20]}"
+        )
+    digest = _hash_bytes(
+        json.dumps(
+            inventories["root"],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8"),
+        "sha256",
+    )
+    return {
+        **inventories,
+        "count": len(inventories["root"]),
+        "sha256": digest,
+    }
 
 
 def _gate_audit_source(root: Path | str) -> bytes:
@@ -3887,7 +6463,7 @@ def validate_boot_markers(
     gate_message = (
         f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
-    ftb_message = "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables"
+    ftb_message = "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables"
 
     def exact_single(
         record: LogRecord,
@@ -4173,6 +6749,15 @@ def _cli_verify_gate_audit(args: argparse.Namespace) -> None:
     print(f"GATE AUDIT BYTES: OK sha256={digest}")
 
 
+def _cli_verify_seal_sources(args: argparse.Namespace) -> None:
+    result = verify_seal_sources(Path(args.root), Path(args.install))
+    print(
+        "SEAL SOURCES: OK "
+        f"occurrences={len(result['root'])} sha256={result['sha256']} "
+        f"code-corpus-sha256={result['code_corpus_sha256']}"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AFTERLIGHT RC hygiene verifier")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -4202,6 +6787,10 @@ def build_parser() -> argparse.ArgumentParser:
     gate_audit.add_argument("--install", required=True)
     gate_audit.add_argument("--nonce", required=True)
     gate_audit.set_defaults(handler=_cli_verify_gate_audit)
+    seal_sources = subparsers.add_parser("verify-seal-sources")
+    seal_sources.add_argument("--root", default=".")
+    seal_sources.add_argument("--install", required=True)
+    seal_sources.set_defaults(handler=_cli_verify_seal_sources)
     boot = subparsers.add_parser("verify-boot")
     boot.add_argument("--root", default=".")
     boot.add_argument("--install", required=True)

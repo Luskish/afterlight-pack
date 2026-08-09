@@ -11,6 +11,10 @@ ServerEvents.loaded(event => {
   const server = event.server
   const level = server.overworld()
   const registries = server.registryAccess()
+  let positiveChecks = 0
+  let negativeChecks = 0
+  let remainderSlotChecks = 0
+  let sealRemainderChecks = 0
 
   function afterlightRecipe(id) {
     const optional = server.getRecipeManager().byKey(ResourceLocation.parse(id))
@@ -52,10 +56,12 @@ ServerEvents.loaded(event => {
 
   function afterlightAssertMatch(recipe, input, label) {
     if (!recipe.matches(input, level)) throw new Error(`${label} did not match`)
+    positiveChecks++
   }
 
   function afterlightAssertNoMatch(recipe, input, label) {
     if (recipe.matches(input, level)) throw new Error(`${label} matched unexpectedly`)
+    negativeChecks++
   }
 
   function afterlightAssertOnlySealRemainder(recipe, input, label) {
@@ -63,10 +69,12 @@ ServerEvents.loaded(event => {
     if (remainder.size() !== 9) throw new Error(`${label} returned ${remainder.size()} remainder slots`)
     for (let index = 0; index < remainder.size(); index++) {
       let stack = remainder.get(index)
+      remainderSlotChecks++
       if (index === 7) {
         if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {
           throw new Error(`${label} did not return one Seal in slot 7`)
         }
+        sealRemainderChecks++
       } else if (!stack.isEmpty()) {
         throw new Error(`${label} returned an extra remainder in slot ${index}`)
       }
@@ -110,6 +118,12 @@ ServerEvents.loaded(event => {
   })
 
   const componentPattern = ['ABCDF', 'EFABC', 'DASBE', 'CDEFA', 'FBCDE']
+  const wrongSchematics = [
+    'kubejs:schematic_kinetic_frame',
+    'kubejs:schematic_industrial_anchor',
+    'kubejs:schematic_isotopic_core',
+    'kubejs:schematic_lattice_matrix'
+  ]
   const mechanicalRecipes = [
     {
       id: 'kubejs:gate/component/kinetic_frame',
@@ -166,6 +180,11 @@ ServerEvents.loaded(event => {
         O: AFTERLIGHT.GATE_ISOTOPIC, L: AFTERLIGHT.GATE_LATTICE, U: AFTERLIGHT.STABILIZER,
         C: 'create:iron_sheet', A: 'ae2:logic_processor', P: 'pneumaticcraft:printed_circuit_board',
         S: 'immersiveengineering:ingot_steel'
+      },
+      wrongSpecialItems: {
+        B: 'kubejs:schematic_kinetic_frame', K: AFTERLIGHT.GATE_INDUSTRIAL,
+        I: AFTERLIGHT.GATE_ISOTOPIC, O: AFTERLIGHT.GATE_LATTICE,
+        L: AFTERLIGHT.GATE_KINETIC, U: AFTERLIGHT.GATE_KINETIC
       }
     }
   ]
@@ -197,38 +216,117 @@ ServerEvents.loaded(event => {
     if (!ItemStack.isSameItemSameComponents(assembled, expectedOutput) || assembled.getCount() !== 1) {
       throw new Error(`${spec.id} assembled output changed`)
     }
+    if (spec.id === 'kubejs:gate/component/kinetic_frame') {
+      let noMatchRejectedCanonical = false
+      try {
+        afterlightAssertNoMatch(recipe, input, 'no-match helper self-test canonical input')
+      } catch (error) {
+        noMatchRejectedCanonical = String(error).includes('matched unexpectedly')
+      }
+      if (!noMatchRejectedCanonical) throw new Error('afterlightAssertNoMatch helper self-test failed')
+
+      let selfTestPattern = spec.pattern.slice()
+      selfTestPattern[0] = ' ' + selfTestPattern[0].substring(1)
+      let matchRejectedInvalid = false
+      try {
+        afterlightAssertMatch(
+          recipe,
+          afterlightMechanicalInput(selfTestPattern, spec.keys),
+          'match helper self-test invalid input'
+        )
+      } catch (error) {
+        matchRejectedInvalid = String(error).includes('did not match')
+      }
+      if (!matchRejectedInvalid) throw new Error('afterlightAssertMatch helper self-test failed')
+    }
 
     const mirrored = spec.pattern.map(row => row.split('').reverse().join(''))
     afterlightAssertNoMatch(recipe, afterlightMechanicalInput(mirrored, spec.keys), `${spec.id} mirrored input`)
 
+    let rotatedPattern = spec.pattern.slice()
+    for (let turn = 1; turn <= 3; turn++) {
+      let nextRotation = []
+      for (let column = 0; column < rotatedPattern[0].length; column++) {
+        let rotatedRow = ''
+        for (let row = rotatedPattern.length - 1; row >= 0; row--) {
+          rotatedRow += rotatedPattern[row][column]
+        }
+        nextRotation.push(rotatedRow)
+      }
+      rotatedPattern = nextRotation
+      afterlightAssertNoMatch(
+        recipe,
+        afterlightMechanicalInput(rotatedPattern, spec.keys),
+        `${spec.id} rotated ${turn * 90} degrees`
+      )
+    }
+
     for (let row = 0; row < spec.pattern.length; row++) {
       for (let column = 0; column < spec.pattern[row].length; column++) {
-        let changedPattern = spec.pattern.slice()
         let character = spec.pattern[row][column]
-        changedPattern[row] = changedPattern[row].substring(0, column)
-          + (character === ' ' ? 'X' : ' ')
-          + changedPattern[row].substring(column + 1)
-        let changedKeys = {}
-        Object.keys(spec.keys).forEach(key => { changedKeys[key] = spec.keys[key] })
-        changedKeys.X = 'minecraft:barrier'
+        if (character === ' ') {
+          let insertedPattern = spec.pattern.slice()
+          insertedPattern[row] = insertedPattern[row].substring(0, column)
+            + 'X'
+            + insertedPattern[row].substring(column + 1)
+          let insertedKeys = {}
+          Object.keys(spec.keys).forEach(key => { insertedKeys[key] = spec.keys[key] })
+          insertedKeys.X = 'minecraft:barrier'
+          afterlightAssertNoMatch(
+            recipe,
+            afterlightMechanicalInput(insertedPattern, insertedKeys),
+            `${spec.id} empty slot insertion ${row},${column}`
+          )
+          continue
+        }
+        let deletedPattern = spec.pattern.slice()
+        deletedPattern[row] = deletedPattern[row].substring(0, column)
+          + ' '
+          + deletedPattern[row].substring(column + 1)
         afterlightAssertNoMatch(
           recipe,
-          afterlightMechanicalInput(changedPattern, changedKeys),
-          `${spec.id} pattern position ${row},${column}`
+          afterlightMechanicalInput(deletedPattern, spec.keys),
+          `${spec.id} occupied slot deletion ${row},${column}`
+        )
+        let replacedPattern = spec.pattern.slice()
+        replacedPattern[row] = replacedPattern[row].substring(0, column)
+          + 'X'
+          + replacedPattern[row].substring(column + 1)
+        let replacementKeys = {}
+        Object.keys(spec.keys).forEach(key => { replacementKeys[key] = spec.keys[key] })
+        replacementKeys.X = 'minecraft:barrier'
+        afterlightAssertNoMatch(
+          recipe,
+          afterlightMechanicalInput(replacedPattern, replacementKeys),
+          `${spec.id} occupied slot replacement ${row},${column}`
         )
       }
     }
 
-    Object.keys(spec.keys).forEach(key => {
-      const changedKeys = {}
-      Object.keys(spec.keys).forEach(copyKey => { changedKeys[copyKey] = spec.keys[copyKey] })
-      changedKeys[key] = 'minecraft:barrier'
-      afterlightAssertNoMatch(
-        recipe,
-        afterlightMechanicalInput(spec.pattern, changedKeys),
-        `${spec.id} key ${key}`
-      )
-    })
+    if (spec.wrongSpecialItems) {
+      Object.keys(spec.wrongSpecialItems).forEach(key => {
+        const changedKeys = {}
+        Object.keys(spec.keys).forEach(copyKey => { changedKeys[copyKey] = spec.keys[copyKey] })
+        changedKeys[key] = spec.wrongSpecialItems[key]
+        const wrongKind = key === 'B' ? 'wrong blueprint' : 'wrong unique component'
+        afterlightAssertNoMatch(
+          recipe,
+          afterlightMechanicalInput(spec.pattern, changedKeys),
+          `${spec.id} ${wrongKind} ${key}`
+        )
+      })
+    } else {
+      wrongSchematics.filter(candidate => candidate !== spec.keys.S).forEach(candidate => {
+        const changedKeys = {}
+        Object.keys(spec.keys).forEach(key => { changedKeys[key] = spec.keys[key] })
+        changedKeys.S = candidate
+        afterlightAssertNoMatch(
+          recipe,
+          afterlightMechanicalInput(spec.pattern, changedKeys),
+          `${spec.id} wrong schematic ${candidate}`
+        )
+      })
+    }
   })
 
   const stabilizerRecipes = [
@@ -310,6 +408,9 @@ ServerEvents.loaded(event => {
       nonSealKeys: ['D', 'G', 'I', 'R']
     }
   ]
+  if (Item.of(draconicRecipes[0].keys.Z).getMaxStackSize() !== 1) {
+    throw new Error('Seal maximum stack size changed')
+  }
   draconicRecipes.forEach(spec => {
     if (server.getRecipeManager().byKey(ResourceLocation.parse(spec.original)).isPresent()) {
       throw new Error(`${spec.original} was not removed`)
@@ -323,6 +424,24 @@ ServerEvents.loaded(event => {
     const noSealPattern = spec.pattern.slice()
     noSealPattern[2] = noSealPattern[2].substring(0, 1) + ' ' + noSealPattern[2].substring(2)
     afterlightAssertNoMatch(recipe, afterlightCraftingInput(noSealPattern, spec.keys), `${spec.id} without Seal`)
+    for (let wrongSlot = 0; wrongSlot < 9; wrongSlot++) {
+      if (wrongSlot === 7) continue
+      let wrongRow = Math.floor(wrongSlot / 3)
+      let wrongColumn = wrongSlot % 3
+      let displaced = spec.pattern[wrongRow][wrongColumn]
+      let wrongSlotPattern = spec.pattern.slice()
+      wrongSlotPattern[2] = wrongSlotPattern[2].substring(0, 1)
+        + displaced
+        + wrongSlotPattern[2].substring(2)
+      wrongSlotPattern[wrongRow] = wrongSlotPattern[wrongRow].substring(0, wrongColumn)
+        + 'Z'
+        + wrongSlotPattern[wrongRow].substring(wrongColumn + 1)
+      afterlightAssertNoMatch(
+        recipe,
+        afterlightCraftingInput(wrongSlotPattern, spec.keys),
+        `${spec.id} wrong Seal slot ${wrongSlot}`
+      )
+    }
     spec.nonSealKeys.forEach(key => {
       const changedKeys = {}
       Object.keys(spec.keys).forEach(copyKey => { changedKeys[copyKey] = spec.keys[copyKey] })
@@ -348,19 +467,33 @@ ServerEvents.loaded(event => {
     Object.keys(spec.keys).forEach(key => { countTwoKeys[key] = spec.keys[key] })
     countTwoKeys.Z = Item.of(AFTERLIGHT.SEAL, 2)
     const countTwoInput = afterlightCraftingInput(spec.pattern, countTwoKeys)
-    afterlightAssertMatch(recipe, countTwoInput, `${spec.id} count-two Seal hazard input`)
+    afterlightAssertMatch(
+      recipe,
+      countTwoInput,
+      `${spec.id} unsupported count-two KeepAction characterization`
+    )
     const countTwoRemainder = recipe.getRemainingItems(countTwoInput)
+    if (countTwoRemainder.size() !== 9) {
+      throw new Error(`${spec.id} unsupported count-two KeepAction returned ${countTwoRemainder.size()} remainder slots`)
+    }
+    let countTwoSealSlotSeen = false
     for (let index = 0; index < countTwoRemainder.size(); index++) {
       let stack = countTwoRemainder.get(index)
+      remainderSlotChecks++
       if (index === 7) {
         if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {
-          throw new Error(`${spec.id} count-two Seal hazard remainder changed`)
+          throw new Error(`${spec.id} unsupported count-two KeepAction remainder changed`)
         }
+        countTwoSealSlotSeen = true
+        sealRemainderChecks++
         let mergedCount = countTwoInput.getItem(index).getCount() - 1 + stack.getCount()
-        if (mergedCount !== 3) throw new Error(`${spec.id} count-two Seal hazard merge changed to ${mergedCount}`)
+        if (mergedCount !== 3) throw new Error(`${spec.id} unsupported count-two KeepAction merge changed to ${mergedCount}`)
       } else if (!stack.isEmpty()) {
-        throw new Error(`${spec.id} count-two Seal hazard returned an extra remainder`)
+        throw new Error(`${spec.id} unsupported count-two KeepAction returned an extra remainder`)
       }
+    }
+    if (!countTwoSealSlotSeen) {
+      throw new Error(`${spec.id} unsupported count-two KeepAction did not visit Seal slot 7`)
     }
   })
 
@@ -398,6 +531,12 @@ ServerEvents.loaded(event => {
   producerIds[AFTERLIGHT.STABILIZER].sort()
   if (producerIds[AFTERLIGHT.STABILIZER].join('|') !== approvedStabilizers.join('|')) {
     throw new Error(`stabilizer producer set changed: ${producerIds[AFTERLIGHT.STABILIZER].join(', ')}`)
+  }
+  if (positiveChecks !== 14 || negativeChecks !== 368) {
+    throw new Error(`Gate audit check cardinality changed: ${positiveChecks} positive, ${negativeChecks} negative`)
+  }
+  if (remainderSlotChecks !== 54 || sealRemainderChecks !== 6) {
+    throw new Error(`Gate audit remainder cardinality changed: ${remainderSlotChecks} slots, ${sealRemainderChecks} Seals`)
   }
 
   const auditSha256 = '__AFTERLIGHT_GATE_AUDIT_SHA256__'

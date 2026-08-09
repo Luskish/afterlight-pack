@@ -17,7 +17,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "F69EB9F91F23A058"
+					id: "769EB9F91F23A058"
 					type: "checkmark"
 				}
 			]
@@ -31,7 +31,7 @@
 			]
 		}
 		{
-			id: "FEA7B2C8F11BB7A3"
+			id: "7EA7B2C8F11BB7A3"
 			dependencies: ["5468299A2A931991"]
 			progression_mode: "linear"
 			x: 2.0d
@@ -44,7 +44,7 @@
 			]
 			rewards: [
 				{
-					id: "E4779A4097A21E24"
+					id: "64779A4097A21E24"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -52,8 +52,8 @@
 			]
 		}
 		{
-			id: "8EEFDD9E6CFB69E6"
-			dependencies: ["FEA7B2C8F11BB7A3"]
+			id: "0EEFDD9E6CFB69E6"
+			dependencies: ["7EA7B2C8F11BB7A3"]
 			progression_mode: "linear"
 			x: 4.0d
 			y: -1.0d
@@ -65,7 +65,7 @@
 			]
 			rewards: [
 				{
-					id: "B4DA7BDA11FF15E1"
+					id: "34DA7BDA11FF15E1"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -74,7 +74,7 @@
 		}
 		{
 			id: "29D7871AFBE3A54A"
-			dependencies: ["FEA7B2C8F11BB7A3"]
+			dependencies: ["7EA7B2C8F11BB7A3"]
 			progression_mode: "linear"
 			x: 4.0d
 			y: 1.0d
@@ -95,19 +95,19 @@
 		}
 		{
 			id: "701505FDCCA53DFA"
-			dependencies: ["8EEFDD9E6CFB69E6", "29D7871AFBE3A54A"]
+			dependencies: ["0EEFDD9E6CFB69E6", "29D7871AFBE3A54A"]
 			progression_mode: "linear"
 			x: 6.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "F2B91DC86514B2F4"
+					id: "72B91DC86514B2F4"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "A0946798C9D438A5"
+					id: "20946798C9D438A5"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -122,18 +122,18 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "9F72EF1FDDBEFDB1"
+					id: "1F72EF1FDDBEFDB1"
 					type: "checkmark"
 				}
 			]
 			rewards: [
 				{
-					id: "E5574664D0C5BFBC"
+					id: "65574664D0C5BFBC"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "8684D2673EF2793C"
+					id: "0684D2673EF2793C"
 					type: "item"
 					item: { count: 48, id: "kubejs:requisition_chit" }
 					count: 48

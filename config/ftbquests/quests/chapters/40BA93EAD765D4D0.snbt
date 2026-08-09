@@ -10,20 +10,20 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "90EEBFB30F143EC4"
-			dependencies: ["90EDD2BED35BE9E3"]
+			id: "10EEBFB30F143EC4"
+			dependencies: ["10EDD2BED35BE9E3"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E76D94C208934ECA"
+					id: "676D94C208934ECA"
 					type: "structure"
 					structure: "cataclysm:ancient_factory"
 				}
 			]
 			rewards: [
 				{
-					id: "F2BBF5D68A2F9818"
+					id: "72BBF5D68A2F9818"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -31,13 +31,13 @@
 			]
 		}
 		{
-			id: "C8D1106DDC9D0D99"
-			dependencies: ["90EEBFB30F143EC4"]
+			id: "48D1106DDC9D0D99"
+			dependencies: ["10EEBFB30F143EC4"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E233C562A1880881"
+					id: "6233C562A1880881"
 					type: "kill"
 					entity: "cataclysm:the_harbinger"
 					value: 1L
@@ -45,7 +45,7 @@
 			]
 			rewards: [
 				{
-					id: "A27985B93CEFE311"
+					id: "227985B93CEFE311"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -54,19 +54,19 @@
 		}
 		{
 			id: "482B645F95CC1449"
-			dependencies: ["C8D1106DDC9D0D99"]
+			dependencies: ["48D1106DDC9D0D99"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "C964D41FB3BFFCA4"
+					id: "4964D41FB3BFFCA4"
 					type: "structure"
 					structure: "cataclysm:ruined_citadel"
 				}
 			]
 			rewards: [
 				{
-					id: "99CD400A4AEE91EB"
+					id: "19CD400A4AEE91EB"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,14 +102,14 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "B13A4A62C16DB103"
+					id: "313A4A62C16DB103"
 					type: "structure"
 					structure: "cataclysm:burning_arena"
 				}
 			]
 			rewards: [
 				{
-					id: "F6390DEEC88BFFEA"
+					id: "76390DEEC88BFFEA"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -117,7 +117,7 @@
 			]
 		}
 		{
-			id: "C4BD93D936125186"
+			id: "44BD93D936125186"
 			dependencies: ["37CF3CD515859095"]
 			x: 10.0d
 			y: 0.0d
@@ -139,8 +139,8 @@
 			]
 		}
 		{
-			id: "D6AAEF2C6A9BD0A8"
-			dependencies: ["C4BD93D936125186"]
+			id: "56AAEF2C6A9BD0A8"
+			dependencies: ["44BD93D936125186"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
@@ -160,13 +160,13 @@
 			]
 		}
 		{
-			id: "9004CDB0D6831EEF"
-			dependencies: ["D6AAEF2C6A9BD0A8"]
+			id: "1004CDB0D6831EEF"
+			dependencies: ["56AAEF2C6A9BD0A8"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "9D1C273E81D07834"
+					id: "1D1C273E81D07834"
 					type: "kill"
 					entity: "cataclysm:the_leviathan"
 					value: 1L
@@ -183,7 +183,7 @@
 		}
 		{
 			id: "087DC45AFD4CCAF1"
-			dependencies: ["9004CDB0D6831EEF"]
+			dependencies: ["1004CDB0D6831EEF"]
 			x: 16.0d
 			y: 0.0d
 			tasks: [
@@ -197,7 +197,7 @@
 			]
 			rewards: [
 				{
-					id: "FA29D5BDE3BC903C"
+					id: "7A29D5BDE3BC903C"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -211,7 +211,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "B5F768005306A99C"
+					id: "35F768005306A99C"
 					type: "item"
 					item: { count: 1, id: "cataclysm:mechanical_fusion_anvil" }
 					count: 1L
@@ -222,7 +222,7 @@
 				{
 					id: "28218DE80E1F76D5"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "641B8FBDFE056262"
@@ -242,7 +242,7 @@
 					count: 1
 				}
 				{
-					id: "80B8BCF753C06980"
+					id: "00B8BCF753C06980"
 					type: "gamestage"
 					stage: "afterlight:gate_ie"
 				}

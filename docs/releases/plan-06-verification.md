@@ -1,0 +1,218 @@
+# AFTERLIGHT Plan 06 Verification
+
+Date: 2026-08-09
+
+Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
+
+Status: Task 4 breaker-correction code SHA `cbdc9867503f38ee032268deaad50490fe88d0d1` is accepted. Its controller-owned exact-parent offline gate, `VERIFY: ALL GREEN`, authenticated live gate, and final breaker re-review are recorded below. This tracked docs-only evidence child still requires two detached boots on its own SHA, integration with controller `dev`, exact-SHA `dev` CI, `main` promotion, green `main` CI, and Pages parity. Manual client, multiplayer, voice, gameplay, update, rollback, and VPS acceptance remains unclaimed.
+
+## Delivered Scope
+
+- Story Chapters 17 through 20 preserve accepted Task 1 through Task 3 identities and dependencies, with one explicit exception: the repository-wide signed-safe migration changes every high-bit FTB identity plus its schema-owned references so FTB Quests can save them without replacement.
+- `Beyond Afterlight` adds the six specified postgame quests, fourteen item tasks, and nine rewards.
+- The three introductory postgame quests preserve every checked item. Only Kinetic Blessing, Lattice Blessing, and Industrial Blessing repeat, each with a 3,600-second cooldown and consuming submission tasks.
+- Every Act IV and postgame quest uses explicit linear progression. The three Chapter 20 response quests remain optional and nonexclusive, and `Choice Is Not a Lock` still converges through `one_completed`.
+- The final corpus is 46 chapters, 313 quests, 334 tasks, 436 rewards, and 6 reward tables.
+- The existing authenticated Gate listener and marker now prove every empty and occupied mechanical slot, wrong schematic or special item, mirror, rotation, producer cardinality, Draconic Seal position, exact output, exact remainder, and Seal stack contract.
+- Runtime helper self-tests and exact assertion cardinality bind the executable control flow to 14 positive checks, 368 negative checks, 54 remainder-slot checks, and 6 Seal-slot checks before marker emission.
+- Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
+- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits. ZIP and ZIP64 member counts plus central-directory sizes are preflighted before `ZipFile` construction. Every scanned outer file uses one stable descriptor with pre-open regular-file and link-count rejection, `O_NONBLOCK` when available, bounded reads, initial and final hashes, and device, inode, size, mtime, and ctime checks. FIFO rejection completes within the two-second subprocess regression. Packwiz metadata count, aggregate UTF-8 relative-path bytes, and aggregate content bytes are preflighted before TOML parsing or label retention, while the 1 MiB per-file and final path-identity checks remain enforced.
+- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. Both code inventory and full repository or installed occurrence scans use one deterministic streaming `os.scandir` walker. It fails closed on every scan error, rejects symlinks and noncanonical or non-regular entries, charges every visited root, directory, file, and UTF-8 relative path before retention or descent, and sorts only globally bounded per-directory inventories. JavaScript and TypeScript reads remain limited to 4 MiB per file and 8 MiB in aggregate, with at most 4,096 code files and 1 MiB of aggregate code-file relative paths. The complete Seal occurrence inventory remains capped at 100,000 records, and repeated or oversized JSON and SNBT scalar matches share bounded digest descriptors instead of copying whole scalars per match. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler migrates and independently validates modern `open_quest` actions plus pinned legacy `click: "#QUEST_ID/suffix"` actions while preserving the complete suffix and every non-quest legacy action byte-for-byte. Localization recognizes and type-checks chapter groups, chapters, quests, tasks, rewards, images, quest links, and reward tables while preserving unknown authored keys. Reward traversal recursively covers quest, standalone, and embedded table containers with explicit depth and aggregate-node bounds, migrates and collision-accounts every nested reward ID, resolves every external table reference, preserves exact embedded sentinel `-1L` only with valid `table_data`, and keeps external `7FFFFFFFFFFFFFFF` distinct. Typed reference universes accept progressing dependencies, quest-only dependency control points, chapter or quest or task or quest-link open targets, quest-only image dependencies and links, and only same-chapter quest, quest-link, or image autofocus targets. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
+- The post-shutdown quest-identity oracle compares 3,135 canonical semantic records across repository and installed corpora. It binds `data.snbt`, every localization file path, key, scalar value, array position, and array text, plus chapter-group order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Save normalization is directional and limited to the exact characterized item-task counts, item-reward counts, reward-table item types and weights, Iron's Spells component, glow encoding, three chapter order pairs, three reward-table order pairs, exact reward-table filename and title omissions, the three exact installed `data.snbt` defaults, and SNBT formatting. The fresh repository inventory SHA-256 is `6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede`.
+- The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
+
+## Test-First Evidence
+
+The mandated focused command first ran before Task 4 production changes:
+
+```bash
+python3 -m unittest tools.tests.test_afterlight_quests.Plan06PostgameContractTests tools.tests.test_rc_hygiene_reliability.GateRecipeAdversarialTests -v
+```
+
+Result: exit 1, 8 tests run, 18 expected failures. The failures identified the missing postgame chapter, generated graph, verification record, adversarial assertions, final FTB load line, and Seal verifier.
+
+Controller review then identified a potential label-only false green in the adversarial test. The revised tests own executable structural clauses, remove and no-op every clause under mutation, own the exact Seal occurrence inventory, and inject unauthorized sources into both repository and installed corpora across all six source classes.
+
+Independent review then found four additional gaps: the final generated audit was newer than the accepted boot logs, installed `mods/` was outside the Seal scan, empty mechanical cells were skipped, and helper or loop control-flow mutations could evade the structural contract. A second RED cycle added six focused regressions. All six failed before the production fixes, then all six passed after the fixes. The widened Gate, finale, and postgame selection now passes all 47 tests. Two additional fail-closed regressions prove that encoded Seal JSON with invalid UTF-8 and unsafe archive directory paths are rejected. The real installed archive scan reports exactly 19 reviewed occurrences with SHA-256 `a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126` in 9.07 seconds.
+
+A second exact-commit review reproduced three computed KubeJS grant forms that the lexical scanner could not see, a deflated nested JAR stored as `payload.bin`, and a count-two remainder loop that could execute zero iterations. A third RED cycle binds all three computed-script forms to a full code-corpus digest, requires extensionless ZIP recursion, requires exactly nine count-two remainder slots, proves slot 7 was visited, and rejects no-op, early-return, and zero-iteration remainder mutations. All 47 widened Gate, finale, and postgame tests pass after these fixes. The changed Gate source, Packwiz index, and verifier subsequently completed the fresh full gate recorded below.
+
+The next review found two further scanner bypasses: a ZIP with arbitrary prefixed bytes and compressed GZip NBT. Regressions now cover prefixed archives, GZip and zlib payloads, concatenated streams, trailing payloads, malformed compression, nested depth, member counts, expanded-byte budgets, and compression ratios. The real installed Twilight Forest corpus also proved that valid GZip NBT can contain benign trailing bytes, so the scanner recursively inspects trailing content instead of rejecting or ignoring it.
+
+The first post-fix boot then exposed runtime data corruption rather than a test-only issue. FTB Quests rewrote every high-bit ID because its installed bytecode uses signed `Long.parseLong(..., 16)`, and it replaced the affected Seal reward with a default apple. Three signed-safe RED tests drove the compiler migration, then the complete 586-occurrence corpus was regenerated. The next boot exposed the retired Act I `energy` alias becoming `custom`; installed bytecode proved `forge_energy` is the registered NeoForge type. Both defects are now covered by static and post-shutdown semantic regressions.
+
+Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue, and the resulting candidate completed the historical live gate recorded below. Review round 2 supersedes that oracle and transaction implementation.
+
+Review round 2 reproduced 30 focused failures across 16 tests before production changes. The RED set covered unbound data and localization semantics, broad or symmetric normalization, incomplete FTB identity schema, reused validation logic, non-durable and partially preflighted migration state, blocked recovery paths, unbounded code and occurrence scans, ZIP metadata accepted before preflight, and stable-descriptor race gaps. One additional occurrence-bound regression failed before its focused production fix.
+
+Review round 3 reproduced 12 focused failures across eight test methods before production changes. The RED set proved that migration and independent validation omitted quest-local dependency control points plus image dependency and `open_quest` identities, semantic descriptors retained 67,324,928 bytes for two 32 KiB repeated scalars, metadata labels followed symlinks and accepted oversize and path replacement, and the code corpus accepted excessive file counts and aggregate path bytes. The bytecode-shaped FTB fixtures preserve arbitrary image data and prose while exercising each real schema location.
+
+Review round 4 reproduced 20 failing outcomes across 14 focused test methods before production changes. The RED set proved that legacy `#` image links stayed high-bit and bypassed the independent validator, typed localization and cross-chapter autofocus false-greened, progressing dependencies and valid typed open targets were rejected against the quest-only universe, embedded `-1L` was rewritten, recursive rewards had no depth or node bound, nested table references were incomplete, both `os.walk` scans swallowed injected `scandir` failures, directory and non-code traversal entries were unbudgeted, metadata reached TOML parsing before aggregate preflight, FIFO input reached blocking `open`, and regular descriptors omitted `O_NONBLOCK`. The FIFO subprocess timed out after two seconds before the production fix.
+
+## Review Round 2 Offline Gate
+
+The following fresh commands ran in the isolated review worktree based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501b918`:
+
+```text
+Ran 89 focused tests in 16.895s
+OK (skipped=2)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+Ran 302 offline tests in 36.998s
+OK (skipped=77)
+QUEST IDENTITY INVENTORY: records=3135 sha256=6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede
+```
+
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed in review round 2. Any live evidence from that parent commit does not validate the review round 3 child.
+
+## Review Round 3 Offline Gate
+
+The following fresh commands ran in the isolated review worktree based exactly on `3dba759f088410d44e92ddab01a767a61d5f6510`:
+
+```text
+Ran 95 focused tests in 18.283s
+OK (skipped=2)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+Ran 308 offline tests in 38.384s
+OK (skipped=77)
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No live boot has run on the exact review round 3 final commit. The parent commit's live run is not evidence for this child. A fresh exact-final-commit live boot remains pending.
+
+## Review Round 4 Offline Gate
+
+The following fresh commands ran in the isolated review worktree based exactly on `6c03f0823e26e3fea9a1baa44236cc7956f2c67e`:
+
+```text
+Ran 14 direct regressions in 0.139s
+OK
+Ran 107 focused tests in 19.544s
+OK (skipped=2)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+MIGRATED QUEST SEMANTIC ORACLE: OK
+Ran 320 offline tests in 41.474s
+OK (skipped=77)
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No Packwiz command ran. No live boot has run on the exact review round 4 final commit. The parent commit's authenticated live evidence does not validate this child. Controller `verify-pack` and a fresh exact-final-commit authenticated live boot remain pending.
+
+## Pinned-Schema Breaker Correction Offline Gate
+
+The permitted breaker correction is based exactly on `9748a45c15abcc12e4ae120d2eddd987974ba1fb`. The direct RED run kept the valid quest-only control-point target green while task, quest-link, chapter, and chapter-group targets each false-greened independently:
+
+```text
+Ran 1 test in 0.024s
+FAILED (failures=4)
+```
+
+The minimal validator correction then completed the required offline matrix:
+
+```text
+Ran 1 direct regression in 0.039s
+OK
+Ran 108 focused tests in 19.105s
+OK (skipped=2)
+Ran 321 offline tests in 41.240s
+OK (skipped=77)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+No authored quest file, ID, corpus total, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed in the breaker correction. The exact code parent subsequently completed the controller gate and final re-review recorded below.
+
+## Accepted Breaker Correction Exact-Parent Gate
+
+The controller ran the following gates against exact code SHA `cbdc9867503f38ee032268deaad50490fe88d0d1` before this evidence-only child:
+
+```text
+DIRECT TYPED-REFERENCE REGRESSION: 1 passed
+FOCUSED REVIEW CLASSES: 108 tests, OK (skipped=2 intentional live)
+FULL OFFLINE SUITE: 321 tests, OK (skipped=77 intentional live)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+VERIFY: ALL GREEN
+PACK SHA-256: 3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1
+INDEX SHA-256: 07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f
+PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
+SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f98c59805606208be0e8d9c67 code-corpus-sha256=7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258
+QUEST AUDIT BYTES: OK sha256=04c739d9e88d311a623df7b6e5ccdb84386108a7e32145d6749218c82e3bfd7f
+GATE AUDIT BYTES: OK sha256=5d4342904d7b7be4c705e306c6d6a6a510f0a2a89256b03b5940a8c62571e2dd
+BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
+Ran 321 live tests
+OK
+SERVER BOOT: OK
+QUEST IDENTITY INVENTORY: records=3135 sha256=6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede
+```
+
+The controller's `./tools/verify-pack.sh` invocation printed `VERIFY: ALL GREEN`. All 321 live tests passed with zero skips, and the harness printed `SERVER BOOT: OK`.
+
+Authenticated run `local-20260809T224249Z-27705-2229` used nonce `1786315371-27705-21179` and reached `Done (31.526s)!`. Its runtime Gate marker reported digest `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725` with count 11. Its runtime quest item marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2` with count 237. FTB Quests loaded 6 chapter groups, 46 chapters, 313 quests, and 6 reward tables. All three files under `server-test/logs/kubejs/` contained zero `ERROR` or `FATAL` records.
+
+The final breaker re-review returned `READY`, confirmed the one remaining finding addressed, and found no new breakage. This evidence commit does not inherit the parent live run. Remaining automated work is two detached boots on the evidence commit itself, integration of the accepted Plan 06 branch with controller `dev`, exact-SHA `dev` CI, `main` promotion, green `main` CI, and Pages parity. Manual client, multiplayer, voice, gameplay, update, rollback, and VPS acceptance remains unclaimed and belongs to Plan 07 or the 1.0 manual matrix. Plan 07 architecture commit `1df3d74a781bff43fc8502eb88aaf089ff0814eb` is accepted locally after final scoped breaker re-review returned `READY`, addressed all four findings, found zero new Critical or Important findings, and left no load-bearing residual. Local controller `dev` fast-forwarded to that exact SHA but has not pushed.
+
+## Prior Automated Gate
+
+The following local gate completed on 2026-08-09 at candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df`:
+
+```text
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+PACK SHA-256: 3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1
+INDEX SHA-256: 07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f
+Ran 283 offline tests in 31.275s
+OK (skipped=77)
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+VERIFY: ALL GREEN
+PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
+SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f98c59805606208be0e8d9c67 code-corpus-sha256=7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258
+QUEST AUDIT BYTES: OK sha256=7fb88229d850fb55934cf66144557d7b6ebb23151ee635fd9d18d2b0ef1e2a4a
+GATE AUDIT RENDER: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
+GATE AUDIT BYTES: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
+BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
+Ran 283 live tests in 148.039s
+OK
+SERVER BOOT: OK
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+The authenticated boot was run `local-20260809T185258Z-69291-30378` with nonce `1786301579-69291-12094`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983`. The rendered quest audit bytes matched SHA-256 `7fb88229d850fb55934cf66144557d7b6ebb23151ee635fd9d18d2b0ef1e2a4a`; its marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. All three files under `server-test/logs/kubejs/` contained zero `ERROR` or `FATAL` records.
+
+The server reached `Done (29.321s)!`, then saved and shut down cleanly before the semantic identity comparison. Runtime quest validation ran inside the authenticated 283-test live suite, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-head independent review, detached boots, remote integration, CI, or Pages evidence.
+
+## Team-Safety Proof
+
+Static contracts require all of the following:
+
+- `default_reward_team=false`.
+- No `team_reward` or `team_stage` field in Act IV or postgame.
+- No Act IV or postgame `gamestage` task.
+- Explicit linear progression on every endgame quest.
+- Exactly three optional Chapter 20 responses with no exclusivity field.
+- Exact `one_completed` convergence into `Choice Is Not a Lock`.
+- Exactly one count-one Seal reward, owned by Chapter 20 finale `7E6A0AC031F7F484`.
+- No postgame quest is a dependency of Chapter 20 or any earlier Story quest.
+
+These static facts do not prove FTB Teams behavior with real clients.
+
+## Plan 07 Manual Acceptance
+
+| Scenario | Required manual procedure | Status |
+|---|---|---|
+| Two-player claim | Complete the finale as a two-player team, then verify player-local reward claiming and exact Seal counts. | NOT RUN, Plan 07 manual acceptance |
+| Late join | Add a second player after team story completion, then verify visible progress and reward eligibility. | NOT RUN, Plan 07 manual acceptance |
+| Replay | Exercise repeat and reset behavior without duplicating the one-time Seal reward. | NOT RUN, Plan 07 manual acceptance |
+| Team change | Leave, join, and reform teams around completed finale state, then inspect progress and reward ownership. | NOT RUN, Plan 07 manual acceptance |
+| Seal transfer | Transfer one Seal between players and verify all three authenticated Draconic recipes for the recipient. | NOT RUN, Plan 07 manual acceptance |
+
+No manual client, multiplayer, voice, gameplay, update, rollback, or VPS behavior is accepted by this record.
+
+## Known Boundary
+
+The Seal has maximum stack size one in supported gameplay. The live audit separately characterizes KubeJS `KeepAction` behavior for an invalid operator-created count-two stack. That invalid state is not a supported crafting path.

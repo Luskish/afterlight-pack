@@ -1,16 +1,16 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "C5491A24F6B8C192"
+	filename: "45491A24F6B8C192"
 	group: "4525BB3160467FCB"
 	icon: { id: "immersiveengineering:ingot_steel" }
-	id: "C5491A24F6B8C192"
+	id: "45491A24F6B8C192"
 	images: [ ]
 	order_index: 3
 	quest_links: [ ]
 	quests: [
 		{
-			id: "F9145D1842E317AA"
+			id: "79145D1842E317AA"
 			dependencies: ["5413406A90BD2714"]
 			x: 0.0d
 			y: 0.0d
@@ -19,7 +19,7 @@
 				type: "checkmark" }
 			]
 			rewards: [
-				{ id: "87E89AC1AC7357E9"
+				{ id: "07E89AC1AC7357E9"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
@@ -27,30 +27,30 @@
 		}
 		{
 			id: "20169EC099FABBA0"
-			dependencies: ["F9145D1842E317AA"]
+			dependencies: ["79145D1842E317AA"]
 			x: 2.0d
 			y: -1.0d
 			tasks: [
-				{ id: "B0FE74EA63777E36"
+				{ id: "30FE74EA63777E36"
 				type: "item"
 				item: { count: 1, id: "immersiveengineering:workbench" }
 				count: 1L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "BD4520AD9CA053AD"
+				{ id: "3D4520AD9CA053AD"
 				type: "item"
 				item: { count: 4, id: "kubejs:requisition_chit" }
 				count: 4 }
 			]
 		}
 		{
-			id: "F8E07ADD5BCD1F19"
-			dependencies: ["F9145D1842E317AA"]
+			id: "78E07ADD5BCD1F19"
+			dependencies: ["79145D1842E317AA"]
 			x: 2.0d
 			y: 1.0d
 			tasks: [
-				{ id: "E8A344A9166D7763"
+				{ id: "68A344A9166D7763"
 				type: "item"
 				item: { count: 1, id: "immersiveengineering:coke_oven" }
 				count: 1L
@@ -65,18 +65,18 @@
 		}
 		{
 			id: "27F6D0AB957BBB8C"
-			dependencies: ["20169EC099FABBA0", "F8E07ADD5BCD1F19"]
+			dependencies: ["20169EC099FABBA0", "78E07ADD5BCD1F19"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
-				{ id: "B74F658F034EF8C5"
+				{ id: "374F658F034EF8C5"
 				type: "item"
 				item: { count: 1, id: "immersiveengineering:ingot_steel" }
 				count: 12L
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "99A98E7A5C06D52F"
+				{ id: "19A98E7A5C06D52F"
 				type: "item"
 				item: { count: 8, id: "kubejs:requisition_chit" }
 				count: 8 }
@@ -98,24 +98,24 @@
 				consume_items: false }
 			]
 			rewards: [
-				{ id: "868CB5698E410EFA"
+				{ id: "068CB5698E410EFA"
 				type: "item"
 				item: { count: 5, id: "kubejs:requisition_chit" }
 				count: 5 }
 			]
 		}
 		{
-			id: "F52409F46D854A92"
+			id: "752409F46D854A92"
 			dependencies: ["27F6D0AB957BBB8C"]
 			x: 6.0d
 			y: 1.0d
 			tasks: [
 				{ id: "14E2851EC7427F5A"
-				type: "energy"
+				type: "forge_energy"
 				value: 100000L }
 			]
 			rewards: [
-				{ id: "DBDD9738971B5379"
+				{ id: "5BDD9738971B5379"
 				type: "item"
 				item: { count: 6, id: "kubejs:requisition_chit" }
 				count: 6 }
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "588A5FE66765D86D"
-			dependencies: ["1AC07872BABAC949", "F52409F46D854A92"]
+			dependencies: ["1AC07872BABAC949", "752409F46D854A92"]
 			x: 8.0d
 			y: 0.0d
 			shape: "hexagon"
@@ -136,10 +136,10 @@
 				type: "checkmark" }
 			]
 			rewards: [
-				{ id: "C0CE554F3177E54E"
+				{ id: "40CE554F3177E54E"
 				type: "loot"
-				table_id: -7824471455364680287L }
-				{ id: "99E98B0DC3315391"
+				table_id: 1398900581490095521L }
+				{ id: "19E98B0DC3315391"
 				type: "item"
 				item: { count: 20, id: "kubejs:requisition_chit" }
 				count: 20 }

@@ -1,37 +1,37 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "C402713763771CFA"
+	filename: "4402713763771CFA"
 	group: "4525BB3160467FCB"
 	icon: { id: "kubejs:gate_blueprint" }
-	id: "C402713763771CFA"
+	id: "4402713763771CFA"
 	images: [ ]
 	order_index: 15
 	quest_links: [ ]
 	quests: [
 		{
-			id: "F1B2919DF12C6845"
-			dependencies: ["90EDD2BED35BE9E3", "752C3E53CA89C92D", "A1A99D99B372916F", "3497EFDF016FAFD7"]
+			id: "71B2919DF12C6845"
+			dependencies: ["10EDD2BED35BE9E3", "752C3E53CA89C92D", "21A99D99B372916F", "3497EFDF016FAFD7"]
 			progression_mode: "linear"
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BA12D2169F1CB1B8"
+					id: "3A12D2169F1CB1B8"
 					type: "item"
 					item: { count: 1, id: "kubejs:schematic_kinetic_frame" }
 					count: 1L
 					consume_items: false
 				}
 				{
-					id: "F4435064B9C0A86F"
+					id: "74435064B9C0A86F"
 					type: "item"
 					item: { count: 1, id: "kubejs:schematic_industrial_anchor" }
 					count: 1L
 					consume_items: false
 				}
 				{
-					id: "830D638C9452FB47"
+					id: "030D638C9452FB47"
 					type: "item"
 					item: { count: 1, id: "kubejs:schematic_isotopic_core" }
 					count: 1L
@@ -47,7 +47,7 @@
 			]
 			rewards: [
 				{
-					id: "A69F0EB353F72E1C"
+					id: "269F0EB353F72E1C"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -55,14 +55,14 @@
 			]
 		}
 		{
-			id: "D4A6AF60824B79F1"
-			dependencies: ["F1B2919DF12C6845"]
+			id: "54A6AF60824B79F1"
+			dependencies: ["71B2919DF12C6845"]
 			progression_mode: "linear"
 			x: 2.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "E25E908AFE60F7D5"
+					id: "625E908AFE60F7D5"
 					type: "item"
 					item: { count: 1, id: "ae2:item_storage_cell_256k" }
 					count: 4L
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "E4BFE4E0252F924D"
+					id: "64BFE4E0252F924D"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -79,14 +79,14 @@
 			]
 		}
 		{
-			id: "D08AB7065AFAC232"
-			dependencies: ["D4A6AF60824B79F1"]
+			id: "508AB7065AFAC232"
+			dependencies: ["54A6AF60824B79F1"]
 			progression_mode: "linear"
 			x: 4.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "BC577E8B70D05A21"
+					id: "3C577E8B70D05A21"
 					type: "item"
 					item: { count: 1, id: "ae2:256k_crafting_storage" }
 					count: 1L
@@ -103,14 +103,14 @@
 			]
 		}
 		{
-			id: "8CE6F6160F721A8A"
-			dependencies: ["D08AB7065AFAC232"]
+			id: "0CE6F6160F721A8A"
+			dependencies: ["508AB7065AFAC232"]
 			progression_mode: "linear"
 			x: 6.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "A22156588AFD8CF6"
+					id: "222156588AFD8CF6"
 					type: "item"
 					item: { count: 1, id: "ae2:molecular_assembler" }
 					count: 16L
@@ -119,7 +119,7 @@
 			]
 			rewards: [
 				{
-					id: "D41E8710F192371E"
+					id: "541E8710F192371E"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -127,8 +127,8 @@
 			]
 		}
 		{
-			id: "98EABED18B5B2ECF"
-			dependencies: ["F1B2919DF12C6845"]
+			id: "18EABED18B5B2ECF"
+			dependencies: ["71B2919DF12C6845"]
 			progression_mode: "linear"
 			x: 2.0d
 			y: 1.0d
@@ -151,14 +151,14 @@
 			]
 		}
 		{
-			id: "AD6ACF1CCBC7B4F2"
-			dependencies: ["8CE6F6160F721A8A", "98EABED18B5B2ECF", "5ADAE277C9FEF0F1", "B107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "E1F5D15817ED5EFD", "FC9EA276C2D84333", "E524EE78235F0942"]
+			id: "2D6ACF1CCBC7B4F2"
+			dependencies: ["0CE6F6160F721A8A", "18EABED18B5B2ECF", "5ADAE277C9FEF0F1", "3107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "61F5D15817ED5EFD", "7C9EA276C2D84333", "6524EE78235F0942"]
 			progression_mode: "linear"
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BBFA32444B48A6A0"
+					id: "3BFA32444B48A6A0"
 					type: "checkmark"
 				}
 			]
@@ -172,14 +172,14 @@
 			]
 		}
 		{
-			id: "D97DA51D265858DD"
-			dependencies: ["AD6ACF1CCBC7B4F2"]
+			id: "597DA51D265858DD"
+			dependencies: ["2D6ACF1CCBC7B4F2"]
 			progression_mode: "linear"
 			x: 10.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E1AA0836232AFC4A"
+					id: "61AA0836232AFC4A"
 					type: "kill"
 					entity: "cataclysm:ancient_remnant"
 					value: 1L
@@ -187,7 +187,7 @@
 			]
 			rewards: [
 				{
-					id: "8AA11BD0125BAD36"
+					id: "0AA11BD0125BAD36"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -196,7 +196,7 @@
 		}
 		{
 			id: "72446D404001B38D"
-			dependencies: ["D97DA51D265858DD"]
+			dependencies: ["597DA51D265858DD"]
 			progression_mode: "linear"
 			x: 12.0d
 			y: 0.0d
@@ -210,7 +210,7 @@
 				{
 					id: "0E25A149AE9479DA"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "317B696A6A9BD708"

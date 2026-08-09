@@ -1,10 +1,10 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "8A48AB2CC20BC026"
+	filename: "0A48AB2CC20BC026"
 	group: "4DEAD1F5F7AB4DA3"
 	icon: { id: "modern_industrialization:distillation_tower" }
-	id: "8A48AB2CC20BC026"
+	id: "0A48AB2CC20BC026"
 	images: [ ]
 	order_index: 2
 	quest_links: [ ]
@@ -16,7 +16,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "959B36C90FB3C4C4"
+					id: "159B36C90FB3C4C4"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:electronic_circuit" }
 					count: 16L
@@ -33,7 +33,7 @@
 			]
 		}
 		{
-			id: "C784D48E263BA8CC"
+			id: "4784D48E263BA8CC"
 			dependencies: ["5AEBEF186442407B"]
 			x: 2.0d
 			y: 0.0d
@@ -57,12 +57,12 @@
 		}
 		{
 			id: "68D4F306C5686B67"
-			dependencies: ["C784D48E263BA8CC"]
+			dependencies: ["4784D48E263BA8CC"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "97AB8089B88E067C"
+					id: "17AB8089B88E067C"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:crude_oil_bucket" }
 					count: 8L
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "B7255074ED575876"
+					id: "37255074ED575876"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -79,7 +79,7 @@
 			]
 		}
 		{
-			id: "D90D4411D3904C4B"
+			id: "590D4411D3904C4B"
 			dependencies: ["68D4F306C5686B67"]
 			x: 6.0d
 			y: 0.0d
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "B0FD2DEDA4F8F1D0"
+					id: "30FD2DEDA4F8F1D0"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,13 +102,13 @@
 			]
 		}
 		{
-			id: "EEEBF04F74011082"
-			dependencies: ["D90D4411D3904C4B"]
+			id: "6EEBF04F74011082"
+			dependencies: ["590D4411D3904C4B"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "A0684E6E24337D48"
+					id: "20684E6E24337D48"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:chemical_reactor" }
 					count: 1L
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "9491A6E48C3F2090"
+					id: "1491A6E48C3F2090"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -125,13 +125,13 @@
 			]
 		}
 		{
-			id: "C9E3F26DF9DADDD5"
-			dependencies: ["EEEBF04F74011082"]
+			id: "49E3F26DF9DADDD5"
+			dependencies: ["6EEBF04F74011082"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "F3219E91C4AB626B"
+					id: "73219E91C4AB626B"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:polyethylene_bucket" }
 					count: 16L
@@ -140,7 +140,7 @@
 			]
 			rewards: [
 				{
-					id: "D1EF249AA9B093A0"
+					id: "51EF249AA9B093A0"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -149,7 +149,7 @@
 		}
 		{
 			id: "3E1151169E81AD32"
-			dependencies: ["C9E3F26DF9DADDD5"]
+			dependencies: ["49E3F26DF9DADDD5"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
@@ -163,12 +163,12 @@
 			]
 			rewards: [
 				{
-					id: "AB16FC902750EF56"
+					id: "2B16FC902750EF56"
 					type: "loot"
 					table_id: 6745737485865812687L
 				}
 				{
-					id: "AF71BFC6783B4281"
+					id: "2F71BFC6783B4281"
 					type: "item"
 					item: { count: 16, id: "kubejs:requisition_chit" }
 					count: 16

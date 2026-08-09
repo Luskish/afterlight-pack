@@ -1,17 +1,17 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "D538973B3F8B1C72"
+	filename: "5538973B3F8B1C72"
 	group: "4525BB3160467FCB"
 	icon: { id: "ae2:crafting_monitor" }
-	id: "D538973B3F8B1C72"
+	id: "5538973B3F8B1C72"
 	images: [ ]
 	order_index: 5
 	quest_links: [ ]
 	quests: [
 		{
-			id: "8CEB581902A9D016"
-			dependencies: ["DA407B47132C07C6"]
+			id: "0CEB581902A9D016"
+			dependencies: ["5A407B47132C07C6"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "D287600C5F7BD4B4"
+					id: "5287600C5F7BD4B4"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,12 +34,12 @@
 		}
 		{
 			id: "12E193439548BD1A"
-			dependencies: ["8CEB581902A9D016"]
+			dependencies: ["0CEB581902A9D016"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "DA71F2AD98C1F1C4"
+					id: "5A71F2AD98C1F1C4"
 					type: "item"
 					item: { count: 1, id: "ae2:charged_certus_quartz_crystal" }
 					count: 8L
@@ -48,7 +48,7 @@
 			]
 			rewards: [
 				{
-					id: "E2A9B08C5F37216F"
+					id: "62A9B08C5F37216F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -56,13 +56,13 @@
 			]
 		}
 		{
-			id: "97DBC2533FE3DC3D"
+			id: "17DBC2533FE3DC3D"
 			dependencies: ["12E193439548BD1A"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BEB8EAFCC475A224"
+					id: "3EB8EAFCC475A224"
 					type: "item"
 					item: { count: 1, id: "ae2:fluix_crystal" }
 					count: 16L
@@ -80,12 +80,12 @@
 		}
 		{
 			id: "62C5B40CEEBFF926"
-			dependencies: ["97DBC2533FE3DC3D"]
+			dependencies: ["17DBC2533FE3DC3D"]
 			x: 6.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "DDFAF292FB8EE4FD"
+					id: "5DFAF292FB8EE4FD"
 					type: "item"
 					item: { count: 1, id: "ae2:logic_processor_press" }
 					count: 1L
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "CAF940006B7D3DD2"
+					id: "4AF940006B7D3DD2"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -108,7 +108,7 @@
 			y: -1.0d
 			tasks: [
 				{
-					id: "F9AAE7E444478D14"
+					id: "79AAE7E444478D14"
 					type: "item"
 					item: { count: 1, id: "ae2:logic_processor" }
 					count: 8L
@@ -125,13 +125,13 @@
 			]
 		}
 		{
-			id: "D1023D5F87D20649"
+			id: "51023D5F87D20649"
 			dependencies: ["24BF26A27CA5F0FB"]
 			x: 10.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "E44423FD5886D96B"
+					id: "644423FD5886D96B"
 					type: "item"
 					item: { count: 1, id: "ae2:controller" }
 					count: 1L
@@ -148,13 +148,13 @@
 			]
 		}
 		{
-			id: "EB764B4C9BE0A735"
+			id: "6B764B4C9BE0A735"
 			dependencies: ["24BF26A27CA5F0FB"]
 			x: 10.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "C8C07E73EAEDAF0E"
+					id: "48C07E73EAEDAF0E"
 					type: "item"
 					item: { count: 1, id: "ae2:drive" }
 					count: 1L
@@ -171,13 +171,13 @@
 			]
 		}
 		{
-			id: "9791C1F457CC31C6"
-			dependencies: ["D1023D5F87D20649", "EB764B4C9BE0A735"]
+			id: "1791C1F457CC31C6"
+			dependencies: ["51023D5F87D20649", "6B764B4C9BE0A735"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E76309625A28636D"
+					id: "676309625A28636D"
 					type: "item"
 					item: { count: 1, id: "ae2:crafting_terminal" }
 					count: 1L
@@ -186,7 +186,7 @@
 			]
 			rewards: [
 				{
-					id: "FB936F9AD28065E5"
+					id: "7B936F9AD28065E5"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -195,7 +195,7 @@
 		}
 		{
 			id: "684B4B018288482A"
-			dependencies: ["9791C1F457CC31C6"]
+			dependencies: ["1791C1F457CC31C6"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
@@ -217,7 +217,7 @@
 			]
 		}
 		{
-			id: "95746440BEE5E5A7"
+			id: "15746440BEE5E5A7"
 			dependencies: ["684B4B018288482A"]
 			x: 16.0d
 			y: 0.0d
@@ -262,10 +262,10 @@
 				{
 					id: "6D6824D0C5553D61"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "D311FC7C05B5FACD"
+					id: "5311FC7C05B5FACD"
 					type: "item"
 					item: { count: 12, id: "kubejs:requisition_chit" }
 					count: 12

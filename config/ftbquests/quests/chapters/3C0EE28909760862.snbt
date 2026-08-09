@@ -11,12 +11,12 @@
 	quests: [
 		{
 			id: "2826B8E3F1C3FD28"
-			dependencies: ["F2CE68CEF727A313"]
+			dependencies: ["72CE68CEF727A313"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "9B90D2E6C4AA8D88"
+					id: "1B90D2E6C4AA8D88"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:analog_circuit" }
 					count: 16L
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "DDD957E16016E6F6"
+					id: "5DD957E16016E6F6"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "E5ECD64817F1A750"
+			id: "65ECD64817F1A750"
 			dependencies: ["2826B8E3F1C3FD28"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "8BEDC4408FFBBF38"
+					id: "0BEDC4408FFBBF38"
 					type: "item"
 					item: { count: 1, id: "modern_industrialization:basic_machine_hull" }
 					count: 4L
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "B5783224C0644E3E"
-			dependencies: ["E5ECD64817F1A750"]
+			id: "35783224C0644E3E"
+			dependencies: ["65ECD64817F1A750"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -79,8 +79,8 @@
 			]
 		}
 		{
-			id: "F3FEA26D1A9CD3AB"
-			dependencies: ["B5783224C0644E3E"]
+			id: "73FEA26D1A9CD3AB"
+			dependencies: ["35783224C0644E3E"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -102,8 +102,8 @@
 			]
 		}
 		{
-			id: "A2136042E5BE2514"
-			dependencies: ["F3FEA26D1A9CD3AB"]
+			id: "22136042E5BE2514"
+			dependencies: ["73FEA26D1A9CD3AB"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "F3942AF583FDB2EB"
+					id: "73942AF583FDB2EB"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "13FD3F81EDE7AE26"
-			dependencies: ["A2136042E5BE2514"]
+			dependencies: ["22136042E5BE2514"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -140,7 +140,7 @@
 			]
 			rewards: [
 				{
-					id: "AC3C9B9BBACBBBC8"
+					id: "2C3C9B9BBACBBBC8"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -163,7 +163,7 @@
 			]
 			rewards: [
 				{
-					id: "EB04B2A80735849B"
+					id: "6B04B2A80735849B"
 					type: "loot"
 					table_id: 6745737485865812687L
 				}

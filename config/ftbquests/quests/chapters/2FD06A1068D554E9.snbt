@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "BDC6929C3FE6C5A9"
+			id: "3DC6929C3FE6C5A9"
 			dependencies: ["19D5F09EADF78A32"]
 			x: 2.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "A8CD14A24ACC2205"
+					id: "28CD14A24ACC2205"
 					type: "item"
 					item: { count: 1, id: "mekanism:isotopic_centrifuge" }
 					count: 1L
@@ -56,7 +56,7 @@
 			]
 		}
 		{
-			id: "F0D13539A75B7155"
+			id: "70D13539A75B7155"
 			dependencies: ["19D5F09EADF78A32"]
 			x: 2.0d
 			y: 1.0d
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "AE3C56AB3BB47DF8"
+					id: "2E3C56AB3BB47DF8"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -79,8 +79,8 @@
 			]
 		}
 		{
-			id: "A6595C38412E0EB1"
-			dependencies: ["BDC6929C3FE6C5A9"]
+			id: "26595C38412E0EB1"
+			dependencies: ["3DC6929C3FE6C5A9"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "9AD9829A1555C084"
+					id: "1AD9829A1555C084"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -103,7 +103,7 @@
 		}
 		{
 			id: "22DDADBA060FC424"
-			dependencies: ["BDC6929C3FE6C5A9"]
+			dependencies: ["3DC6929C3FE6C5A9"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
@@ -125,8 +125,8 @@
 			]
 		}
 		{
-			id: "C777D3E308D1D0FA"
-			dependencies: ["A6595C38412E0EB1", "22DDADBA060FC424"]
+			id: "4777D3E308D1D0FA"
+			dependencies: ["26595C38412E0EB1", "22DDADBA060FC424"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -148,8 +148,8 @@
 			]
 		}
 		{
-			id: "A79459F43198BC50"
-			dependencies: ["C777D3E308D1D0FA"]
+			id: "279459F43198BC50"
+			dependencies: ["4777D3E308D1D0FA"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
@@ -172,7 +172,7 @@
 		}
 		{
 			id: "3C61013D8F8A10C5"
-			dependencies: ["A79459F43198BC50"]
+			dependencies: ["279459F43198BC50"]
 			x: 10.0d
 			y: 0.0d
 			tasks: [
@@ -193,13 +193,13 @@
 			]
 		}
 		{
-			id: "A1A99D99B372916F"
+			id: "21A99D99B372916F"
 			dependencies: ["3C61013D8F8A10C5"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "BC62E106DEF52096"
+					id: "3C62E106DEF52096"
 					type: "item"
 					item: { count: 1, id: "mekanism:antiprotonic_nucleosynthesizer" }
 					count: 1L
@@ -208,12 +208,12 @@
 			]
 			rewards: [
 				{
-					id: "BD14B05DE66D64DF"
+					id: "3D14B05DE66D64DF"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "FD67103C05E1048D"
+					id: "7D67103C05E1048D"
 					type: "item"
 					item: { count: 32, id: "kubejs:requisition_chit" }
 					count: 32
@@ -230,7 +230,7 @@
 					count: 1
 				}
 				{
-					id: "E397B0C901D3E1B5"
+					id: "6397B0C901D3E1B5"
 					type: "gamestage"
 					stage: "afterlight:gate_mekanism"
 				}

@@ -3,17 +3,17 @@
 Append-only lang pattern. Run once, then retire."""
 import os, io, re
 
-from afterlight_quests import SnbtLong
+from afterlight_quests import SnbtLong, ftb_safe_id
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'config', 'ftbquests', 'quests')
 STORY_GROUP = '4525BB3160467FCB'
-CACHE_TABLE_INT = SnbtLong.from_hex('9369E4AACBCDF5A1').value
+CACHE_TABLE_INT = SnbtLong.from_hex('1369E4AACBCDF5A1').value
 LANG = []
 _used = set()
 
 def hid():
     while True:
-        i = os.urandom(8).hex().upper()
+        i = ftb_safe_id(os.urandom(8).hex().upper())
         if i not in _used:
             _used.add(i); return i
 
@@ -23,7 +23,7 @@ def lang(k, v): LANG.append((k, v))
 CHIT = 'kubejs:requisition_chit'
 ch5 = hid()
 ch4_files = [f for f in os.listdir(os.path.join(OUT, 'chapters'))]
-ch4_file = os.path.join(OUT, 'chapters', 'C5491A24F6B8C192.snbt')
+ch4_file = os.path.join(OUT, 'chapters', '45491A24F6B8C192.snbt')
 CH4_LAST = re.findall(r'^\t\t\tid: "([0-9A-F]{16})"', open(ch4_file).read(), re.M)[-1]
 
 Q = []

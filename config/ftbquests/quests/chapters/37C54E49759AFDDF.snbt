@@ -10,7 +10,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "BF12A84AF92F28B8"
+			id: "3F12A84AF92F28B8"
 			dependencies: ["6B876A865DE7A77A"]
 			x: 0.0d
 			y: 0.0d
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "B6CEBEB44A8C1ECC"
+					id: "36CEBEB44A8C1ECC"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,8 +33,8 @@
 			]
 		}
 		{
-			id: "D64A301931FD5B1C"
-			dependencies: ["BF12A84AF92F28B8"]
+			id: "564A301931FD5B1C"
+			dependencies: ["3F12A84AF92F28B8"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "8D4C50AC8346E16D"
-			dependencies: ["D64A301931FD5B1C"]
+			id: "0D4C50AC8346E16D"
+			dependencies: ["564A301931FD5B1C"]
 			x: 4.0d
 			y: 0.0d
 			tasks: [
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "9F7CCE1F512FB9F0"
+					id: "1F7CCE1F512FB9F0"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -80,7 +80,7 @@
 		}
 		{
 			id: "0B77E5639E9D31E4"
-			dependencies: ["8D4C50AC8346E16D"]
+			dependencies: ["0D4C50AC8346E16D"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -108,7 +108,7 @@
 			y: -1.0d
 			tasks: [
 				{
-					id: "FF4FE447550C1C33"
+					id: "7F4FE447550C1C33"
 					type: "item"
 					item: { count: 1, id: "mekanism:basic_purifying_factory" }
 					count: 1L
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "C787205A2C62FD23"
+					id: "4787205A2C62FD23"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -125,7 +125,7 @@
 			]
 		}
 		{
-			id: "DF748ABC48F2A139"
+			id: "5F748ABC48F2A139"
 			dependencies: ["081DFC95CFFAD85C"]
 			x: 10.0d
 			y: -1.0d
@@ -148,13 +148,13 @@
 			]
 		}
 		{
-			id: "B50919A8B89A2E84"
-			dependencies: ["BF12A84AF92F28B8"]
+			id: "350919A8B89A2E84"
+			dependencies: ["3F12A84AF92F28B8"]
 			x: 8.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "CCACFB50ABAB0889"
+					id: "4CACFB50ABAB0889"
 					type: "item"
 					item: { count: 1, id: "mekanism:sulfuric_acid_bucket" }
 					count: 1L
@@ -163,7 +163,7 @@
 			]
 			rewards: [
 				{
-					id: "9FA3C72E210D7F9A"
+					id: "1FA3C72E210D7F9A"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -172,12 +172,12 @@
 		}
 		{
 			id: "4F4FF6396A3E4E57"
-			dependencies: ["B50919A8B89A2E84", "0B77E5639E9D31E4"]
+			dependencies: ["350919A8B89A2E84", "0B77E5639E9D31E4"]
 			x: 10.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "AE4A6D5BAF6ABA17"
+					id: "2E4A6D5BAF6ABA17"
 					type: "item"
 					item: { count: 1, id: "mekanism:isotopic_centrifuge" }
 					count: 1L
@@ -186,7 +186,7 @@
 			]
 			rewards: [
 				{
-					id: "F93FBB7201F0C060"
+					id: "793FBB7201F0C060"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -194,13 +194,13 @@
 			]
 		}
 		{
-			id: "BC72E0ADC8E785D0"
-			dependencies: ["DF748ABC48F2A139", "081DFC95CFFAD85C"]
+			id: "3C72E0ADC8E785D0"
+			dependencies: ["5F748ABC48F2A139", "081DFC95CFFAD85C"]
 			x: 12.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "EA10840DA3CB2850"
+					id: "6A10840DA3CB2850"
 					type: "item"
 					item: { count: 1, id: "mekanism:ingot_osmium" }
 					count: 1024L
@@ -217,13 +217,13 @@
 			]
 		}
 		{
-			id: "C5A86A6AA4AD7824"
-			dependencies: ["4F4FF6396A3E4E57", "BC72E0ADC8E785D0"]
+			id: "45A86A6AA4AD7824"
+			dependencies: ["4F4FF6396A3E4E57", "3C72E0ADC8E785D0"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "E8FA468B76692602"
+					id: "68FA468B76692602"
 					type: "item"
 					item: { count: 1, id: "mekanismgenerators:fission_reactor_logic_adapter" }
 					count: 1L
@@ -234,7 +234,7 @@
 				{
 					id: "631B1314204D9FEA"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
 					id: "24A249890E82D79A"

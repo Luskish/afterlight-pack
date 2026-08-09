@@ -1,17 +1,17 @@
 {
 	default_hide_dependency_lines: false
 	default_quest_shape: ""
-	filename: "A57F2005E2D76B80"
+	filename: "257F2005E2D76B80"
 	group: "4525BB3160467FCB"
 	icon: { id: "fluxnetworks:flux_controller" }
-	id: "A57F2005E2D76B80"
+	id: "257F2005E2D76B80"
 	images: [ ]
 	order_index: 8
 	quest_links: [ ]
 	quests: [
 		{
 			id: "0D1D4842B326D878"
-			dependencies: ["D91C65D0AC3AABA7"]
+			dependencies: ["591C65D0AC3AABA7"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "F73224603B7D2ECD"
+					id: "773224603B7D2ECD"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -33,7 +33,7 @@
 			]
 		}
 		{
-			id: "868564885949C7CB"
+			id: "068564885949C7CB"
 			dependencies: ["0D1D4842B326D878"]
 			x: 2.0d
 			y: 0.0d
@@ -57,12 +57,12 @@
 		}
 		{
 			id: "2C2EF25F89BFE5E5"
-			dependencies: ["868564885949C7CB"]
+			dependencies: ["068564885949C7CB"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
 				{
-					id: "C8FD9CC73EE69DBA"
+					id: "48FD9CC73EE69DBA"
 					type: "item"
 					item: { count: 1, id: "powah:reactor_basic" }
 					count: 1L
@@ -79,13 +79,13 @@
 			]
 		}
 		{
-			id: "CE76FFCCB1836525"
-			dependencies: ["868564885949C7CB"]
+			id: "4E76FFCCB1836525"
+			dependencies: ["068564885949C7CB"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
 				{
-					id: "826A3343A9451DCB"
+					id: "026A3343A9451DCB"
 					type: "item"
 					item: { count: 1, id: "powah:energy_cell_basic" }
 					count: 2L
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "B31A5C74A44F0554"
+					id: "331A5C74A44F0554"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -102,8 +102,8 @@
 			]
 		}
 		{
-			id: "8EB523691407A912"
-			dependencies: ["2C2EF25F89BFE5E5", "CE76FFCCB1836525"]
+			id: "0EB523691407A912"
+			dependencies: ["2C2EF25F89BFE5E5", "4E76FFCCB1836525"]
 			x: 6.0d
 			y: 0.0d
 			tasks: [
@@ -126,7 +126,7 @@
 		}
 		{
 			id: "4AEF6244C3588A9F"
-			dependencies: ["8EB523691407A912"]
+			dependencies: ["0EB523691407A912"]
 			x: 8.0d
 			y: 0.0d
 			tasks: [
@@ -141,7 +141,7 @@
 			]
 			rewards: [
 				{
-					id: "C653893AFCDC9CEF"
+					id: "4653893AFCDC9CEF"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -164,7 +164,7 @@
 			]
 			rewards: [
 				{
-					id: "B18A1DA7AEB6AE32"
+					id: "318A1DA7AEB6AE32"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -172,7 +172,7 @@
 			]
 		}
 		{
-			id: "91239054873E1CD7"
+			id: "11239054873E1CD7"
 			dependencies: ["73E90DB4726301B0"]
 			x: 12.0d
 			y: 0.0d
@@ -187,7 +187,7 @@
 			]
 			rewards: [
 				{
-					id: "F426CBD75FCD761E"
+					id: "7426CBD75FCD761E"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -196,12 +196,12 @@
 		}
 		{
 			id: "6B876A865DE7A77A"
-			dependencies: ["91239054873E1CD7"]
+			dependencies: ["11239054873E1CD7"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "A33437755BA69526"
+					id: "233437755BA69526"
 					type: "forge_energy"
 					value: 10000000L
 					max_input: 250000L
@@ -211,10 +211,10 @@
 				{
 					id: "57D4DE000CACE3FE"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "9563E63C54404D11"
+					id: "1563E63C54404D11"
 					type: "item"
 					item: { count: 18, id: "kubejs:requisition_chit" }
 					count: 18

@@ -10,7 +10,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			id: "90752736922A5C3C"
+			id: "10752736922A5C3C"
 			dependencies: ["7480D99D56556C8E"]
 			x: 0.0d
 			y: 0.0d
@@ -25,7 +25,7 @@
 			]
 			rewards: [
 				{
-					id: "E80E58B48BC897B6"
+					id: "680E58B48BC897B6"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -34,12 +34,12 @@
 		}
 		{
 			id: "352D54CEF81F094F"
-			dependencies: ["90752736922A5C3C"]
+			dependencies: ["10752736922A5C3C"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "D8EE0617D96B03B4"
+					id: "58EE0617D96B03B4"
 					type: "item"
 					item: { count: 1, id: "malum:spirit_altar" }
 					count: 1L
@@ -62,7 +62,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "A176A7A2F41BDABE"
+					id: "2176A7A2F41BDABE"
 					type: "item"
 					item: { count: 1, id: "malum:spirit_jar" }
 					count: 4L
@@ -85,7 +85,7 @@
 			y: 0.0d
 			tasks: [
 				{
-					id: "9B46B2B65D1F1666"
+					id: "1B46B2B65D1F1666"
 					type: "item"
 					item: { count: 1, id: "malum:spirit_crucible" }
 					count: 1L
@@ -94,7 +94,7 @@
 			]
 			rewards: [
 				{
-					id: "EE24240F79EA8A8F"
+					id: "6E24240F79EA8A8F"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -117,7 +117,7 @@
 			]
 			rewards: [
 				{
-					id: "DE175DF98558A4C7"
+					id: "5E175DF98558A4C7"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -125,7 +125,7 @@
 			]
 		}
 		{
-			id: "C9286624F8D7D554"
+			id: "49286624F8D7D554"
 			dependencies: ["5A083FCA4825F423"]
 			x: 10.0d
 			y: 0.0d

@@ -11,7 +11,7 @@
 	quests: [
 		{
 			id: "27AEE834BFD148F2"
-			dependencies: ["C5A86A6AA4AD7824"]
+			dependencies: ["45A86A6AA4AD7824"]
 			x: 0.0d
 			y: 0.0d
 			tasks: [
@@ -33,13 +33,13 @@
 			]
 		}
 		{
-			id: "F42BEB99DFA479FD"
+			id: "742BEB99DFA479FD"
 			dependencies: ["27AEE834BFD148F2"]
 			x: 2.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "AAE87B5B13082212"
+					id: "2AE87B5B13082212"
 					type: "item"
 					item: { count: 1, id: "create:brass_funnel" }
 					count: 4L
@@ -48,7 +48,7 @@
 			]
 			rewards: [
 				{
-					id: "851AEF119F2E073B"
+					id: "051AEF119F2E073B"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -56,8 +56,8 @@
 			]
 		}
 		{
-			id: "CF8F8B4545572260"
-			dependencies: ["F42BEB99DFA479FD"]
+			id: "4F8F8B4545572260"
+			dependencies: ["742BEB99DFA479FD"]
 			x: 4.0d
 			y: -1.0d
 			tasks: [
@@ -71,7 +71,7 @@
 			]
 			rewards: [
 				{
-					id: "DB70D975DD0198F1"
+					id: "5B70D975DD0198F1"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -79,8 +79,8 @@
 			]
 		}
 		{
-			id: "BF5F3AB86AF7D719"
-			dependencies: ["F42BEB99DFA479FD"]
+			id: "3F5F3AB86AF7D719"
+			dependencies: ["742BEB99DFA479FD"]
 			x: 4.0d
 			y: 1.0d
 			tasks: [
@@ -118,7 +118,7 @@
 			]
 			rewards: [
 				{
-					id: "F1CF969CCAE8649B"
+					id: "71CF969CCAE8649B"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -126,13 +126,13 @@
 			]
 		}
 		{
-			id: "A1ED60C828D8519B"
+			id: "21ED60C828D8519B"
 			dependencies: ["0FA1B57455BEE680"]
 			x: 8.0d
 			y: -2.0d
 			tasks: [
 				{
-					id: "8DAE655FF078D506"
+					id: "0DAE655FF078D506"
 					type: "item"
 					item: { count: 1, id: "laserio:laser_node" }
 					count: 2L
@@ -149,8 +149,8 @@
 			]
 		}
 		{
-			id: "9551D0E76B9801FB"
-			dependencies: ["27AEE834BFD148F2", "CF8F8B4545572260"]
+			id: "1551D0E76B9801FB"
+			dependencies: ["27AEE834BFD148F2", "4F8F8B4545572260"]
 			x: 10.0d
 			y: -1.0d
 			tasks: [
@@ -164,7 +164,7 @@
 			]
 			rewards: [
 				{
-					id: "A80237CE4726E2A1"
+					id: "280237CE4726E2A1"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -173,7 +173,7 @@
 		}
 		{
 			id: "28F212A9C22AEEAA"
-			dependencies: ["BF5F3AB86AF7D719", "A1ED60C828D8519B"]
+			dependencies: ["3F5F3AB86AF7D719", "21ED60C828D8519B"]
 			x: 10.0d
 			y: 1.0d
 			tasks: [
@@ -195,13 +195,13 @@
 			]
 		}
 		{
-			id: "D37BF340B7765AB8"
-			dependencies: ["9551D0E76B9801FB", "28F212A9C22AEEAA"]
+			id: "537BF340B7765AB8"
+			dependencies: ["1551D0E76B9801FB", "28F212A9C22AEEAA"]
 			x: 12.0d
 			y: 0.0d
 			tasks: [
 				{
-					id: "B6FB186C91B79D78"
+					id: "36FB186C91B79D78"
 					type: "forge_energy"
 					value: 50000000L
 					max_input: 500000L
@@ -209,7 +209,7 @@
 			]
 			rewards: [
 				{
-					id: "AB013364DA7A0349"
+					id: "2B013364DA7A0349"
 					type: "item"
 					item: { count: 2, id: "kubejs:requisition_chit" }
 					count: 2
@@ -217,8 +217,8 @@
 			]
 		}
 		{
-			id: "836D1C6E20B78461"
-			dependencies: ["D37BF340B7765AB8"]
+			id: "036D1C6E20B78461"
+			dependencies: ["537BF340B7765AB8"]
 			x: 14.0d
 			y: 0.0d
 			tasks: [
@@ -234,10 +234,10 @@
 				{
 					id: "533A4139643DABFD"
 					type: "loot"
-					table_id: -7824471455364680287L
+					table_id: 1398900581490095521L
 				}
 				{
-					id: "A43968C006E7D70B"
+					id: "243968C006E7D70B"
 					type: "item"
 					item: { count: 24, id: "kubejs:requisition_chit" }
 					count: 24

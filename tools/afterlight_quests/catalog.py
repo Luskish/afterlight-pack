@@ -13,37 +13,37 @@ from .builder import (
 
 
 STORY = GroupSpec("story", "The Story", "4525BB3160467FCB")
-CERTIFICATIONS = GroupSpec("certifications", "Certifications", "CA20F33642175B95")
+CERTIFICATIONS = GroupSpec("certifications", "Certifications", "4A20F33642175B95")
 UNDERCURRENT = GroupSpec("undercurrent", "The Undercurrent", "51FF272F5030D2E6")
 DEEP_VAULT = GroupSpec("deep-vault", "The Deep Vault", "4DEAD1F5F7AB4DA3")
 ATLAS = GroupSpec(
     "atlas",
     "Atlas of the Broken World",
-    "C8F8381D9519D002",
+    "48F8381D9519D002",
 )
 
-ASCENDANCY_CACHE_TABLE = SnbtLong.from_hex("9369E4AACBCDF5A1")
+ASCENDANCY_CACHE_TABLE = SnbtLong.from_hex("1369E4AACBCDF5A1")
 ASCENDANCY_CACHE_RARE_TABLE = SnbtLong.from_hex("5D9DAC80C11182CF")
-ASCENDANCY_CACHE_EPIC_TABLE = SnbtLong.from_hex("9A4FA21B1999BDD5")
+ASCENDANCY_CACHE_EPIC_TABLE = SnbtLong.from_hex("1A4FA21B1999BDD5")
 DEPOT_EARLY_TABLE = SnbtLong.from_hex("17E69C9CFEA907D4")
 DEPOT_MID_TABLE = SnbtLong.from_hex("182578C414DC8A45")
-DEPOT_LATE_TABLE = SnbtLong.from_hex("B99722D6E7EF5835")
-CHAPTER_FIVE_FINALE = "DA407B47132C07C6"
+DEPOT_LATE_TABLE = SnbtLong.from_hex("399722D6E7EF5835")
+CHAPTER_FIVE_FINALE = "5A407B47132C07C6"
 SCHEMATIC_FINALES = (
-    "90EDD2BED35BE9E3",
+    "10EDD2BED35BE9E3",
     "752C3E53CA89C92D",
-    "A1A99D99B372916F",
+    "21A99D99B372916F",
     "3497EFDF016FAFD7",
 )
 CERTIFICATION_FINALES = (
     "5ADAE277C9FEF0F1",
-    "B107D8813D59B2FF",
+    "3107D8813D59B2FF",
     "66CDE7B061D8DA5C",
     "42EE25F560AE65CD",
-    "E1F5D15817ED5EFD",
-    "FC9EA276C2D84333",
+    "61F5D15817ED5EFD",
+    "7C9EA276C2D84333",
 )
-INFRASTRUCTURE_FINALE = "E524EE78235F0942"
+INFRASTRUCTURE_FINALE = "6524EE78235F0942"
 
 
 def _item_reward(quest_slug: str, item_id: str, count: int, name: str) -> RewardSpec:
@@ -1058,7 +1058,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(kinetic, "Kinetic Frame", "Motion accepts its final assignment.", (
             "Craft the Kinetic Frame from the recovered schematic and the certified Create line.",
             "The recipe consumes the schematic. This task verifies the completed frame without consuming it.",
-        ), "kubejs:gate_kinetic_frame", 1, ("72446D404001B38D", "90EDD2BED35BE9E3"), 0.0, -2.0),
+        ), "kubejs:gate_kinetic_frame", 1, ("72446D404001B38D", "10EDD2BED35BE9E3"), 0.0, -2.0),
         _item_quest(industrial, "Industrial Anchor", "The Gate requires something too stubborn to move.", (
             "Craft the Industrial Anchor from the recovered schematic and the certified Immersive Engineering line.",
             "Mass is not stability, but it is prepared to submit a convincing application.",
@@ -1066,7 +1066,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(isotopic, "Isotopic Core", "Matter contributes its least reasonable state.", (
             "Craft the Isotopic Core from the recovered schematic and four Antimatter Pellets.",
             "Four Antimatter Pellets are the intended throughput trial. One pellet would only prove access.",
-        ), "kubejs:gate_isotopic_core", 1, ("72446D404001B38D", "A1A99D99B372916F"), 0.0, 0.0),
+        ), "kubejs:gate_isotopic_core", 1, ("72446D404001B38D", "21A99D99B372916F"), 0.0, 0.0),
         _item_quest(lattice, "Lattice Matrix", "Six processors agree to disagree at useful speed.", (
             "Craft the Lattice Matrix from the recovered schematic and the certified AE2 line.",
             "Entanglement makes distance negotiable. It does not make configuration optional.",
@@ -1074,7 +1074,7 @@ def _chapter_seventeen() -> ChapterSpec:
         _item_quest(stabilizer, "Undercurrent Stabilizer", "Choose one language for the same dangerous sentence.", (
             "Craft the Undercurrent Stabilizer through Occultism, Malum, or the Iron's Spells route using Magic Cloth.",
             "The precursor records resonance. The branch material teaches it how not to become an incident.",
-        ), "kubejs:undercurrent_stabilizer", 1, ("72446D404001B38D", "87338DE0FE8114CF"), 0.0, 2.0),
+        ), "kubejs:undercurrent_stabilizer", 1, ("72446D404001B38D", "07338DE0FE8114CF"), 0.0, 2.0),
         QuestSpec(
             slug=finale,
             title="Five Impossible Parts",
@@ -1244,7 +1244,7 @@ def _chapter_twenty() -> ChapterSpec:
         _task_quest(sky, "Answering Sky", "The future fork is listening. Listening is not authority.", (
             "Review the complete response from the future ECHO fork before choosing what to send back.",
             "The signal is coherent, familiar, and unverified. Familiarity is not authentication.",
-        ), "checkmark", {}, ("B1C9557D2F51238F",), 0.0, 0.0),
+        ), "checkmark", {}, ("31C9557D2F51238F",), 0.0, 0.0),
         QuestSpec(
             slug=stay,
             title="Stay",
@@ -1354,6 +1354,296 @@ def _chapter_twenty() -> ChapterSpec:
     return ChapterSpec(
         "story/20-afterlight", "Afterlight", STORY,
         "kubejs:ascendancy_seal", 19, quests,
+    )
+
+
+def _postgame_beyond_afterlight() -> ChapterSpec:
+    chapter_slug = "story/postgame-beyond-afterlight"
+    beyond = f"{chapter_slug}/beyond-the-seal"
+    entries = f"{chapter_slug}/three-entries"
+    chaotic = f"{chapter_slug}/chaotic-proof"
+    kinetic = f"{chapter_slug}/kinetic-blessing"
+    lattice = f"{chapter_slug}/lattice-blessing"
+    industrial = f"{chapter_slug}/industrial-blessing"
+
+    def item_task(
+        quest_slug: str,
+        suffix: str,
+        item_id: str,
+        count: int,
+        *,
+        consume: bool,
+        title: str,
+    ) -> TaskSpec:
+        task_slug = f"{quest_slug}/task"
+        if suffix:
+            task_slug = f"{task_slug}/{suffix}"
+        return TaskSpec(
+            task_slug,
+            "item",
+            {
+                "item": {"count": 1, "id": item_id},
+                "count": SnbtLong(count),
+                "consume_items": consume,
+            },
+            title=title,
+        )
+
+    quests = (
+        QuestSpec(
+            slug=beyond,
+            title="Beyond the Seal",
+            subtitle="The ending became a tool. Tools require terms.",
+            description=(
+                "Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not.",
+                "The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away.",
+            ),
+            x=0.0,
+            y=0.0,
+            dependencies=("7E6A0AC031F7F484",),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    beyond,
+                    "",
+                    "kubejs:ascendancy_seal",
+                    1,
+                    consume=False,
+                    title="Verify possession of the Ascendancy Seal.",
+                ),
+            ),
+            rewards=(_item_reward(beyond, "kubejs:requisition_chit", 4, "chits"),),
+        ),
+        QuestSpec(
+            slug=entries,
+            title="Three Entries",
+            subtitle="Three recipes prove the lock opens without becoming the door.",
+            description=(
+                "Craft a Draconium Core, a Dislocator, and a Module Core through the three authenticated entry recipes.",
+                "Each recipe returns the Seal. Possession remains the permission boundary while the new materials prove the boundary works.",
+            ),
+            x=2.0,
+            y=0.0,
+            dependencies=(beyond,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    entries,
+                    "draconium-core",
+                    "draconicevolution:draconium_core",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Draconium Core.",
+                ),
+                item_task(
+                    entries,
+                    "dislocator",
+                    "draconicevolution:dislocator",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Dislocator.",
+                ),
+                item_task(
+                    entries,
+                    "module-core",
+                    "draconicevolution:module_core",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Module Core.",
+                ),
+            ),
+            rewards=(_item_reward(entries, "kubejs:requisition_chit", 8, "chits"),),
+        ),
+        QuestSpec(
+            slug=chaotic,
+            title="Chaotic Proof",
+            subtitle="Reach the highest ordinary tier before requesting an exception.",
+            description=(
+                "Produce one Chaotic Core through the full Draconic progression opened by the three entry recipes.",
+                "Creative power is not a shortcut around mastery. The core is evidence that your infrastructure survived the entire argument.",
+            ),
+            x=4.0,
+            y=0.0,
+            dependencies=(entries,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    chaotic,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=False,
+                    title="Verify one completed Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                RewardSpec(
+                    slug=f"{chaotic}/reward/cache",
+                    reward_type="loot",
+                    data={"table_id": ASCENDANCY_CACHE_EPIC_TABLE},
+                ),
+                _item_reward(chaotic, "kubejs:requisition_chit", 16, "chits"),
+                RewardSpec(
+                    slug=f"{chaotic}/reward/xp",
+                    reward_type="xp",
+                    data={"xp": 1000},
+                ),
+            ),
+        ),
+        QuestSpec(
+            slug=kinetic,
+            title="Kinetic Blessing",
+            subtitle="A creative motor is earned by feeding the line it replaces.",
+            description=(
+                "Submit a production-scale Create reserve and one Chaotic Core. Every input is consumed.",
+                "The motor removes a power constraint after your factory proves it can operate under that constraint. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=-2.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    kinetic,
+                    "precision-mechanisms",
+                    "create:precision_mechanism",
+                    256,
+                    consume=True,
+                    title="Submit 256 Precision Mechanisms.",
+                ),
+                item_task(
+                    kinetic,
+                    "railway-casings",
+                    "create:railway_casing",
+                    64,
+                    consume=True,
+                    title="Submit 64 Railway Casings.",
+                ),
+                item_task(
+                    kinetic,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(_item_reward(kinetic, "create:creative_motor", 1, "creative-motor"),),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+        QuestSpec(
+            slug=lattice,
+            title="Lattice Blessing",
+            subtitle="Infinite energy follows finite proof.",
+            description=(
+                "Submit an AE2 reserve large enough to make the creative cell unnecessary, then submit the Chaotic Core that makes it possible.",
+                "The cell is a postgame instrument for systems already mastered. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=0.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    lattice,
+                    "quantum-singularities",
+                    "ae2:quantum_entangled_singularity",
+                    64,
+                    consume=True,
+                    title="Submit 64 Quantum Entangled Singularities.",
+                ),
+                item_task(
+                    lattice,
+                    "storage-components",
+                    "ae2:cell_component_256k",
+                    16,
+                    consume=True,
+                    title="Submit sixteen 256K Cell Components.",
+                ),
+                item_task(
+                    lattice,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                _item_reward(
+                    lattice,
+                    "ae2:creative_energy_cell",
+                    1,
+                    "creative-energy-cell",
+                ),
+            ),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+        QuestSpec(
+            slug=industrial,
+            title="Industrial Blessing",
+            subtitle="Two grids receive one shared exception.",
+            description=(
+                "Submit the Mekanism and Immersive Engineering reserves together with one Chaotic Core. Every input is consumed.",
+                "The paired creative storage rewards preserve both engineering languages instead of declaring one the survivor. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=2.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    industrial,
+                    "atomic-alloys",
+                    "mekanism:alloy_atomic",
+                    64,
+                    consume=True,
+                    title="Submit 64 Atomic Alloys.",
+                ),
+                item_task(
+                    industrial,
+                    "heavy-engineering",
+                    "immersiveengineering:heavy_engineering",
+                    64,
+                    consume=True,
+                    title="Submit 64 Heavy Engineering blocks.",
+                ),
+                item_task(
+                    industrial,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                _item_reward(
+                    industrial,
+                    "mekanism:creative_energy_cube",
+                    1,
+                    "creative-energy-cube",
+                ),
+                _item_reward(
+                    industrial,
+                    "immersiveengineering:capacitor_creative",
+                    1,
+                    "creative-capacitor",
+                ),
+            ),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+    )
+    return ChapterSpec(
+        chapter_slug,
+        "Beyond Afterlight",
+        STORY,
+        "draconicevolution:chaotic_core",
+        20,
+        quests,
     )
 
 
@@ -1912,7 +2202,7 @@ def _undercurrent_chapters() -> tuple[ChapterSpec, ...]:
 def _deep_vault_chapters() -> tuple[ChapterSpec, ...]:
     current = _linear_item_chapter(
         "deep-vault/01-current-below", "Current Below", DEEP_VAULT,
-        "modern_industrialization:assembler", 1, "F2CE68CEF727A313",
+        "modern_industrialization:assembler", 1, "72CE68CEF727A313",
         (
             ("analog-circuit", "Analog Logic", "Electricity enters the archive.", "The Vault begins electricity with logic large enough to inspect by hand.", (("modern_industrialization:analog_circuit", 16),)),
             ("basic-hulls", "Basic Hulls", "Give the current a chassis.", "Four housings establish a repeatable machine standard.", (("modern_industrialization:basic_machine_hull", 4),)),
@@ -1986,7 +2276,7 @@ def _atlas_chapters() -> tuple[ChapterSpec, ...]:
         courts_slug, "Courts Above and Beyond", ATLAS,
         "twilightforest:twilight_scepter", 1,
         (
-            _side_task_quest(two_skies, "Two Skies", "Map both upper courts.", "Two skies, two legal systems, and neither recognizes our credentials.", (("dimension", {"dimension": "twilightforest:twilight_forest"}), ("dimension", {"dimension": "aether:the_aether"})), ("4B24516D89E13CFF", "87475C3BA1A4143F"), 0.0, 0.0),
+            _side_task_quest(two_skies, "Two Skies", "Map both upper courts.", "Two skies, two legal systems, and neither recognizes our credentials.", (("dimension", {"dimension": "twilightforest:twilight_forest"}), ("dimension", {"dimension": "aether:the_aether"})), ("4B24516D89E13CFF", "07475C3BA1A4143F"), 0.0, 0.0),
             _side_task_quest(naga, "The Coiled Court", "Challenge the first throne.", "The serpent guards a court that forgot its citizens.", (advancement("twilightforest:progress_naga"),), (two_skies,), 2.0, -2.0),
             _side_task_quest(lich, "The Dead Court", "Remove the second claimant.", "The lich kept authority after life stopped supporting the claim.", (advancement("twilightforest:progress_lich"),), (naga,), 4.0, -2.0),
             _side_task_quest(hydra, "The Many-Headed Court", "One verdict, several mouths.", "The hydra treats redundancy as sovereignty.", (advancement("twilightforest:progress_hydra"),), (lich,), 6.0, -2.0),
@@ -2007,7 +2297,7 @@ def _atlas_chapters() -> tuple[ChapterSpec, ...]:
     root = ChapterSpec(
         root_slug, "Root and Echo", ATLAS, "undergarden:forgotten_ingot", 2,
         (
-            _side_task_quest(below, "Two Depths", "Descend into root and echo.", "The Cascade reached downward by two routes and apologized by neither.", (("dimension", {"dimension": "undergarden:undergarden"}), ("dimension", {"dimension": "deeperdarker:otherside"})), ("3196EE02D5C5B413", "A21D817C56D680CA"), 0.0, 0.0),
+            _side_task_quest(below, "Two Depths", "Descend into root and echo.", "The Cascade reached downward by two routes and apologized by neither.", (("dimension", {"dimension": "undergarden:undergarden"}), ("dimension", {"dimension": "deeperdarker:otherside"})), ("3196EE02D5C5B413", "221D817C56D680CA"), 0.0, 0.0),
             _side_task_quest(catacombs, "Root Catacombs", "Find the buried complex.", "The catacombs grew around their occupants rather than above them.", (("structure", {"structure": "undergarden:catacombs"}),), (below,), 2.0, -1.5),
             _side_task_quest(guardian, "Forgotten Guardian", "Close the root protocol.", "The guardian remembers its duty and nothing about who assigned it.", (("kill", {"entity": "undergarden:forgotten_guardian", "value": SnbtLong(1)}),), (catacombs,), 4.0, -1.5),
             _side_task_quest(temple, "Ancient Temple", "Trace the echo to its source.", "The temple amplifies a signal no living architect signed.", (("structure", {"structure": "deeperdarker:ancient_temple"}),), (below,), 2.0, 1.5),
@@ -2101,6 +2391,7 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_eighteen = _chapter_eighteen()
     chapter_nineteen = _chapter_nineteen()
     chapter_twenty = _chapter_twenty()
+    postgame = _postgame_beyond_afterlight()
     logistics = _certification_logistics()
     ore_loop = _certification_ore_loop(logistics.quests[-1].slug)
     autocrafting = _certification_autocrafting(logistics.quests[-1].slug)
@@ -2139,6 +2430,7 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_eighteen,
         chapter_nineteen,
         chapter_twenty,
+        postgame,
         logistics,
         ore_loop,
         autocrafting,

@@ -745,6 +745,18 @@ def _migration_localization_key(value: str) -> str:
     )
 
 
+def _migration_image_click_action(value: str) -> str:
+    prefix = "open_quest:"
+    if not value.startswith(prefix):
+        return value
+    action_data = value[len(prefix) :]
+    identifier, separator, suffix = action_data.partition("/")
+    if HEX_ID.fullmatch(identifier) is None:
+        raise ValueError(f"malformed open_quest image action: {value!r}")
+    migrated = ftb_safe_id(identifier)
+    return f"{prefix}{migrated}{separator}{suffix}"
+
+
 def _migration_snbt_role(
     relative: Path,
     path: tuple[str | int, ...],
@@ -777,9 +789,13 @@ def _migration_snbt_role(
             len(path) == 3
             and path[0] == "images"
             and isinstance(path[1], int)
-            and path[2] == "id"
         ):
-            return "definition"
+            if path[2] == "id":
+                return "definition"
+            if path[2] == "dependency":
+                return "identity"
+            if path[2] == "click_action":
+                return "image_click_action"
         if (
             len(path) == 3
             and path[0] == "quests"
@@ -881,6 +897,15 @@ def _migration_scan_snbt(
             target = _migration_table_reference(token.value)
             if target != token.value:
                 replacements.append((token, target))
+        elif role == "image_click_action":
+            if token.kind != "string":
+                raise ValueError(
+                    f"malformed image click action in {relative} at {path}: "
+                    f"{token.value!r}"
+                )
+            target = _migration_image_click_action(token.value)
+            if target != token.value:
+                replacements.append((token, target))
 
     if relative.parts and relative.parts[0] == "lang":
         for parent_path, token in key_tokens:
@@ -892,7 +917,12 @@ def _migration_scan_snbt(
 
     if len(relative.parts) == 2 and relative.parts[0] == "chapters":
         for parent_path, token in key_tokens:
-            if parent_path != ("dep_control_pts",):
+            if not (
+                len(parent_path) == 3
+                and parent_path[0] == "quests"
+                and isinstance(parent_path[1], int)
+                and parent_path[2] == "dep_control_pts"
+            ):
                 continue
             if HEX_ID.fullmatch(token.value) is None:
                 raise ValueError(
@@ -1513,33 +1543,50 @@ def _validate_known_ftb_identity_containers(
             _require_signed_safe_ftb_identity(
                 autofocus_id, f"{relative}:autofocus_id"
             )
-        dep_control_pts = parsed.get("dep_control_pts", {})
-        if not isinstance(dep_control_pts, Mapping):
-            raise ValueError(f"dependency control points are malformed: {relative}")
-        for identifier in dep_control_pts:
+        quest_links = parsed.get("quest_links", [])
+        if not isinstance(quest_links, list):
+            raise ValueError(f"quest_links is malformed: {relative}")
+        for position, quest_link in enumerate(quest_links):
+            if not isinstance(quest_link, Mapping):
+                raise ValueError(f"quest_links[{position}] is malformed: {relative}")
             _require_signed_safe_ftb_identity(
-                identifier, f"{relative}:dep_control_pts key"
+                quest_link.get("id"),
+                f"{relative}:quest_links[{position}].id",
             )
-        for container_name, linked_key in (
-            ("quest_links", "linked_quest"),
-            ("images", None),
-        ):
-            values = parsed.get(container_name, [])
-            if not isinstance(values, list):
-                raise ValueError(f"{container_name} is malformed: {relative}")
-            for position, value in enumerate(values):
-                if not isinstance(value, Mapping):
-                    raise ValueError(
-                        f"{container_name}[{position}] is malformed: {relative}"
-                    )
+            _require_signed_safe_ftb_identity(
+                quest_link.get("linked_quest"),
+                f"{relative}:quest_links[{position}].linked_quest",
+            )
+        images = parsed.get("images", [])
+        if not isinstance(images, list):
+            raise ValueError(f"images is malformed: {relative}")
+        for position, image in enumerate(images):
+            if not isinstance(image, Mapping):
+                raise ValueError(f"images[{position}] is malformed: {relative}")
+            _require_signed_safe_ftb_identity(
+                image.get("id"),
+                f"{relative}:images[{position}].id",
+            )
+            dependency = image.get("dependency")
+            if dependency is not None:
                 _require_signed_safe_ftb_identity(
-                    value.get("id"),
-                    f"{relative}:{container_name}[{position}].id",
+                    dependency,
+                    f"{relative}:images[{position}].dependency",
                 )
-                if linked_key is not None:
+            click_action = image.get("click_action")
+            if click_action is not None:
+                if not isinstance(click_action, str):
+                    raise ValueError(
+                        f"image click action is malformed: "
+                        f"{relative}:images[{position}].click_action"
+                    )
+                prefix = "open_quest:"
+                if click_action.startswith(prefix):
+                    action_data = click_action[len(prefix) :]
+                    identifier = action_data.partition("/")[0]
                     _require_signed_safe_ftb_identity(
-                        value.get(linked_key),
-                        f"{relative}:{container_name}[{position}].{linked_key}",
+                        identifier,
+                        f"{relative}:images[{position}].click_action",
                     )
         quests = parsed.get("quests")
         if not isinstance(quests, list):
@@ -1562,6 +1609,16 @@ def _validate_known_ftb_identity_containers(
                     dependency,
                     f"{relative}:quests[{quest_position}].dependencies"
                     f"[{dependency_position}]",
+                )
+            dep_control_pts = quest.get("dep_control_pts", {})
+            if not isinstance(dep_control_pts, Mapping):
+                raise ValueError(
+                    f"quest dependency control points are malformed: {relative}"
+                )
+            for identifier in dep_control_pts:
+                _require_signed_safe_ftb_identity(
+                    identifier,
+                    f"{relative}:quests[{quest_position}].dep_control_pts key",
                 )
             for container_name in ("tasks", "rewards"):
                 values = quest.get(container_name, [])
@@ -1649,12 +1706,6 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         autofocus_id = chapter.get("autofocus_id")
         if isinstance(autofocus_id, str):
             identity_references.append((f"{relative}:autofocus_id", autofocus_id))
-        dep_control_pts = chapter.get("dep_control_pts", {})
-        if isinstance(dep_control_pts, Mapping):
-            identity_references.extend(
-                (f"{relative}:dep_control_pts", str(identifier))
-                for identifier in dep_control_pts
-            )
         quest_links = chapter.get("quest_links", [])
         if isinstance(quest_links, list):
             identity_references.extend(
@@ -1665,6 +1716,24 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
                 for position, link in enumerate(quest_links)
                 if isinstance(link, Mapping)
             )
+        images = chapter.get("images", [])
+        if isinstance(images, list):
+            for position, image in enumerate(images):
+                if not isinstance(image, Mapping):
+                    continue
+                dependency = image.get("dependency")
+                if isinstance(dependency, str):
+                    identity_references.append(
+                        (f"{relative}:images[{position}].dependency", dependency)
+                    )
+                click_action = image.get("click_action")
+                if isinstance(click_action, str) and click_action.startswith(
+                    "open_quest:"
+                ):
+                    identifier = click_action[len("open_quest:") :].partition("/")[0]
+                    identity_references.append(
+                        (f"{relative}:images[{position}].click_action", identifier)
+                    )
         quests = chapter.get("quests")
         if not isinstance(quests, list):
             raise ValueError(f"migrated chapter quest list is malformed: {relative}")
@@ -1677,6 +1746,12 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
                 if not isinstance(dependency, str):
                     raise ValueError(f"migrated dependency is malformed: {relative}")
                 dependencies.append((quest_id, dependency))
+            dep_control_pts = quest.get("dep_control_pts", {})
+            if isinstance(dep_control_pts, Mapping):
+                identity_references.extend(
+                    (f"{relative}:quests[{quest_id}].dep_control_pts", str(identifier))
+                    for identifier in dep_control_pts
+                )
             for reward in quest.get("rewards", []):
                 if not isinstance(reward, Mapping):
                     raise ValueError(f"migrated reward is malformed: {relative}")

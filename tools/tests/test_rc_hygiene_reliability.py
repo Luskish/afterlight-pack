@@ -4467,6 +4467,127 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             ):
                 self.hygiene._seal_code_inventory(aggregate_root, "fixture")
 
+    def test_seal_code_corpus_bounds_file_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            count_root = Path(temporary)
+            count_code = count_root / "kubejs"
+            count_code.mkdir(parents=True)
+            for position in range(2_001):
+                (count_code / f"source-{position:04d}.js").touch()
+            with mock.patch.object(
+                self.hygiene,
+                "SEAL_CODE_MAX_FILES",
+                2_000,
+                create=True,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "code file count",
+            ):
+                self.hygiene._seal_code_inventory(count_root, "fixture")
+
+    def test_seal_code_corpus_bounds_aggregate_path_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path_root = Path(temporary)
+            long_directory = path_root / "kubejs" / ("d" * 200)
+            long_directory.mkdir(parents=True)
+            long_source = long_directory / (("s" * 200) + ".js")
+            long_source.touch()
+            relative_bytes = len(
+                long_source.relative_to(path_root).as_posix().encode("utf-8")
+            )
+            with mock.patch.object(
+                self.hygiene,
+                "SEAL_CODE_MAX_TOTAL_PATH_BYTES",
+                relative_bytes - 1,
+                create=True,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "aggregate code path bytes",
+            ):
+                self.hygiene._seal_code_inventory(path_root, "fixture")
+
+    def test_seal_metadata_labels_reject_symlinked_metadata(self) -> None:
+        metadata_bytes = (
+            'name = "Fixture"\n'
+            'filename = "fixture.jar"\n'
+            'side = "both"\n'
+        ).encode("utf-8")
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            symlink_root = base / "symlink"
+            symlink_mods = symlink_root / "mods"
+            symlink_mods.mkdir(parents=True)
+            external = base / "external.pw.toml"
+            external.write_bytes(metadata_bytes)
+            (symlink_mods / "fixture.pw.toml").symlink_to(external)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "symlink",
+            ):
+                self.hygiene._seal_archive_review_labels(symlink_root)
+
+    def test_seal_metadata_labels_reject_oversized_metadata_before_read(self) -> None:
+        metadata_limit = 1024 * 1024
+        with tempfile.TemporaryDirectory() as temporary:
+            oversized_root = Path(temporary)
+            oversized_metadata = oversized_root / "mods/fixture.pw.toml"
+            oversized_metadata.parent.mkdir(parents=True)
+            with oversized_metadata.open("wb") as output:
+                output.truncate(metadata_limit + 1)
+            real_read_text = Path.read_text
+
+            def reject_oversized_read(path: Path, *args, **kwargs):
+                if path == oversized_metadata:
+                    raise AssertionError("oversized metadata reached Path.read_text")
+                return real_read_text(path, *args, **kwargs)
+
+            with mock.patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=reject_oversized_read,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "metadata file size",
+            ):
+                self.hygiene._seal_archive_review_labels(oversized_root)
+
+    def test_seal_metadata_labels_reject_path_identity_changes(self) -> None:
+        metadata_bytes = (
+            'name = "Fixture"\n'
+            'filename = "fixture.jar"\n'
+            'side = "both"\n'
+        ).encode("utf-8")
+        with tempfile.TemporaryDirectory() as temporary:
+            race_root = Path(temporary)
+            race_metadata = race_root / "mods/fixture.pw.toml"
+            race_metadata.parent.mkdir(parents=True)
+            race_metadata.write_bytes(metadata_bytes)
+            replacement = race_metadata.with_suffix(".replacement")
+            replacement.write_bytes(
+                metadata_bytes.replace(b"fixture.jar", b"changed.jar")
+            )
+            real_loads = self.hygiene.tomllib.loads
+            mutated = False
+
+            def replace_during_parse(text: str):
+                nonlocal mutated
+                if not mutated:
+                    mutated = True
+                    os.replace(replacement, race_metadata)
+                return real_loads(text)
+
+            with mock.patch.object(
+                self.hygiene.tomllib,
+                "loads",
+                side_effect=replace_during_parse,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "changed during|identity changed",
+            ):
+                self.hygiene._seal_archive_review_labels(race_root)
+            self.assertTrue(mutated)
+
     def test_seal_code_corpus_never_uses_path_read_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -4710,6 +4831,51 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(next(json_occurrences), "json:$.first=ascendancy_seal")
         snbt_occurrences = iter(hygiene._snbt_seal_occurrences(LazySnbt()))
         self.assertEqual(next(snbt_occurrences), "snbt:$.first=ascendancy_seal")
+
+    def test_seal_semantic_descriptors_are_bounded_in_production_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config"
+            config.mkdir()
+            maximum_bytes = 32 * 1024
+            repetitions = 1_024
+            repeated = "ascendancy_seal" * repetitions
+
+            def maximum_payload(prefix: str, suffix: str) -> bytes:
+                padding = "A" * (
+                    maximum_bytes
+                    - len(prefix.encode("utf-8"))
+                    - len(repeated.encode("utf-8"))
+                    - len(suffix.encode("utf-8"))
+                )
+                payload = (prefix + repeated + padding + suffix).encode("utf-8")
+                self.assertEqual(len(payload), maximum_bytes)
+                return payload
+
+            (config / "maximum.json").write_bytes(
+                maximum_payload('{"value":"', '"}')
+            )
+            (config / "maximum.snbt").write_bytes(
+                maximum_payload('{ value: "', '" }')
+            )
+            with mock.patch.object(
+                self.hygiene,
+                "SEAL_ARCHIVE_MAX_MEMBER_BYTES",
+                maximum_bytes,
+            ):
+                inventory = self.hygiene._seal_occurrences(root, "fixture")
+
+            self.assertEqual(len(inventory), repetitions * 2)
+            unique_descriptors = {
+                id(descriptor): descriptor for _relative, descriptor in inventory
+            }
+            retained_bytes = sum(
+                sys.getsizeof(record) for record in inventory
+            ) + sum(
+                sys.getsizeof(descriptor)
+                for descriptor in unique_descriptors.values()
+            )
+            self.assertLessEqual(retained_bytes, maximum_bytes * 8)
 
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(

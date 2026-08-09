@@ -1636,10 +1636,23 @@ class QuestCompilerTests(unittest.TestCase):
                 '\tgroup: "4525BB3160467FCB"\n',
                 '\tgroup: "4525BB3160467FCB"\n'
                 '\tautofocus_id: "EEDCBA9876543210"\n'
-                '\tdep_control_pts: { EEDCBA9876543210: [{ x: 1.0d, y: 2.0d }] }\n'
-                '\timages: [{ id: "A222222222222222", image: "example:test" }]\n'
+                '\timages: [{\n'
+                '\t\tid: "A222222222222222"\n'
+                '\t\timage: "example:test"\n'
+                '\t\tdependency: "EEDCBA9876543210"\n'
+                '\t\tclick_action: "open_quest:EEDCBA9876543210/true"\n'
+                '\t\thover: ["FEDCBA9876543210 stays image prose"]\n'
+                '\t\tauthored_data: { value: "FEDCBA9876543210" }\n'
+                '\t}]\n'
                 '\tquest_links: [{ id: "B111111111111111", linked_quest: "EEDCBA9876543210" }]\n'
                 '\tprose_map: { FEDCBA9876543210: "authored compound key" }\n',
+                1,
+            )
+            source = source.replace(
+                '\t\tdependencies: ["EEDCBA9876543210"]\n',
+                '\t\tdependencies: ["EEDCBA9876543210"]\n'
+                '\t\tdep_control_pts: { EEDCBA9876543210: '
+                '[1.0d, 2.0d, 3.0d, 4.0d] }\n',
                 1,
             )
             unsafe_chapter.write_text(source, encoding="utf-8")
@@ -1655,8 +1668,37 @@ class QuestCompilerTests(unittest.TestCase):
                 migrated["quest_links"][0]["linked_quest"],
                 "6EDCBA9876543210",
             )
-            self.assertEqual(migrated["images"][0]["id"], "2222222222222222")
-            self.assertIn("6EDCBA9876543210", migrated["dep_control_pts"])
+            image = migrated["images"][0]
+            self.assertEqual(image["id"], "2222222222222222")
+            for location, actual, expected in (
+                (
+                    "image dependency",
+                    image["dependency"],
+                    "6EDCBA9876543210",
+                ),
+                (
+                    "image open_quest",
+                    image["click_action"],
+                    "open_quest:6EDCBA9876543210/true",
+                ),
+                (
+                    "quest dep_control_pts",
+                    "6EDCBA9876543210"
+                    in migrated["quests"][1]["dep_control_pts"],
+                    True,
+                ),
+            ):
+                with self.subTest(location=location):
+                    self.assertEqual(actual, expected)
+            self.assertEqual(
+                image["hover"],
+                ["FEDCBA9876543210 stays image prose"],
+            )
+            self.assertEqual(
+                image["authored_data"],
+                {"value": "FEDCBA9876543210"},
+            )
+            self.assertNotIn("dep_control_pts", migrated)
             self.assertIn(
                 'prose_map: { FEDCBA9876543210: "authored compound key" }',
                 migrated_text,
@@ -1664,24 +1706,56 @@ class QuestCompilerTests(unittest.TestCase):
 
     def test_signed_id_validator_is_independent_from_rewrite_classifier(self) -> None:
         builder = importlib.import_module("afterlight_quests.builder")
-        with tempfile.TemporaryDirectory() as temp_dir:
-            quest_root = self.make_quest_root(Path(temp_dir))
-            chapter = quest_root / "chapters/1234567890ABCDEF.snbt"
-            chapter.write_text(
-                "{\n"
-                '\tfilename: "1234567890ABCDEF"\n'
-                '\tgroup: "4525BB3160467FCB"\n'
-                '\tid: "1234567890ABCDEF"\n'
-                '\timages: [ ]\n'
-                '\tquest_links: [{ id: "F111111111111111", linked_quest: "234567890ABCDEF0" }]\n'
-                '\tquests: [{ id: "234567890ABCDEF0", tasks: [ ], rewards: [ ] }]\n'
-                "}\n",
-                encoding="utf-8",
-            )
-
-            with mock.patch.object(builder, "_migration_snbt_role", return_value=None):
-                with self.assertRaisesRegex(ValueError, "signed-safe FTB identity"):
-                    builder._validate_migrated_quest_corpus(quest_root)
+        relative = Path("chapters/1234567890ABCDEF.snbt")
+        base = {
+            "filename": "1234567890ABCDEF",
+            "group": "4525BB3160467FCB",
+            "id": "1234567890ABCDEF",
+            "images": [
+                {
+                    "id": "1111111111111111",
+                    "image": "example:test",
+                }
+            ],
+            "quest_links": [],
+            "quests": [
+                {
+                    "id": "234567890ABCDEF0",
+                    "tasks": [],
+                    "rewards": [],
+                }
+            ],
+        }
+        for location in (
+            "quest dep_control_pts",
+            "image dependency",
+            "image open_quest",
+        ):
+            with self.subTest(location=location):
+                chapter = json.loads(json.dumps(base))
+                if location == "quest dep_control_pts":
+                    chapter["quests"][0]["dep_control_pts"] = {
+                        "F111111111111111": [1.0, 2.0, 3.0, 4.0]
+                    }
+                elif location == "image dependency":
+                    chapter["images"][0]["dependency"] = "F111111111111111"
+                else:
+                    chapter["images"][0]["click_action"] = (
+                        "open_quest:F111111111111111/true"
+                    )
+                with mock.patch.object(
+                    builder,
+                    "_migration_snbt_role",
+                    return_value=None,
+                ):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "signed-safe FTB identity",
+                    ):
+                        builder._validate_known_ftb_identity_containers(
+                            relative,
+                            chapter,
+                        )
 
     def test_migration_preflights_all_payloads_before_repository_changes(self) -> None:
         builder = importlib.import_module("afterlight_quests.builder")

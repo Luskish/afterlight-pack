@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: review round 2 is based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501b918` and has the fresh offline gate recorded below. A live boot on the exact review-fix commit, exact-head independent review, two detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
+Status: review round 3 is based exactly on `3dba759f088410d44e92ddab01a767a61d5f6510` and has the fresh offline gate recorded below. A live boot on the exact round 3 final commit, exact-head independent review, two detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
 
 ## Delivered Scope
 
@@ -16,9 +16,9 @@ Status: review round 2 is based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501
 - The existing authenticated Gate listener and marker now prove every empty and occupied mechanical slot, wrong schematic or special item, mirror, rotation, producer cardinality, Draconic Seal position, exact output, exact remainder, and Seal stack contract.
 - Runtime helper self-tests and exact assertion cardinality bind the executable control flow to 14 positive checks, 368 negative checks, 54 remainder-slot checks, and 6 Seal-slot checks before marker emission.
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
-- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits. ZIP and ZIP64 member counts plus central-directory sizes are preflighted before `ZipFile` construction. Every scanned outer file uses one stable descriptor with link rejection, bounded reads, initial and final hashes, and device, inode, size, mtime, and ctime checks.
-- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. JavaScript and TypeScript reads are limited to 4 MiB per file and 8 MiB in aggregate, and the complete Seal occurrence inventory is capped at 100,000 records. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
-- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler covers known IDs in quest links, linked quests, images, autofocus, dependency control points, managed state, table references, and localization keys while preserving unrelated ID-shaped authored values. An independent validator checks the known identity containers. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
+- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits. ZIP and ZIP64 member counts plus central-directory sizes are preflighted before `ZipFile` construction. Every scanned outer file uses one stable descriptor with link rejection, bounded reads, initial and final hashes, and device, inode, size, mtime, and ctime checks. Packwiz metadata labels are derived only from authenticated descriptor bytes, with a 1 MiB file limit and final path-identity verification.
+- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. JavaScript and TypeScript reads are limited to 4 MiB per file and 8 MiB in aggregate, with at most 4,096 code files and 1 MiB of aggregate relative-path bytes. The complete Seal occurrence inventory is capped at 100,000 records, and repeated or oversized JSON and SNBT scalar matches share bounded digest descriptors instead of copying whole scalars per match. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler covers chapter image IDs, image dependencies, image `open_quest` targets, quest-local dependency control-point keys, quest links, linked quests, autofocus, managed state, table references, and localization keys while preserving unrelated ID-shaped authored values and image prose. An independent validator checks those known identity containers without using the rewrite classifier. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
 - The post-shutdown quest-identity oracle compares 3,135 canonical semantic records across repository and installed corpora. It binds `data.snbt`, every localization file path, key, scalar value, array position, and array text, plus chapter-group order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Save normalization is directional and limited to the exact characterized item-task counts, item-reward counts, reward-table item types and weights, Iron's Spells component, glow encoding, three chapter order pairs, three reward-table order pairs, exact reward-table filename and title omissions, the three exact installed `data.snbt` defaults, and SNBT formatting. The fresh repository inventory SHA-256 is `6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede`.
 - The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
 
@@ -46,6 +46,8 @@ Independent review then found that the semantic oracle compared identity subsets
 
 Review round 2 reproduced 30 focused failures across 16 tests before production changes. The RED set covered unbound data and localization semantics, broad or symmetric normalization, incomplete FTB identity schema, reused validation logic, non-durable and partially preflighted migration state, blocked recovery paths, unbounded code and occurrence scans, ZIP metadata accepted before preflight, and stable-descriptor race gaps. One additional occurrence-bound regression failed before its focused production fix.
 
+Review round 3 reproduced 12 focused failures across eight test methods before production changes. The RED set proved that migration and independent validation omitted quest-local dependency control points plus image dependency and `open_quest` identities, semantic descriptors retained 67,324,928 bytes for two 32 KiB repeated scalars, metadata labels followed symlinks and accepted oversize and path replacement, and the code corpus accepted excessive file counts and aggregate path bytes. The bytecode-shaped FTB fixtures preserve arbitrary image data and prose while exercising each real schema location.
+
 ## Review Round 2 Offline Gate
 
 The following fresh commands ran in the isolated review worktree based exactly on `a1f0b39fddb5a96bf99242d0dfc828c14501b918`:
@@ -61,7 +63,23 @@ OK (skipped=77)
 QUEST IDENTITY INVENTORY: records=3135 sha256=6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede
 ```
 
-No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No live boot has run on the exact review round 2 commit. The prior live gate below remains historical evidence for the earlier candidate only and does not validate the revised transaction, semantic oracle, or Seal scanner.
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed in review round 2. Any live evidence from that parent commit does not validate the review round 3 child.
+
+## Review Round 3 Offline Gate
+
+The following fresh commands ran in the isolated review worktree based exactly on `3dba759f088410d44e92ddab01a767a61d5f6510`:
+
+```text
+Ran 95 focused tests in 18.283s
+OK (skipped=2)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+Ran 308 offline tests in 38.384s
+OK (skipped=77)
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No live boot has run on the exact review round 3 final commit. The parent commit's live run is not evidence for this child. A fresh exact-final-commit live boot remains pending.
 
 ## Prior Automated Gate
 

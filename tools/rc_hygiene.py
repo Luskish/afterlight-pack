@@ -3772,6 +3772,10 @@ SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs", "mods")
 SEAL_CODE_SUFFIXES = frozenset((".js", ".jsx", ".mjs", ".ts", ".tsx"))
 SEAL_CODE_MAX_FILE_BYTES = 4 * 1024 * 1024
 SEAL_CODE_MAX_TOTAL_BYTES = 8 * 1024 * 1024
+SEAL_CODE_MAX_FILES = 4_096
+SEAL_CODE_MAX_TOTAL_PATH_BYTES = 1024 * 1024
+SEAL_METADATA_MAX_FILE_BYTES = 1024 * 1024
+SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
     "7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258"
@@ -4333,20 +4337,56 @@ def _snbt_child_path(path: str, key: str) -> str:
     return f"{path}[{json.dumps(key, ensure_ascii=False)}]"
 
 
+def _seal_semantic_occurrence_descriptors(
+    kind: str,
+    path: str,
+    value: str,
+    *,
+    include_value: bool,
+) -> Iterable[str]:
+    match_count = sum(1 for _match in SEAL_LITERAL_PATTERN.finditer(value))
+    if match_count == 0:
+        return
+    inline_chars = len(kind) + len(path) + 1
+    if include_value:
+        inline_chars += len(value) + 1
+    if match_count == 1 and inline_chars <= SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS:
+        descriptor = f"{kind}:{path}={value}" if include_value else f"{kind}:{path}"
+    else:
+        digest = hashlib.sha256()
+        for component in (kind, path, value):
+            digest.update(component.encode("utf-8"))
+            digest.update(b"\0")
+        descriptor = (
+            f"{kind}:matches={match_count}:path_chars={len(path)}:"
+            f"value_chars={len(value)}:sha256={digest.hexdigest()}"
+        )
+    for _position in range(match_count):
+        yield descriptor
+
+
 def _snbt_seal_occurrences(value: object, path: str = "$") -> Iterable[str]:
     if isinstance(value, dict):
         for key, child in value.items():
             key_text = str(key)
             child_path = _snbt_child_path(path, key_text)
-            for _match in SEAL_LITERAL_PATTERN.finditer(key_text):
-                yield f"snbt-key:{child_path}"
+            yield from _seal_semantic_occurrence_descriptors(
+                "snbt-key",
+                child_path,
+                key_text,
+                include_value=False,
+            )
             yield from _snbt_seal_occurrences(child, child_path)
     elif isinstance(value, list):
         for child in value:
             yield from _snbt_seal_occurrences(child, f"{path}[]")
     elif isinstance(value, str):
-        for _match in SEAL_LITERAL_PATTERN.finditer(value):
-            yield f"snbt:{path}={value}"
+        yield from _seal_semantic_occurrence_descriptors(
+            "snbt",
+            path,
+            value,
+            include_value=True,
+        )
 
 
 class _JsonObject(list[tuple[str, object]]):
@@ -4357,15 +4397,23 @@ def _json_seal_occurrences(value: object, path: str = "$") -> Iterable[str]:
     if isinstance(value, _JsonObject):
         for key, child in value:
             child_path = _snbt_child_path(path, key)
-            for _match in SEAL_LITERAL_PATTERN.finditer(key):
-                yield f"json-key:{child_path}"
+            yield from _seal_semantic_occurrence_descriptors(
+                "json-key",
+                child_path,
+                key,
+                include_value=False,
+            )
             yield from _json_seal_occurrences(child, child_path)
     elif isinstance(value, list):
         for child in value:
             yield from _json_seal_occurrences(child, f"{path}[]")
     elif isinstance(value, str):
-        for _match in SEAL_LITERAL_PATTERN.finditer(value):
-            yield f"json:{path}={value}"
+        yield from _seal_semantic_occurrence_descriptors(
+            "json",
+            path,
+            value,
+            include_value=True,
+        )
 
 
 def _decode_json_unicode_escapes(text: str) -> str:
@@ -4376,28 +4424,56 @@ def _decode_json_unicode_escapes(text: str) -> str:
 
 def _seal_archive_review_labels(root: Path) -> dict[str, str]:
     mods_root = root / "mods"
-    if not mods_root.is_dir():
+    try:
+        mods_root_stat = mods_root.lstat()
+    except FileNotFoundError:
         return {}
+    except OSError as error:
+        raise VerificationError(
+            f"cannot inspect Seal archive metadata root: {error}"
+        ) from error
+    if stat.S_ISLNK(mods_root_stat.st_mode) or not stat.S_ISDIR(
+        mods_root_stat.st_mode
+    ):
+        raise VerificationError("invalid Seal archive metadata root")
     labels: dict[str, str] = {}
     for metadata_path in sorted(mods_root.glob("*.pw.toml")):
-        metadata_relative = metadata_path.relative_to(root).as_posix()
-        metadata = _read_toml(metadata_path)
+        metadata_relative = _safe_relative_path(
+            metadata_path.relative_to(root).as_posix(),
+            "Seal archive metadata",
+        )
+        with _SealStableFile(
+            root,
+            metadata_relative,
+            "Seal archive metadata",
+            max_bytes=SEAL_METADATA_MAX_FILE_BYTES,
+            size_kind="metadata file",
+        ) as stable:
+            payload = stable.read_bytes(SEAL_METADATA_MAX_FILE_BYTES)
+            try:
+                metadata = tomllib.loads(payload.decode("utf-8"))
+            except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+                raise VerificationError(
+                    "cannot parse Seal archive metadata "
+                    f"{metadata_relative.as_posix()}: {error}"
+                ) from error
         filename = _safe_relative_path(
             str(metadata.get("filename", "")),
-            f"Seal archive filename for {metadata_relative}",
+            f"Seal archive filename for {metadata_relative.as_posix()}",
         )
         if len(filename.parts) != 1:
             raise VerificationError(
-                f"Seal archive filename must be a basename: {metadata_relative}"
+                "Seal archive filename must be a basename: "
+                f"{metadata_relative.as_posix()}"
             )
         installed_relative = (PurePosixPath("mods") / filename).as_posix()
         prior = labels.get(installed_relative)
         if prior is not None:
             raise VerificationError(
                 "duplicate Seal archive filename in metadata: "
-                f"{installed_relative} ({prior}, {metadata_relative})"
+                f"{installed_relative} ({prior}, {metadata_relative.as_posix()})"
             )
-        labels[installed_relative] = metadata_relative
+        labels[installed_relative] = metadata_relative.as_posix()
     return labels
 
 
@@ -4416,6 +4492,8 @@ def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
 
     inventory: dict[str, bytes] = {}
     total_bytes = 0
+    file_count = 0
+    total_path_bytes = 0
     for directory, directory_names, file_names in os.walk(
         code_root, followlinks=False
     ):
@@ -4443,6 +4521,17 @@ def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
                 path.relative_to(root).as_posix(),
                 f"{label} Seal source code file",
             )
+            file_count += 1
+            if file_count > SEAL_CODE_MAX_FILES:
+                raise VerificationError(
+                    f"Seal source code file count exceeds limit: {file_count}"
+                )
+            total_path_bytes += len(relative.as_posix().encode("utf-8"))
+            if total_path_bytes > SEAL_CODE_MAX_TOTAL_PATH_BYTES:
+                raise VerificationError(
+                    "Seal source aggregate code path bytes exceeds limit: "
+                    f"{total_path_bytes}"
+                )
             with _SealStableFile(
                 root,
                 relative,

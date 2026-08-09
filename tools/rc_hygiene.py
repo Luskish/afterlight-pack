@@ -16,6 +16,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Sequence
+from urllib.parse import quote
 
 try:
     from afterlight_quests.builder import (
@@ -164,18 +165,28 @@ REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
 REVIEWED_MIXIN_CORPUS_SHA256 = (
     "8f4b4b1736db5b6d91e30159b30059710476595100f0fb72dae423a5ddf841af"
 )
-REVIEWED_CLIENT_TARGET_COUNT = 20
+REVIEWED_CLIENT_TARGET_COUNT = 31
 REVIEWED_CLIENT_TARGET_INVENTORY_SHA256 = (
-    "c55a2f9ab12eb6c6fc37bd330df8323999501913a5a8c3159e5939bd8a83b1e2"
+    "cbb81775f677097560dff565346df0d9cb6a6b68af1f38a52ce9e43184ed6f59"
 )
 REVIEWED_CLIENT_TARGETS = (
+    "Ldev/emi/emi/screen/RecipeScreen;",
     "Lnet/neoforged/neoforge/client/model/generators/ModelBuilder;",
     "Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/pipeline/BlockOcclusionCache;",
     "Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/pipeline/BlockRenderer;",
     "Lcom/simibubi/create/CreateClient;",
     "Lcom/simibubi/create/foundation/blockEntity/behaviour/ValueBoxRenderer;",
+    "Lnet/createmod/catnip/gui/AbstractSimiScreen;",
+    "Ldev/lopyluna/dndesires/compat/jei/category/DragonBreathingCategory;",
+    "Ldev/lopyluna/dndesires/compat/jei/category/FreezingCategory;",
+    "Ldev/lopyluna/dndesires/compat/jei/category/SandingCategory;",
+    "Lnet/dakotapride/garnished/registry/JEI/DyeBlowingFanCategory;",
+    "Lnet/dakotapride/garnished/registry/JEI/FreezingFanCategory;",
+    "Lcom/simibubi/create/compat/jei/category/CreateRecipeCategory;",
     "Lcom/aetherteam/aether/client/TriviaGenerator;",
     "Lnet/neoforged/neoforge/client/extensions/IBlockEntityRendererExtension;",
+    "Lmezz/jei/gui/bookmarks/BookmarkList;",
+    "Lmezz/jei/gui/overlay/bookmarks/BookmarkOverlay;",
     "Lnet/neoforged/neoforge/client/ClientHooks;",
     "Learth/terrarium/athena/api/client/models/neoforge/FactoryManagerImpl;",
     "Lcom/simibubi/create/content/schematics/client/tools/DeployTool;",
@@ -189,6 +200,7 @@ REVIEWED_CLIENT_TARGETS = (
     "Lnet/minecraft/client/multiplayer/ClientLevel;",
     "Lnet/minecraft/client/multiplayer/ClientLevel;",
     "Ldev/ryanhcode/sable/sublevel/render/dispatcher/VanillaSubLevelRenderDispatcher;",
+    "Lmezz/jei/library/plugins/vanilla/ingredients/ItemStackListFactory;",
 )
 SABLE_STACK_SHA256 = {
     "prepare": "bae3607214c9f8b88f6bd73e309b99f58eb926a2baae5d8515d3feba85efc7ca",
@@ -377,6 +389,7 @@ HEADER_LEVEL_LIKE = re.compile(
 )
 SEVERE_OUTPUT_LIKE = re.compile(
     r"(?:\b(?:FATAL|ERROR)\b|"
+    r"(?:^|\n)[ \t]*(?:Exception|Error|Throwable):|"
     r"(?<![A-Za-z0-9_$])(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*"
     r"[A-Z][A-Za-z0-9_$]*?(?:Exception|Error|Throwable)(?![A-Za-z0-9_$])|"
     r"(?<![A-Za-z0-9_$])(?:[a-z_$][A-Za-z0-9_$]*\.)+"
@@ -1446,6 +1459,12 @@ def _client_target_classification(target: str) -> str | None:
         or simple_name.endswith(("Client", "Renderer"))
     ):
         return "create-client-class"
+    if "screen" in package_parts:
+        return "mod-screen-package"
+    if "gui" in package_parts:
+        return "mod-gui-package"
+    if "jei" in package_parts:
+        return "jei-integration-package"
     if "client" in package_parts:
         return "mod-client-package"
     if "render" in package_parts or "renderer" in package_parts:
@@ -2343,12 +2362,23 @@ def _normalize_absolute_roots(
     install_root: Path | str | None = None,
 ) -> str:
     replacements: list[tuple[str, str]] = []
+
+    def add_root(source: str, marker: str) -> None:
+        replacements.extend(
+            (variant, marker)
+            for variant in {
+                source,
+                quote(source, safe="/:"),
+                quote(source, safe=""),
+            }
+        )
+
     if install_root is not None:
-        replacements.append((os.path.abspath(os.fspath(install_root)), "<INSTALL>"))
+        add_root(os.path.abspath(os.fspath(install_root)), "<INSTALL>")
     if workspace_root is not None:
         workspace = os.path.abspath(os.fspath(workspace_root))
-        replacements.append((os.path.join(workspace, "server-test"), "<INSTALL>"))
-        replacements.append((workspace, "<WORKSPACE>"))
+        add_root(os.path.join(workspace, "server-test"), "<INSTALL>")
+        add_root(workspace, "<WORKSPACE>")
     normalized = value
     for source, marker in sorted(
         set(replacements), key=lambda replacement: len(replacement[0]), reverse=True

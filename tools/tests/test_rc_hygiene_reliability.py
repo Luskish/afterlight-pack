@@ -19,6 +19,7 @@ import warnings
 import zipfile
 from unittest import mock
 from pathlib import Path
+from urllib.parse import quote
 
 
 tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
@@ -504,6 +505,62 @@ class StrictLogParserNegativeTests(unittest.TestCase):
         )
         self.assertEqual(hygiene._severe_console_projection((benign,)), ())
 
+    def test_bare_exception_error_and_throwable_are_severe_at_info_and_warn(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        projections = (
+            (
+                "latest",
+                hygiene.parse_log_records,
+                "[08Aug2026 12:00:00.000] [main/{level}] "
+                "[fixture/]: {message}\n",
+            ),
+            (
+                "debug",
+                hygiene.parse_log_records,
+                "[08Aug2026 12:00:00.000] [main/{level}] "
+                "[fixture/]: {message}\n",
+            ),
+            (
+                "console",
+                hygiene.parse_console_records,
+                "[12:00:00.000] [main/{level}] [fixture/]: {message}\n",
+            ),
+        )
+        for projection, parser, template in projections:
+            for level in ("INFO", "WARN"):
+                for message in (
+                    "Exception: injected",
+                    "Throwable: injected",
+                    "Error: injected",
+                ):
+                    records = parser(template.format(level=level, message=message))
+                    with self.subTest(
+                        projection=projection, level=level, message=message
+                    ):
+                        self.assertEqual(
+                            len(hygiene._severe_console_projection(records)), 1
+                        )
+
+        for benign_message in (
+            "Exception handling and error recovery documentation loaded",
+            "Recovered from an Error: retry succeeded",
+        ):
+            record = hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                "main",
+                "INFO",
+                "fixture/",
+                benign_message,
+                (),
+                "",
+            )
+            with self.subTest(benign_message=benign_message):
+                self.assertEqual(
+                    hygiene._severe_console_projection((record,)), ()
+                )
+
     def test_warning_path_projection_is_checkout_and_install_root_portable(self) -> None:
         hygiene = hygiene_module()
         first_workspace = Path("/Users/example/first-checkout")
@@ -524,6 +581,47 @@ class StrictLogParserNegativeTests(unittest.TestCase):
         self.assertEqual(
             evidence(first_workspace, first_install),
             evidence(second_workspace, second_install),
+        )
+
+    def test_warning_uri_encoded_roots_are_portable_without_decoding_unrelated_text(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        first_workspace = Path("/Users/example/AFTERLIGHT review")
+        second_workspace = Path("/opt/build/relocated AFTERLIGHT review")
+        first_install = first_workspace / "isolated server"
+        second_install = second_workspace / "different install"
+
+        def evidence(
+            workspace: Path, install: Path, *, safe: str
+        ) -> tuple[str, int, int]:
+            encoded_workspace = quote(str(workspace), safe=safe)
+            encoded_install = quote(str(install), safe=safe)
+            records = hygiene.parse_log_records(
+                "[08Aug2026 12:00:00.000] [main/WARN] [fixture/]: "
+                f"source={encoded_workspace}/config/fixture.toml "
+                f"install={encoded_install}/mods/a.jar\n"
+                f"continuation {encoded_install}/libraries/example.jar\n"
+            )
+            return hygiene.warning_multiset_evidence(
+                records, workspace_root=workspace, install_root=install
+            )
+
+        for safe in ("/:", ""):
+            with self.subTest(safe=safe):
+                self.assertEqual(
+                    evidence(first_workspace, first_install, safe=safe),
+                    evidence(second_workspace, second_install, safe=safe),
+                )
+
+        unrelated = "note=AFTERLIGHT%20review and /tmp/unrelated%20path"
+        self.assertEqual(
+            hygiene._normalize_absolute_roots(
+                unrelated,
+                workspace_root=first_workspace,
+                install_root=first_install,
+            ),
+            unrelated,
         )
 
     def test_mixin_synthetic_rename_session_id_is_the_only_normalized_field(
@@ -716,6 +814,17 @@ class MixinCorpusNegativeTests(unittest.TestCase):
             "Lnet/caffeinemc/mods/sodium/client/render/chunk/BlockRenderer;",
             "Lcom/simibubi/create/CreateClient;",
             "Lfixture/client/render/ModSpecificRenderer;",
+            "Ldev/emi/emi/screen/RecipeScreen;",
+            "Lnet/createmod/catnip/gui/AbstractSimiScreen;",
+            "Ldev/lopyluna/dndesires/compat/jei/category/DragonBreathingCategory;",
+            "Ldev/lopyluna/dndesires/compat/jei/category/FreezingCategory;",
+            "Ldev/lopyluna/dndesires/compat/jei/category/SandingCategory;",
+            "Lnet/dakotapride/garnished/registry/JEI/DyeBlowingFanCategory;",
+            "Lnet/dakotapride/garnished/registry/JEI/FreezingFanCategory;",
+            "Lcom/simibubi/create/compat/jei/category/CreateRecipeCategory;",
+            "Lmezz/jei/gui/bookmarks/BookmarkList;",
+            "Lmezz/jei/gui/overlay/bookmarks/BookmarkOverlay;",
+            "Lmezz/jei/library/plugins/vanilla/ingredients/ItemStackListFactory;",
         )
         output = io.BytesIO()
         config = json.dumps(
@@ -2157,23 +2266,56 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             ), self.assertRaises(self.hygiene.VerificationError):
                 self.verify_pair(latest, debug, boot)
 
+    def test_bare_severe_class_names_are_rejected_in_every_log_projection(
+        self,
+    ) -> None:
+        for bare_name in ("Exception", "Throwable", "Error"):
+            latest_header = (
+                "[08Aug2026 12:00:00.000] [main/INFO] [fixture.Hidden/]: "
+                f"{bare_name}: injected"
+            )
+            console_header = (
+                "[12:00:00.000] [main/INFO] [fixture.Hidden/]: "
+                f"{bare_name}: injected"
+            )
+            variants = (
+                (
+                    self.inject_after_ignored_info(self.latest, latest_header),
+                    self.debug,
+                    self.boot,
+                ),
+                (
+                    self.latest,
+                    self.inject_after_ignored_info(self.debug, latest_header),
+                    self.boot,
+                ),
+                (self.latest, self.debug, self.boot + "\n" + console_header + "\n"),
+            )
+            for projection, (latest, debug, boot) in enumerate(variants):
+                with self.subTest(
+                    bare_name=bare_name, projection=projection
+                ), self.assertRaises(self.hygiene.VerificationError):
+                    self.verify_pair(latest, debug, boot)
+
     def test_warning_multiset_is_portable_across_relocated_checkout_and_install(
         self,
     ) -> None:
         old_workspace = str(ROOT)
         audit_expectation = self.hygiene.quest_audit_expectation(ROOT)
         with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
-            workspace = Path(temporary).resolve()
-            install = workspace / "isolated-runtime"
+            workspace = Path(temporary).resolve() / "AFTERLIGHT review"
+            install = workspace / "isolated runtime"
+            encoded_workspace = quote(str(workspace), safe="/:")
+            encoded_install = quote(str(install), safe="/:")
             rewritten_latest = self.latest.replace(
-                f"{old_workspace}/server-test", str(install)
-            ).replace(old_workspace, str(workspace))
+                f"{old_workspace}/server-test", encoded_install
+            ).replace(old_workspace, encoded_workspace)
             rewritten_debug = self.debug.replace(
-                f"{old_workspace}/server-test", str(install)
-            ).replace(old_workspace, str(workspace))
+                f"{old_workspace}/server-test", encoded_install
+            ).replace(old_workspace, encoded_workspace)
             rewritten_boot = self.boot.replace(
-                f"{old_workspace}/server-test", str(install)
-            ).replace(old_workspace, str(workspace))
+                f"{old_workspace}/server-test", encoded_install
+            ).replace(old_workspace, encoded_workspace)
             (install / "logs").mkdir(parents=True)
             (install / "logs" / "latest.log").write_text(
                 rewritten_latest, encoding="utf-8"
@@ -3084,6 +3226,17 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                 self.fail(f"timed out waiting for {path}")
             time.sleep(0.05)
 
+    def _assert_process_terminated(self, pid: int, timeout: float = 3) -> None:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            if time.monotonic() >= deadline:
+                self.fail(f"process {pid} survived process-group cleanup")
+            time.sleep(0.05)
+
     def test_wrong_java_preserves_prior_local_evidence(self) -> None:
         self._write_java(17)
         prior = self.root / "server-test" / "boot.log"
@@ -3102,6 +3255,22 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         (self.root / "server-test").symlink_to(external, target_is_directory=True)
         result = self._run(self._free_port())
         self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("symlink", result.stdout)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "must remain untouched\n")
+        self.assertEqual(sorted(path.name for path in external.iterdir()), ["sentinel.txt"])
+
+    def test_symlink_evidence_root_is_rejected_before_any_external_write(self) -> None:
+        install = self.root / "server-test"
+        install.mkdir()
+        external = self.root / "external-evidence"
+        external.mkdir()
+        sentinel = external / "sentinel.txt"
+        sentinel.write_text("must remain untouched\n", encoding="utf-8")
+        (install / "evidence").symlink_to(external, target_is_directory=True)
+
+        result = self._run(self._free_port())
+
+        self.assertEqual(result.returncode, 9, result.stdout)
         self.assertIn("symlink", result.stdout)
         self.assertEqual(sentinel.read_text(encoding="utf-8"), "must remain untouched\n")
         self.assertEqual(sorted(path.name for path in external.iterdir()), ["sentinel.txt"])
@@ -3152,12 +3321,15 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         for signal_number in (2, 15):
             with self.subTest(signal=signal_number):
                 (self.root / "server.pid").unlink(missing_ok=True)
+                (self.root / "server.ppid").unlink(missing_ok=True)
+                (self.root / "server.pgrp").unlink(missing_ok=True)
+                (self.root / "timeout.pid").unlink(missing_ok=True)
                 (self.root / "serve.pid").unlink(missing_ok=True)
                 server_port = self._free_port()
                 run_script = textwrap.dedent(
                     f"""\
                     #!/bin/sh
-                    exec {sys.executable} -c "import os,socket,time; from pathlib import Path; s=socket.socket(); s.bind(('127.0.0.1', {server_port})); s.listen(); Path({str(self.root / 'server.pid')!r}).write_text(str(os.getpid())); time.sleep(60)"
+                    exec {sys.executable} -c "import os,socket,time; from pathlib import Path; s=socket.socket(); s.bind(('127.0.0.1', {server_port})); s.listen(); Path({str(self.root / 'server.pid')!r}).write_text(str(os.getpid())); Path({str(self.root / 'server.ppid')!r}).write_text(str(os.getppid())); Path({str(self.root / 'server.pgrp')!r}).write_text(str(os.getpgrp())); time.sleep(60)"
                     """
                 )
                 self._prepare_packwiz_installer_stage(
@@ -3165,7 +3337,9 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                 )
                 self._write_executable(
                     self.fake_bin / "gtimeout",
-                    "#!/bin/sh\nshift\nexec \"$@\"\n",
+                    "#!/bin/sh\n"
+                    f"echo $$ > {str(self.root / 'timeout.pid')!r}\n"
+                    "shift\n\"$@\" &\nchild=$!\nwait \"$child\"\n",
                 )
                 serve_port = self._free_port()
                 process = subprocess.Popen(
@@ -3179,18 +3353,34 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                     stderr=subprocess.STDOUT,
                 )
                 child_pid = None
+                timeout_pid = None
                 try:
                     self._wait_for_process_path(
                         process, self.root / "server.pid", timeout=12
                     )
+                    self._wait_for_process_path(
+                        process, self.root / "timeout.pid", timeout=12
+                    )
                     child_pid = int(
                         (self.root / "server.pid").read_text(encoding="utf-8")
+                    )
+                    timeout_pid = int(
+                        (self.root / "timeout.pid").read_text(encoding="utf-8")
                     )
                     os.kill(process.pid, signal_number)
                     output, _ = process.communicate(timeout=10)
                     self.assertEqual(process.returncode, 130, output)
-                    with self.assertRaises(ProcessLookupError):
-                        os.kill(child_pid, 0)
+                    self.assertNotEqual(timeout_pid, child_pid)
+                    self.assertEqual(
+                        int((self.root / "server.ppid").read_text(encoding="utf-8")),
+                        timeout_pid,
+                    )
+                    self.assertEqual(
+                        int((self.root / "server.pgrp").read_text(encoding="utf-8")),
+                        timeout_pid,
+                    )
+                    self._assert_process_terminated(timeout_pid)
+                    self._assert_process_terminated(child_pid)
                     self._assert_port_released(server_port)
                     self._assert_port_released(serve_port)
                 finally:
@@ -3200,6 +3390,11 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                     if child_pid is not None:
                         try:
                             os.kill(child_pid, 9)
+                        except ProcessLookupError:
+                            pass
+                    if timeout_pid is not None and timeout_pid != child_pid:
+                        try:
+                            os.kill(timeout_pid, 9)
                         except ProcessLookupError:
                             pass
 

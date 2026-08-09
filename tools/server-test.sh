@@ -24,23 +24,24 @@ NEOFORGE_INSTALLER_TMP=""
 PACKWIZ_INSTALLER_TMP=""
 RUN_FILES_FRESH=0
 
-if ! python3 - "$DIR" <<'PY'
+if ! python3 - "$DIR" "$EVIDENCE_DIR" <<'PY'
 import os
 import stat
 import sys
 from pathlib import Path
 
-candidate = Path(os.path.abspath(sys.argv[1]))
-current = Path(candidate.anchor)
-for part in candidate.parts[1:]:
-    current /= part
-    try:
-        current_stat = current.lstat()
-    except FileNotFoundError:
-        break
-    if stat.S_ISLNK(current_stat.st_mode):
-        print(f"FAIL: symlink in install root path: {current}")
-        raise SystemExit(1)
+for raw_candidate in sys.argv[1:]:
+    candidate = Path(os.path.abspath(raw_candidate))
+    current = Path(candidate.anchor)
+    for part in candidate.parts[1:]:
+        current /= part
+        try:
+            current_stat = current.lstat()
+        except FileNotFoundError:
+            break
+        if stat.S_ISLNK(current_stat.st_mode):
+            print(f"FAIL: symlink in install or evidence path: {current}")
+            raise SystemExit(1)
 PY
 then
   exit 9

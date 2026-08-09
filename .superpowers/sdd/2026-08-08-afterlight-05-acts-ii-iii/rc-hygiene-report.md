@@ -279,3 +279,94 @@ The next clean harness passed, but separate runtime quest validation rejected th
 - No multiplayer acceptance run or AFTERLIGHT push occurred in this work. The compatibility source and immutable release asset were published publicly as required.
 - Any update to Just Dire Things, Supplementaries, Moonlight, KubeJS, NeoForge, or the patched server invalidates the JDT evidence binding and requires reinvestigation.
 - Any IDAS or compatibility artifact update requires a new authenticated inventory, compatibility release, and boot-oracle binding.
+
+## 2026-08-09 Review Round 1 Hardening
+
+### Focused RED Evidence
+
+Each review finding received a regression before its production fix:
+
+- Client-target classification: `python3 -m unittest tools.tests.test_rc_hygiene_reliability.MixinCorpusNegativeTests.test_common_client_targets_are_derived_across_platform_and_mod_packages` failed with `AssertionError: 5 != 16`.
+- Bare severe class names: `python3 -m unittest tools.tests.test_rc_hygiene_reliability.StrictLogParserNegativeTests.test_bare_exception_error_and_throwable_are_severe_at_info_and_warn` failed in all 18 INFO and WARN cases across latest, debug, and console projections with `AssertionError: 0 != 1`.
+- URI-encoded roots: `python3 -m unittest tools.tests.test_rc_hygiene_reliability.StrictLogParserNegativeTests.test_warning_uri_encoded_roots_are_portable_without_decoding_unrelated_text` failed for both slash-preserving and fully encoded paths because relocated roots produced different warning digests.
+- Evidence-root symlink: `python3 -m unittest tools.tests.test_rc_hygiene_reliability.ServerHarnessIntegrationTests.test_symlink_evidence_root_is_rejected_before_any_external_write` reached the installer checksum path and returned `3` instead of the required preflight exit `9`.
+- Process-group fixture: `python3 -m unittest tools.tests.test_rc_hygiene_reliability.ServerHarnessIntegrationTests.test_sigint_and_sigterm_terminate_server_process_group_and_free_port` failed for SIGINT and SIGTERM because the timeout PID equaled the server PID, proving the old fixture had no descendant process.
+
+### Production Repairs
+
+- The client classifier now derives screen, GUI, and JEI integration packages from complete annotation targets. The authenticated inventory expanded from 20 to 31 current common or server-list targets.
+- Severe projection now recognizes line-anchored bare `Exception:`, `Throwable:`, and `Error:` records without matching prose such as `Recovered from an Error: retry succeeded`.
+- Warning normalization replaces exact raw, slash-preserving URI-encoded, and fully URI-encoded workspace and install roots. Unrelated encoded text remains unchanged.
+- Harness preflight now performs component-by-component `lstat` checks for both `server-test` and the run-unique evidence descendant before creating the run marker.
+- The signal test timeout remains the process-group leader and launches a distinct child server. The test proves the child PPID and process group, then verifies both leader and grandchild terminate and both ports are released for SIGINT and SIGTERM.
+
+### Focused GREEN Evidence
+
+The focused command covering all five repairs passed:
+
+```text
+python3 -m unittest \
+  tools.tests.test_rc_hygiene_reliability.MixinCorpusNegativeTests.test_common_client_targets_are_derived_across_platform_and_mod_packages \
+  tools.tests.test_rc_hygiene_reliability.StrictLogParserNegativeTests.test_bare_exception_error_and_throwable_are_severe_at_info_and_warn \
+  tools.tests.test_rc_hygiene_reliability.StrictLogParserNegativeTests.test_warning_uri_encoded_roots_are_portable_without_decoding_unrelated_text \
+  tools.tests.test_rc_hygiene_reliability.ServerHarnessIntegrationTests.test_symlink_evidence_root_is_rejected_before_any_external_write \
+  tools.tests.test_rc_hygiene_reliability.ServerHarnessIntegrationTests.test_sigint_and_sigterm_terminate_server_process_group_and_free_port
+
+Ran 5 tests in 2.569s
+OK
+```
+
+Authenticated source evidence passed with:
+
+- Client targets: `31`
+- Client inventory SHA-256: `cbb81775f677097560dff565346df0d9cb6a6b68af1f38a52ce9e43184ed6f59`
+- Complete Mixin corpus SHA-256: `8f4b4b1736db5b6d91e30159b30059710476595100f0fb72dae423a5ddf841af`
+- Archive scopes: `305`
+- Mixin configs: `261`
+- Common mixins: `2286`
+- Server mixins: `5`
+
+The 11 newly authenticated target occurrences are:
+
+```text
+Ldev/emi/emi/screen/RecipeScreen;
+Lnet/createmod/catnip/gui/AbstractSimiScreen;
+Ldev/lopyluna/dndesires/compat/jei/category/DragonBreathingCategory;
+Ldev/lopyluna/dndesires/compat/jei/category/FreezingCategory;
+Ldev/lopyluna/dndesires/compat/jei/category/SandingCategory;
+Lnet/dakotapride/garnished/registry/JEI/DyeBlowingFanCategory;
+Lnet/dakotapride/garnished/registry/JEI/FreezingFanCategory;
+Lcom/simibubi/create/compat/jei/category/CreateRecipeCategory;
+Lmezz/jei/gui/bookmarks/BookmarkList;
+Lmezz/jei/gui/overlay/bookmarks/BookmarkOverlay;
+Lmezz/jei/library/plugins/vanilla/ingredients/ItemStackListFactory;
+```
+
+### Full Gate Evidence
+
+- Clean-checkout Python suite: `python3 -m unittest discover -s tools/tests -p 'test_*.py' -v` ran 200 tests in 14.438 seconds, passed, and precisely skipped 76 tests requiring `AFTERLIGHT_LIVE_RUN_ID`.
+- Static quests: `python3 tools/validate-quests.py --static` printed `VALIDATE QUESTS: OK (41 chapters, 283 quests, 307 tasks, 393 rewards)`.
+- Pack verification: `./tools/verify-pack.sh` printed `VERIFY: ALL GREEN`; both refresh passes were idempotent.
+- Fresh server: `BOOT_TIMEOUT=600 ./tools/server-test.sh` printed `SERVER BOOT: OK`.
+- Authenticated live Python suite inside the harness: 200 tests ran in 93.205 seconds with zero skips and passed.
+- Runtime quests: `python3 tools/validate-quests.py` printed `VALIDATE QUESTS: OK (41 chapters, 283 quests, 307 tasks, 393 rewards)`.
+- Fresh run ID: `local-20260809T042620Z-35165-28690`.
+- Fresh nonce: `1786249581-35165-10235`.
+- Preserved server status: `0`.
+- Dedicated-server marker: `Done (31.558s)! For help, type "help"`.
+- Boot oracle: `BOOT ORACLE: OK errors=14 warnings=478 named-residuals=39`.
+- Latest and debug warning multiset: 478 records, 384 unique fingerprints, SHA-256 `06e7b2de112448be970d0fccad0eee682928af8aec24172c229a88c8a93890bd`.
+- Latest and console severe corpus: 62 records, SHA-256 `ed408c68bf375c658891ec372f94bfb5c766cffc9d52804e96012657ab07ec4b`.
+- Debug severe corpus: 80 records, SHA-256 `0292b411acc6145d69a97ca14ab08440451f5045aa49d543a3e2c6bfe964206a`.
+- Quest item audit: 219 items, SHA-256 `f2ac0534ecf9f6a31c2d2099d3bd6fa67e719433d560697d51c69bb3a599be67`.
+- Pack SHA-256: `6bf8c2aff8cbebafca966a2b72022aeac44be7d8af775532ba6b89845b4b5ce8`.
+- Index SHA-256: `668bf754d9e88abc80023ae4c1d2b84c2e297fc18a9c3b8fecc60dbfc603ccbb`.
+- Boot log SHA-256: `bbb076b554de1ba46da755ebc4b603c3148b48f7fcf58ba6f0ce4af110f74fcb`.
+- Latest log SHA-256: `7ebf632dd4ef0634e8af4a7c991130e3a117fa0933b7878a6b18f5235f7ce0fc`.
+- Debug log SHA-256: `4aaed64dd2d25b7dc54bdb92b9933fd2ecb7c3d2d7f3a6de08212750d3d8b8d7`.
+- Packwiz provenance SHA-256: `1cee1e41ae9d53cf99f4353efb011c5c529f93cf69c17f2f87697da04dabf8ab`.
+- Index entries: `291`; mod metadata files: `167`; installed server artifacts: `157`.
+- `git diff --check` passed and the changed paths contain no U+2014 character.
+- Controller file `docs/releases/plan-05-verification.md` remained untracked and unchanged at SHA-256 `bb0c52300991a12ed9136a24d898bd89e053ed6a80422e4be003a65ae78fd858`.
+
+No new pack-local concern remains from this review round. The existing manual client-launch item remains outside this server hardening scope.

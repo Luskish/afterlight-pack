@@ -384,6 +384,53 @@ def mixin_archive_bytes(
     return output.getvalue()
 
 
+def shared_header_alias_archive_bytes(
+    name: str, payload: bytes, copies: int
+) -> bytes:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr(name, payload)
+    original = output.getvalue()
+    end_offset = original.rfind(b"PK\x05\x06")
+    if end_offset < 0:
+        raise AssertionError("fixture ZIP has no end-of-central-directory record")
+    (
+        signature,
+        disk_number,
+        central_directory_disk,
+        disk_entries,
+        total_entries,
+        central_directory_size,
+        central_directory_offset,
+        comment_size,
+    ) = struct.unpack_from("<4s4H2LH", original, end_offset)
+    if disk_entries != 1 or total_entries != 1:
+        raise AssertionError("fixture ZIP must begin with exactly one member")
+    central_directory = original[
+        central_directory_offset : central_directory_offset + central_directory_size
+    ]
+    comment = original[end_offset + 22 : end_offset + 22 + comment_size]
+    end_record = struct.pack(
+        "<4s4H2LH",
+        signature,
+        disk_number,
+        central_directory_disk,
+        copies,
+        copies,
+        central_directory_size * copies,
+        central_directory_offset,
+        comment_size,
+    )
+    return b"".join(
+        (
+            original[:central_directory_offset],
+            central_directory * copies,
+            end_record,
+            comment,
+        )
+    )
+
+
 def empty_mixin_scan() -> dict[str, object]:
     return {
         "archive_scopes": 0,
@@ -910,6 +957,76 @@ class MixinCorpusNegativeTests(unittest.TestCase):
         with self.assertRaisesRegex(hygiene.VerificationError, "duplicate ZIP member"):
             hygiene._scan_mixin_archive(
                 "mods/outer.pw.toml", outer.getvalue(), empty_mixin_scan()
+            )
+
+    def test_reviewed_shared_header_duplicate_uses_canonical_member(self) -> None:
+        hygiene = hygiene_module()
+        label = "mods/reviewed-alias.pw.toml"
+        name = "META-INF/LICENSE.txt"
+        payload = b"reviewed shared-header payload\n"
+        archive_payload = shared_header_alias_archive_bytes(name, payload, 6)
+        original_read = zipfile.ZipFile.read
+
+        def strict_read(
+            archive: zipfile.ZipFile,
+            member: str | zipfile.ZipInfo,
+            pwd: bytes | None = None,
+        ) -> bytes:
+            if isinstance(member, zipfile.ZipInfo):
+                aliases = tuple(
+                    info
+                    for info in archive.infolist()
+                    if info.filename == member.filename
+                )
+                end_offset = getattr(member, "_end_offset", None)
+                if len(aliases) > 1 and (
+                    end_offset is None or end_offset <= member.header_offset
+                ):
+                    raise zipfile.BadZipFile(
+                        f"Overlapped entries: {member.filename!r} (possible zip bomb)"
+                    )
+            return original_read(archive, member, pwd)
+
+        reviewed = {(label, name): (6, sha256_bytes(payload))}
+        scan = empty_mixin_scan()
+        with (
+            mock.patch.object(hygiene, "REVIEWED_DUPLICATE_ZIP_MEMBERS", reviewed),
+            mock.patch.object(zipfile.ZipFile, "read", strict_read),
+        ):
+            hygiene._scan_mixin_archive(label, archive_payload, scan)
+        self.assertEqual(scan["archive_scopes"], 1)
+
+    def test_reviewed_shared_header_duplicate_rejects_metadata_drift(self) -> None:
+        hygiene = hygiene_module()
+        label = "mods/reviewed-alias.pw.toml"
+        name = "META-INF/LICENSE.txt"
+        payload = b"reviewed shared-header payload\n"
+        archive_payload = bytearray(
+            shared_header_alias_archive_bytes(name, payload, 6)
+        )
+        end_offset = archive_payload.rfind(b"PK\x05\x06")
+        end_record = struct.unpack_from("<4s4H2LH", archive_payload, end_offset)
+        central_directory_size = end_record[5]
+        central_directory_offset = end_record[6]
+        member_size = central_directory_size // 6
+        external_attributes_offset = central_directory_offset + member_size + 38
+        external_attributes = struct.unpack_from(
+            "<L", archive_payload, external_attributes_offset
+        )[0]
+        struct.pack_into(
+            "<L",
+            archive_payload,
+            external_attributes_offset,
+            external_attributes ^ 1,
+        )
+
+        reviewed = {(label, name): (6, sha256_bytes(payload))}
+        with (
+            mock.patch.object(hygiene, "REVIEWED_DUPLICATE_ZIP_MEMBERS", reviewed),
+            self.assertRaisesRegex(hygiene.VerificationError, "metadata"),
+        ):
+            hygiene._scan_mixin_archive(
+                label, bytes(archive_payload), empty_mixin_scan()
             )
 
     @requires_live_install(ROOT)

@@ -10,7 +10,6 @@ import re
 import stat
 import sys
 import tomllib
-import warnings
 import zipfile
 from collections import Counter
 from dataclasses import dataclass
@@ -1496,6 +1495,62 @@ def _finalize_client_target_inventory(
     return tuple(inventory)
 
 
+def _zip_member_alias_identity(info: zipfile.ZipInfo) -> tuple[object, ...]:
+    return (
+        info.filename,
+        info.orig_filename,
+        info.date_time,
+        info.compress_type,
+        info.comment,
+        info.extra,
+        info.create_system,
+        info.create_version,
+        info.extract_version,
+        info.reserved,
+        info.flag_bits,
+        info.volume,
+        info.internal_attr,
+        info.external_attr,
+        info.header_offset,
+        info.CRC,
+        info.compress_size,
+        info.file_size,
+    )
+
+
+def _read_reviewed_zip_alias(
+    archive: zipfile.ZipFile,
+    infos: tuple[zipfile.ZipInfo, ...],
+    member_infos: list[zipfile.ZipInfo],
+    label: str,
+    name: str,
+) -> bytes:
+    header_offset = infos[0].header_offset
+    physical_end = min(
+        (
+            info.header_offset
+            for info in member_infos
+            if info.header_offset > header_offset
+        ),
+        default=archive.start_dir,
+    )
+    end_offsets = tuple(getattr(info, "_end_offset", None) for info in infos)
+    if all(end_offset is None for end_offset in end_offsets):
+        return archive.read(infos[0])
+    candidates = tuple(
+        info
+        for info, end_offset in zip(infos, end_offsets, strict=True)
+        if end_offset == physical_end
+    )
+    if len(candidates) != 1:
+        raise VerificationError(
+            "duplicate ZIP member has no unique physical boundary: "
+            f"{label}!/{name} header={header_offset} end={physical_end} "
+            f"candidates={len(candidates)}"
+        )
+    return archive.read(candidates[0])
+
+
 def _scan_mixin_archive(
     label: str,
     payload: Path | bytes,
@@ -1520,21 +1575,29 @@ def _scan_mixin_archive(
                 if count == 1:
                     continue
                 infos = tuple(info for info in member_infos if info.filename == name)
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", UserWarning)
-                    payload_hashes = tuple(
-                        _hash_bytes(archive.read(info), "sha256") for info in infos
-                    )
                 reviewed = REVIEWED_DUPLICATE_ZIP_MEMBERS.get((label, name))
-                if (
-                    reviewed is None
-                    or reviewed[0] != count
-                    or set(payload_hashes) != {reviewed[1]}
-                ):
+                if reviewed is None or reviewed[0] != count:
+                    raise VerificationError(
+                        "duplicate ZIP member is not an exact reviewed third-party "
+                        f"exception: {label}!/{name} count={count}"
+                    )
+                identities = {_zip_member_alias_identity(info) for info in infos}
+                if len(identities) != 1:
+                    raise VerificationError(
+                        "duplicate ZIP member metadata differs across reviewed aliases: "
+                        f"{label}!/{name} count={count}"
+                    )
+                payload_hash = _hash_bytes(
+                    _read_reviewed_zip_alias(
+                        archive, infos, member_infos, label, name
+                    ),
+                    "sha256",
+                )
+                if payload_hash != reviewed[1]:
                     raise VerificationError(
                         "duplicate ZIP member is not an exact reviewed third-party "
                         f"exception: {label}!/{name} count={count} "
-                        f"hashes={payload_hashes}"
+                        f"hash={payload_hash}"
                     )
             names = set(member_counts)
             result["archive_scopes"] = int(result["archive_scopes"]) + 1

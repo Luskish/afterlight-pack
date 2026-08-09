@@ -3583,6 +3583,9 @@ def verify_boot_run(
 ) -> dict[str, object]:
     root_path = _validated_root(root, "pack root")
     install_path = _validated_root(install, "install root")
+    gate_audit_sha256 = verify_installed_gate_audit(
+        root_path, install_path, nonce
+    )
     verify_install_provenance(root_path, install_path, verify_files=False)
     verify_jdt_evidence(root_path, install_path)
     log_text = _read_strict_utf8(
@@ -3634,6 +3637,7 @@ def verify_boot_run(
         "warnings": warnings,
         "warning_records": REVIEWED_WARNING_TOTAL,
         "audits": audits,
+        "gate_audit_sha256": gate_audit_sha256,
         "console_severe_count": console_count,
         "console_severe_sha256": console_digest,
     }
@@ -3738,6 +3742,129 @@ def verify_installed_quest_audit(
     return _hash_bytes(actual, "sha256")
 
 
+GATE_AUDIT_RELATIVE = PurePosixPath(
+    "kubejs/server_scripts/afterlight/gate_recipe_audit.js"
+)
+GATE_AUDIT_SHA256_PLACEHOLDER = b"__AFTERLIGHT_GATE_AUDIT_SHA256__"
+GATE_AUDIT_NONCE_PLACEHOLDER = b"__AFTERLIGHT_GATE_BOOT_NONCE__"
+GATE_AUDIT_RECIPE_COUNT = 11
+
+
+def _gate_audit_source(root: Path | str) -> bytes:
+    root_path = _validated_root(root, "pack root")
+    source_path = _verified_regular_file(
+        root_path, GATE_AUDIT_RELATIVE, "Gate audit source"
+    )
+    try:
+        source = source_path.read_bytes()
+        text = source.decode("utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise VerificationError(
+            f"cannot read Gate audit source {source_path}: {error}"
+        ) from error
+    for placeholder in (
+        GATE_AUDIT_SHA256_PLACEHOLDER,
+        GATE_AUDIT_NONCE_PLACEHOLDER,
+    ):
+        if source.count(placeholder) != 1:
+            raise VerificationError(
+                "Gate audit placeholder count changed for "
+                f"{placeholder.decode('ascii')}"
+            )
+    if text.count("ServerEvents.loaded(") != 1:
+        raise VerificationError(
+            "Gate audit source must contain exactly one ServerEvents.loaded listener"
+        )
+    if text.count("[AFTERLIGHT GATE RECIPE AUDIT] OK") != 1:
+        raise VerificationError(
+            "Gate audit source must contain exactly one success marker"
+        )
+    for helper in (
+        "afterlightRecipe",
+        "afterlightMechanicalInput",
+        "afterlightCraftingInput",
+        "afterlightAssertMatch",
+        "afterlightAssertNoMatch",
+        "afterlightAssertOnlySealRemainder",
+    ):
+        if text.count(f"function {helper}(") != 1:
+            raise VerificationError(
+                f"Gate audit helper contract changed for {helper}"
+            )
+    success_emitter = (
+        "  console.info(`[AFTERLIGHT GATE RECIPE AUDIT] OK "
+        "${auditSha256} 11 ${bootNonce}`)"
+    )
+    if text.count(success_emitter) != 1:
+        raise VerificationError("Gate audit success emitter changed")
+    return source
+
+
+def gate_audit_expectation(root: Path | str) -> tuple[str, int]:
+    source = _gate_audit_source(root)
+    return _hash_bytes(source, "sha256"), GATE_AUDIT_RECIPE_COUNT
+
+
+def render_installed_gate_audit(root: Path | str, nonce: str) -> bytes:
+    if re.fullmatch(r"[A-Za-z0-9._-]+", nonce) is None:
+        raise VerificationError("installed Gate audit nonce is malformed")
+    source = _gate_audit_source(root)
+    digest = _hash_bytes(source, "sha256").encode("ascii")
+    return source.replace(
+        GATE_AUDIT_SHA256_PLACEHOLDER, digest, 1
+    ).replace(GATE_AUDIT_NONCE_PLACEHOLDER, nonce.encode("ascii"), 1)
+
+
+def _install_rendered_gate_audit(
+    root: Path | str, install: Path | str, nonce: str
+) -> str:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    source = _gate_audit_source(root_path)
+    installed_path = _verified_regular_file(
+        install_path, GATE_AUDIT_RELATIVE, "installed Gate audit"
+    )
+    try:
+        installed_source = installed_path.read_bytes()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read installed Gate audit {installed_path}: {error}"
+        ) from error
+    if installed_source != source:
+        raise VerificationError(
+            "installed Gate audit pre-substitution bytes differ from root source"
+        )
+    rendered = render_installed_gate_audit(root_path, nonce)
+    try:
+        installed_path.write_bytes(rendered)
+    except OSError as error:
+        raise VerificationError(
+            f"cannot write installed Gate audit {installed_path}: {error}"
+        ) from error
+    return verify_installed_gate_audit(root_path, install_path, nonce)
+
+
+def verify_installed_gate_audit(
+    root: Path | str, install: Path | str, nonce: str
+) -> str:
+    expected = render_installed_gate_audit(root, nonce)
+    install_path = _validated_root(install, "install root")
+    installed_path = _verified_regular_file(
+        install_path, GATE_AUDIT_RELATIVE, "installed Gate audit"
+    )
+    try:
+        actual = installed_path.read_bytes()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read installed Gate audit {installed_path}: {error}"
+        ) from error
+    if actual != expected:
+        raise VerificationError(
+            "installed Gate audit differs from authenticated source substitutions"
+        )
+    return _hash_bytes(actual, "sha256")
+
+
 def validate_boot_markers(
     log_text: str,
     nonce: str,
@@ -3755,6 +3882,10 @@ def validate_boot_markers(
     audit_digest, audit_count = quest_audit_expectation(root_path)
     audit_message = (
         f"[AFTERLIGHT QUEST ITEM AUDIT] OK {audit_digest} {audit_count} {nonce}"
+    )
+    gate_digest, gate_count = gate_audit_expectation(root_path)
+    gate_message = (
+        f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
     ftb_message = "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables"
 
@@ -3823,6 +3954,13 @@ def validate_boot_markers(
                 None,
             ),
             (
+                "Gate audit",
+                lambda record: exact_single(
+                    record, r"Server thread", "KubeJS Server/", gate_message
+                ),
+                None,
+            ),
+            (
                 "FTB Quests load",
                 lambda record: exact_single(
                     record, r"Server thread", "FTB Quests/", ftb_message
@@ -3886,11 +4024,32 @@ def validate_boot_markers(
         index, record = matches[0]
         selected.append((label, index, record, normalized_message))
 
-    indices = tuple(index for _, index, _, _ in selected)
-    if indices != tuple(sorted(indices)) or len(set(indices)) != len(indices):
+    selected_by_label = {
+        label: (index, record, normalized_message)
+        for label, index, record, normalized_message in selected
+    }
+    ordered_labels = tuple(
+        label
+        for label, _, _, _ in selected
+        if label not in ("quest audit", "Gate audit")
+    )
+    ordered_indices = tuple(selected_by_label[label][0] for label in ordered_labels)
+    all_indices = tuple(index for _, index, _, _ in selected)
+    if (
+        ordered_indices != tuple(sorted(ordered_indices))
+        or len(set(all_indices)) != len(all_indices)
+    ):
         raise VerificationError(
             f"boot state marker order changed: {tuple(label for label, _, _, _ in selected)}"
         )
+    done_index = selected_by_label["DedicatedServer Done"][0]
+    ftb_index = selected_by_label["FTB Quests load"][0]
+    for label in ("quest audit", "Gate audit"):
+        audit_index = selected_by_label[label][0]
+        if not done_index < audit_index < ftb_index:
+            raise VerificationError(
+                f"boot state marker {label} is outside the post-Done, pre-FTB window"
+            )
     sanitized_threads = {
         record.thread for _, _, record, _ in selected[1:5]
     }
@@ -4000,6 +4159,20 @@ def _cli_verify_quest_audit(args: argparse.Namespace) -> None:
     print(f"QUEST AUDIT BYTES: OK sha256={digest}")
 
 
+def _cli_render_installed_gate_audit(args: argparse.Namespace) -> None:
+    digest = _install_rendered_gate_audit(
+        Path(args.root), Path(args.install), args.nonce
+    )
+    print(f"GATE AUDIT RENDER: OK sha256={digest}")
+
+
+def _cli_verify_gate_audit(args: argparse.Namespace) -> None:
+    digest = verify_installed_gate_audit(
+        Path(args.root), Path(args.install), args.nonce
+    )
+    print(f"GATE AUDIT BYTES: OK sha256={digest}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AFTERLIGHT RC hygiene verifier")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -4019,6 +4192,16 @@ def build_parser() -> argparse.ArgumentParser:
     quest_audit.add_argument("--install", required=True)
     quest_audit.add_argument("--nonce", required=True)
     quest_audit.set_defaults(handler=_cli_verify_quest_audit)
+    gate_render = subparsers.add_parser("render-installed-gate-audit")
+    gate_render.add_argument("--root", default=".")
+    gate_render.add_argument("--install", required=True)
+    gate_render.add_argument("--nonce", required=True)
+    gate_render.set_defaults(handler=_cli_render_installed_gate_audit)
+    gate_audit = subparsers.add_parser("verify-gate-audit")
+    gate_audit.add_argument("--root", default=".")
+    gate_audit.add_argument("--install", required=True)
+    gate_audit.add_argument("--nonce", required=True)
+    gate_audit.set_defaults(handler=_cli_verify_gate_audit)
     boot = subparsers.add_parser("verify-boot")
     boot.add_argument("--root", default=".")
     boot.add_argument("--install", required=True)

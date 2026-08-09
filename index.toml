@@ -505,8 +505,20 @@ file = "kubejs/server_scripts/afterlight/bridges.js"
 hash = "d607e08e0ce073d33f495f14b9f8ab05bf2febf6eb0bbe3c7319d5c46602c9bc"
 
 [[files]]
+file = "kubejs/server_scripts/afterlight/gate_assembly.js"
+hash = "98ddd9f985138ce77e790213288a8e05952a77b1de4485ea1af06aeed06f2c83"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/gate_components.js"
+hash = "e9e5cc77973cd6f247ec54d04e912878fe0bb0b5ef6af2ea832f6fb751b45569"
+
+[[files]]
 file = "kubejs/server_scripts/afterlight/gate_draconic.js"
-hash = "aee237ca65f17caa4e63c5dd97dc484c9e7c8a198fc8a1ef3a2199378ebd9564"
+hash = "6be279c70ce35a838f8176db2ee01922965b62cf8b5548d92019970b54ac4ebe"
+
+[[files]]
+file = "kubejs/server_scripts/afterlight/gate_recipe_audit.js"
+hash = "58e1a9dd7d192fedbb80b2e7665e28b59d6b3ab2f85a9c49af61b79efe76fa84"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"

@@ -3,7 +3,7 @@
 # Exit 0 means the server reached Done, passed the audit, and shut down cleanly.
 # Exit codes: 1 boot failed | 2 missing tool | 3 download failed | 4 port in use
 #             5 serve not ready | 6 NeoForge install failed | 7 pack install failed
-#             8 quest or boot oracle failed | 9 RC hygiene validation failed
+#             8 audit or boot oracle failed | 9 RC hygiene validation failed
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env
@@ -365,6 +365,14 @@ fi
 awk -v nonce="$AUDIT_NONCE" '{ gsub(/__AFTERLIGHT_BOOT_NONCE__/, nonce); print }' "$AUDIT_SCRIPT" > "$AUDIT_SCRIPT.tmp"
 mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
 python3 tools/rc_hygiene.py verify-quest-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
+
+GATE_AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/gate_recipe_audit.js"
+if [ ! -f "$GATE_AUDIT_SCRIPT" ]; then
+  echo "FAIL: Gate recipe audit script missing"
+  exit 7
+fi
+python3 tools/rc_hygiene.py render-installed-gate-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
+python3 tools/rc_hygiene.py verify-gate-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
 
 echo "eula=true" > "$DIR/eula.txt"
 cat > "$DIR/server.properties" <<PROPS

@@ -174,7 +174,8 @@ def write_manifest_entry_fixture(
 
 def valid_boot_log(nonce: str) -> str:
     hygiene = hygiene_module()
-    digest, item_count = hygiene.quest_audit_expectation(ROOT)
+    quest_digest, item_count = hygiene.quest_audit_expectation(ROOT)
+    gate_digest, recipe_count = hygiene.gate_audit_expectation(ROOT)
     return "\n".join(
         (
             "[08Aug2026 11:59:58.000] [modloading-worker-0/INFO] "
@@ -188,7 +189,50 @@ def valid_boot_log(nonce: str) -> str:
             "[net.minecraft.server.dedicated.DedicatedServer/]: "
             'Done (12.345s)! For help, type "help"',
             "[08Aug2026 12:00:01.000] [Server thread/INFO] [KubeJS Server/]: "
-            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {item_count} {nonce}",
+            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {quest_digest} {item_count} {nonce}",
+            "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
+            f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}",
+            "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
+            "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
+            "[08Aug2026 12:00:02.000] [Server thread/INFO] "
+            "[net.minecraft.server.MinecraftServer/]: Stopping server",
+            "[08Aug2026 12:00:02.100] [Server thread/INFO] "
+            "[net.minecraft.server.MinecraftServer/]: Saving players",
+            "[08Aug2026 12:00:02.200] [Server thread/INFO] "
+            "[net.minecraft.server.MinecraftServer/]: Saving worlds",
+            "[08Aug2026 12:00:03.000] [Server thread/INFO] "
+            "[net.minecraft.server.MinecraftServer/]: "
+            "ThreadedAnvilChunkStorage: All dimensions are saved",
+        )
+    )
+
+
+def valid_gate_boot_log(nonce: str, *, gate_first: bool = True) -> str:
+    hygiene = hygiene_module()
+    quest_digest, item_count = hygiene.quest_audit_expectation(ROOT)
+    gate_digest, recipe_count = hygiene.gate_audit_expectation(ROOT)
+    gate = (
+        "[08Aug2026 12:00:01.000] [Server thread/INFO] [KubeJS Server/]: "
+        f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}"
+    )
+    quest = (
+        "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
+        f"[AFTERLIGHT QUEST ITEM AUDIT] OK {quest_digest} {item_count} {nonce}"
+    )
+    audits = (gate, quest) if gate_first else (quest, gate)
+    return "\n".join(
+        (
+            "[08Aug2026 11:59:58.000] [modloading-worker-0/INFO] "
+            f"[{hygiene.IDAS_COMPAT_LOGGER}]: {hygiene.IDAS_COMPAT_READY_MESSAGE}",
+            *(
+                "[08Aug2026 11:59:59.000] [Worker-Main-1/INFO] "
+                f"[{hygiene.IDAS_COMPAT_LOGGER}]: {message}"
+                for message in hygiene.IDAS_COMPAT_BOOT_SANITIZED_MESSAGES
+            ),
+            "[08Aug2026 12:00:00.000] [Server thread/INFO] "
+            "[net.minecraft.server.dedicated.DedicatedServer/]: "
+            'Done (12.345s)! For help, type "help"',
+            *audits,
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
             "Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
@@ -2006,7 +2050,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 297)
+        self.assertEqual(len(indexed), 300)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -2365,7 +2409,13 @@ class CurrentBootProjectionNegativeTests(unittest.TestCase):
         )
 
     def test_sable_verifier_rejects_stale_debug_log_nonce(self) -> None:
-        stale = self.debug.replace(self.nonce, "stale-nonce", 1)
+        quest_line = next(
+            line
+            for line in self.debug.splitlines()
+            if "[AFTERLIGHT QUEST ITEM AUDIT] OK " in line
+        )
+        stale_quest_line = quest_line.replace(self.nonce, "stale-nonce", 1)
+        stale = self.debug.replace(quest_line, stale_quest_line, 1)
         with self.assertRaisesRegex(
             self.hygiene.VerificationError, "quest audit"
         ):
@@ -2438,6 +2488,11 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
             (install / "logs").mkdir(parents=True)
+            gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
+            gate_audit.parent.mkdir(parents=True)
+            gate_audit.write_bytes(
+                self.hygiene.render_installed_gate_audit(ROOT, self.nonce)
+            )
             (install / "logs" / "latest.log").write_text(latest, encoding="utf-8")
             (install / "logs" / "debug.log").write_text(debug, encoding="utf-8")
             (install / "boot.log").write_text(
@@ -2459,6 +2514,11 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
             (install / "logs").mkdir()
+            gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
+            gate_audit.parent.mkdir(parents=True)
+            gate_audit.write_bytes(
+                self.hygiene.render_installed_gate_audit(ROOT, self.nonce)
+            )
             (install / "logs" / "latest.log").write_bytes(latest)
             (install / "logs" / "debug.log").write_bytes(debug)
             (install / "boot.log").write_bytes(boot)
@@ -2686,6 +2746,16 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             rewritten_boot = self.boot.replace(
                 f"{old_workspace}/server-test", encoded_install
             ).replace(old_workspace, encoded_workspace)
+            gate_source = workspace / self.hygiene.GATE_AUDIT_RELATIVE
+            gate_source.parent.mkdir(parents=True)
+            gate_source.write_bytes(
+                (ROOT / self.hygiene.GATE_AUDIT_RELATIVE).read_bytes()
+            )
+            installed_gate = install / self.hygiene.GATE_AUDIT_RELATIVE
+            installed_gate.parent.mkdir(parents=True)
+            installed_gate.write_bytes(
+                self.hygiene.render_installed_gate_audit(workspace, self.nonce)
+            )
             (install / "logs").mkdir(parents=True)
             (install / "logs" / "latest.log").write_text(
                 rewritten_latest, encoding="utf-8"
@@ -3096,6 +3166,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             *self.hygiene.IDAS_COMPAT_BOOT_SANITIZED_MESSAGES,
             "DedicatedServer/]: Done (",
             "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
+            "[AFTERLIGHT GATE RECIPE AUDIT] OK ",
             "FTB Quests/]: Loaded 6 chapter groups, 41 chapters, 283 quests, 6 reward tables",
             "MinecraftServer/]: Stopping server",
             "MinecraftServer/]: Saving players",
@@ -3132,6 +3203,207 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
                     swap_lines(self.latest, first, second),
                     swap_lines(self.debug, first, second),
                 )
+
+
+class GateRecipeAuditNegativeTests(unittest.TestCase):
+    RELATIVE = Path("kubejs/server_scripts/afterlight/gate_recipe_audit.js")
+
+    def setUp(self) -> None:
+        self.hygiene = hygiene_module()
+
+    def require_gate_api(self) -> bool:
+        functions = (
+            "gate_audit_expectation",
+            "render_installed_gate_audit",
+            "verify_installed_gate_audit",
+        )
+        available = all(callable(getattr(self.hygiene, name, None)) for name in functions)
+        self.assertTrue(available, "Gate audit authentication interfaces are missing")
+        return available
+
+    def copy_gate_source(self, base: Path) -> tuple[Path, Path]:
+        root = base / "pack"
+        install = base / "install"
+        source = root / self.RELATIVE
+        source.parent.mkdir(parents=True)
+        source.write_bytes((ROOT / self.RELATIVE).read_bytes())
+        (install / self.RELATIVE).parent.mkdir(parents=True)
+        return root, install
+
+    def write_installed(self, root: Path, install: Path, nonce: str) -> Path:
+        target = install / self.RELATIVE
+        target.write_bytes(self.hygiene.render_installed_gate_audit(root, nonce))
+        return target
+
+    def assert_marker_rejected(self, latest: str, debug: str, nonce: str) -> None:
+        rejected = 0
+        for log_text in (latest, debug):
+            try:
+                self.hygiene.validate_boot_markers(log_text, nonce, 0, ROOT)
+            except self.hygiene.VerificationError:
+                rejected += 1
+        self.assertGreater(rejected, 0)
+
+    def test_source_contract_and_rendered_bytes_are_authenticated(self) -> None:
+        if not self.require_gate_api():
+            return
+        digest, count = self.hygiene.gate_audit_expectation(ROOT)
+        self.assertRegex(digest, r"^[0-9a-f]{64}$")
+        self.assertEqual(count, 11)
+        source = (ROOT / self.RELATIVE).read_bytes()
+        self.assertEqual(digest, hashlib.sha256(source).hexdigest())
+        rendered = self.hygiene.render_installed_gate_audit(ROOT, "fresh-nonce")
+        self.assertNotIn(b"__AFTERLIGHT_GATE_AUDIT_SHA256__", rendered)
+        self.assertNotIn(b"__AFTERLIGHT_GATE_BOOT_NONCE__", rendered)
+        self.assertEqual(rendered.count(digest.encode()), 1)
+        self.assertEqual(rendered.count(b"fresh-nonce"), 1)
+
+    def test_missing_and_repeated_placeholders_are_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, _install = self.copy_gate_source(Path(temporary))
+            source_path = root / self.RELATIVE
+            original = source_path.read_text(encoding="utf-8")
+            for placeholder in (
+                "__AFTERLIGHT_GATE_AUDIT_SHA256__",
+                "__AFTERLIGHT_GATE_BOOT_NONCE__",
+            ):
+                for label, changed in (
+                    ("missing", original.replace(placeholder, "", 1)),
+                    ("repeated", original + f"\n// {placeholder}\n"),
+                ):
+                    with self.subTest(placeholder=placeholder, mutation=label):
+                        source_path.write_text(changed, encoding="utf-8")
+                        with self.assertRaisesRegex(
+                            self.hygiene.VerificationError, "placeholder"
+                        ):
+                            self.hygiene.render_installed_gate_audit(root, "fresh")
+                source_path.write_text(original, encoding="utf-8")
+
+    def test_source_mutation_after_render_is_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_gate_source(Path(temporary))
+            self.write_installed(root, install, "fresh")
+            source_path = root / self.RELATIVE
+            source_path.write_bytes(source_path.read_bytes() + b"\n")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError, "installed Gate audit"
+            ):
+                self.hygiene.verify_installed_gate_audit(root, install, "fresh")
+
+    def test_installed_mutation_before_and_after_substitution_is_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_gate_source(Path(temporary))
+            source = (root / self.RELATIVE).read_bytes()
+            digest = hashlib.sha256(source).hexdigest().encode()
+            nonce = b"fresh"
+            pre_substitution = source.replace(b"Item.exists", b"Item.missing", 1)
+            pre_substitution = pre_substitution.replace(
+                b"__AFTERLIGHT_GATE_AUDIT_SHA256__", digest, 1
+            ).replace(b"__AFTERLIGHT_GATE_BOOT_NONCE__", nonce, 1)
+            target = install / self.RELATIVE
+            target.write_bytes(pre_substitution)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError, "installed Gate audit"
+            ):
+                self.hygiene.verify_installed_gate_audit(root, install, "fresh")
+
+            target.write_bytes(
+                self.hygiene.render_installed_gate_audit(root, "fresh")
+                + b"\n"
+            )
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError, "installed Gate audit"
+            ):
+                self.hygiene.verify_installed_gate_audit(root, install, "fresh")
+
+    def test_stale_installed_digest_and_nonce_are_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_gate_source(Path(temporary))
+            target = self.write_installed(root, install, "fresh")
+            rendered = target.read_bytes()
+            digest, _count = self.hygiene.gate_audit_expectation(root)
+            for label, changed in (
+                ("digest", rendered.replace(digest.encode(), b"0" * 64, 1)),
+                ("nonce", rendered.replace(b"fresh", b"stale", 1)),
+            ):
+                with self.subTest(label=label):
+                    target.write_bytes(changed)
+                    with self.assertRaisesRegex(
+                        self.hygiene.VerificationError, "installed Gate audit"
+                    ):
+                        self.hygiene.verify_installed_gate_audit(
+                            root, install, "fresh"
+                        )
+
+    def test_valid_markers_allow_gate_and_quest_in_either_order(self) -> None:
+        if not self.require_gate_api():
+            return
+        for gate_first in (True, False):
+            with self.subTest(gate_first=gate_first):
+                projection = self.hygiene.validate_boot_markers(
+                    valid_gate_boot_log("fresh", gate_first=gate_first),
+                    "fresh",
+                    0,
+                    ROOT,
+                )
+                labels = tuple(label for label, _record in projection)
+                self.assertIn("Gate audit", labels)
+                self.assertIn("quest audit", labels)
+
+    def test_stale_digest_and_nonce_markers_are_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        valid = valid_gate_boot_log("fresh")
+        digest, _count = self.hygiene.gate_audit_expectation(ROOT)
+        for label, changed in (
+            ("digest", valid.replace(digest, "0" * 64, 1)),
+            ("nonce", valid.replace("fresh", "stale", 1)),
+        ):
+            with self.subTest(label=label):
+                self.assert_marker_rejected(changed, changed, "fresh")
+
+    def test_duplicate_and_one_log_only_markers_are_rejected(self) -> None:
+        if not self.require_gate_api():
+            return
+        marker = "[AFTERLIGHT GATE RECIPE AUDIT] OK "
+        valid = valid_gate_boot_log("fresh")
+        duplicate = duplicate_line(valid, marker)
+        missing = remove_line(valid, marker)
+        self.assert_marker_rejected(duplicate, duplicate, "fresh")
+        self.assert_marker_rejected(valid, missing, "fresh")
+        self.assert_marker_rejected(missing, valid, "fresh")
+
+    def test_gate_marker_rejects_every_outside_window_position(self) -> None:
+        if not self.require_gate_api():
+            return
+        marker = "[AFTERLIGHT GATE RECIPE AUDIT] OK "
+        done = "DedicatedServer/]: Done ("
+        ftb = "FTB Quests/]: Loaded 6 chapter groups"
+        valid = valid_gate_boot_log("fresh")
+        lines = valid.splitlines()
+        marker_index = next(index for index, line in enumerate(lines) if marker in line)
+        marker_line = lines.pop(marker_index)
+        done_index = next(index for index, line in enumerate(lines) if done in line)
+        before_done = lines.copy()
+        before_done.insert(done_index, marker_line)
+        ftb_index = next(index for index, line in enumerate(lines) if ftb in line)
+        after_ftb = lines.copy()
+        after_ftb.insert(ftb_index + 1, marker_line)
+        for label, changed_lines in (
+            ("before Done", before_done),
+            ("after FTB", after_ftb),
+        ):
+            with self.subTest(position=label):
+                changed = "\n".join(changed_lines) + "\n"
+                self.assert_marker_rejected(changed, changed, "fresh")
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):
@@ -3454,6 +3726,8 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                         audit = Path({str(self.root / 'server-test/kubejs/server_scripts/afterlight/generated_quest_item_audit.js')!r})
                         audit.parent.mkdir(parents=True, exist_ok=True)
                         audit.write_text("__AFTERLIGHT_BOOT_NONCE__\\n", encoding="utf-8")
+                        gate_audit = Path({str(self.root / 'server-test/kubejs/server_scripts/afterlight/gate_recipe_audit.js')!r})
+                        gate_audit.write_text("Gate audit fixture\\n", encoding="utf-8")
                     raise SystemExit(0)
                 raise SystemExit(97)
                 """

@@ -2579,14 +2579,30 @@ def warning_multiset_evidence(
     )
 
 
-def _is_optional_environment_warning(record: LogRecord) -> bool:
-    return (
-        record.level == "WARN"
-        and record.logger == "net.minecraft.client.server.LanServerPinger/"
-        and record.message == "LanServerPinger: No route to host"
-        and not record.continuations
-        and record.thread == "LanServerPinger #1"
+def _optional_environment_warning_label(record: LogRecord) -> str | None:
+    fields = (
+        record.thread,
+        record.level,
+        record.logger,
+        record.message,
+        record.continuations,
     )
+    return {
+        (
+            "LanServerPinger #1",
+            "WARN",
+            "net.minecraft.client.server.LanServerPinger/",
+            "LanServerPinger: No route to host",
+            (),
+        ): "LAN multicast route",
+        (
+            "spark-async-sampler-worker-thread",
+            "WARN",
+            "spark/",
+            "Timed out waiting for world statistics",
+            (),
+        ): "Spark startup world statistics timeout",
+    }.get(fields)
 
 
 def _validate_reviewed_warning_multiset(
@@ -2595,17 +2611,29 @@ def _validate_reviewed_warning_multiset(
     *,
     workspace_root: Path | str | None = None,
     install_root: Path | str | None = None,
-) -> int:
-    optional_count = sum(_is_optional_environment_warning(record) for record in records)
-    if optional_count > 1:
+) -> Counter[str]:
+    optional_counts = Counter(
+        optional_label
+        for record in records
+        if (
+            optional_label := _optional_environment_warning_label(record)
+        ) is not None
+    )
+    duplicates = {
+        optional_label: count
+        for optional_label, count in optional_counts.items()
+        if count > 1
+    }
+    if duplicates:
         raise VerificationError(
-            f"{label} optional environmental WARN occurred {optional_count} times"
+            f"{label} optional environmental WARN occurred more than once: "
+            f"{duplicates}"
         )
     actual = warning_multiset_evidence(
         tuple(
             record
             for record in records
-            if not _is_optional_environment_warning(record)
+            if _optional_environment_warning_label(record) is None
         ),
         workspace_root=workspace_root,
         install_root=install_root,
@@ -2620,7 +2648,7 @@ def _validate_reviewed_warning_multiset(
             f"{label} complete WARN fingerprint multiset changed: "
             f"expected={expected} actual={actual}"
         )
-    return optional_count
+    return optional_counts
 
 
 def _canonical_fields_tuple(

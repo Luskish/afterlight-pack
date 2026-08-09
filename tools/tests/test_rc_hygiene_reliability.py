@@ -766,6 +766,123 @@ class StrictLogParserNegativeTests(unittest.TestCase):
                         (stable, changed), "fixture"
                     )
 
+    def test_spark_world_statistics_timeout_is_zero_or_one_exact_record(self) -> None:
+        hygiene = hygiene_module()
+        stable = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "WARN",
+            "fixture/",
+            "stable reviewed warning",
+            (),
+            "",
+        )
+        optional = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "spark-async-sampler-worker-thread",
+            "WARN",
+            "spark/",
+            "Timed out waiting for world statistics",
+            (),
+            "",
+        )
+        digest, total, unique = hygiene.warning_multiset_evidence((stable,))
+        with (
+            mock.patch.object(hygiene, "REVIEWED_WARNING_MULTISET_SHA256", digest),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_TOTAL", total),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_UNIQUE", unique),
+        ):
+            hygiene._validate_reviewed_warning_multiset((stable,), "fixture")
+            hygiene._validate_reviewed_warning_multiset(
+                (stable, optional), "fixture"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "optional environmental WARN"
+            ):
+                hygiene._validate_reviewed_warning_multiset(
+                    (stable, optional, optional), "fixture"
+                )
+            mutations = (
+                replace(optional, thread="main"),
+                replace(optional, logger="fixture/"),
+                replace(optional, message="Timed out waiting for changed statistics"),
+                replace(optional, continuations=("Caused by: fixture.Hidden",)),
+            )
+            for changed in mutations:
+                with self.subTest(changed=changed), self.assertRaises(
+                    hygiene.VerificationError
+                ):
+                    hygiene._validate_reviewed_warning_multiset(
+                        (stable, changed), "fixture"
+                    )
+
+    def test_distinct_optional_environment_warnings_have_independent_quotas(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        stable = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "WARN",
+            "fixture/",
+            "stable reviewed warning",
+            (),
+            "",
+        )
+        lan = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "LanServerPinger #1",
+            "WARN",
+            "net.minecraft.client.server.LanServerPinger/",
+            "LanServerPinger: No route to host",
+            (),
+            "",
+        )
+        spark = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "spark-async-sampler-worker-thread",
+            "WARN",
+            "spark/",
+            "Timed out waiting for world statistics",
+            (),
+            "",
+        )
+        digest, total, unique = hygiene.warning_multiset_evidence((stable,))
+        with (
+            mock.patch.object(hygiene, "REVIEWED_WARNING_MULTISET_SHA256", digest),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_TOTAL", total),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_UNIQUE", unique),
+        ):
+            hygiene._validate_reviewed_warning_multiset(
+                (stable, lan, spark), "fixture"
+            )
+
+    def test_warning_multiset_failure_preserves_log_label(self) -> None:
+        hygiene = hygiene_module()
+        stable = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "WARN",
+            "fixture/",
+            "stable reviewed warning",
+            (),
+            "",
+        )
+        unknown = replace(stable, message="unreviewed warning")
+        digest, total, unique = hygiene.warning_multiset_evidence((stable,))
+        with (
+            mock.patch.object(hygiene, "REVIEWED_WARNING_MULTISET_SHA256", digest),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_TOTAL", total),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_UNIQUE", unique),
+            self.assertRaisesRegex(
+                hygiene.VerificationError,
+                r"^fixture complete WARN fingerprint multiset changed",
+            ),
+        ):
+            hygiene._validate_reviewed_warning_multiset(
+                (stable, unknown), "fixture"
+            )
+
     def test_mixin_synthetic_rename_session_id_is_the_only_normalized_field(
         self,
     ) -> None:

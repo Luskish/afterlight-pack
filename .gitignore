@@ -1,4 +1,4 @@
-# Local dev instance / runtime junk — never pack source
+# Local dev instance / runtime junk: never pack source
 .DS_Store
 *.log
 run/

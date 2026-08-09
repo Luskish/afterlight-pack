@@ -59,7 +59,7 @@ Current generated command references use `add`; older tutorials and some binarie
 
 Packwiz prompts for required dependencies that are not installed and checks Minecraft/loader compatibility. Inspect every dependency it adds. Metadata resolution does not detect all runtime incompatibilities or duplicate-function mods.
 
-The current source supports loader compatibility aliases when resolving files—for example NeoForge may accept Forge-labelled projects in some contexts—but that does not guarantee binary compatibility. Trust project metadata plus a real launch, not the alias alone.
+The current source supports loader compatibility aliases when resolving files: for example NeoForge may accept Forge-labelled projects in some contexts: but that does not guarantee binary compatibility. Trust project metadata plus a real launch, not the alias alone.
 
 ## Metadata Files
 

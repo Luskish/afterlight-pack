@@ -125,7 +125,7 @@ Set display label via `task.<ID>.title` in lang file.
 ## Reward Types
 
 **IMPORTANT:** The `type` field uses plain strings without namespace prefix.
-Use `"item"`, `"command"`, `"custom"` — NOT `"ftbquests:item"`.
+Use `"item"`, `"command"`, `"custom"`: NOT `"ftbquests:item"`.
 
 ### Item Reward (`"item"`)
 ```snbt
@@ -176,7 +176,7 @@ Gives ALL items from a reward table at full count.
 Picks one random entry. **Always guarantees an item** even if empty weight > 0.
 
 ### Loot Reward (`"loot"`)
-Standard loot — chance to get item OR nothing (based on empty weight).
+Standard loot: chance to get item OR nothing (based on empty weight).
 
 ### Advancement Reward (`"advancement"`)
 ```snbt
@@ -208,7 +208,7 @@ Only grants the specified advancement, not prerequisites. Use command reward wit
 ```
 
 ### Custom Reward (`"custom"`)
-Does nothing alone — pair with KubeJS.
+Does nothing alone: pair with KubeJS.
 
 ```snbt
 {
@@ -222,7 +222,7 @@ Does nothing alone — pair with KubeJS.
 Create `kubejs/server_scripts/my_reward.js`:
 ```javascript
 // CORRECT event name: FTBQuestsEvents.customReward
-// NOT FTBQuestsKubeJSEvents — that is wrong
+// NOT FTBQuestsKubeJSEvents: that is wrong
 FTBQuestsEvents.customReward('29F9C17B7503E992', event => {
     const level = event.player.experienceLevel
     event.player.give(Item.of('minecraft:diamond', level))

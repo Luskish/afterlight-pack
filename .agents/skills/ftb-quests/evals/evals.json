@@ -18,7 +18,7 @@
     },
     {
       "id": 2,
-      "prompt": "我整合包里已经有个 FTB Quests 章节文件，里面有一个提交钻石的任务（quest ID: 5A3B2C1D4E5F6A7B），我想给它加一个 KubeJS 自定义奖励：根据玩家当前等级给不同数量的绿宝石——10级以下给5个，10-30级给15个，30级以上给32个。帮我写出需要修改的 SNBT 奖励部分和对应的 kubejs server script。",
+      "prompt": "我整合包里已经有个 FTB Quests 章节文件，里面有一个提交钻石的任务（quest ID: 5A3B2C1D4E5F6A7B），我想给它加一个 KubeJS 自定义奖励：根据玩家当前等级给不同数量的绿宝石：：10级以下给5个，10-30级给15个，30级以上给32个。帮我写出需要修改的 SNBT 奖励部分和对应的 kubejs server script。",
       "expected_output": "SNBT reward object with type custom and a unique ID, plus a KubeJS script using FTBQuestsEvents.customReward with level-based conditional logic",
       "files": [],
       "assertions": [

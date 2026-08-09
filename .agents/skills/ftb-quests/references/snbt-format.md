@@ -15,7 +15,7 @@ SNBT (Stringified NBT) is the human-readable text format used by FTB Quests for 
 }
 ```
 
-- Fields are **newline-separated** — NO commas between top-level fields
+- Fields are **newline-separated**: NO commas between top-level fields
 - Inline objects on one line use commas: `{ key: "a", key2: "b" }`
 - Keys are unquoted unless they contain special characters
 
@@ -112,7 +112,7 @@ icon: {
 
 ## Localization File Format
 
-The `lang/*.snbt` file has **unquoted keys** with colon-space (`: `) separator — NOT JSON:
+The `lang/*.snbt` file has **unquoted keys** with colon-space (`: `) separator: NOT JSON:
 
 ```snbt
 {

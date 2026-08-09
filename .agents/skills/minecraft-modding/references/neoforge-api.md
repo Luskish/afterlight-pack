@@ -328,7 +328,7 @@ public static void registerPayloads(RegisterPayloadHandlersEvent event) {
     PayloadRegistrar registrar = event.registrar("1");
     registrar.playToClient(MyPayload.TYPE, MyPayload.STREAM_CODEC,
         (payload, ctx) -> {
-            // handle on client — ctx.enqueueWork() for thread safety
+            // handle on client: ctx.enqueueWork() for thread safety
             ctx.enqueueWork(() -> handleOnClient(payload));
         });
     registrar.playToServer(MyPayload.TYPE, MyPayload.STREAM_CODEC,

@@ -8,7 +8,7 @@ modding platform focused on clean hooks and fast updates. Targets Minecraft 1.21
 ## Mod Entry Point
 
 ```java
-// MyMod.java — registered as "main" entrypoint in fabric.mod.json
+// MyMod.java: registered as "main" entrypoint in fabric.mod.json
 public class MyMod implements ModInitializer {
     public static final String MOD_ID = "mymod";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
@@ -22,7 +22,7 @@ public class MyMod implements ModInitializer {
     }
 }
 
-// MyModClient.java — registered as "client" entrypoint
+// MyModClient.java: registered as "client" entrypoint
 @Environment(EnvType.CLIENT)
 public class MyModClient implements ClientModInitializer {
     @Override
@@ -161,25 +161,25 @@ public class ModBlockEntities {
 
 ## Mixins
 
-Mixins patch Minecraft classes without modifying them. Use sparingly — prefer Fabric API hooks.
+Mixins patch Minecraft classes without modifying them. Use sparingly: prefer Fabric API hooks.
 
 ```java
 // mixin/MixinServerPlayer.java
 @Mixin(ServerPlayerEntity.class)
 public abstract class MixinServerPlayer {
 
-    // @Inject — add code at a specific point
+    // @Inject: add code at a specific point
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickHead(CallbackInfo ci) {
         ServerPlayerEntity self = (ServerPlayerEntity)(Object) this;
         // runs at the beginning of ServerPlayerEntity.tick()
     }
 
-    // @Overwrite — replace a method entirely (avoid if possible; breaks compat)
-    // @ModifyVariable — modify a local variable
-    // @Redirect — redirect a method call within a method
+    // @Overwrite: replace a method entirely (avoid if possible; breaks compat)
+    // @ModifyVariable: modify a local variable
+    // @Redirect: redirect a method call within a method
 
-    // @Shadow — access a field or method from the target class
+    // @Shadow: access a field or method from the target class
     @Shadow public abstract ServerWorld getServerWorld();
 }
 ```
@@ -235,7 +235,7 @@ UseItemCallback.EVENT.register((player, world, hand) -> {
 
 ---
 
-## Networking (Fabric 1.21 — ServerPlayNetworking)
+## Networking (Fabric 1.21: ServerPlayNetworking)
 
 ```java
 // Define a payload record

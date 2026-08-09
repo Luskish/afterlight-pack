@@ -74,7 +74,7 @@ Normally exclude:
 - generated recipe-viewer caches, KubeJS caches, ProbeJS output not intentionally used as source;
 - secrets, API keys, private endpoints, and service credentials.
 
-Some generated files become authored inputs only after deliberate review—for example a quest book, a configured world preset, or a ProbeJS typing snapshot used by editors. Document why each exception is shipped.
+Some generated files become authored inputs only after deliberate review: for example a quest book, a configured world preset, or a ProbeJS typing snapshot used by editors. Document why each exception is shipped.
 
 ## KubeJS Placement And Lifecycle
 

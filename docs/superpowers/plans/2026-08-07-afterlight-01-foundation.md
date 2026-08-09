@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Minecraft **1.21.1**, loader **NeoForge 21.1.x**, **Java 21** (Temurin) — from spec §3
+- Minecraft **1.21.1**, loader **NeoForge 21.1.x**, **Java 21** (Temurin): from spec §3
 - Pack name: **AFTERLIGHT**; pack author: **Shane + ECHO**; repo = pack root (spec §8)
-- **No mod jars in git** — only packwiz TOML metadata, configs, scripts, quest files (spec §8)
+- **No mod jars in git**: only packwiz TOML metadata, configs, scripts, quest files (spec §8)
 - Every mod gets a correct `side` (`client`/`server`/`both`) at add time (spec §8)
 - Licensing hygiene: mods fetched from official CurseForge/Modrinth only, no rehosting (spec §8)
 - All shell commands run from repo root `/Users/shaneliszewski/MinecraftTest` unless stated
@@ -109,7 +109,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `tools/versions.env` (Task 1)
-- Produces: valid packwiz pack at repo root — `pack.toml` with `[versions] minecraft="1.21.1"`, `neoforge="<21.1.x>"`; `packwiz refresh` green. All later `packwiz` commands depend on this.
+- Produces: valid packwiz pack at repo root: `pack.toml` with `[versions] minecraft="1.21.1"`, `neoforge="<21.1.x>"`; `packwiz refresh` green. All later `packwiz` commands depend on this.
 
 - [ ] **Step 1: Initialize the pack non-interactively**
 
@@ -118,7 +118,7 @@ source tools/versions.env
 packwiz init --name "AFTERLIGHT" --author "Shane + ECHO" --version "0.1.0" --mc-version "$MC_VERSION" --modloader neoforge --neoforge-version "$NEOFORGE_VERSION" -r .
 ```
 
-Expected: `pack.toml` and `index.toml` created at repo root. If flag names differ on the installed packwiz build (check `packwiz init --help`), map them (`--fabric-version`-style flags exist per loader; NeoForge's is `--neoforge-version`) — the four required outcomes are name, MC version, neoforge version, pack version in `pack.toml`.
+Expected: `pack.toml` and `index.toml` created at repo root. If flag names differ on the installed packwiz build (check `packwiz init --help`), map them (`--fabric-version`-style flags exist per loader; NeoForge's is `--neoforge-version`): the four required outcomes are name, MC version, neoforge version, pack version in `pack.toml`.
 
 - [ ] **Step 2: Verify pack.toml contents**
 
@@ -133,7 +133,7 @@ Expected: `pack.toml` shows `name = "AFTERLIGHT"`, `[versions]` block with `mine
 
 ```bash
 cat > .gitignore <<'EOF'
-# Local dev instance / runtime junk — never pack source
+# Local dev instance / runtime junk: never pack source
 .DS_Store
 *.log
 run/
@@ -170,7 +170,7 @@ cat > README.md <<'EOF'
 # AFTERLIGHT
 
 A story-driven kitchen-sink modpack for Minecraft NeoForge 1.21.1.
-You aren't discovering technology — you're remembering it.
+You aren't discovering technology: you're remembering it.
 
 - **Design spec:** docs/superpowers/specs/2026-08-07-afterlight-modpack-design.md
 - **Pack source:** this repo is a [packwiz](https://packwiz.infra.link/) pack; mods are TOML metadata under `mods/`, no jars in git.
@@ -178,13 +178,13 @@ You aren't discovering technology — you're remembering it.
 - **Dev loop:** `packwiz serve` + a Prism dev instance; `tools/server-test.sh` for headless server verification.
 
 ## Layout
-- `pack.toml` / `index.toml` — packwiz manifest
-- `mods/` — one `.pw.toml` per mod
-- `config/`, `defaultconfigs/` — shipped configuration
-- `kubejs/` — startup/server/client scripts (integration layer)
-- `config/ftbquests/` — quest book source (from Plan 04)
-- `tools/` — dev/test scripts (not shipped)
-- `docs/` — specs, plans, player docs (not shipped)
+- `pack.toml` / `index.toml`: packwiz manifest
+- `mods/`: one `.pw.toml` per mod
+- `config/`, `defaultconfigs/`: shipped configuration
+- `kubejs/`: startup/server/client scripts (integration layer)
+- `config/ftbquests/`: quest book source (from Plan 04)
+- `tools/`: dev/test scripts (not shipped)
+- `docs/`: specs, plans, player docs (not shipped)
 EOF
 mkdir -p config kubejs/startup_scripts kubejs/server_scripts kubejs/client_scripts
 touch config/.gitkeep kubejs/startup_scripts/.gitkeep kubejs/server_scripts/.gitkeep kubejs/client_scripts/.gitkeep
@@ -252,7 +252,7 @@ ls mods/ | wc -l
 grep -H "filename" mods/*.pw.toml
 ```
 
-Expected: refresh exits 0; 12 files; every `filename` contains `1.21.1` or `neoforge` (eyeball for accidental Fabric files — filenames with `fabric` and no `neoforge` are wrong; re-add with explicit version selection if so).
+Expected: refresh exits 0; 12 files; every `filename` contains `1.21.1` or `neoforge` (eyeball for accidental Fabric files: filenames with `fabric` and no `neoforge` are wrong; re-add with explicit version selection if so).
 
 - [ ] **Step 6: Commit**
 
@@ -289,7 +289,7 @@ ls mods/
 packwiz refresh
 ```
 
-Expected: `balm.pw.toml` and `sophisticated-core.pw.toml` present (names may vary slightly — any file for those projects counts). Refresh green. If deps are missing, add explicitly: `packwiz mr add balm -y`, `packwiz mr add sophisticated-core -y`.
+Expected: `balm.pw.toml` and `sophisticated-core.pw.toml` present (names may vary slightly: any file for those projects counts). Refresh green. If deps are missing, add explicitly: `packwiz mr add balm -y`, `packwiz mr add sophisticated-core -y`.
 
 - [ ] **Step 3: Commit**
 
@@ -310,7 +310,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: green manifest (Task 4)
-- Produces: `tools/export.sh` — later plans and CI call exactly this script; emits both artifacts into `dist/` and prints their paths.
+- Produces: `tools/export.sh`: later plans and CI call exactly this script; emits both artifacts into `dist/` and prints their paths.
 
 - [ ] **Step 1: Write tools/export.sh**
 
@@ -347,7 +347,7 @@ dist/
 unzip -l dist/AFTERLIGHT-0.1.0.mrpack | head -20
 ```
 
-Expected: both files exist and are non-trivially sized (>1 KB); mrpack listing shows `modrinth.index.json`. If `packwiz cf export` fails because some mod is Modrinth-only, that is acceptable at this stage — note which mod, and re-run with `packwiz mr export` only; the CF-lane fix (side-loading Modrinth-only files) is handled in Plan 07. The mrpack MUST succeed.
+Expected: both files exist and are non-trivially sized (>1 KB); mrpack listing shows `modrinth.index.json`. If `packwiz cf export` fails because some mod is Modrinth-only, that is acceptable at this stage: note which mod, and re-run with `packwiz mr export` only; the CF-lane fix (side-loading Modrinth-only files) is handled in Plan 07. The mrpack MUST succeed.
 
 - [ ] **Step 4: Commit**
 
@@ -368,14 +368,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `tools/versions.env`, green manifest, packwiz-installer-bootstrap jar (downloaded by script)
-- Produces: `tools/server-test.sh` — exits 0 iff a NeoForge server with the pack's server-side mods reaches "Done" within timeout. This IS the pack's smoke test forever after (CI reuses it; every later plan's definition of green includes it).
+- Produces: `tools/server-test.sh`: exits 0 iff a NeoForge server with the pack's server-side mods reaches "Done" within timeout. This IS the pack's smoke test forever after (CI reuses it; every later plan's definition of green includes it).
 
 - [ ] **Step 1: Write tools/server-test.sh**
 
 ```bash
 cat > tools/server-test.sh <<'EOF'
 #!/usr/bin/env bash
-# Headless AFTERLIGHT server boot test. Pure JVM — no Docker required.
+# Headless AFTERLIGHT server boot test. Pure JVM: no Docker required.
 # Exit 0 = server booted to "Done" and stopped cleanly. Nonzero = failure; see server-test/logs/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -411,7 +411,7 @@ if grep -q 'Done (' "$DIR"/boot.log || grep -rq 'Done (' "$DIR"/logs/ 2>/dev/nul
   echo "SERVER BOOT: OK"
   exit 0
 else
-  echo "SERVER BOOT: FAILED — tail of boot.log:"
+  echo "SERVER BOOT: FAILED: tail of boot.log:"
   tail -50 "$DIR/boot.log" || true
   exit 1
 fi
@@ -419,9 +419,9 @@ EOF
 chmod +x tools/server-test.sh
 ```
 
-Note on the `echo "stop" |` pipe: NeoForge's `run.sh` reads console from stdin; piping `stop` makes the server shut down immediately after finishing boot, so the test is self-terminating. `timeout` is the watchdog if boot hangs. macOS ships no `timeout` — if `command -v timeout` is empty, `brew install coreutils` and use `gtimeout` (adjust the script accordingly at execution time and keep the adjusted version).
+Note on the `echo "stop" |` pipe: NeoForge's `run.sh` reads console from stdin; piping `stop` makes the server shut down immediately after finishing boot, so the test is self-terminating. `timeout` is the watchdog if boot hangs. macOS ships no `timeout`: if `command -v timeout` is empty, `brew install coreutils` and use `gtimeout` (adjust the script accordingly at execution time and keep the adjusted version).
 
-- [ ] **Step 2: Run the harness — expect it to FAIL first on macOS timeout**
+- [ ] **Step 2: Run the harness: expect it to FAIL first on macOS timeout**
 
 ```bash
 command -v timeout || echo "NO timeout binary"
@@ -440,7 +440,7 @@ sed -i '' 's/timeout "\$BOOT_TIMEOUT"/gtimeout "$BOOT_TIMEOUT"/' tools/server-te
 ./tools/server-test.sh
 ```
 
-Expected: `SERVER BOOT: OK`, exit 0, within ~3–7 min (first run downloads libraries). If FAILED: read `server-test/boot.log` tail printed by the script — the two likely causes at this stage are (a) a client-side mod leaked into the server install (fix: correct that mod's `side` in `mods/*.pw.toml`, refresh, rerun) or (b) NeoForge/Java mismatch (verify `java -version` is 21 and NEOFORGE_VERSION is a real 21.1.x). Iterate until OK — do not proceed on red.
+Expected: `SERVER BOOT: OK`, exit 0, within ~3–7 min (first run downloads libraries). If FAILED: read `server-test/boot.log` tail printed by the script: the two likely causes at this stage are (a) a client-side mod leaked into the server install (fix: correct that mod's `side` in `mods/*.pw.toml`, refresh, rerun) or (b) NeoForge/Java mismatch (verify `java -version` is 21 and NEOFORGE_VERSION is a real 21.1.x). Iterate until OK: do not proceed on red.
 
 - [ ] **Step 4: Commit**
 
@@ -463,7 +463,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `tools/export.sh` (Task 5), `tools/server-test.sh` (Task 6), `tools/versions.env` (Task 1)
-- Produces: CI that runs refresh-check → exports → server smoke on every push (activates once a GitHub remote exists); a Prism instance zip whose pre-launch hook auto-syncs from `PACK_URL`; `docs/INSTALL.md` for friends. **`PACK_URL` is a parameter** — set to the real GitHub Pages URL at the user checkpoint below; until then the local build uses a placeholder value the script requires explicitly.
+- Produces: CI that runs refresh-check → exports → server smoke on every push (activates once a GitHub remote exists); a Prism instance zip whose pre-launch hook auto-syncs from `PACK_URL`; `docs/INSTALL.md` for friends. **`PACK_URL` is a parameter**: set to the real GitHub Pages URL at the user checkpoint below; until then the local build uses a placeholder value the script requires explicitly.
 
 - [ ] **Step 1: Write the CI workflow**
 
@@ -489,7 +489,7 @@ jobs:
       - name: Manifest integrity
         run: |
           packwiz refresh
-          git diff --exit-code index.toml pack.toml || (echo "::error::index.toml drifted — run packwiz refresh and commit" && exit 1)
+          git diff --exit-code index.toml pack.toml || (echo "::error::index.toml drifted: run packwiz refresh and commit" && exit 1)
       - name: Export artifacts
         run: ./tools/export.sh
       - name: Headless server boot smoke test
@@ -501,7 +501,7 @@ jobs:
 EOF
 ```
 
-(Linux runners have real `timeout`; the harness's `gtimeout` patch from Task 6 Step 2 must therefore guard by availability. At execution time make the script use `command -v gtimeout || command -v timeout` — one line: `TIMEOUT_BIN=$(command -v gtimeout || command -v timeout)` and call `"$TIMEOUT_BIN"`. Apply this now if Task 6 hardcoded gtimeout, and re-run `./tools/server-test.sh` to confirm still OK.)
+(Linux runners have real `timeout`; the harness's `gtimeout` patch from Task 6 Step 2 must therefore guard by availability. At execution time make the script use `command -v gtimeout || command -v timeout`: one line: `TIMEOUT_BIN=$(command -v gtimeout || command -v timeout)` and call `"$TIMEOUT_BIN"`. Apply this now if Task 6 hardcoded gtimeout, and re-run `./tools/server-test.sh` to confirm still OK.)
 
 - [ ] **Step 2: Write tools/build-prism-instance.sh**
 
@@ -561,7 +561,7 @@ cat > docs/INSTALL.md <<'EOF'
 
 ## The recommended way (auto-updating, ~5 minutes, once)
 1. Install [Prism Launcher](https://prismlauncher.org/download/) and sign in with your Microsoft account.
-2. Install Java 21 (Temurin) if Prism asks for it — Prism can auto-download Java: Settings → Java → auto-detect.
+2. Install Java 21 (Temurin) if Prism asks for it: Prism can auto-download Java: Settings → Java → auto-detect.
 3. Get `AFTERLIGHT-prism-instance.zip` from Shane.
 4. Prism → Add Instance → Import → pick the zip → OK.
 5. Launch. First launch downloads the whole pack (a few GB); every later launch auto-syncs to Shane's latest version. You never update manually.
@@ -573,10 +573,10 @@ cat > docs/INSTALL.md <<'EOF'
 3. When Shane ships an update, re-import the new file (your worlds/options survive: they live in the instance, not the pack).
 
 ## Joining the server
-Server address comes from Shane. Simple Voice Chat works out of the box — press V for voice settings.
+Server address comes from Shane. Simple Voice Chat works out of the box: press V for voice settings.
 
 ## If your game crashes
-The pack includes Crash Assistant — it pops a window with the crash report. Send Shane the "Copy to clipboard" output, not a screenshot.
+The pack includes Crash Assistant: it pops a window with the crash report. Send Shane the "Copy to clipboard" output, not a screenshot.
 EOF
 ```
 
@@ -589,15 +589,15 @@ git commit -m "feat(dist): CI workflow, Prism auto-update instance builder, play
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 6: USER CHECKPOINT — GitHub remote + Pages (needs Shane's account decisions)**
+- [ ] **Step 6: USER CHECKPOINT: GitHub remote + Pages (needs Shane's account decisions)**
 
 Ask Shane (do not do these unilaterally):
-1. Create a GitHub repo for the pack (suggested name `afterlight-pack`, private is fine — Pages on private repos requires Pro; a public repo of TOML metadata is also reasonable since no jars/copyrighted content live in git; Shane's call).
+1. Create a GitHub repo for the pack (suggested name `afterlight-pack`, private is fine: Pages on private repos requires Pro; a public repo of TOML metadata is also reasonable since no jars/copyrighted content live in git; Shane's call).
 2. `git remote add origin <url> && git push -u origin main` (runs here once Shane provides the URL/auth).
-3. Enable GitHub Pages (deploy from branch `main`, root) — or approve adding a Pages deploy step to CI.
+3. Enable GitHub Pages (deploy from branch `main`, root): or approve adding a Pages deploy step to CI.
 4. Re-build the instance zip with the real URL: `PACK_URL=https://<user>.github.io/afterlight-pack/pack.toml ./tools/build-prism-instance.sh`.
 
-Deliverable of this checkpoint: pushing triggers `pack-ci` green on GitHub; the real instance zip exists in `dist/` ready to send to friends. If Shane defers, everything local stays green and Plan 02 proceeds — the checkpoint reopens in Plan 07.
+Deliverable of this checkpoint: pushing triggers `pack-ci` green on GitHub; the real instance zip exists in `dist/` ready to send to friends. If Shane defers, everything local stays green and Plan 02 proceeds: the checkpoint reopens in Plan 07.
 
 ---
 

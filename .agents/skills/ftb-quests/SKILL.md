@@ -33,7 +33,7 @@ config/ftbquests/quests/
 **Critical rules you must follow:**
 - All IDs are **16-character uppercase hex strings** using only characters `0-9` and `A-F` (e.g. `7D7A8EEC0E898ED8`). Never use `G`, `H`, or other non-hex characters.
 - Quests live *inside* chapter files, not as separate files
-- Localization is separate — quest/chapter titles and descriptions go in `lang/*.snbt`
+- Localization is separate: quest/chapter titles and descriptions go in `lang/*.snbt`
 - Reward `type` values are **plain strings** without namespace prefix: use `"item"`, `"command"`, `"custom"`, NOT `"ftbquests:item"`
 - The KubeJS event for custom rewards is `FTBQuestsEvents.customReward()` (NOT `FTBQuestsKubeJSEvents`)
 
@@ -43,7 +43,7 @@ For theme/styling configuration, see `references/styling.md`.
 
 ---
 
-## SNBT Syntax — Critical Rules
+## SNBT Syntax: Critical Rules
 
 SNBT is a text serialization of Minecraft's NBT. It looks similar to JSON but has key differences:
 
@@ -208,7 +208,7 @@ Dependency requirement modes: `"all_completed"`, `"one_completed"`, `"all_starte
 | Fluid | `"fluid"` | `fluid`, `amount` |
 | Energy | `"energy"` | `value` |
 
-**Item task** — the `item` field is an object with `id` and optionally `count` and `components`. The outer `count` field (long) is the total number required:
+**Item task**: the `item` field is an object with `id` and optionally `count` and `components`. The outer `count` field (long) is the total number required:
 ```snbt
 {
 	id: "58920EE9A298549B"
@@ -260,7 +260,7 @@ Dependency requirement modes: `"all_completed"`, `"one_completed"`, `"all_starte
 
 2. Create `kubejs/server_scripts/my_reward.js`:
 ```javascript
-// The event name is FTBQuestsEvents.customReward — NOT FTBQuestsKubeJSEvents
+// The event name is FTBQuestsEvents.customReward: NOT FTBQuestsKubeJSEvents
 FTBQuestsEvents.customReward('29F9C17B7503E992', event => {
     const level = event.player.experienceLevel
     event.player.give(Item.of('minecraft:diamond', level))
@@ -336,10 +336,10 @@ See `references/styling.md` for the full property list.
 
 ## Design Best Practices
 
-1. **Plan layout first** — sketch quest positions on a grid before writing SNBT
-2. **Valid hex IDs only** — 16 chars, `0-9` and `A-F` only. Never use `G`-`Z`.
-3. **Leverage chapter defaults** — set shapes, consume_items at chapter level
-4. **Progressive visibility** — use `hide_until_deps_visible` to avoid overwhelming players
-5. **Localize everything** — keep all text in `lang/` files using `key: "value"` format
-6. **Hot reload** — use `/ftbquests reload` to test changes without restart
-7. **Command rewards for chaining** — use `/ftbquests change_progress` to unlock hidden quests
+1. **Plan layout first**: sketch quest positions on a grid before writing SNBT
+2. **Valid hex IDs only**: 16 chars, `0-9` and `A-F` only. Never use `G`-`Z`.
+3. **Leverage chapter defaults**: set shapes, consume_items at chapter level
+4. **Progressive visibility**: use `hide_until_deps_visible` to avoid overwhelming players
+5. **Localize everything**: keep all text in `lang/` files using `key: "value"` format
+6. **Hot reload**: use `/ftbquests reload` to test changes without restart
+7. **Command rewards for chaining**: use `/ftbquests change_progress` to unlock hidden quests

@@ -8,7 +8,7 @@ metadata:
 
 # Modrinth API
 
-Use this skill to interact with the Modrinth Labrinth API (v2). All read-only endpoints are public — no API token needed. Only creating/editing projects or accessing private data requires authentication.
+Use this skill to interact with the Modrinth Labrinth API (v2). All read-only endpoints are public: no API token needed. Only creating/editing projects or accessing private data requires authentication.
 
 ## Quick Reference
 
@@ -32,7 +32,7 @@ Use this skill to interact with the Modrinth Labrinth API (v2). All read-only en
 Every request **must** include a unique `User-Agent` header. Generic library names (e.g. `okhttp/4.9.3`) risk being blocked.
 
 ```
-# Best — includes contact info
+# Best: includes contact info
 User-Agent: github_username/project_name/1.0.0 (contact@example.com)
 
 # Minimum acceptable
@@ -56,10 +56,10 @@ Authorization: mrp_YOUR_TOKEN_HERE
 
 ### Identifiers
 
-- Projects, versions, users — 8-character base62 ID (e.g. `AANobbMI`).
+- Projects, versions, users: 8-character base62 ID (e.g. `AANobbMI`).
 - Versions also have per-project `version_number` strings.
-- Files — identified by SHA-1 or SHA-512 hash.
-- Slugs — human-readable (e.g. `sodium`), can change; IDs are permanent.
+- Files: identified by SHA-1 or SHA-512 hash.
+- Slugs: human-readable (e.g. `sodium`), can change; IDs are permanent.
 
 ---
 
@@ -75,13 +75,13 @@ GET /v2/search?query={query}&limit={n}&offset={n}&facets={json}
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `query` | string | — | Search text (name, description, author) |
+| `query` | string | None | Search text (name, description, author) |
 | `limit` | int | 10 | Results per page (max 100) |
 | `offset` | int | 0 | Pagination offset |
-| `facets` | JSON string | — | Filter/OR grouping (see below) |
+| `facets` | JSON string | None | Filter/OR grouping (see below) |
 | `index` | string | `relevance` | Sort: `relevance`, `downloads`, `follows`, `newest`, `updated` |
 
-**Facets format** — JSON-encoded array of AND groups, each inner array is OR:
+**Facets format**: JSON-encoded array of AND groups, each inner array is OR:
 ```
 # Mods in category "fabric" or "technology", that are mods (not modpacks)
 facets=[["categories:fabric","categories:technology"],["project_type:mod"]]
@@ -130,7 +130,7 @@ GET /v2/project/{id-or-slug}
 
 Works with both the 8-char ID (`AANobbMI`) and slug (`sodium`).
 
-**Response** (full fields — important ones shown):
+**Response** (full fields: important ones shown):
 ```json
 {
   "id": "AANobbMI",
@@ -189,7 +189,7 @@ GET /v2/project/{id-or-slug}/version?loaders=["fabric"]&game_versions=["1.21.1"]
 | `game_versions` | JSON array | Filter by MC version: `["1.21.1"]` |
 | `featured` | bool | Only featured versions |
 
-**Response** — array of version objects (see §5).
+**Response**: array of version objects (see §5).
 
 ### 5. Get One Version
 
@@ -289,7 +289,7 @@ curl -s -H "User-Agent: my-tool/1.0" \
   | jq '.hits[] | {title, slug, downloads, source_url}'
 ```
 
-Note: `source_url` is absent from search hits — only in the full project response. Do a follow-up `GET /v2/project/{slug}` for each result.
+Note: `source_url` is absent from search hits: only in the full project response. Do a follow-up `GET /v2/project/{slug}` for each result.
 
 ### Bulk source-code discovery
 ```bash
@@ -377,9 +377,9 @@ curl -s -H "User-Agent: $UA" \
 | `date_created` | string | ISO 8601 |
 | `date_modified` | string | ISO 8601 |
 | `latest_version` | string | Latest version ID |
-| `client_side` | string | — |
-| `server_side` | string | — |
-| `project_type` | string | — |
+| `client_side` | string | None |
+| `server_side` | string | None |
+| `project_type` | string | None |
 
 ---
 
@@ -401,18 +401,18 @@ Facet field names used in search `facets` and project version filtering:
 
 ## Limitations & Tips
 
-1. **`source_url` absent from search results** — search hits are a slim projection. Always follow up with `GET /v2/project/{slug}` for the full object including source/issue/wiki URLs.
+1. **`source_url` absent from search results**: search hits are a slim projection. Always follow up with `GET /v2/project/{slug}` for the full object including source/issue/wiki URLs.
 
-2. **Slugs can change** — for persistent storage, use the 8-char `id`, not the slug.
+2. **Slugs can change**: for persistent storage, use the 8-char `id`, not the slug.
 
-3. **Version list is paginated** — use `limit`/`offset`, or collect all by walking the array in the project's `versions[]` field and calling `GET /v2/version/{id}` individually.
+3. **Version list is paginated**: use `limit`/`offset`, or collect all by walking the array in the project's `versions[]` field and calling `GET /v2/version/{id}` individually.
 
-4. **Facets must be JSON-encoded** — the `facets` query parameter expects a JSON array of arrays, URL-encoded. Use `jq -r @uri` to encode: `echo '[["categories:fabric"]]' | jq -r @uri`.
+4. **Facets must be JSON-encoded**: the `facets` query parameter expects a JSON array of arrays, URL-encoded. Use `jq -r @uri` to encode: `echo '[["categories:fabric"]]' | jq -r @uri`.
 
-5. **Rate limit** — 300 req/min. Batch with `GET /v2/projects?ids=...` when fetching many projects.
+5. **Rate limit**: 300 req/min. Batch with `GET /v2/projects?ids=...` when fetching many projects.
 
-6. **No auth needed for public data** — unlike CurseForge, Modrinth's read API is fully open.
+6. **No auth needed for public data**: unlike CurseForge, Modrinth's read API is fully open.
 
-7. **Staging API** — use `https://staging-api.modrinth.com` for testing; production is `https://api.modrinth.com`. The staging API may run a newer Labrinth version.
+7. **Staging API**: use `https://staging-api.modrinth.com` for testing; production is `https://api.modrinth.com`. The staging API may run a newer Labrinth version.
 
-8. **Files are validated** — Modrinth verifies uploaded JARs contain valid mod metadata (e.g. `fabric.mod.json`, `mods.toml`). Corrupt or non-mod JARs are rejected.
+8. **Files are validated**: Modrinth verifies uploaded JARs contain valid mod metadata (e.g. `fabric.mod.json`, `mods.toml`). Corrupt or non-mod JARs are rejected.

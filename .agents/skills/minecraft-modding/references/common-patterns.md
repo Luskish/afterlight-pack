@@ -260,10 +260,10 @@ public static void registerEntityAttributes(EntityAttributeCreationEvent event) 
 
 ---
 
-## Commands (Brigadier — works the same in NeoForge and Fabric)
+## Commands (Brigadier: works the same in NeoForge and Fabric)
 
 ```java
-// NeoForge — register on GAME bus
+// NeoForge: register on GAME bus
 @EventBusSubscriber(modid = MyMod.MOD_ID, bus = Bus.GAME)
 public class ModCommands {
     @SubscribeEvent
@@ -368,19 +368,19 @@ public class MyRecipe implements Recipe<SingleRecipeInput> {
 Tags group blocks/items for use in recipes and game logic.
 
 ```json
-// data/mymod/tags/block/mineable/pickaxe.json  — mark my_block as pickaxe-mineable
+// data/mymod/tags/block/mineable/pickaxe.json : mark my_block as pickaxe-mineable
 {
   "replace": false,
   "values": ["mymod:my_block"]
 }
 
-// data/mymod/tags/block/needs_iron_tool.json  — require iron tier
+// data/mymod/tags/block/needs_iron_tool.json : require iron tier
 {
   "replace": false,
   "values": ["mymod:my_block"]
 }
 
-// data/mymod/tags/item/my_material.json  — custom item tag
+// data/mymod/tags/item/my_material.json : custom item tag
 {
   "replace": false,
   "values": ["mymod:my_ingot", "mymod:my_nugget"]
@@ -555,7 +555,7 @@ jobs:
 ## Modrinth / CurseForge Publishing
 
 ```groovy
-// build.gradle — Modrinth via Minotaur plugin
+// build.gradle: Modrinth via Minotaur plugin
 modrinth {
     token = System.getenv("MODRINTH_TOKEN")
     projectId = "your-project-id"

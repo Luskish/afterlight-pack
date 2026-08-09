@@ -6,13 +6,13 @@ An agent skill for creating, designing, writing, and modifying [FTB Quests](http
 
 Guides AI coding agents through FTB Quests development with accurate, version-specific knowledge (1.21+):
 
-- **SNBT file authoring** — correct syntax, ID format, item objects, localization
-- **Chapter & quest creation** — file structure, dependency chains, visibility settings
-- **All 12 task types** — item, checkmark, kill, location, advancement, dimension, stat, biome, structure, stage, fluid, energy
-- **All 12 reward types** — item, XP, command, choice, random, loot, all table, advancement, toast, stage, custom
-- **KubeJS integration** — custom rewards via `FTBQuestsEvents.customReward()`
-- **Reward tables & loot crates** — configuration, nesting, datapack integration, preset rarities
-- **Theme styling** — `ftb_quests_theme.txt` properties, tag-based filtering, custom shapes
+- **SNBT file authoring**: correct syntax, ID format, item objects, localization
+- **Chapter & quest creation**: file structure, dependency chains, visibility settings
+- **All 12 task types**: item, checkmark, kill, location, advancement, dimension, stat, biome, structure, stage, fluid, energy
+- **All 12 reward types**: item, XP, command, choice, random, loot, all table, advancement, toast, stage, custom
+- **KubeJS integration**: custom rewards via `FTBQuestsEvents.customReward()`
+- **Reward tables & loot crates**: configuration, nesting, datapack integration, preset rarities
+- **Theme styling**: `ftb_quests_theme.txt` properties, tag-based filtering, custom shapes
 
 ## Install
 

@@ -8,18 +8,18 @@ Theme is configured via `ftbquests/ftb_quests_theme.txt` in a resource pack (Kub
 
 ### Color
 - `#00A8FF` (RGB hex)
-- `#FF00A8FF` (ARGB hex — first 2 are alpha)
+- `#FF00A8FF` (ARGB hex: first 2 are alpha)
 - Presets: `transparent`, `black`, `dark_gray`, `gray`, `white`, `red`, `green`, `blue`, `light_red`, `light_green`, `light_blue`
 
 ### Icon
-- `item:minecraft:diamond` — item icon
-- `color:{value}` — solid color as icon
-- `bullet:{color}` — bullet point
-- `http://...` / `https://...` / `file://...` — remote/local image
-- `hollow_rectangle:{color}` — hollow rect
-- `part:{icon}` — nine-sliced widget
-- `builtin` — mod-internal rendering
-- `mymod:textures/gui/foo.png` — direct asset path
+- `item:minecraft:diamond`: item icon
+- `color:{value}`: solid color as icon
+- `bullet:{color}`: bullet point
+- `http://...` / `https://...` / `file://...`: remote/local image
+- `hollow_rectangle:{color}`: hollow rect
+- `part:{icon}`: nine-sliced widget
+- `builtin`: mod-internal rendering
+- `mymod:textures/gui/foo.png`: direct asset path
 
 #### Icon Modifiers (semicolon + space separated)
 ```
@@ -123,9 +123,9 @@ quest_not_started_color: #FFCC2222
 quest_not_started_color: #FF00FF00
 ```
 
-- `[*]` — default for all quests
-- `[tagname]` — quests with that tag
-- `[hex_id]` — specific quest
+- `[*]`: default for all quests
+- `[tagname]`: quests with that tag
+- `[hex_id]`: specific quest
 
 Tags > literal IDs for flexibility.
 

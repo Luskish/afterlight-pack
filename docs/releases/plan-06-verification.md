@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: base commit `ba8e9430c0c803eec7b5ddd3cb47cd0eac1114ed` has the complete local gate recorded below. The independent-review fixes after that base have complete offline evidence and a source-bound saved-corpus comparison. No new live boot, exact-SHA CI, `main` fast-forward, or Pages parity is claimed for those fixes here.
+Status: candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df` has the complete local gate recorded below. Exact-head independent review, two detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
 
 ## Delivered Scope
 
@@ -42,33 +42,36 @@ The next review found two further scanner bypasses: a ZIP with arbitrary prefixe
 
 The first post-fix boot then exposed runtime data corruption rather than a test-only issue. FTB Quests rewrote every high-bit ID because its installed bytecode uses signed `Long.parseLong(..., 16)`, and it replaced the affected Seal reward with a default apple. Three signed-safe RED tests drove the compiler migration, then the complete 586-occurrence corpus was regenerated. The next boot exposed the retired Act I `energy` alias becoming `custom`; installed bytecode proved `forge_energy` is the registered NeoForge type. Both defects are now covered by static and post-shutdown semantic regressions.
 
-Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue. The expanded source oracle still contains 1,525 records and matches the saved research corpus with SHA-256 `b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1`. The review-fix offline gate passes all 283 tests with 77 intentional live skips, and static quest validation reports 46 chapters, 313 quests, 334 tasks, and 436 rewards. This is source-bound research and offline evidence only, not a new live boot claim.
+Independent review then found that the semantic oracle compared identity subsets, signed-ID migration could not recover from mixed interrupted state, migration rewrote arbitrary ID-shaped authored strings, and oversized raw Seal files were allocated before the limit check. Focused RED tests reproduced every issue. The expanded oracle contains 1,525 records and matches the fresh post-save installed corpus with SHA-256 `b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1`. The review-fix offline gate passes all 283 tests with 77 intentional live skips, static quest validation reports 46 chapters, 313 quests, 334 tasks, and 436 rewards, and the fresh live gate runs all 283 tests without skips.
 
 ## Automated Gate
 
-The following local gate completed on 2026-08-09 before the independent-review fixes above. It remains exact historical evidence for base commit `ba8e9430c0c803eec7b5ddd3cb47cd0eac1114ed`, but it does not certify the current review-fix commit:
+The following local gate completed on 2026-08-09 at candidate commit `05041ecd72c65b3aa0fe4552f90a2223e0c353df`:
 
 ```text
 BUILD QUESTS: OK (37 compiler-managed chapters written)
 PACK SHA-256: 3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1
 INDEX SHA-256: 07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f
-Ran 277 offline tests in 27.801s
+Ran 283 offline tests in 31.275s
 OK (skipped=77)
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 VERIFY: ALL GREEN
 PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
 SEAL SOURCES: OK occurrences=19 sha256=c3be08148ed996416c63983626ef942f65baba4f98c59805606208be0e8d9c67 code-corpus-sha256=7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258
-QUEST IDENTITY: OK records=1525 sha256=ebd3ece8d499fe8e50e8b1881f320c7ecf9fa40de947717c542d83c0fa6e4371
+QUEST AUDIT BYTES: OK sha256=7fb88229d850fb55934cf66144557d7b6ebb23151ee635fd9d18d2b0ef1e2a4a
+GATE AUDIT RENDER: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
+GATE AUDIT BYTES: OK sha256=20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983
+QUEST IDENTITY: OK records=1525 sha256=b6cc456ff2dc31b0627f2a73b7747ff5942a5d8e596cd2a17bb7f5fa0dfde8d1
 BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
-Ran 277 live tests in 142.083s
+Ran 283 live tests in 148.039s
 OK
 SERVER BOOT: OK
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 ```
 
-The authenticated boot was run `local-20260809T174756Z-20412-21427` with nonce `1786297677-20412-8297`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `81824ad37dff50d804a145f2c39b7c76680f4d8528a237ee2353b0647b4b15bb`. The rendered quest audit bytes matched SHA-256 `8dfc0b717001a15658387830d06b8ab519690d72601f0ac6d94d28bb618b80ea`; its marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. `server-test/logs/kubejs/server.log` contained zero `ERROR` or `FATAL` records.
+The authenticated boot was run `local-20260809T185258Z-69291-30378` with nonce `1786301579-69291-12094`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `20e2e83a4f7bd14b0f5aca42dff1ae257444356a42f67164d9ca4221a4354983`. The rendered quest audit bytes matched SHA-256 `7fb88229d850fb55934cf66144557d7b6ebb23151ee635fd9d18d2b0ef1e2a4a`; its marker reported digest `a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. All three files under `server-test/logs/kubejs/` contained zero `ERROR` or `FATAL` records.
 
-The server reached `Done (26.440s)!`, then saved and shut down cleanly before the semantic identity comparison. Runtime quest validation ran inside the authenticated 277-test live suite, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-commit re-review, detached boot, remote integration, or Pages evidence.
+The server reached `Done (29.321s)!`, then saved and shut down cleanly before the semantic identity comparison. Runtime quest validation ran inside the authenticated 283-test live suite, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-head independent review, detached boots, remote integration, CI, or Pages evidence.
 
 ## Team-Safety Proof
 

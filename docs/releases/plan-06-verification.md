@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: Task 4 first review-fix commit `254b862a83a01fabdc75809557720ca6122799fa` received a second independent requirements and quality review. Second-review fixes and the complete local post-fix gate are complete. The second-review fix commit, exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
+Status: Task 4 second-review fix commit `0ba8e8c5cee0ca3bff92883fc1bf654ac83ae75b` and the complete local post-fix gate are complete. Exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
 
 ## Delivered Scope
 

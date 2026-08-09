@@ -13,6 +13,8 @@ ServerEvents.loaded(event => {
   const registries = server.registryAccess()
   let positiveChecks = 0
   let negativeChecks = 0
+  let remainderSlotChecks = 0
+  let sealRemainderChecks = 0
 
   function afterlightRecipe(id) {
     const optional = server.getRecipeManager().byKey(ResourceLocation.parse(id))
@@ -67,10 +69,12 @@ ServerEvents.loaded(event => {
     if (remainder.size() !== 9) throw new Error(`${label} returned ${remainder.size()} remainder slots`)
     for (let index = 0; index < remainder.size(); index++) {
       let stack = remainder.get(index)
+      remainderSlotChecks++
       if (index === 7) {
         if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {
           throw new Error(`${label} did not return one Seal in slot 7`)
         }
+        sealRemainderChecks++
       } else if (!stack.isEmpty()) {
         throw new Error(`${label} returned an extra remainder in slot ${index}`)
       }
@@ -469,17 +473,27 @@ ServerEvents.loaded(event => {
       `${spec.id} unsupported count-two KeepAction characterization`
     )
     const countTwoRemainder = recipe.getRemainingItems(countTwoInput)
+    if (countTwoRemainder.size() !== 9) {
+      throw new Error(`${spec.id} unsupported count-two KeepAction returned ${countTwoRemainder.size()} remainder slots`)
+    }
+    let countTwoSealSlotSeen = false
     for (let index = 0; index < countTwoRemainder.size(); index++) {
       let stack = countTwoRemainder.get(index)
+      remainderSlotChecks++
       if (index === 7) {
         if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {
           throw new Error(`${spec.id} unsupported count-two KeepAction remainder changed`)
         }
+        countTwoSealSlotSeen = true
+        sealRemainderChecks++
         let mergedCount = countTwoInput.getItem(index).getCount() - 1 + stack.getCount()
         if (mergedCount !== 3) throw new Error(`${spec.id} unsupported count-two KeepAction merge changed to ${mergedCount}`)
       } else if (!stack.isEmpty()) {
         throw new Error(`${spec.id} unsupported count-two KeepAction returned an extra remainder`)
       }
+    }
+    if (!countTwoSealSlotSeen) {
+      throw new Error(`${spec.id} unsupported count-two KeepAction did not visit Seal slot 7`)
     }
   })
 
@@ -520,6 +534,9 @@ ServerEvents.loaded(event => {
   }
   if (positiveChecks !== 14 || negativeChecks !== 368) {
     throw new Error(`Gate audit check cardinality changed: ${positiveChecks} positive, ${negativeChecks} negative`)
+  }
+  if (remainderSlotChecks !== 54 || sealRemainderChecks !== 6) {
+    throw new Error(`Gate audit remainder cardinality changed: ${remainderSlotChecks} slots, ${sealRemainderChecks} Seals`)
   }
 
   const auditSha256 = '__AFTERLIGHT_GATE_AUDIT_SHA256__'

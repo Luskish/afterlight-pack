@@ -538,7 +538,7 @@ hash = "6be279c70ce35a838f8176db2ee01922965b62cf8b5548d92019970b54ac4ebe"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/gate_recipe_audit.js"
-hash = "539a812696b3ec0fc9402d7359958416b278a3e9ca081695e80e38c51a84787e"
+hash = "9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"

@@ -3642,6 +3642,7 @@ def verify_boot_run(
         "audits": audits,
         "gate_audit_sha256": gate_audit_sha256,
         "seal_source_sha256": seal_sources["sha256"],
+        "seal_code_corpus_sha256": seal_sources["code_corpus_sha256"],
         "console_severe_count": console_count,
         "console_severe_sha256": console_digest,
     }
@@ -3762,6 +3763,16 @@ SEAL_BINARY_REFERENCE_PATTERN = re.compile(
 SEAL_JSON_ESCAPE_PATTERN = re.compile(r"\\u([0-9A-Fa-f]{4})")
 SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs", "mods")
 SEAL_CODE_SUFFIXES = frozenset((".js", ".jsx", ".mjs", ".ts", ".tsx"))
+EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
+EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
+    "381c9b2bedf2ff5915e7b255bb16ec77e2e3b60c53e998d59711baa19555a0d7"
+)
+SEAL_RENDERED_CODE_RELATIVES = frozenset(
+    {
+        "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+    }
+)
 SEAL_ARCHIVE_MAX_DEPTH = 8
 SEAL_ARCHIVE_MAX_MEMBERS = 50_000
 SEAL_ARCHIVE_MAX_MEMBER_BYTES = 128 * 1024 * 1024
@@ -3937,6 +3948,154 @@ def _seal_archive_review_labels(root: Path) -> dict[str, str]:
     return labels
 
 
+def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
+    code_root = root / "kubejs"
+    try:
+        code_root_stat = code_root.lstat()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot inspect {label} Seal source code root: {error}"
+        ) from error
+    if stat.S_ISLNK(code_root_stat.st_mode) or not stat.S_ISDIR(
+        code_root_stat.st_mode
+    ):
+        raise VerificationError(f"invalid {label} Seal source code root")
+
+    inventory: dict[str, bytes] = {}
+    for directory, directory_names, file_names in os.walk(
+        code_root, followlinks=False
+    ):
+        directory_path = Path(directory)
+        directory_names.sort()
+        file_names.sort()
+        for name in directory_names:
+            relative = _safe_relative_path(
+                (directory_path / name).relative_to(root).as_posix(),
+                f"{label} Seal source code directory",
+            )
+            child_stat = (directory_path / name).lstat()
+            if stat.S_ISLNK(child_stat.st_mode) or not stat.S_ISDIR(
+                child_stat.st_mode
+            ):
+                raise VerificationError(
+                    f"invalid {label} Seal source code directory: "
+                    f"{relative.as_posix()}"
+                )
+        for name in file_names:
+            path = directory_path / name
+            if path.suffix.lower() not in SEAL_CODE_SUFFIXES:
+                continue
+            relative = _safe_relative_path(
+                path.relative_to(root).as_posix(),
+                f"{label} Seal source code file",
+            )
+            verified = _verified_regular_file(
+                root, relative, f"{label} Seal source code file"
+            )
+            try:
+                inventory[relative.as_posix()] = verified.read_bytes()
+            except OSError as error:
+                raise VerificationError(
+                    f"cannot read {label} Seal source code file "
+                    f"{relative.as_posix()}: {error}"
+                ) from error
+    return inventory
+
+
+def _seal_code_corpus_digest(inventory: dict[str, bytes]) -> str:
+    canonical = tuple(
+        (relative, _hash_bytes(payload, "sha256"))
+        for relative, payload in sorted(inventory.items())
+    )
+    return _hash_bytes(
+        json.dumps(
+            canonical, ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8"),
+        "sha256",
+    )
+
+
+def _seal_rendered_code_nonce(payload: bytes, relative: str) -> str:
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise VerificationError(
+            f"cannot decode rendered Seal source code {relative}: {error}"
+        ) from error
+    matches = re.findall(
+        r"^  const bootNonce = '([A-Za-z0-9._-]+)'$", text, re.MULTILINE
+    )
+    if len(matches) != 1:
+        raise VerificationError(
+            f"rendered Seal source code nonce changed: {relative}"
+        )
+    return matches[0]
+
+
+def _verify_seal_code_corpus(root: Path, install: Path) -> str:
+    root_inventory = _seal_code_inventory(root, "repository")
+    root_digest = _seal_code_corpus_digest(root_inventory)
+    if (
+        len(root_inventory) != EXPECTED_SEAL_CODE_CORPUS_COUNT
+        or root_digest != EXPECTED_SEAL_CODE_CORPUS_SHA256
+    ):
+        raise VerificationError(
+            "Seal source corpus code changed: "
+            f"expected_count={EXPECTED_SEAL_CODE_CORPUS_COUNT} "
+            f"actual_count={len(root_inventory)} "
+            f"expected_sha256={EXPECTED_SEAL_CODE_CORPUS_SHA256} "
+            f"actual_sha256={root_digest}"
+        )
+
+    install_inventory = _seal_code_inventory(install, "installed")
+    if set(install_inventory) != set(root_inventory):
+        raise VerificationError(
+            "Seal source corpus code paths differ between repository and install: "
+            f"missing={sorted(set(root_inventory) - set(install_inventory))} "
+            f"extra={sorted(set(install_inventory) - set(root_inventory))}"
+        )
+
+    rendered_nonces: list[str] = []
+    rendered_relatives: set[str] = set()
+    for relative, root_payload in sorted(root_inventory.items()):
+        installed_payload = install_inventory[relative]
+        if installed_payload == root_payload:
+            continue
+        if relative not in SEAL_RENDERED_CODE_RELATIVES:
+            raise VerificationError(
+                f"Seal source corpus code bytes differ: {relative}"
+            )
+        nonce = _seal_rendered_code_nonce(installed_payload, relative)
+        if relative == GATE_AUDIT_RELATIVE.as_posix():
+            verify_installed_gate_audit(root, install, nonce)
+        else:
+            placeholder = b"__AFTERLIGHT_BOOT_NONCE__"
+            if root_payload.count(placeholder) != 1:
+                raise VerificationError(
+                    "repository quest audit nonce placeholder count changed"
+                )
+            expected_rendered = root_payload.replace(
+                placeholder, nonce.encode("ascii"), 1
+            )
+            if installed_payload != expected_rendered:
+                raise VerificationError(
+                    "installed quest audit differs from authenticated "
+                    "code-corpus nonce substitution"
+                )
+        rendered_relatives.add(relative)
+        rendered_nonces.append(nonce)
+
+    if rendered_relatives and (
+        rendered_relatives != SEAL_RENDERED_CODE_RELATIVES
+        or len(set(rendered_nonces)) != 1
+    ):
+        raise VerificationError(
+            "Seal source corpus rendered code is incomplete or nonce-divergent: "
+            f"paths={sorted(rendered_relatives)} nonces={sorted(set(rendered_nonces))}"
+        )
+    return root_digest
+
+
 def _seal_occurrences(
     root: Path,
     label: str,
@@ -4021,11 +4180,11 @@ def _seal_occurrences(
         for match in SEAL_BINARY_REFERENCE_PATTERN.finditer(payload):
             occurrences.append((relative_label, f"binary:offset={match.start()}"))
 
-    def stream_has_seal_candidate(
+    def stream_member_flags(
         archive: zipfile.ZipFile,
         info: zipfile.ZipInfo,
         member: PurePosixPath,
-    ) -> bool:
+    ) -> tuple[bool, bool]:
         suffix = member.suffix.lower()
         needles = [b"ascendancy_seal", b"AFTERLIGHT"]
         if suffix in SEAL_CODE_SUFFIXES:
@@ -4034,15 +4193,21 @@ def _seal_occurrences(
             needles.append(b"\\u")
         tail = b""
         tail_size = max(len(needle) for needle in needles) - 1
+        first_chunk = True
         try:
             with archive.open(info) as source:
                 while True:
                     chunk = source.read(1024 * 1024)
                     if not chunk:
-                        return False
+                        return False, False
+                    embedded_archive = first_chunk and chunk.startswith(
+                        (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+                    )
+                    first_chunk = False
                     window = tail + chunk
-                    if any(needle in window for needle in needles):
-                        return True
+                    seal_candidate = any(needle in window for needle in needles)
+                    if seal_candidate or embedded_archive:
+                        return seal_candidate, embedded_archive
                     tail = window[-tail_size:]
         except (OSError, RuntimeError, zipfile.BadZipFile) as error:
             raise VerificationError(
@@ -4209,8 +4374,8 @@ def _seal_occurrences(
                     member_label = f"{relative_label}!{member.as_posix()}"
                     member_review_label = f"{review_label}!/{member.as_posix()}"
                     payload = reviewed_payloads.get(info.filename)
-                    archive_suffix = member.suffix.lower() in (".jar", ".zip")
-                    if archive_suffix:
+                    declared_archive = member.suffix.lower() in (".jar", ".zip")
+                    if declared_archive:
                         if payload is None:
                             payload = read_archive_member(archive, info, member_label)
                         if not zipfile.is_zipfile(io.BytesIO(payload)):
@@ -4226,12 +4391,36 @@ def _seal_occurrences(
                         )
                         continue
                     if payload is not None:
+                        if zipfile.is_zipfile(io.BytesIO(payload)):
+                            scan_archive(
+                                member_label,
+                                member_review_label,
+                                payload,
+                                depth + 1,
+                            )
+                            continue
                         scan_payload(member_label, payload)
-                    elif stream_has_seal_candidate(archive, info, member):
-                        scan_payload(
+                        continue
+                    seal_candidate, embedded_archive = stream_member_flags(
+                        archive, info, member
+                    )
+                    if not (seal_candidate or embedded_archive):
+                        continue
+                    payload = read_archive_member(archive, info, member_label)
+                    if embedded_archive:
+                        if not zipfile.is_zipfile(io.BytesIO(payload)):
+                            raise VerificationError(
+                                f"cannot inspect {label} embedded Seal source archive "
+                                f"{member_label}: invalid ZIP"
+                            )
+                        scan_archive(
                             member_label,
-                            read_archive_member(archive, info, member_label),
+                            member_review_label,
+                            payload,
+                            depth + 1,
                         )
+                    elif seal_candidate:
+                        scan_payload(member_label, payload)
         except VerificationError:
             raise
         except (OSError, RuntimeError, zipfile.BadZipFile) as error:
@@ -4309,6 +4498,7 @@ def verify_seal_sources(
 ) -> dict[str, object]:
     root_path = _validated_root(root, "pack root")
     install_path = _validated_root(install, "install root")
+    code_corpus_sha256 = _verify_seal_code_corpus(root_path, install_path)
     archive_review_labels = _seal_archive_review_labels(root_path)
     inventories = {
         "root": _seal_occurrences(root_path, "repository"),
@@ -4335,7 +4525,11 @@ def verify_seal_sources(
         ),
         "sha256",
     )
-    return {**inventories, "sha256": digest}
+    return {
+        **inventories,
+        "sha256": digest,
+        "code_corpus_sha256": code_corpus_sha256,
+    }
 
 
 def _gate_audit_source(root: Path | str) -> bytes:
@@ -4765,7 +4959,8 @@ def _cli_verify_seal_sources(args: argparse.Namespace) -> None:
     result = verify_seal_sources(Path(args.root), Path(args.install))
     print(
         "SEAL SOURCES: OK "
-        f"occurrences={len(result['root'])} sha256={result['sha256']}"
+        f"occurrences={len(result['root'])} sha256={result['sha256']} "
+        f"code-corpus-sha256={result['code_corpus_sha256']}"
     )
 
 

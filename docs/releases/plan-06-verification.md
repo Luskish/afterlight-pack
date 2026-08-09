@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: Task 4 candidate `8c827210dcc3f19f9689d425488eaeccd94180c2` received independent requirements and quality review. Review fixes and the complete local post-fix gate are complete. Exact-commit reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
+Status: Task 4 first review-fix commit `254b862a83a01fabdc75809557720ca6122799fa` received a second independent requirements and quality review. Second-review fixes and the complete local post-fix gate are complete. The second-review fix commit, exact-commit re-reviews, detached boots, exact-SHA CI, the `main` fast-forward, and Pages parity are not yet claimed here.
 
 ## Delivered Scope
 
@@ -14,9 +14,10 @@ Status: Task 4 candidate `8c827210dcc3f19f9689d425488eaeccd94180c2` received ind
 - Every Act IV and postgame quest uses explicit linear progression. The three Chapter 20 response quests remain optional and nonexclusive, and `Choice Is Not a Lock` still converges through `one_completed`.
 - The final corpus is 46 chapters, 313 quests, 334 tasks, 436 rewards, and 6 reward tables.
 - The existing authenticated Gate listener and marker now prove every empty and occupied mechanical slot, wrong schematic or special item, mirror, rotation, producer cardinality, Draconic Seal position, exact output, exact remainder, and Seal stack contract.
-- Runtime helper self-tests and exact assertion cardinality bind the executable control flow to 14 positive checks and 368 negative checks before marker emission.
+- Runtime helper self-tests and exact assertion cardinality bind the executable control flow to 14 positive checks, 368 negative checks, 54 remainder-slot checks, and 6 Seal-slot checks before marker emission.
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
-- Installed mod JARs and nested JARs are inspected recursively. JSON and SNBT references are interpreted semantically, KubeJS aliases fail closed, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits.
+- Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits.
+- The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
 
 ## Test-First Evidence
 
@@ -32,29 +33,31 @@ Controller review then identified a potential label-only false green in the adve
 
 Independent review then found four additional gaps: the final generated audit was newer than the accepted boot logs, installed `mods/` was outside the Seal scan, empty mechanical cells were skipped, and helper or loop control-flow mutations could evade the structural contract. A second RED cycle added six focused regressions. All six failed before the production fixes, then all six passed after the fixes. The widened Gate, finale, and postgame selection now passes all 47 tests. Two additional fail-closed regressions prove that encoded Seal JSON with invalid UTF-8 and unsafe archive directory paths are rejected. The real installed archive scan reports exactly 19 reviewed occurrences with SHA-256 `a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126` in 9.07 seconds.
 
+A second exact-commit review reproduced three computed KubeJS grant forms that the lexical scanner could not see, a deflated nested JAR stored as `payload.bin`, and a count-two remainder loop that could execute zero iterations. A third RED cycle binds all three computed-script forms to a full code-corpus digest, requires extensionless ZIP recursion, requires exactly nine count-two remainder slots, proves slot 7 was visited, and rejects no-op, early-return, and zero-iteration remainder mutations. All 47 widened Gate, finale, and postgame tests pass after these fixes. Final runtime evidence is intentionally withheld until the changed Gate source, Packwiz index, and verifier complete a fresh full gate.
+
 ## Automated Gate
 
-The pre-review boot evidence is superseded because the generated audit and Gate source changed after that run. The fresh post-fix gate completed on 2026-08-09 with these exact outcomes:
+All earlier runtime evidence is superseded because the Gate source, Packwiz index, and Seal verifier changed after those runs. The final local post-fix gate completed on 2026-08-09 with these exact outcomes:
 
 ```text
 BUILD QUESTS: OK (37 compiler-managed chapters written)
-PACKWIZ STATE: 235d368c5c6ae51a8a804dc9099bdbff54a9dd4bfe77eb7ac4d29945c4bdf6ce
-Ran 267 offline tests in 25.474s
+PACKWIZ STATE: ef3c607f4956e55683a8ca4f6242b53bc07e69cf6b47a00ea69daafddaa3299e
+Ran 267 offline tests in 24.767s
 OK (skipped=77)
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 VERIFY: ALL GREEN
 PROVENANCE: OK server-artifacts=157 sha256=3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67
-SEAL SOURCES: OK occurrences=19 sha256=a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126
+SEAL SOURCES: OK occurrences=19 sha256=a192a2a64b08e23e60bfb154cd5cf52c7782859b1f664b69cfa6c70533b14126 code-corpus-sha256=381c9b2bedf2ff5915e7b255bb16ec77e2e3b60c53e998d59711baa19555a0d7
 BOOT ORACLE: OK errors=14 warnings=477 named-residuals=39
-Ran 267 live tests in 118.069s
+Ran 267 live tests in 118.931s
 OK
 SERVER BOOT: OK
 VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 ```
 
-The authenticated boot used nonce `1786288949-31545-8701`. Its Gate marker reported source SHA-256 `539a812696b3ec0fc9402d7359958416b278a3e9ca081695e80e38c51a84787e`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `c1ae3c70640ca501044c255e04eb4bbc3513cb619717bfe85f075147031344d0`. The quest-item marker reported digest `be3d18091a1e0cc0e81f2ace182b104da15e70170c7bd4e7a4354156ba13f7b2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. `server-test/logs/kubejs/server.log` contained zero `ERROR` or `FATAL` records.
+The authenticated boot used nonce `1786291573-59071-31827`. Its Gate marker reported source SHA-256 `9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725`, exact recipe count 11, and the same nonce. The rendered installed Gate audit matched SHA-256 `f38a76472792c908e97c3e0cd32b4db29a98d49f31d5fc2449d8421b26c7a945`. The rendered quest audit bytes matched SHA-256 `b6be89a35c7c5ea2f960fccd48f58fd813b5c86e2caf792fc3d06a196486a6e7`; its marker reported digest `be3d18091a1e0cc0e81f2ace182b104da15e70170c7bd4e7a4354156ba13f7b2`, 237 validated item IDs, and the same nonce. The exact FTB line was `Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables`. `server-test/logs/kubejs/server.log` contained zero `ERROR` or `FATAL` records.
 
-The generated quest audit mtime was `1786288339`; both authoritative logs were newer at `1786289037`. Runtime quest validation ran immediately after `SERVER BOOT: OK`, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-commit review, detached boot, remote integration, or Pages evidence.
+The generated quest audit mtime was `1786290866`; both authoritative logs were newer at `1786291668`. Runtime quest validation ran immediately after `SERVER BOOT: OK`, closing the stale-evidence review finding. The Gate marker remains single, source-authenticated, nonce-authenticated, and inside the post-`Done`, pre-FTB window. This document does not claim controller-owned exact-commit re-review, detached boot, remote integration, or Pages evidence.
 
 ## Team-Safety Proof
 

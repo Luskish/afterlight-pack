@@ -2487,10 +2487,23 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         )
 
     def copy_seal_corpus(self, source_root: Path, destination_root: Path) -> None:
+        source_quests = source_root / "config/ftbquests/quests"
+        if source_quests.is_dir():
+            shutil.copytree(
+                source_quests,
+                destination_root / "config/ftbquests/quests",
+                dirs_exist_ok=True,
+            )
         relative_paths = {
             Path(relative.split("!", 1)[0])
             for relative, _line in self.hygiene.EXPECTED_SEAL_OCCURRENCES
         }
+        relative_paths.update(
+            path.relative_to(source_root)
+            for path in (source_root / "kubejs").rglob("*")
+            if path.is_file()
+            and path.suffix.lower() in self.hygiene.SEAL_CODE_SUFFIXES
+        )
         for relative in sorted(relative_paths):
             source = source_root / relative
             destination = destination_root / relative
@@ -3508,9 +3521,18 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         "runtime-cardinality": (
             "let positiveChecks = 0",
             "let negativeChecks = 0",
+            "let remainderSlotChecks = 0",
+            "let sealRemainderChecks = 0",
             "positiveChecks++",
             "negativeChecks++",
             "if (positiveChecks !== 14 || negativeChecks !== 368) {",
+            "if (remainderSlotChecks !== 54 || sealRemainderChecks !== 6) {",
+        ),
+        "count-two-remainder": (
+            "if (countTwoRemainder.size() !== 9) {",
+            "let countTwoSealSlotSeen = false",
+            "countTwoSealSlotSeen = true",
+            "if (!countTwoSealSlotSeen) {",
         ),
     }
     EXPECTED_SEAL_OCCURRENCES = Counter(
@@ -3690,6 +3712,24 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             b'\xff{"result":{"id":"kubejs:\\u0061scendancy_seal"}}\n',
         ),
     )
+    COMPUTED_KUBEJS_SEAL_SOURCES = (
+        (
+            "unicode",
+            "const id = 'kubejs:\\u0061scendancy_seal'\n"
+            "PlayerEvents.loggedIn(event => event.player.give(id))\n",
+        ),
+        (
+            "concatenated",
+            "const id = 'kubejs:ascendancy' + '_seal'\n"
+            "PlayerEvents.loggedIn(event => event.player.give(id))\n",
+        ),
+        (
+            "aliased",
+            "const ids = AFTERLIGHT\n"
+            "const key = 'SE' + 'AL'\n"
+            "PlayerEvents.loggedIn(event => event.player.give(ids[key]))\n",
+        ),
+    )
 
     def setUp(self) -> None:
         self.hygiene = hygiene_module()
@@ -3732,6 +3772,10 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         )
         self.assertIn(
             "function afterlightAssertNoMatch(recipe, input, label) { if (recipe.matches(input, level)) throw new Error(`${label} matched unexpectedly`) negativeChecks++ }",
+            executable,
+        )
+        self.assertIn(
+            "function afterlightAssertOnlySealRemainder(recipe, input, label) { const remainder = recipe.getRemainingItems(input) if (remainder.size() !== 9) throw new Error(`${label} returned ${remainder.size()} remainder slots`) for (let index = 0; index < remainder.size(); index++) { let stack = remainder.get(index) remainderSlotChecks++ if (index === 7) { if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) { throw new Error(`${label} did not return one Seal in slot 7`) } sealRemainderChecks++ } else if (!stack.isEmpty()) { throw new Error(`${label} returned an extra remainder in slot ${index}`) } } }",
             executable,
         )
         schematic_match = re.search(
@@ -3783,11 +3827,27 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             "throw new Error(`Gate audit check cardinality changed: ${positiveChecks} positive, ${negativeChecks} negative`)",
             executable,
         )
+        self.assertIn(
+            "if (remainderSlotChecks !== 54 || sealRemainderChecks !== 6) {",
+            executable,
+        )
+        self.assertIn(
+            "throw new Error(`Gate audit remainder cardinality changed: ${remainderSlotChecks} slots, ${sealRemainderChecks} Seals`)",
+            executable,
+        )
+        self.assertEqual(executable.count("remainderSlotChecks++"), 2)
+        self.assertEqual(executable.count("sealRemainderChecks++"), 2)
         self.assertIn("afterlightAssertNoMatch helper self-test failed", executable)
         self.assertIn("afterlightAssertMatch helper self-test failed", executable)
         self.assertEqual(executable.count("for (let turn = 1; turn <= 3; turn++)"), 1)
         self.assertEqual(
             executable.count("for (let wrongSlot = 0; wrongSlot < 9; wrongSlot++)"),
+            1,
+        )
+        self.assertEqual(
+            executable.count(
+                "for (let index = 0; index < countTwoRemainder.size(); index++)"
+            ),
             1,
         )
 
@@ -3848,8 +3908,34 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                     flags=re.DOTALL,
                 ),
             ),
+            (
+                "no-op Seal remainder helper",
+                re.sub(
+                    r"function afterlightAssertOnlySealRemainder\(recipe, input, label\) \{.*?\n  \}",
+                    "function afterlightAssertOnlySealRemainder(recipe, input, label) {}",
+                    self.source,
+                    count=1,
+                    flags=re.DOTALL,
+                ),
+            ),
+            (
+                "early-return Seal remainder helper",
+                self.source.replace(
+                    "function afterlightAssertOnlySealRemainder(recipe, input, label) {\n",
+                    "function afterlightAssertOnlySealRemainder(recipe, input, label) {\n    return\n",
+                    1,
+                ),
+            ),
             ("short rotation loop", self.source.replace("turn <= 3", "turn <= 2", 1)),
             ("short Seal-slot loop", self.source.replace("wrongSlot < 9", "wrongSlot < 8", 1)),
+            (
+                "zero count-two remainder loop",
+                self.source.replace(
+                    "index < countTwoRemainder.size()",
+                    "index < 0",
+                    1,
+                ),
+            ),
         )
         for label, changed in mutations:
             with self.subTest(label=label):
@@ -3864,12 +3950,46 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             self.hygiene.SEAL_SCAN_ROOTS,
             ("config", "global_packs", "kubejs", "mods"),
         )
+        self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
+        self.assertEqual(
+            self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
+            "381c9b2bedf2ff5915e7b255bb16ec77e2e3b60c53e998d59711baa19555a0d7",
+        )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
             result = verifier(root, install)
             expected = self.EXPECTED_SEAL_OCCURRENCES
             self.assertEqual(Counter(result["root"]), expected)
             self.assertEqual(Counter(result["install"]), expected)
+            self.assertEqual(
+                result["code_corpus_sha256"],
+                self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
+            )
+
+            rendered_nonce = "seal-code-corpus-rendered"
+            installed_gate = install / self.RELATIVE
+            installed_gate.write_bytes(
+                self.hygiene.render_installed_gate_audit(root, rendered_nonce)
+            )
+            installed_quest = install / Path(
+                "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+            )
+            installed_quest.write_bytes(
+                installed_quest.read_bytes().replace(
+                    b"__AFTERLIGHT_BOOT_NONCE__",
+                    rendered_nonce.encode("ascii"),
+                    1,
+                )
+            )
+            rendered_result = verifier(root, install)
+            self.assertEqual(Counter(rendered_result["root"]), expected)
+            self.assertEqual(Counter(rendered_result["install"]), expected)
+            shutil.copy2(root / self.RELATIVE, installed_gate)
+            shutil.copy2(
+                root
+                / "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+                installed_quest,
+            )
 
             act_four = install / "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
             act_four_text = act_four.read_text(encoding="utf-8")
@@ -3955,6 +4075,33 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                         verifier(root, install)
                     archive.unlink()
 
+            bridge_relative = Path(
+                "kubejs/server_scripts/afterlight/bridges.js"
+            )
+            bridge_sources = {
+                corpus_root: (corpus_root / bridge_relative).read_text(
+                    encoding="utf-8"
+                )
+                for corpus_root in (root, install)
+            }
+            for source_class, payload in self.COMPUTED_KUBEJS_SEAL_SOURCES:
+                with self.subTest(source_class=source_class, location="both"):
+                    for corpus_root, original in bridge_sources.items():
+                        (corpus_root / bridge_relative).write_text(
+                            original + "\n" + payload,
+                            encoding="utf-8",
+                        )
+                    with self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "Seal source corpus code",
+                    ):
+                        verifier(root, install)
+                    for corpus_root, original in bridge_sources.items():
+                        (corpus_root / bridge_relative).write_text(
+                            original,
+                            encoding="utf-8",
+                        )
+
     def test_seal_archive_scan_is_recursive_bounded_and_duplicate_safe(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
@@ -3998,6 +4145,33 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             ):
                 verifier(root, install)
             outer.unlink()
+
+            extensionless_payload = io.BytesIO()
+            with zipfile.ZipFile(
+                extensionless_payload,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as nested:
+                nested.writestr(
+                    "data/afterlight/recipe/unauthorized.json",
+                    b'{"result":{"id":"kubejs:ascendancy_seal"}}\n',
+                )
+            extensionless_outer = install / "mods" / "extensionless-nested.jar"
+            with zipfile.ZipFile(
+                extensionless_outer,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as output:
+                output.writestr(
+                    "META-INF/jarjar/payload.bin",
+                    extensionless_payload.getvalue(),
+                )
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            extensionless_outer.unlink()
 
             bounded = install / "mods" / "bounded.jar"
             with zipfile.ZipFile(bounded, "w", compression=zipfile.ZIP_DEFLATED) as output:

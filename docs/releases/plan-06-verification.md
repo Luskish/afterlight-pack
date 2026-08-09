@@ -4,7 +4,7 @@ Date: 2026-08-09
 
 Accepted Task 3 base: `1afce74c5a095695706adcc15d59d72657292d2a`
 
-Status: review round 4 is based exactly on `6c03f0823e26e3fea9a1baa44236cc7956f2c67e` and has the fresh offline gate recorded below. Controller `verify-pack`, a live boot on the exact round 4 final commit, exact-head independent review, detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
+Status: the pinned-schema breaker correction is based exactly on `9748a45c15abcc12e4ae120d2eddd987974ba1fb` and has the fresh offline gate recorded below. Controller `verify-pack`, a live boot on the exact breaker-correction commit, exact-head independent review, detached boots, exact-SHA CI, integration, `main` CI, and Pages parity remain open.
 
 ## Delivered Scope
 
@@ -18,7 +18,7 @@ Status: review round 4 is based exactly on `6c03f0823e26e3fea9a1baa44236cc7956f2
 - Repository and installed-file scans allow exactly the reviewed Seal references. Chapter 20 remains the only Seal reward source. New recipe, loot, trade, grant, quest-reward, or generated-data occurrences fail the server gate.
 - Installed mod JARs and nested ZIP payloads are inspected recursively regardless of nested filename suffix. JSON and SNBT references are interpreted semantically, binary constants are scanned raw, reviewed duplicate ZIP aliases are authenticated, and archive expansion is bounded by per-member, per-archive, aggregate, depth, and compression-ratio limits. ZIP and ZIP64 member counts plus central-directory sizes are preflighted before `ZipFile` construction. Every scanned outer file uses one stable descriptor with pre-open regular-file and link-count rejection, `O_NONBLOCK` when available, bounded reads, initial and final hashes, and device, inode, size, mtime, and ctime checks. FIFO rejection completes within the two-second subprocess regression. Packwiz metadata count, aggregate UTF-8 relative-path bytes, and aggregate content bytes are preflighted before TOML parsing or label retention, while the 1 MiB per-file and final path-identity checks remain enforced.
 - The exact nine-file KubeJS code corpus is authenticated by path and SHA-256 inventory. This closes arbitrary computed-ID, Unicode-escape, concatenation, and alias constructions that lexical matching cannot soundly evaluate. Both code inventory and full repository or installed occurrence scans use one deterministic streaming `os.scandir` walker. It fails closed on every scan error, rejects symlinks and noncanonical or non-regular entries, charges every visited root, directory, file, and UTF-8 relative path before retention or descent, and sorts only globally bounded per-directory inventories. JavaScript and TypeScript reads remain limited to 4 MiB per file and 8 MiB in aggregate, with at most 4,096 code files and 1 MiB of aggregate code-file relative paths. The complete Seal occurrence inventory remains capped at 100,000 records, and repeated or oversized JSON and SNBT scalar matches share bounded digest descriptors instead of copying whole scalars per match. The two nonce-rendered installed audit files are accepted only when both are exact authenticated renders using the same nonce.
-- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler migrates and independently validates modern `open_quest` actions plus pinned legacy `click: "#QUEST_ID/suffix"` actions while preserving the complete suffix and every non-quest legacy action byte-for-byte. Localization recognizes and type-checks chapter groups, chapters, quests, tasks, rewards, images, quest links, and reward tables while preserving unknown authored keys. Reward traversal recursively covers quest, standalone, and embedded table containers with explicit depth and aggregate-node bounds, migrates and collision-accounts every nested reward ID, resolves every external table reference, preserves exact embedded sentinel `-1L` only with valid `table_data`, and keeps external `7FFFFFFFFFFFFFFF` distinct. Typed reference universes accept progressing dependencies, chapter or quest or task or quest-link open targets, quest-only image dependencies and links, and only same-chapter quest, quest-link, or image autofocus targets. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
+- Every FTB object ID is a signed-safe 16-character uppercase hexadecimal string beginning with `0` through `7`. The compiler migrates and independently validates modern `open_quest` actions plus pinned legacy `click: "#QUEST_ID/suffix"` actions while preserving the complete suffix and every non-quest legacy action byte-for-byte. Localization recognizes and type-checks chapter groups, chapters, quests, tasks, rewards, images, quest links, and reward tables while preserving unknown authored keys. Reward traversal recursively covers quest, standalone, and embedded table containers with explicit depth and aggregate-node bounds, migrates and collision-accounts every nested reward ID, resolves every external table reference, preserves exact embedded sentinel `-1L` only with valid `table_data`, and keeps external `7FFFFFFFFFFFFFFF` distinct. Typed reference universes accept progressing dependencies, quest-only dependency control points, chapter or quest or task or quest-link open targets, quest-only image dependencies and links, and only same-chapter quest, quest-link, or image autofocus targets. Migration preflights every journal operation and authenticated payload before repository mutation, persists duplicated checksummed journals and payloads under a root-independent state directory, writes through rehashed target-local temporary files, fsyncs state and target directories, and resumes interrupted writes, moves, missing targets, process death, and checkout relocation.
 - The post-shutdown quest-identity oracle compares 3,135 canonical semantic records across repository and installed corpora. It binds `data.snbt`, every localization file path, key, scalar value, array position, and array text, plus chapter-group order, quest and dependency order, progression and repeat flags, cooldowns, complete ordered tasks and rewards, quantities, item consumption, Forge Energy limits, and complete ordered reward-table entries. Save normalization is directional and limited to the exact characterized item-task counts, item-reward counts, reward-table item types and weights, Iron's Spells component, glow encoding, three chapter order pairs, three reward-table order pairs, exact reward-table filename and title omissions, the three exact installed `data.snbt` defaults, and SNBT formatting. The fresh repository inventory SHA-256 is `6982a92d14bee2ab94613e3b41070c8bfe26a3ca2e0ebc2bfa6d6feda29eeede`.
 - The legacy Foothold power task uses `forge_energy`, the exact type registered by the installed NeoForge FTB Quests artifact. The invalid `energy` alias previously loaded as an inert custom task and is now forbidden by regression.
 
@@ -101,6 +101,31 @@ VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
 ```
 
 No quest content, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No Packwiz command ran. No live boot has run on the exact review round 4 final commit. The parent commit's authenticated live evidence does not validate this child. Controller `verify-pack` and a fresh exact-final-commit authenticated live boot remain pending.
+
+## Pinned-Schema Breaker Correction Offline Gate
+
+The permitted breaker correction is based exactly on `9748a45c15abcc12e4ae120d2eddd987974ba1fb`. The direct RED run kept the valid quest-only control-point target green while task, quest-link, chapter, and chapter-group targets each false-greened independently:
+
+```text
+Ran 1 test in 0.024s
+FAILED (failures=4)
+```
+
+The minimal validator correction then completed the required offline matrix:
+
+```text
+Ran 1 direct regression in 0.039s
+OK
+Ran 108 focused tests in 19.105s
+OK (skipped=2)
+Ran 321 offline tests in 41.240s
+OK (skipped=77)
+BUILD QUESTS: OK (37 compiler-managed chapters written)
+GENERATED STATE: CLEAN
+VALIDATE QUESTS: OK (46 chapters, 313 quests, 334 tasks, 436 rewards)
+```
+
+No authored quest file, ID, corpus total, manifest, Packwiz metadata, mod, KubeJS gameplay logic, or release version changed. No Packwiz command or live server ran. Any exact-head evidence for the parent commit does not validate this child. Controller `verify-pack`, a fresh exact-final-commit authenticated live boot, review, and integration remain pending.
 
 ## Prior Automated Gate
 

@@ -1959,7 +1959,7 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         definition_ids["quest_link"],
     )
     dependencies: list[tuple[str, str]] = []
-    progressing_references: list[tuple[str, str]] = []
+    dep_control_point_references: list[tuple[str, str]] = []
     quest_references: list[tuple[str, str]] = []
     open_quest_references: list[tuple[str, str]] = []
     autofocus_references: list[tuple[str, str, str]] = []
@@ -2025,7 +2025,7 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
                 dependencies.append((quest_id, dependency))
             dep_control_pts = quest.get("dep_control_pts", {})
             if isinstance(dep_control_pts, Mapping):
-                progressing_references.extend(
+                dep_control_point_references.extend(
                     (f"{relative}:quests[{quest_id}].dep_control_pts", str(identifier))
                     for identifier in dep_control_pts
                 )
@@ -2045,10 +2045,10 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
             f"migrated quest dependencies are unresolved: {unresolved_dependencies[:20]}"
         )
 
-    unresolved_progressing_references = [
+    unresolved_dep_control_points = [
         (owner, identifier)
-        for owner, identifier in progressing_references
-        if identifier not in progressing_ids
+        for owner, identifier in dep_control_point_references
+        if identifier not in quest_ids
     ]
     unresolved_quest_references = [
         (owner, identifier)
@@ -2066,7 +2066,7 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         if movable_chapters.get(identifier) != chapter_id
     ]
     unresolved_identity_references = (
-        unresolved_progressing_references
+        unresolved_dep_control_points
         + unresolved_quest_references
         + unresolved_open_quest_references
         + unresolved_autofocus

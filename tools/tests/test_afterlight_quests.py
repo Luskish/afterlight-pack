@@ -1460,8 +1460,7 @@ class QuestCompilerTests(unittest.TestCase):
             f'"{identifiers["group"]}", "{identifiers["other_chapter"]}", '
             f'"{identifiers["quest"]}", "{identifiers["task"]}", '
             f'"{identifiers["link"]}"], dep_control_pts: {{ '
-            f'{identifiers["task"]}: [1.0d, 2.0d, 3.0d, 4.0d], '
-            f'{identifiers["link"]}: [5.0d, 6.0d, 7.0d, 8.0d] }}, '
+            f'{identifiers["quest"]}: [1.0d, 2.0d, 3.0d, 4.0d] }}, '
             "tasks: [], rewards: [] }\n"
             "\t]\n"
             "}\n",
@@ -2110,6 +2109,50 @@ class QuestCompilerTests(unittest.TestCase):
                     )
 
                     builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_resolves_dep_control_points_only_to_quests(
+        self,
+    ) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, _identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            with mock.patch.object(
+                builder,
+                "_migration_snbt_role",
+                return_value=None,
+            ):
+                builder._validate_migrated_quest_corpus(quest_root)
+
+        for target_kind in ("task", "link", "chapter", "group"):
+            with self.subTest(target_kind=target_kind):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    chapter = (
+                        quest_root
+                        / "chapters"
+                        / f'{identifiers["chapter"]}.snbt'
+                    )
+                    chapter.write_text(
+                        chapter.read_text(encoding="utf-8").replace(
+                            f'{identifiers["quest"]}: '
+                            "[1.0d, 2.0d, 3.0d, 4.0d]",
+                            f'{identifiers[target_kind]}: '
+                            "[1.0d, 2.0d, 3.0d, 4.0d]",
+                            1,
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with mock.patch.object(
+                        builder,
+                        "_migration_snbt_role",
+                        return_value=None,
+                    ), self.assertRaisesRegex(ValueError, "dep_control_pts"):
+                        builder._validate_migrated_quest_corpus(quest_root)
 
     def test_migrated_oracle_rejects_cross_chapter_autofocus_and_unknown_legacy_click(
         self,

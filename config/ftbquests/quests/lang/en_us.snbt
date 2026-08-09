@@ -1869,4 +1869,55 @@
 	task.3D07F572A39DCE89.title: "Record Build."
 	task.57D5E84BE50C3815.title: "Confirm at least one response."
 	task.2BFD5EB16E861768.title: "Accept the recovered-memory record."
+	chapter.BFF4AF7B0C73F058.title: "Beyond Afterlight"
+	quest.480D3EAD1B1EA51B.title: "Beyond the Seal"
+	quest.480D3EAD1B1EA51B.quest_subtitle: "The ending became a tool. Tools require terms."
+	quest.480D3EAD1B1EA51B.quest_desc: [
+		"Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not."
+		"The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away."
+	]
+	task.9CCF9FFC57852557.title: "Verify possession of the Ascendancy Seal."
+	quest.3549F08263C17499.title: "Three Entries"
+	quest.3549F08263C17499.quest_subtitle: "Three recipes prove the lock opens without becoming the door."
+	quest.3549F08263C17499.quest_desc: [
+		"Craft a Draconium Core, a Dislocator, and a Module Core through the three authenticated entry recipes."
+		"Each recipe returns the Seal. Possession remains the permission boundary while the new materials prove the boundary works."
+	]
+	task.552233E3840472BD.title: "Verify one authenticated Draconium Core."
+	task.0FD70329B302D235.title: "Verify one authenticated Dislocator."
+	task.069798564A2943FA.title: "Verify one authenticated Module Core."
+	quest.58CB670EA52B1BCE.title: "Chaotic Proof"
+	quest.58CB670EA52B1BCE.quest_subtitle: "Reach the highest ordinary tier before requesting an exception."
+	quest.58CB670EA52B1BCE.quest_desc: [
+		"Produce one Chaotic Core through the full Draconic progression opened by the three entry recipes."
+		"Creative power is not a shortcut around mastery. The core is evidence that your infrastructure survived the entire argument."
+	]
+	task.506E30469C21EC85.title: "Verify one completed Chaotic Core."
+	quest.077BB9C525F29F6D.title: "Kinetic Blessing"
+	quest.077BB9C525F29F6D.quest_subtitle: "A creative motor is earned by feeding the line it replaces."
+	quest.077BB9C525F29F6D.quest_desc: [
+		"Submit a production-scale Create reserve and one Chaotic Core. Every input is consumed."
+		"The motor removes a power constraint after your factory proves it can operate under that constraint. The blessing may be renewed once each hour."
+	]
+	task.55BDDB1245A09683.title: "Submit 256 Precision Mechanisms."
+	task.BCEEEDECBD7D1D36.title: "Submit 64 Railway Casings."
+	task.2FB04E1016BE7915.title: "Submit one Chaotic Core."
+	quest.6E81867AC3F34C6B.title: "Lattice Blessing"
+	quest.6E81867AC3F34C6B.quest_subtitle: "Infinite energy follows finite proof."
+	quest.6E81867AC3F34C6B.quest_desc: [
+		"Submit an AE2 reserve large enough to make the creative cell unnecessary, then submit the Chaotic Core that makes it possible."
+		"The cell is a postgame instrument for systems already mastered. The blessing may be renewed once each hour."
+	]
+	task.B36DA1497068D7D5.title: "Submit 64 Quantum Entangled Singularities."
+	task.A853E2D7FD71500D.title: "Submit sixteen 256K Cell Components."
+	task.15F6D0E7985B20A8.title: "Submit one Chaotic Core."
+	quest.14FAB67A6CE71A00.title: "Industrial Blessing"
+	quest.14FAB67A6CE71A00.quest_subtitle: "Two grids receive one shared exception."
+	quest.14FAB67A6CE71A00.quest_desc: [
+		"Submit the Mekanism and Immersive Engineering reserves together with one Chaotic Core. Every input is consumed."
+		"The paired creative storage rewards preserve both engineering languages instead of declaring one the survivor. The blessing may be renewed once each hour."
+	]
+	task.48CA55FFEC0E520A.title: "Submit 64 Atomic Alloys."
+	task.83CABFBA9933EB0E.title: "Submit 64 Heavy Engineering blocks."
+	task.289A3672715F5EA0.title: "Submit one Chaotic Core."
 }

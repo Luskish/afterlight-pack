@@ -1357,6 +1357,296 @@ def _chapter_twenty() -> ChapterSpec:
     )
 
 
+def _postgame_beyond_afterlight() -> ChapterSpec:
+    chapter_slug = "story/postgame-beyond-afterlight"
+    beyond = f"{chapter_slug}/beyond-the-seal"
+    entries = f"{chapter_slug}/three-entries"
+    chaotic = f"{chapter_slug}/chaotic-proof"
+    kinetic = f"{chapter_slug}/kinetic-blessing"
+    lattice = f"{chapter_slug}/lattice-blessing"
+    industrial = f"{chapter_slug}/industrial-blessing"
+
+    def item_task(
+        quest_slug: str,
+        suffix: str,
+        item_id: str,
+        count: int,
+        *,
+        consume: bool,
+        title: str,
+    ) -> TaskSpec:
+        task_slug = f"{quest_slug}/task"
+        if suffix:
+            task_slug = f"{task_slug}/{suffix}"
+        return TaskSpec(
+            task_slug,
+            "item",
+            {
+                "item": {"count": 1, "id": item_id},
+                "count": SnbtLong(count),
+                "consume_items": consume,
+            },
+            title=title,
+        )
+
+    quests = (
+        QuestSpec(
+            slug=beyond,
+            title="Beyond the Seal",
+            subtitle="The ending became a tool. Tools require terms.",
+            description=(
+                "Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not.",
+                "The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away.",
+            ),
+            x=0.0,
+            y=0.0,
+            dependencies=("FE6A0AC031F7F484",),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    beyond,
+                    "",
+                    "kubejs:ascendancy_seal",
+                    1,
+                    consume=False,
+                    title="Verify possession of the Ascendancy Seal.",
+                ),
+            ),
+            rewards=(_item_reward(beyond, "kubejs:requisition_chit", 4, "chits"),),
+        ),
+        QuestSpec(
+            slug=entries,
+            title="Three Entries",
+            subtitle="Three recipes prove the lock opens without becoming the door.",
+            description=(
+                "Craft a Draconium Core, a Dislocator, and a Module Core through the three authenticated entry recipes.",
+                "Each recipe returns the Seal. Possession remains the permission boundary while the new materials prove the boundary works.",
+            ),
+            x=2.0,
+            y=0.0,
+            dependencies=(beyond,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    entries,
+                    "draconium-core",
+                    "draconicevolution:draconium_core",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Draconium Core.",
+                ),
+                item_task(
+                    entries,
+                    "dislocator",
+                    "draconicevolution:dislocator",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Dislocator.",
+                ),
+                item_task(
+                    entries,
+                    "module-core",
+                    "draconicevolution:module_core",
+                    1,
+                    consume=False,
+                    title="Verify one authenticated Module Core.",
+                ),
+            ),
+            rewards=(_item_reward(entries, "kubejs:requisition_chit", 8, "chits"),),
+        ),
+        QuestSpec(
+            slug=chaotic,
+            title="Chaotic Proof",
+            subtitle="Reach the highest ordinary tier before requesting an exception.",
+            description=(
+                "Produce one Chaotic Core through the full Draconic progression opened by the three entry recipes.",
+                "Creative power is not a shortcut around mastery. The core is evidence that your infrastructure survived the entire argument.",
+            ),
+            x=4.0,
+            y=0.0,
+            dependencies=(entries,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    chaotic,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=False,
+                    title="Verify one completed Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                RewardSpec(
+                    slug=f"{chaotic}/reward/cache",
+                    reward_type="loot",
+                    data={"table_id": ASCENDANCY_CACHE_EPIC_TABLE},
+                ),
+                _item_reward(chaotic, "kubejs:requisition_chit", 16, "chits"),
+                RewardSpec(
+                    slug=f"{chaotic}/reward/xp",
+                    reward_type="xp",
+                    data={"xp": 1000},
+                ),
+            ),
+        ),
+        QuestSpec(
+            slug=kinetic,
+            title="Kinetic Blessing",
+            subtitle="A creative motor is earned by feeding the line it replaces.",
+            description=(
+                "Submit a production-scale Create reserve and one Chaotic Core. Every input is consumed.",
+                "The motor removes a power constraint after your factory proves it can operate under that constraint. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=-2.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    kinetic,
+                    "precision-mechanisms",
+                    "create:precision_mechanism",
+                    256,
+                    consume=True,
+                    title="Submit 256 Precision Mechanisms.",
+                ),
+                item_task(
+                    kinetic,
+                    "railway-casings",
+                    "create:railway_casing",
+                    64,
+                    consume=True,
+                    title="Submit 64 Railway Casings.",
+                ),
+                item_task(
+                    kinetic,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(_item_reward(kinetic, "create:creative_motor", 1, "creative-motor"),),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+        QuestSpec(
+            slug=lattice,
+            title="Lattice Blessing",
+            subtitle="Infinite energy follows finite proof.",
+            description=(
+                "Submit an AE2 reserve large enough to make the creative cell unnecessary, then submit the Chaotic Core that makes it possible.",
+                "The cell is a postgame instrument for systems already mastered. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=0.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    lattice,
+                    "quantum-singularities",
+                    "ae2:quantum_entangled_singularity",
+                    64,
+                    consume=True,
+                    title="Submit 64 Quantum Entangled Singularities.",
+                ),
+                item_task(
+                    lattice,
+                    "storage-components",
+                    "ae2:cell_component_256k",
+                    16,
+                    consume=True,
+                    title="Submit sixteen 256K Cell Components.",
+                ),
+                item_task(
+                    lattice,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                _item_reward(
+                    lattice,
+                    "ae2:creative_energy_cell",
+                    1,
+                    "creative-energy-cell",
+                ),
+            ),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+        QuestSpec(
+            slug=industrial,
+            title="Industrial Blessing",
+            subtitle="Two grids receive one shared exception.",
+            description=(
+                "Submit the Mekanism and Immersive Engineering reserves together with one Chaotic Core. Every input is consumed.",
+                "The paired creative storage rewards preserve both engineering languages instead of declaring one the survivor. The blessing may be renewed once each hour.",
+            ),
+            x=6.0,
+            y=2.0,
+            dependencies=(chaotic,),
+            progression_mode="linear",
+            tasks=(
+                item_task(
+                    industrial,
+                    "atomic-alloys",
+                    "mekanism:alloy_atomic",
+                    64,
+                    consume=True,
+                    title="Submit 64 Atomic Alloys.",
+                ),
+                item_task(
+                    industrial,
+                    "heavy-engineering",
+                    "immersiveengineering:heavy_engineering",
+                    64,
+                    consume=True,
+                    title="Submit 64 Heavy Engineering blocks.",
+                ),
+                item_task(
+                    industrial,
+                    "chaotic-core",
+                    "draconicevolution:chaotic_core",
+                    1,
+                    consume=True,
+                    title="Submit one Chaotic Core.",
+                ),
+            ),
+            rewards=(
+                _item_reward(
+                    industrial,
+                    "mekanism:creative_energy_cube",
+                    1,
+                    "creative-energy-cube",
+                ),
+                _item_reward(
+                    industrial,
+                    "immersiveengineering:capacitor_creative",
+                    1,
+                    "creative-capacitor",
+                ),
+            ),
+            can_repeat=True,
+            repeat_cooldown=3600,
+        ),
+    )
+    return ChapterSpec(
+        chapter_slug,
+        "Beyond Afterlight",
+        STORY,
+        "draconicevolution:chaotic_core",
+        20,
+        quests,
+    )
+
+
 def _certification_logistics() -> ChapterSpec:
     drawer = "certifications/logistics-i/drawer-bank"
     controller = "certifications/logistics-i/controller"
@@ -2101,6 +2391,7 @@ def build_catalog() -> list[ChapterSpec]:
     chapter_eighteen = _chapter_eighteen()
     chapter_nineteen = _chapter_nineteen()
     chapter_twenty = _chapter_twenty()
+    postgame = _postgame_beyond_afterlight()
     logistics = _certification_logistics()
     ore_loop = _certification_ore_loop(logistics.quests[-1].slug)
     autocrafting = _certification_autocrafting(logistics.quests[-1].slug)
@@ -2139,6 +2430,7 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_eighteen,
         chapter_nineteen,
         chapter_twenty,
+        postgame,
         logistics,
         ore_loop,
         autocrafting,

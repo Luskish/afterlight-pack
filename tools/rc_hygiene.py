@@ -19,12 +19,14 @@ from urllib.parse import quote
 
 try:
     from afterlight_quests.builder import (
+        _parse_snbt,
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
     )
 except ModuleNotFoundError:
     from tools.afterlight_quests.builder import (
+        _parse_snbt,
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
@@ -3583,6 +3585,7 @@ def verify_boot_run(
 ) -> dict[str, object]:
     root_path = _validated_root(root, "pack root")
     install_path = _validated_root(install, "install root")
+    seal_sources = verify_seal_sources(root_path, install_path)
     gate_audit_sha256 = verify_installed_gate_audit(
         root_path, install_path, nonce
     )
@@ -3638,6 +3641,7 @@ def verify_boot_run(
         "warning_records": REVIEWED_WARNING_TOTAL,
         "audits": audits,
         "gate_audit_sha256": gate_audit_sha256,
+        "seal_source_sha256": seal_sources["sha256"],
         "console_severe_count": console_count,
         "console_severe_sha256": console_digest,
     }
@@ -3748,6 +3752,250 @@ GATE_AUDIT_RELATIVE = PurePosixPath(
 GATE_AUDIT_SHA256_PLACEHOLDER = b"__AFTERLIGHT_GATE_AUDIT_SHA256__"
 GATE_AUDIT_NONCE_PLACEHOLDER = b"__AFTERLIGHT_GATE_BOOT_NONCE__"
 GATE_AUDIT_RECIPE_COUNT = 11
+SEAL_REFERENCE_PATTERN = re.compile(r"ascendancy_seal|AFTERLIGHT\.SEAL")
+SEAL_SCAN_ROOTS = ("config", "global_packs", "kubejs")
+EXPECTED_SEAL_OCCURRENCES = Counter(
+    (
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            "snbt:$.icon.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+            "snbt:$.quests[].rewards[].item.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt",
+            "snbt:$.quests[].tasks[].item.id=kubejs:ascendancy_seal",
+        ),
+        (
+            "kubejs/assets/kubejs/lang/en_us.json",
+            '"item.kubejs.ascendancy_seal": "Ascendancy Seal",',
+        ),
+        (
+            "kubejs/server_scripts/afterlight/_constants.js",
+            "SEAL: 'kubejs:ascendancy_seal',",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_draconic.js",
+            "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:diamond', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "C: 'minecraft:ender_eye', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "I: 'minecraft:iron_ingot', R: 'minecraft:redstone', Z: AFTERLIGHT.SEAL",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "countTwoKeys.Z = Item.of(AFTERLIGHT.SEAL, 2)",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+            "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {",
+        ),
+        (
+            "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+            '"kubejs:ascendancy_seal",',
+        ),
+        (
+            "kubejs/startup_scripts/afterlight/registry.js",
+            "event.create('ascendancy_seal')",
+        ),
+    )
+)
+
+
+def _snbt_child_path(path: str, key: str) -> str:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        return f"{path}.{key}"
+    return f"{path}[{json.dumps(key, ensure_ascii=False)}]"
+
+
+def _snbt_seal_occurrences(value: object, path: str = "$") -> tuple[str, ...]:
+    occurrences: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = _snbt_child_path(path, key_text)
+            occurrences.extend(
+                f"snbt-key:{child_path}" for _match in SEAL_REFERENCE_PATTERN.finditer(key_text)
+            )
+            occurrences.extend(_snbt_seal_occurrences(child, child_path))
+    elif isinstance(value, list):
+        for child in value:
+            occurrences.extend(_snbt_seal_occurrences(child, f"{path}[]"))
+    elif isinstance(value, str):
+        occurrences.extend(
+            f"snbt:{path}={value}" for _match in SEAL_REFERENCE_PATTERN.finditer(value)
+        )
+    return tuple(occurrences)
+
+
+def _seal_occurrences(root: Path, label: str) -> tuple[tuple[str, str], ...]:
+    occurrences: list[tuple[str, str]] = []
+
+    def scan_text(relative_label: str, payload: bytes) -> None:
+        try:
+            text = payload.decode("utf-8")
+        except UnicodeDecodeError:
+            return
+        textual_matches = tuple(SEAL_REFERENCE_PATTERN.finditer(text))
+        if not textual_matches:
+            return
+        member_label = relative_label.rsplit("!", 1)[-1]
+        if PurePosixPath(member_label).suffix == ".snbt":
+            try:
+                semantic = _snbt_seal_occurrences(_parse_snbt(text))
+            except ValueError as error:
+                raise VerificationError(
+                    f"cannot parse {label} Seal source SNBT {relative_label}: {error}"
+                ) from error
+            if len(semantic) != len(textual_matches):
+                raise VerificationError(
+                    f"cannot account for every {label} Seal source SNBT reference: "
+                    f"{relative_label} text={len(textual_matches)} semantic={len(semantic)}"
+                )
+            occurrences.extend((relative_label, item) for item in semantic)
+            return
+        for line in text.splitlines():
+            matches = tuple(SEAL_REFERENCE_PATTERN.finditer(line))
+            occurrences.extend((relative_label, line.strip()) for _match in matches)
+
+    for root_name in SEAL_SCAN_ROOTS:
+        scan_root = root / root_name
+        try:
+            root_stat = scan_root.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source root {root_name}: {error}"
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(
+                f"invalid {label} Seal source root: {root_name}"
+            )
+        for directory, directory_names, file_names in os.walk(
+            scan_root, followlinks=False
+        ):
+            directory_path = Path(directory)
+            directory_names.sort()
+            file_names.sort()
+            for name in directory_names:
+                relative = _safe_relative_path(
+                    (directory_path / name).relative_to(root).as_posix(),
+                    f"{label} Seal source directory",
+                )
+                child_stat = (directory_path / name).lstat()
+                if stat.S_ISLNK(child_stat.st_mode) or not stat.S_ISDIR(
+                    child_stat.st_mode
+                ):
+                    raise VerificationError(
+                        f"invalid {label} Seal source directory: {relative.as_posix()}"
+                    )
+            for name in file_names:
+                relative = _safe_relative_path(
+                    (directory_path / name).relative_to(root).as_posix(),
+                    f"{label} Seal source file",
+                )
+                path = _verified_regular_file(
+                    root, relative, f"{label} Seal source file"
+                )
+                try:
+                    payload = path.read_bytes()
+                except OSError as error:
+                    raise VerificationError(
+                        f"cannot read {label} Seal source file {relative.as_posix()}: {error}"
+                    ) from error
+                if zipfile.is_zipfile(path):
+                    try:
+                        with zipfile.ZipFile(path) as archive:
+                            names = [entry.filename for entry in archive.infolist()]
+                            if len(names) != len(set(names)):
+                                raise VerificationError(
+                                    f"duplicate archive member in {label} Seal source file: {relative.as_posix()}"
+                                )
+                            for entry in sorted(archive.infolist(), key=lambda item: item.filename):
+                                if entry.is_dir():
+                                    continue
+                                member = PurePosixPath(entry.filename)
+                                if member.is_absolute() or ".." in member.parts:
+                                    raise VerificationError(
+                                        f"unsafe archive member in {label} Seal source file: {entry.filename}"
+                                    )
+                                scan_text(
+                                    f"{relative.as_posix()}!{entry.filename}",
+                                    archive.read(entry),
+                                )
+                    except (OSError, zipfile.BadZipFile) as error:
+                        raise VerificationError(
+                            f"cannot inspect {label} Seal source archive {relative.as_posix()}: {error}"
+                        ) from error
+                else:
+                    scan_text(relative.as_posix(), payload)
+    return tuple(occurrences)
+
+
+def verify_seal_sources(
+    root: Path | str, install: Path | str
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    inventories = {
+        "root": _seal_occurrences(root_path, "repository"),
+        "install": _seal_occurrences(install_path, "installed"),
+    }
+    for label, inventory in inventories.items():
+        actual = Counter(inventory)
+        unexpected = actual - EXPECTED_SEAL_OCCURRENCES
+        missing = EXPECTED_SEAL_OCCURRENCES - actual
+        if unexpected or missing:
+            raise VerificationError(
+                f"Seal source corpus {label} changed: "
+                f"unexpected={sorted(unexpected.items())} "
+                f"missing={sorted(missing.items())}"
+            )
+    if Counter(inventories["root"]) != Counter(inventories["install"]):
+        raise VerificationError("Seal source corpus root and install differ")
+    canonical = tuple(sorted(Counter(inventories["root"]).items()))
+    digest = _hash_bytes(
+        json.dumps(canonical, ensure_ascii=False, separators=(",", ":")).encode(
+            "utf-8"
+        ),
+        "sha256",
+    )
+    return {**inventories, "sha256": digest}
 
 
 def _gate_audit_source(root: Path | str) -> bytes:
@@ -3887,7 +4135,7 @@ def validate_boot_markers(
     gate_message = (
         f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
-    ftb_message = "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables"
+    ftb_message = "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables"
 
     def exact_single(
         record: LogRecord,
@@ -4173,6 +4421,14 @@ def _cli_verify_gate_audit(args: argparse.Namespace) -> None:
     print(f"GATE AUDIT BYTES: OK sha256={digest}")
 
 
+def _cli_verify_seal_sources(args: argparse.Namespace) -> None:
+    result = verify_seal_sources(Path(args.root), Path(args.install))
+    print(
+        "SEAL SOURCES: OK "
+        f"occurrences={len(result['root'])} sha256={result['sha256']}"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AFTERLIGHT RC hygiene verifier")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -4202,6 +4458,10 @@ def build_parser() -> argparse.ArgumentParser:
     gate_audit.add_argument("--install", required=True)
     gate_audit.add_argument("--nonce", required=True)
     gate_audit.set_defaults(handler=_cli_verify_gate_audit)
+    seal_sources = subparsers.add_parser("verify-seal-sources")
+    seal_sources.add_argument("--root", default=".")
+    seal_sources.add_argument("--install", required=True)
+    seal_sources.set_defaults(handler=_cli_verify_seal_sources)
     boot = subparsers.add_parser("verify-boot")
     boot.add_argument("--root", default=".")
     boot.add_argument("--install", required=True)

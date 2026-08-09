@@ -17,6 +17,7 @@ import time
 import unittest
 import warnings
 import zipfile
+from collections import Counter
 from dataclasses import replace
 from unittest import mock
 from pathlib import Path
@@ -35,6 +36,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from live_install_support import requires_live_install
+from tools.tests import test_afterlight_quests as quest_contracts
 
 
 def hygiene_module():
@@ -193,7 +195,7 @@ def valid_boot_log(nonce: str) -> str:
             "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
             f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}",
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -234,7 +236,7 @@ def valid_gate_boot_log(nonce: str, *, gate_first: bool = True) -> str:
             'Done (12.345s)! For help, type "help"',
             *audits,
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -2050,7 +2052,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 304)
+        self.assertEqual(len(indexed), 305)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -2484,12 +2486,24 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             .strip()
         )
 
+    def copy_seal_corpus(self, source_root: Path, destination_root: Path) -> None:
+        relative_paths = {
+            Path(relative.split("!", 1)[0])
+            for relative, _line in self.hygiene.EXPECTED_SEAL_OCCURRENCES
+        }
+        for relative in sorted(relative_paths):
+            source = source_root / relative
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+
     def verify_pair(self, latest: str, debug: str, boot: str | None = None):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
+            self.copy_seal_corpus(ROOT / "server-test", install)
             (install / "logs").mkdir(parents=True)
             gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
-            gate_audit.parent.mkdir(parents=True)
+            gate_audit.parent.mkdir(parents=True, exist_ok=True)
             gate_audit.write_bytes(
                 self.hygiene.render_installed_gate_audit(ROOT, self.nonce)
             )
@@ -2513,9 +2527,10 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
     def verify_bytes(self, latest: bytes, debug: bytes, boot: bytes):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
+            self.copy_seal_corpus(ROOT / "server-test", install)
             (install / "logs").mkdir()
             gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
-            gate_audit.parent.mkdir(parents=True)
+            gate_audit.parent.mkdir(parents=True, exist_ok=True)
             gate_audit.write_bytes(
                 self.hygiene.render_installed_gate_audit(ROOT, self.nonce)
             )
@@ -2746,13 +2761,15 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             rewritten_boot = self.boot.replace(
                 f"{old_workspace}/server-test", encoded_install
             ).replace(old_workspace, encoded_workspace)
+            self.copy_seal_corpus(ROOT, workspace)
+            self.copy_seal_corpus(ROOT / "server-test", install)
             gate_source = workspace / self.hygiene.GATE_AUDIT_RELATIVE
-            gate_source.parent.mkdir(parents=True)
+            gate_source.parent.mkdir(parents=True, exist_ok=True)
             gate_source.write_bytes(
                 (ROOT / self.hygiene.GATE_AUDIT_RELATIVE).read_bytes()
             )
             installed_gate = install / self.hygiene.GATE_AUDIT_RELATIVE
-            installed_gate.parent.mkdir(parents=True)
+            installed_gate.parent.mkdir(parents=True, exist_ok=True)
             installed_gate.write_bytes(
                 self.hygiene.render_installed_gate_audit(workspace, self.nonce)
             )
@@ -3031,8 +3048,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "80d6d4212497f1e019706a9183b4c2092b8678279bddfcffd7cdd640ee972365",
-                227,
+                "be3d18091a1e0cc0e81f2ace182b104da15e70170c7bd4e7a4354156ba13f7b2",
+                237,
             ),
         )
 
@@ -3167,7 +3184,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "DedicatedServer/]: Done (",
             "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
             "[AFTERLIGHT GATE RECIPE AUDIT] OK ",
-            "FTB Quests/]: Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+            "FTB Quests/]: Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
             "MinecraftServer/]: Stopping server",
             "MinecraftServer/]: Saving players",
             "MinecraftServer/]: Saving worlds",
@@ -3193,7 +3210,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             ("DedicatedServer/]: Done (", "[AFTERLIGHT QUEST ITEM AUDIT] OK "),
             (
                 "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
-                "FTB Quests/]: Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+                "FTB Quests/]: Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
             ),
             ("MinecraftServer/]: Saving players", "MinecraftServer/]: Saving worlds"),
         )
@@ -3426,6 +3443,353 @@ class GateRecipeAuditNegativeTests(unittest.TestCase):
             with self.subTest(position=label):
                 changed = "\n".join(changed_lines) + "\n"
                 self.assert_marker_rejected(changed, changed, "fresh")
+
+
+class GateRecipeAdversarialTests(unittest.TestCase):
+    RELATIVE = Path("kubejs/server_scripts/afterlight/gate_recipe_audit.js")
+    EXPECTED_HELPERS = (
+        "afterlightRecipe",
+        "afterlightMechanicalInput",
+        "afterlightCraftingInput",
+        "afterlightAssertMatch",
+        "afterlightAssertNoMatch",
+        "afterlightAssertOnlySealRemainder",
+    )
+    EXECUTABLE_CONTRACTS = {
+        "deletion": (
+            "let deletedPattern = spec.pattern.slice()",
+            "afterlightAssertNoMatch( recipe, afterlightMechanicalInput(deletedPattern, spec.keys),",
+        ),
+        "replacement": (
+            "let replacedPattern = spec.pattern.slice()",
+            "replacementKeys.X = 'minecraft:barrier'",
+            "afterlightAssertNoMatch( recipe, afterlightMechanicalInput(replacedPattern, replacementKeys),",
+        ),
+        "schematic": (
+            "wrongSchematics.filter(candidate => candidate !== spec.keys.S).forEach(candidate => {",
+            "changedKeys.S = candidate",
+            "afterlightMechanicalInput(spec.pattern, changedKeys), `${spec.id} wrong schematic ${candidate}`",
+        ),
+        "gate-specials": (
+            "if (spec.wrongSpecialItems) {",
+            "Object.keys(spec.wrongSpecialItems).forEach(key => {",
+            "changedKeys[key] = spec.wrongSpecialItems[key]",
+            "key === 'B' ? 'wrong blueprint' : 'wrong unique component'",
+        ),
+        "transforms": (
+            "for (let turn = 1; turn <= 3; turn++) {",
+            "rotatedRow += rotatedPattern[row][column]",
+            "afterlightMechanicalInput(rotatedPattern, spec.keys), `${spec.id} rotated ${turn * 90} degrees`",
+        ),
+        "producer-cardinality": (
+            "server.getRecipeManager().getRecipes().forEach(holder => {",
+            "if (producerIds[output].length !== expectedProducerCount[output]) {",
+            "producerIds[AFTERLIGHT.STABILIZER].join('|') !== approvedStabilizers.join('|')",
+        ),
+        "seal-slot": (
+            "for (let wrongSlot = 0; wrongSlot < 9; wrongSlot++) {",
+            "if (wrongSlot === 7) continue",
+            "afterlightCraftingInput(wrongSlotPattern, spec.keys), `${spec.id} wrong Seal slot ${wrongSlot}`",
+        ),
+        "stack-size": (
+            "if (Item.of(draconicRecipes[0].keys.Z).getMaxStackSize() !== 1) {",
+            "throw new Error('Seal maximum stack size changed')",
+        ),
+        "count-two": (
+            "afterlightAssertMatch( recipe, countTwoInput, `${spec.id} unsupported count-two KeepAction characterization`",
+            "if (mergedCount !== 3) throw new Error(`${spec.id} unsupported count-two KeepAction merge changed to ${mergedCount}`)",
+        ),
+    }
+    EXPECTED_SEAL_OCCURRENCES = Counter(
+        (
+            (
+                "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+                "snbt:$.icon.id=kubejs:ascendancy_seal",
+            ),
+            (
+                "config/ftbquests/quests/chapters/245BADE04399406C.snbt",
+                "snbt:$.quests[].rewards[].item.id=kubejs:ascendancy_seal",
+            ),
+            (
+                "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt",
+                "snbt:$.quests[].tasks[].item.id=kubejs:ascendancy_seal",
+            ),
+            (
+                "kubejs/assets/kubejs/lang/en_us.json",
+                '"item.kubejs.ascendancy_seal": "Ascendancy Seal",',
+            ),
+            (
+                "kubejs/server_scripts/afterlight/_constants.js",
+                "SEAL: 'kubejs:ascendancy_seal',",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_draconic.js",
+                "}).keepIngredient({ item: AFTERLIGHT.SEAL, index: 7 })",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "C: 'minecraft:diamond', Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "C: 'minecraft:ender_eye', Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "I: 'minecraft:iron_ingot', R: 'minecraft:redstone', Z: AFTERLIGHT.SEAL",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "countTwoKeys.Z = Item.of(AFTERLIGHT.SEAL, 2)",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 2) {",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
+                "if (!ItemStack.isSameItemSameComponents(stack, Item.of(AFTERLIGHT.SEAL)) || stack.getCount() !== 1) {",
+            ),
+            (
+                "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+                '"kubejs:ascendancy_seal",',
+            ),
+            (
+                "kubejs/startup_scripts/afterlight/registry.js",
+                "event.create('ascendancy_seal')",
+            ),
+        )
+    )
+    UNAUTHORIZED_SEAL_SOURCES = (
+        (
+            "recipe",
+            Path("kubejs/server_scripts/afterlight/unauthorized_recipe.js"),
+            "ServerEvents.recipes(event => {\n"
+            "  event.shapeless('kubejs:ascendancy_seal', ['minecraft:dirt'])\n"
+            "})\n",
+        ),
+        (
+            "loot",
+            Path("global_packs/required_data/afterlight/data/afterlight/loot_table/unauthorized.json"),
+            '{"pools":[{"entries":[{"type":"minecraft:item","name":"kubejs:ascendancy_seal"}]}]}\n',
+        ),
+        (
+            "trade",
+            Path("kubejs/server_scripts/afterlight/unauthorized_trade.js"),
+            "MoreJSEvents.villagerTrades(event => {\n"
+            "  event.addTrade('minecraft:librarian', 1, 'minecraft:dirt', 'kubejs:ascendancy_seal')\n"
+            "})\n",
+        ),
+        (
+            "grant",
+            Path("kubejs/server_scripts/afterlight/unauthorized_grant.js"),
+            "PlayerEvents.loggedIn(event => {\n"
+            "  event.player.give('kubejs:ascendancy_seal')\n"
+            "})\n",
+        ),
+        (
+            "quest-reward",
+            Path("config/ftbquests/quests/chapters/0000000000000000.snbt"),
+            '{ id: "0000000000000000" rewards: [{ type: "item" item: { id: "kubejs:ascendancy_seal" } }] }\n',
+        ),
+        (
+            "generated-data",
+            Path("kubejs/data/afterlight/recipe/unauthorized.json"),
+            '{"type":"minecraft:crafting_shapeless","result":{"id":"kubejs:ascendancy_seal"}}\n',
+        ),
+    )
+
+    def setUp(self) -> None:
+        self.hygiene = hygiene_module()
+        self.source = (ROOT / self.RELATIVE).read_text(encoding="utf-8")
+
+    def copy_seal_corpus(self, base: Path) -> tuple[Path, Path]:
+        root = base / "pack"
+        install = base / "install"
+        for root_name in ("config", "global_packs", "kubejs"):
+            shutil.copytree(ROOT / root_name, root / root_name)
+            shutil.copytree(ROOT / root_name, install / root_name)
+        return root, install
+
+    def executable_source(self, source: str) -> str:
+        without_blocks = re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL)
+        without_comments = re.sub(r"(?m)^\s*//.*$", "", without_blocks)
+        return re.sub(r"\s+", " ", without_comments).strip()
+
+    def assert_executable_contract(self, source: str) -> None:
+        executable = self.executable_source(source)
+        self.assertNotIn("if (false)", executable)
+        self.assertNotIn("if (0)", executable)
+        invalid = []
+        for category, snippets in self.EXECUTABLE_CONTRACTS.items():
+            for snippet in snippets:
+                count = executable.count(snippet)
+                if count != 1:
+                    invalid.append((category, snippet, count))
+        self.assertEqual(
+            invalid,
+            [],
+            "missing or duplicated executable adversarial contracts",
+        )
+
+    def test_adversarial_assertions_extend_the_same_listener_and_marker(self) -> None:
+        self.assertEqual(self.source.count("ServerEvents.loaded("), 1)
+        self.assertEqual(self.source.count("[AFTERLIGHT GATE RECIPE AUDIT] OK"), 1)
+        self.assertEqual(
+            tuple(re.findall(r"\bfunction\s+(\w+)\(", self.source)),
+            self.EXPECTED_HELPERS,
+        )
+        self.assert_executable_contract(self.source)
+        executable = self.executable_source(self.source)
+        marker = executable.index("[AFTERLIGHT GATE RECIPE AUDIT] OK")
+        for snippets in self.EXECUTABLE_CONTRACTS.values():
+            for snippet in snippets:
+                self.assertLess(executable.index(snippet), marker)
+
+    def test_each_adversarial_executable_contract_detects_removal_or_noop(self) -> None:
+        executable = self.executable_source(self.source)
+        self.assert_executable_contract(executable)
+        for category, snippets in self.EXECUTABLE_CONTRACTS.items():
+            for target in snippets:
+                self.assertEqual(executable.count(target), 1, category)
+                for mutation, replacement in (
+                    ("removed", ""),
+                    ("no-op", "void 0"),
+                ):
+                    with self.subTest(
+                        category=category,
+                        target=target,
+                        mutation=mutation,
+                    ):
+                        changed = executable.replace(target, replacement, 1)
+                        with self.assertRaises(AssertionError):
+                            self.assert_executable_contract(changed)
+
+    def test_repository_and_installed_seal_source_scans_fail_closed(self) -> None:
+        verifier = getattr(self.hygiene, "verify_seal_sources", None)
+        self.assertTrue(callable(verifier), "Seal source verifier is missing")
+        with tempfile.TemporaryDirectory() as temporary:
+            root, install = self.copy_seal_corpus(Path(temporary))
+            result = verifier(root, install)
+            expected = self.EXPECTED_SEAL_OCCURRENCES
+            self.assertEqual(Counter(result["root"]), expected)
+            self.assertEqual(Counter(result["install"]), expected)
+
+            act_four = install / "config/ftbquests/quests/chapters/245BADE04399406C.snbt"
+            act_four_text = act_four.read_text(encoding="utf-8")
+            misplaced = act_four_text.replace(
+                'icon: { id: "kubejs:ascendancy_seal" }',
+                'seal_probe: { id: "kubejs:ascendancy_seal" }',
+                1,
+            )
+            self.assertNotEqual(misplaced, act_four_text)
+            act_four.write_text(misplaced, encoding="utf-8")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            act_four.write_text(act_four_text, encoding="utf-8")
+
+            reward_header = (
+                '\t\t\trewards: [\n'
+                '\t\t\t\t{\n'
+                '\t\t\t\t\tid: "DF14A45FDAFFC3A0"'
+            )
+            misplaced_reward = act_four_text.replace(
+                reward_header,
+                reward_header.replace("rewards", "seal_probe"),
+                1,
+            )
+            self.assertNotEqual(misplaced_reward, act_four_text)
+            act_four.write_text(misplaced_reward, encoding="utf-8")
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "Seal source corpus",
+            ):
+                verifier(root, install)
+            act_four.write_text(act_four_text, encoding="utf-8")
+
+            normalized = act_four_text.replace(
+                'icon: { id: "kubejs:ascendancy_seal" }',
+                'icon: {\n\t\tid: "kubejs:ascendancy_seal"\n\t}',
+                1,
+            ).replace(
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+                'item: {\n\t\t\t\t\tcount: 1\n\t\t\t\t\tid: "kubejs:ascendancy_seal"\n\t\t\t\t}',
+                1,
+            )
+            self.assertNotEqual(normalized, act_four_text)
+            act_four.write_text(normalized, encoding="utf-8")
+            postgame = install / "config/ftbquests/quests/chapters/BFF4AF7B0C73F058.snbt"
+            postgame_text = postgame.read_text(encoding="utf-8")
+            normalized_postgame = postgame_text.replace(
+                'item: { count: 1, id: "kubejs:ascendancy_seal" }',
+                'item: {\n\t\t\t\tcount: 1\n\t\t\t\tid: "kubejs:ascendancy_seal"\n\t\t\t}',
+                1,
+            )
+            self.assertNotEqual(normalized_postgame, postgame_text)
+            postgame.write_text(normalized_postgame, encoding="utf-8")
+            normalized_result = verifier(root, install)
+            self.assertEqual(Counter(normalized_result["root"]), expected)
+            self.assertEqual(Counter(normalized_result["install"]), expected)
+
+            for source_class, relative, payload in self.UNAUTHORIZED_SEAL_SOURCES:
+                for location, corpus_root in (("root", root), ("install", install)):
+                    with self.subTest(source_class=source_class, location=location):
+                        unauthorized = corpus_root / relative
+                        unauthorized.parent.mkdir(parents=True, exist_ok=True)
+                        unauthorized.write_text(payload, encoding="utf-8")
+                        with self.assertRaisesRegex(
+                            self.hygiene.VerificationError,
+                            "Seal source corpus",
+                        ):
+                            verifier(root, install)
+                        unauthorized.unlink()
+
+    def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
+        current = valid_gate_boot_log("fresh").replace(
+            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+        )
+        try:
+            projection = self.hygiene.validate_boot_markers(current, "fresh", 0, ROOT)
+        except self.hygiene.VerificationError as error:
+            self.fail(str(error))
+        self.assertIn("FTB Quests load", {label for label, _record in projection})
+        stale = current.replace(
+            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
+        )
+        with self.assertRaisesRegex(
+            self.hygiene.VerificationError,
+            "FTB Quests load",
+        ):
+            self.hygiene.validate_boot_markers(stale, "fresh", 0, ROOT)
+        rc_source = (ROOT / "tools" / "rc_hygiene.py").read_text(encoding="utf-8")
+        server_source = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
+        self.assertIn("verify_seal_sources(root_path, install_path)", rc_source)
+        self.assertIn("verify-seal-sources --root . --install \"$DIR\"", server_source)
 
 
 class FilterAndHarnessNegativeTests(unittest.TestCase):

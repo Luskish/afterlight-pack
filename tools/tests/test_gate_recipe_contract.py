@@ -360,9 +360,22 @@ class GateRecipeContractTests(unittest.TestCase):
         self.assertEqual(source.count("let character = pattern[row][column]"), 2)
         self.assertIn("let entry = new CompoundTag()", source)
         self.assertIn("let stack = Item.of(keys[character]).copy()", source)
-        self.assertIn("let changedPattern = spec.pattern.slice()", source)
+        self.assertIn("let rotatedPattern = spec.pattern.slice()", source)
+        self.assertIn("let nextRotation = []", source)
+        self.assertNotIn("const nextRotation = []", source)
+        self.assertIn("let deletedPattern = spec.pattern.slice()", source)
+        self.assertIn("let replacedPattern = spec.pattern.slice()", source)
+        self.assertIn("let wrongSlotPattern = spec.pattern.slice()", source)
         self.assertIn("let character = spec.pattern[row][column]", source)
-        self.assertIn("let changedKeys = {}", source)
+        self.assertEqual(source.count("const changedKeys = {}"), 3)
+        self.assertIn("let replacementKeys = {}", source)
+        self.assertNotIn("const replacementKeys = {}", source)
+        self.assertIn("let wrongRow = Math.floor(wrongSlot / 3)", source)
+        self.assertNotIn("const wrongRow = Math.floor(wrongSlot / 3)", source)
+        self.assertIn("let wrongColumn = wrongSlot % 3", source)
+        self.assertNotIn("const wrongColumn = wrongSlot % 3", source)
+        self.assertIn("let displaced = spec.pattern[wrongRow][wrongColumn]", source)
+        self.assertNotIn("const displaced = spec.pattern[wrongRow][wrongColumn]", source)
         self.assertIn("let stack = remainder.get(index)", source)
         self.assertIn("let stack = countTwoRemainder.get(index)", source)
         self.assertIn("let mergedCount = countTwoInput.getItem(index).getCount() - 1 + stack.getCount()", source)
@@ -421,7 +434,7 @@ class GateRecipeContractTests(unittest.TestCase):
             "acceptsMirrored()",
             ".width()",
             ".height()",
-            "count-two Seal hazard",
+            "unsupported count-two KeepAction characterization",
             "expectedProducerCount",
         ):
             self.assertIn(proof, source)
@@ -430,6 +443,7 @@ class GateRecipeContractTests(unittest.TestCase):
         harness = (ROOT / "tools" / "server-test.sh").read_text(encoding="utf-8")
         self.assertIn("render-installed-gate-audit", harness)
         self.assertIn("verify-gate-audit", harness)
+        self.assertIn("verify-seal-sources", harness)
         gameplay = ROOT / "docs" / "gameplay" / "gate-of-return.md"
         recovery = ROOT / "docs" / "operations" / "progression-token-recovery.md"
         self.assertTrue(gameplay.is_file())

@@ -356,6 +356,7 @@ if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar --bootstrap-no-u
 fi
 assert_manifest_unchanged
 python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR" | tee "$DIR/afterlight-provenance.txt"
+python3 tools/rc_hygiene.py verify-seal-sources --root . --install "$DIR"
 
 AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
 if [ ! -f "$AUDIT_SCRIPT" ]; then

@@ -17,6 +17,7 @@ import time
 import unittest
 import warnings
 import zipfile
+from dataclasses import replace
 from unittest import mock
 from pathlib import Path
 from urllib.parse import quote
@@ -670,6 +671,100 @@ class StrictLogParserNegativeTests(unittest.TestCase):
             ),
             unrelated,
         )
+
+    def test_supplementaries_way_sign_worker_threads_are_portable_and_narrow(
+        self,
+    ) -> None:
+        hygiene = hygiene_module()
+        message = (
+            "Could not find Sign for wood cataclysm:chorus. Does this block even "
+            "exist? It should! Skipping way sign recipe generation"
+        )
+
+        def record(thread: str, logger: str = "Supplementaries/", text: str = message):
+            return hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                thread,
+                "WARN",
+                logger,
+                text,
+                (),
+                "",
+            )
+
+        local = hygiene.canonical_record_fingerprint(record("pool-14-thread-1"))
+        ci = hygiene.canonical_record_fingerprint(record("pool-5-thread-1"))
+        self.assertEqual(local, ci)
+        self.assertNotEqual(
+            local,
+            hygiene.canonical_record_fingerprint(record("main")),
+        )
+        self.assertNotEqual(
+            local,
+            hygiene.canonical_record_fingerprint(record("pool-14-thread-999")),
+        )
+        self.assertNotEqual(
+            local,
+            hygiene.canonical_record_fingerprint(
+                record("pool-5-thread-1", logger="fixture/")
+            ),
+        )
+        self.assertNotEqual(
+            local,
+            hygiene.canonical_record_fingerprint(
+                record("pool-5-thread-1", text="unreviewed warning")
+            ),
+        )
+
+    def test_lan_pinger_route_warning_is_zero_or_one_exact_record(self) -> None:
+        hygiene = hygiene_module()
+        stable = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "main",
+            "WARN",
+            "fixture/",
+            "stable reviewed warning",
+            (),
+            "",
+        )
+        optional = hygiene.LogRecord(
+            "08Aug2026 12:00:00.000",
+            "LanServerPinger #1",
+            "WARN",
+            "net.minecraft.client.server.LanServerPinger/",
+            "LanServerPinger: No route to host",
+            (),
+            "",
+        )
+        digest, total, unique = hygiene.warning_multiset_evidence((stable,))
+        with (
+            mock.patch.object(hygiene, "REVIEWED_WARNING_MULTISET_SHA256", digest),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_TOTAL", total),
+            mock.patch.object(hygiene, "REVIEWED_WARNING_UNIQUE", unique),
+        ):
+            hygiene._validate_reviewed_warning_multiset((stable,), "fixture")
+            hygiene._validate_reviewed_warning_multiset(
+                (stable, optional), "fixture"
+            )
+            with self.assertRaisesRegex(
+                hygiene.VerificationError, "optional environmental WARN"
+            ):
+                hygiene._validate_reviewed_warning_multiset(
+                    (stable, optional, optional), "fixture"
+                )
+            mutations = (
+                replace(optional, thread="main"),
+                replace(optional, thread="LanServerPinger #2"),
+                replace(optional, message="LanServerPinger: changed"),
+                replace(optional, continuations=("Caused by: fixture.Hidden",)),
+            )
+            for changed in mutations:
+                with self.subTest(changed=changed), self.assertRaises(
+                    hygiene.VerificationError
+                ):
+                    hygiene._validate_reviewed_warning_multiset(
+                        (stable, changed), "fixture"
+                    )
 
     def test_mixin_synthetic_rename_session_id_is_the_only_normalized_field(
         self,
@@ -2273,6 +2368,21 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         result = self.verify_pair(self.latest, self.debug)
         self.assertEqual(sum(result["errors"].values()), 14)
         self.assertEqual(sum(result["warnings"].values()), 39)
+
+    def test_optional_lan_warning_presence_must_agree_across_logs(self) -> None:
+        def remove_optional_warning(log_text: str) -> str:
+            lines = tuple(
+                line
+                for line in log_text.splitlines()
+                if "LanServerPinger: No route to host" in line
+            )
+            self.assertEqual(len(lines), 1)
+            return log_text.replace(lines[0] + "\n", "", 1)
+
+        without_latest = remove_optional_warning(self.latest)
+        without_debug = remove_optional_warning(self.debug)
+        self.assert_pair_rejected(without_latest, self.debug)
+        self.assert_pair_rejected(self.latest, without_debug)
 
     def test_malformed_error_and_fatal_headers_in_both_logs_are_rejected(self) -> None:
         variants = (

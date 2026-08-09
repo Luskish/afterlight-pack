@@ -468,10 +468,18 @@ YUNGS_VOLATILE_WORKER_WARNINGS = frozenset(
         "exists in net.minecraft.world.level.levelgen.Beardifier",
     }
 )
-REVIEWED_WARNING_TOTAL = 478
-REVIEWED_WARNING_UNIQUE = 384
+SUPPLEMENTARIES_VOLATILE_WORKER_WARNINGS = frozenset(
+    {
+        "Could not find Sign for wood cataclysm:chorus. Does this block even "
+        "exist? It should! Skipping way sign recipe generation",
+        "Could not find Sign for wood iceandfire:dreadwood. Does this block even "
+        "exist? It should! Skipping way sign recipe generation",
+    }
+)
+REVIEWED_WARNING_TOTAL = 477
+REVIEWED_WARNING_UNIQUE = 383
 REVIEWED_WARNING_MULTISET_SHA256 = (
-    "06e7b2de112448be970d0fccad0eee682928af8aec24172c229a88c8a93890bd"
+    "5033a05cb2b3d17833c8824ef935e1190608faed1dd7ee9a370b502fb1cd5f2a"
 )
 REVIEWED_DUPLICATE_ZIP_MEMBERS = {
     ("mods/ars-nouveau.pw.toml", "META-INF/LICENSE.txt"): (
@@ -2415,6 +2423,15 @@ def _normalized_record_thread(record: LogRecord) -> str:
         and re.fullmatch(r"Worker-Main-\d+", record.thread)
     ):
         return "Worker-Main-N"
+    if (
+        record.logger == "Supplementaries/"
+        and record.level == "WARN"
+        and record.message in SUPPLEMENTARIES_VOLATILE_WORKER_WARNINGS
+        and re.fullmatch(r"pool-\d+-thread-\d+", record.thread)
+    ):
+        return re.sub(
+            r"(?<=pool-)\d+(?=-thread-)", "N", record.thread, count=1
+        )
     return record.thread
 
 
@@ -2562,15 +2579,34 @@ def warning_multiset_evidence(
     )
 
 
+def _is_optional_environment_warning(record: LogRecord) -> bool:
+    return (
+        record.level == "WARN"
+        and record.logger == "net.minecraft.client.server.LanServerPinger/"
+        and record.message == "LanServerPinger: No route to host"
+        and not record.continuations
+        and record.thread == "LanServerPinger #1"
+    )
+
+
 def _validate_reviewed_warning_multiset(
     records: Sequence[LogRecord],
     label: str,
     *,
     workspace_root: Path | str | None = None,
     install_root: Path | str | None = None,
-) -> None:
+) -> int:
+    optional_count = sum(_is_optional_environment_warning(record) for record in records)
+    if optional_count > 1:
+        raise VerificationError(
+            f"{label} optional environmental WARN occurred {optional_count} times"
+        )
     actual = warning_multiset_evidence(
-        records,
+        tuple(
+            record
+            for record in records
+            if not _is_optional_environment_warning(record)
+        ),
         workspace_root=workspace_root,
         install_root=install_root,
     )
@@ -2584,6 +2620,7 @@ def _validate_reviewed_warning_multiset(
             f"{label} complete WARN fingerprint multiset changed: "
             f"expected={expected} actual={actual}"
         )
+    return optional_count
 
 
 def _canonical_fields_tuple(
@@ -3032,18 +3069,22 @@ def _validate_canonical_log_pair(
             "latest.log and debug.log canonical ERROR/FATAL identities differ"
         )
 
-    _validate_reviewed_warning_multiset(
+    latest_optional_warning_count = _validate_reviewed_warning_multiset(
         latest_records,
         "latest.log",
         workspace_root=workspace_root,
         install_root=install_root,
     )
-    _validate_reviewed_warning_multiset(
+    debug_optional_warning_count = _validate_reviewed_warning_multiset(
         debug_records,
         "debug.log",
         workspace_root=workspace_root,
         install_root=install_root,
     )
+    if latest_optional_warning_count != debug_optional_warning_count:
+        raise VerificationError(
+            "latest.log and debug.log optional environmental WARN presence differs"
+        )
     warning_allowances = project_warning_allowances()
     warning_identities = {
         (allowance.level, allowance.logger, allowance.message)

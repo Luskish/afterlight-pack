@@ -3774,7 +3774,12 @@ SEAL_CODE_MAX_FILE_BYTES = 4 * 1024 * 1024
 SEAL_CODE_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_CODE_MAX_FILES = 4_096
 SEAL_CODE_MAX_TOTAL_PATH_BYTES = 1024 * 1024
+SEAL_WALK_MAX_ENTRIES = 100_000
+SEAL_WALK_MAX_TOTAL_PATH_BYTES = 16 * 1024 * 1024
 SEAL_METADATA_MAX_FILE_BYTES = 1024 * 1024
+SEAL_METADATA_MAX_FILES = 4_096
+SEAL_METADATA_MAX_TOTAL_PATH_BYTES = 1024 * 1024
+SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
@@ -3885,6 +3890,12 @@ class _SealZipMetadata:
     central_directory_offset: int
 
 
+@dataclass(frozen=True)
+class _SealWalkFile:
+    relative: PurePosixPath
+    snapshot: tuple[int, int, int, int, int]
+
+
 def _seal_file_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
     return (
         value.st_dev,
@@ -3893,6 +3904,145 @@ def _seal_file_identity(value: os.stat_result) -> tuple[int, int, int, int, int]
         value.st_mtime_ns,
         value.st_ctime_ns,
     )
+
+
+def _seal_bounded_walk(
+    root: Path,
+    roots: Iterable[PurePosixPath],
+    label: str,
+) -> Iterable[_SealWalkFile]:
+    root = _validated_root(root, f"{label} Seal source traversal root")
+    entry_count = 0
+    total_path_bytes = 0
+    pending: list[
+        tuple[PurePosixPath, tuple[int, int, int, int, int]]
+    ] = []
+
+    def account(
+        relative: PurePosixPath,
+        value: os.stat_result,
+    ) -> tuple[int, int, int, int, int]:
+        nonlocal entry_count, total_path_bytes
+        entry_count += 1
+        if entry_count > SEAL_WALK_MAX_ENTRIES:
+            raise VerificationError(
+                f"Seal source traversal entry count exceeds limit: {entry_count}"
+            )
+        total_path_bytes += len(relative.as_posix().encode("utf-8"))
+        if total_path_bytes > SEAL_WALK_MAX_TOTAL_PATH_BYTES:
+            raise VerificationError(
+                "Seal source aggregate traversal path bytes exceeds limit: "
+                f"{total_path_bytes}"
+            )
+        return _seal_file_identity(value)
+
+    root_entries: list[
+        tuple[PurePosixPath, tuple[int, int, int, int, int]]
+    ] = []
+    for relative in roots:
+        canonical = _safe_relative_path(
+            relative.as_posix(), f"{label} Seal source root"
+        )
+        path = root / canonical
+        try:
+            root_stat = path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source root "
+                f"{canonical.as_posix()}: {error}"
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            raise VerificationError(
+                f"invalid {label} Seal source root: {canonical.as_posix()}"
+            )
+        root_entries.append((canonical, account(canonical, root_stat)))
+    pending.extend(sorted(root_entries, reverse=True))
+
+    while pending:
+        relative, expected_snapshot = pending.pop()
+        directory_path = root / relative
+        try:
+            before_scan = directory_path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        if (
+            stat.S_ISLNK(before_scan.st_mode)
+            or not stat.S_ISDIR(before_scan.st_mode)
+            or _seal_file_identity(before_scan) != expected_snapshot
+        ):
+            raise VerificationError(
+                f"{label} Seal source directory changed during traversal: "
+                f"{relative.as_posix()}"
+            )
+        children: list[
+            tuple[
+                PurePosixPath,
+                os.stat_result,
+                tuple[int, int, int, int, int],
+            ]
+        ] = []
+        try:
+            with os.scandir(directory_path) as entries:
+                for entry in entries:
+                    child_relative = _safe_relative_path(
+                        (relative / entry.name).as_posix(),
+                        f"{label} Seal source entry",
+                    )
+                    try:
+                        child_stat = entry.stat(follow_symlinks=False)
+                    except OSError as error:
+                        raise VerificationError(
+                            f"cannot inspect {label} Seal source entry "
+                            f"{child_relative.as_posix()}: {error}"
+                        ) from error
+                    if stat.S_ISLNK(child_stat.st_mode):
+                        raise VerificationError(
+                            f"symlink in {label} Seal source traversal: "
+                            f"{child_relative.as_posix()}"
+                        )
+                    if not (
+                        stat.S_ISDIR(child_stat.st_mode)
+                        or stat.S_ISREG(child_stat.st_mode)
+                    ):
+                        raise VerificationError(
+                            f"non-regular {label} Seal source entry: "
+                            f"{child_relative.as_posix()}"
+                        )
+                    snapshot = account(child_relative, child_stat)
+                    children.append((child_relative, child_stat, snapshot))
+        except VerificationError:
+            raise
+        except OSError as error:
+            raise VerificationError(
+                f"cannot scan {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        try:
+            after_scan = directory_path.lstat()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot recheck {label} Seal source directory "
+                f"{relative.as_posix()}: {error}"
+            ) from error
+        if _seal_file_identity(after_scan) != expected_snapshot:
+            raise VerificationError(
+                f"{label} Seal source directory changed during traversal: "
+                f"{relative.as_posix()}"
+            )
+        child_directories: list[
+            tuple[PurePosixPath, tuple[int, int, int, int, int]]
+        ] = []
+        for child_relative, child_stat, snapshot in sorted(
+            children, key=lambda child: child[0].as_posix()
+        ):
+            if stat.S_ISDIR(child_stat.st_mode):
+                child_directories.append((child_relative, snapshot))
+            else:
+                yield _SealWalkFile(child_relative, snapshot)
+        pending.extend(reversed(child_directories))
 
 
 class _SealStableFile:
@@ -3904,12 +4054,14 @@ class _SealStableFile:
         *,
         max_bytes: int | None = None,
         size_kind: str = "file",
+        expected_identity: tuple[int, int, int, int, int] | None = None,
     ) -> None:
         self.root = root
         self.relative = relative
         self.label = label
         self.max_bytes = max_bytes
         self.size_kind = size_kind
+        self.expected_identity = expected_identity
         self.path: Path | None = None
         self.handle = None
         self.snapshot: tuple[int, int, int, int, int] | None = None
@@ -3942,9 +4094,27 @@ class _SealStableFile:
                 raise VerificationError(
                     f"symlink in {self.label} path: {self.relative.as_posix()}"
                 )
+        if target_stat is None or not stat.S_ISREG(target_stat.st_mode):
+            raise VerificationError(
+                f"non-regular {self.label} path: {self.relative.as_posix()}"
+            )
+        if target_stat.st_nlink != 1:
+            raise VerificationError(
+                f"unsafe link count for {self.label} path: "
+                f"{self.relative.as_posix()}"
+            )
+        if (
+            self.expected_identity is not None
+            and _seal_file_identity(target_stat) != self.expected_identity
+        ):
+            raise VerificationError(
+                f"{self.label} changed before open: {self.relative.as_posix()}"
+            )
         flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_NONBLOCK"):
+            flags |= os.O_NONBLOCK
         try:
             descriptor = os.open(target, flags)
         except OSError as error:
@@ -4436,18 +4606,96 @@ def _seal_archive_review_labels(root: Path) -> dict[str, str]:
         mods_root_stat.st_mode
     ):
         raise VerificationError("invalid Seal archive metadata root")
+    metadata_files: list[_SealWalkFile] = []
+    metadata_count = 0
+    total_path_bytes = 0
+    total_content_bytes = 0
+    try:
+        with os.scandir(mods_root) as entries:
+            for entry in entries:
+                if not entry.name.endswith(".pw.toml"):
+                    continue
+                metadata_relative = _safe_relative_path(
+                    (PurePosixPath("mods") / entry.name).as_posix(),
+                    "Seal archive metadata",
+                )
+                metadata_count += 1
+                if metadata_count > SEAL_METADATA_MAX_FILES:
+                    raise VerificationError(
+                        "Seal archive metadata file count exceeds limit: "
+                        f"{metadata_count}"
+                    )
+                total_path_bytes += len(
+                    metadata_relative.as_posix().encode("utf-8")
+                )
+                if total_path_bytes > SEAL_METADATA_MAX_TOTAL_PATH_BYTES:
+                    raise VerificationError(
+                        "Seal archive aggregate metadata path bytes exceeds limit: "
+                        f"{total_path_bytes}"
+                    )
+                try:
+                    metadata_stat = entry.stat(follow_symlinks=False)
+                except OSError as error:
+                    raise VerificationError(
+                        "cannot inspect Seal archive metadata "
+                        f"{metadata_relative.as_posix()}: {error}"
+                    ) from error
+                if stat.S_ISLNK(metadata_stat.st_mode):
+                    raise VerificationError(
+                        "symlink in Seal archive metadata path: "
+                        f"{metadata_relative.as_posix()}"
+                    )
+                if not stat.S_ISREG(metadata_stat.st_mode):
+                    raise VerificationError(
+                        "non-regular Seal archive metadata path: "
+                        f"{metadata_relative.as_posix()}"
+                    )
+                if metadata_stat.st_size > SEAL_METADATA_MAX_FILE_BYTES:
+                    raise VerificationError(
+                        "Seal source metadata file size exceeds limit: "
+                        f"{metadata_relative.as_posix()} size={metadata_stat.st_size}"
+                    )
+                total_content_bytes += metadata_stat.st_size
+                if total_content_bytes > SEAL_METADATA_MAX_TOTAL_BYTES:
+                    raise VerificationError(
+                        "Seal archive aggregate metadata bytes exceeds limit: "
+                        f"{total_content_bytes}"
+                    )
+                metadata_files.append(
+                    _SealWalkFile(
+                        metadata_relative,
+                        _seal_file_identity(metadata_stat),
+                    )
+                )
+    except VerificationError:
+        raise
+    except OSError as error:
+        raise VerificationError(
+            f"cannot scan Seal archive metadata root: {error}"
+        ) from error
+    try:
+        final_mods_root_stat = mods_root.lstat()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot recheck Seal archive metadata root: {error}"
+        ) from error
+    if _seal_file_identity(final_mods_root_stat) != _seal_file_identity(
+        mods_root_stat
+    ):
+        raise VerificationError("Seal archive metadata root changed during scan")
+
     labels: dict[str, str] = {}
-    for metadata_path in sorted(mods_root.glob("*.pw.toml")):
-        metadata_relative = _safe_relative_path(
-            metadata_path.relative_to(root).as_posix(),
-            "Seal archive metadata",
-        )
+    for metadata_file in sorted(
+        metadata_files, key=lambda item: item.relative.as_posix()
+    ):
+        metadata_relative = metadata_file.relative
         with _SealStableFile(
             root,
             metadata_relative,
             "Seal archive metadata",
             max_bytes=SEAL_METADATA_MAX_FILE_BYTES,
             size_kind="metadata file",
+            expected_identity=metadata_file.snapshot,
         ) as stable:
             payload = stable.read_bytes(SEAL_METADATA_MAX_FILE_BYTES)
             try:
@@ -4494,59 +4742,41 @@ def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
     total_bytes = 0
     file_count = 0
     total_path_bytes = 0
-    for directory, directory_names, file_names in os.walk(
-        code_root, followlinks=False
+    for walked_file in _seal_bounded_walk(
+        root,
+        (PurePosixPath("kubejs"),),
+        label,
     ):
-        directory_path = Path(directory)
-        directory_names.sort()
-        file_names.sort()
-        for name in directory_names:
-            relative = _safe_relative_path(
-                (directory_path / name).relative_to(root).as_posix(),
-                f"{label} Seal source code directory",
+        relative = walked_file.relative
+        if relative.suffix.lower() not in SEAL_CODE_SUFFIXES:
+            continue
+        file_count += 1
+        if file_count > SEAL_CODE_MAX_FILES:
+            raise VerificationError(
+                f"Seal source code file count exceeds limit: {file_count}"
             )
-            child_stat = (directory_path / name).lstat()
-            if stat.S_ISLNK(child_stat.st_mode) or not stat.S_ISDIR(
-                child_stat.st_mode
-            ):
-                raise VerificationError(
-                    f"invalid {label} Seal source code directory: "
-                    f"{relative.as_posix()}"
-                )
-        for name in file_names:
-            path = directory_path / name
-            if path.suffix.lower() not in SEAL_CODE_SUFFIXES:
-                continue
-            relative = _safe_relative_path(
-                path.relative_to(root).as_posix(),
-                f"{label} Seal source code file",
+        total_path_bytes += len(relative.as_posix().encode("utf-8"))
+        if total_path_bytes > SEAL_CODE_MAX_TOTAL_PATH_BYTES:
+            raise VerificationError(
+                "Seal source aggregate code path bytes exceeds limit: "
+                f"{total_path_bytes}"
             )
-            file_count += 1
-            if file_count > SEAL_CODE_MAX_FILES:
-                raise VerificationError(
-                    f"Seal source code file count exceeds limit: {file_count}"
-                )
-            total_path_bytes += len(relative.as_posix().encode("utf-8"))
-            if total_path_bytes > SEAL_CODE_MAX_TOTAL_PATH_BYTES:
-                raise VerificationError(
-                    "Seal source aggregate code path bytes exceeds limit: "
-                    f"{total_path_bytes}"
-                )
-            with _SealStableFile(
-                root,
-                relative,
-                f"{label} Seal source code file",
-                max_bytes=SEAL_CODE_MAX_FILE_BYTES,
-                size_kind="code file",
-            ) as stable:
-                payload = stable.read_bytes(SEAL_CODE_MAX_FILE_BYTES)
-            total_bytes += len(payload)
-            if total_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
-                raise VerificationError(
-                    f"Seal source aggregate code bytes exceeds limit: "
-                    f"{total_bytes}"
-                )
-            inventory[relative.as_posix()] = payload
+        with _SealStableFile(
+            root,
+            relative,
+            f"{label} Seal source code file",
+            max_bytes=SEAL_CODE_MAX_FILE_BYTES,
+            size_kind="code file",
+            expected_identity=walked_file.snapshot,
+        ) as stable:
+            payload = stable.read_bytes(SEAL_CODE_MAX_FILE_BYTES)
+        total_bytes += len(payload)
+        if total_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
+            raise VerificationError(
+                f"Seal source aggregate code bytes exceeds limit: "
+                f"{total_bytes}"
+            )
+        inventory[relative.as_posix()] = payload
     return inventory
 
 
@@ -5223,7 +5453,7 @@ def _seal_occurrences(
                 f"{relative_label}: {error}"
             ) from error
 
-    code_scan_bytes = 0
+    scan_roots: list[PurePosixPath] = []
     for root_name in SEAL_SCAN_ROOTS:
         scan_root = root / root_name
         try:
@@ -5238,75 +5468,56 @@ def _seal_occurrences(
             raise VerificationError(
                 f"invalid {label} Seal source root: {root_name}"
             )
-        for directory, directory_names, file_names in os.walk(
-            scan_root, followlinks=False
-        ):
-            directory_path = Path(directory)
-            directory_names.sort()
-            file_names.sort()
-            for name in directory_names:
-                relative = _safe_relative_path(
-                    (directory_path / name).relative_to(root).as_posix(),
-                    f"{label} Seal source directory",
+        scan_roots.append(PurePosixPath(root_name))
+
+    code_scan_bytes = 0
+    for walked_file in _seal_bounded_walk(root, scan_roots, label):
+        relative = walked_file.relative
+        suffix = relative.suffix.lower()
+        is_code = suffix in SEAL_CODE_SUFFIXES
+        with _SealStableFile(
+            root,
+            relative,
+            f"{label} Seal source file",
+            max_bytes=SEAL_CODE_MAX_FILE_BYTES if is_code else None,
+            size_kind="code file" if is_code else "file",
+            expected_identity=walked_file.snapshot,
+        ) as stable:
+            declared_archive = suffix in (".jar", ".zip")
+            metadata = _seal_zip_preflight(
+                stable.handle,
+                relative.as_posix(),
+                required=declared_archive,
+            )
+            if metadata is not None:
+                scan_archive(
+                    relative.as_posix(),
+                    review_labels.get(relative.as_posix(), relative.as_posix()),
+                    stable.handle,
+                    1,
+                    metadata,
                 )
-                child_stat = (directory_path / name).lstat()
-                if stat.S_ISLNK(child_stat.st_mode) or not stat.S_ISDIR(
-                    child_stat.st_mode
-                ):
+                continue
+            raw_limit = (
+                SEAL_CODE_MAX_FILE_BYTES
+                if is_code
+                else SEAL_ARCHIVE_MAX_MEMBER_BYTES
+            )
+            if stable.size > raw_limit:
+                size_kind = "code file" if is_code else "raw file"
+                raise VerificationError(
+                    f"Seal source {size_kind} size exceeds limit: "
+                    f"{relative.as_posix()} size={stable.size}"
+                )
+            payload = stable.read_bytes(raw_limit)
+            if is_code:
+                code_scan_bytes += len(payload)
+                if code_scan_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
                     raise VerificationError(
-                        f"invalid {label} Seal source directory: {relative.as_posix()}"
+                        "Seal source aggregate code bytes exceeds limit: "
+                        f"{code_scan_bytes}"
                     )
-            for name in file_names:
-                relative = _safe_relative_path(
-                    (directory_path / name).relative_to(root).as_posix(),
-                    f"{label} Seal source file",
-                )
-                suffix = relative.suffix.lower()
-                is_code = suffix in SEAL_CODE_SUFFIXES
-                with _SealStableFile(
-                    root,
-                    relative,
-                    f"{label} Seal source file",
-                    max_bytes=SEAL_CODE_MAX_FILE_BYTES if is_code else None,
-                    size_kind="code file" if is_code else "file",
-                ) as stable:
-                    declared_archive = suffix in (".jar", ".zip")
-                    metadata = _seal_zip_preflight(
-                        stable.handle,
-                        relative.as_posix(),
-                        required=declared_archive,
-                    )
-                    if metadata is not None:
-                        scan_archive(
-                            relative.as_posix(),
-                            review_labels.get(
-                                relative.as_posix(), relative.as_posix()
-                            ),
-                            stable.handle,
-                            1,
-                            metadata,
-                        )
-                        continue
-                    raw_limit = (
-                        SEAL_CODE_MAX_FILE_BYTES
-                        if is_code
-                        else SEAL_ARCHIVE_MAX_MEMBER_BYTES
-                    )
-                    if stable.size > raw_limit:
-                        size_kind = "code file" if is_code else "raw file"
-                        raise VerificationError(
-                            f"Seal source {size_kind} size exceeds limit: "
-                            f"{relative.as_posix()} size={stable.size}"
-                        )
-                    payload = stable.read_bytes(raw_limit)
-                    if is_code:
-                        code_scan_bytes += len(payload)
-                        if code_scan_bytes > SEAL_CODE_MAX_TOTAL_BYTES:
-                            raise VerificationError(
-                                "Seal source aggregate code bytes exceeds limit: "
-                                f"{code_scan_bytes}"
-                            )
-                    scan_payload(relative.as_posix(), payload)
+            scan_payload(relative.as_posix(), payload)
     return tuple(occurrences)
 
 

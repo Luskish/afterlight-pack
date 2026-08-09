@@ -4506,6 +4506,75 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             ):
                 self.hygiene._seal_code_inventory(path_root, "fixture")
 
+    def test_seal_walkers_fail_closed_on_scandir_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            cases = (
+                (
+                    "code",
+                    base / "code/kubejs/nested",
+                    lambda root: self.hygiene._seal_code_inventory(root, "fixture"),
+                ),
+                (
+                    "occurrences",
+                    base / "occurrences/config/nested",
+                    lambda root: self.hygiene._seal_occurrences(root, "fixture"),
+                ),
+            )
+            real_scandir = os.scandir
+            for name, scan_root, scanner in cases:
+                with self.subTest(name=name):
+                    scan_root.mkdir(parents=True)
+                    root = scan_root.parents[1]
+
+                    def fail_target(path):
+                        if Path(path) == scan_root:
+                            raise OSError("injected scandir failure")
+                        return real_scandir(path)
+
+                    with mock.patch.object(
+                        self.hygiene.os,
+                        "scandir",
+                        side_effect=fail_target,
+                    ), self.assertRaisesRegex(
+                        self.hygiene.VerificationError,
+                        "cannot scan.*injected scandir failure",
+                    ):
+                        scanner(root)
+
+    def test_seal_walkers_budget_every_entry_and_relative_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            code_root = base / "code"
+            ignored = code_root / "kubejs/nested/ignored.bin"
+            ignored.parent.mkdir(parents=True)
+            ignored.touch()
+            with mock.patch.object(
+                self.hygiene,
+                "SEAL_WALK_MAX_ENTRIES",
+                1,
+                create=True,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "entry count",
+            ):
+                self.hygiene._seal_code_inventory(code_root, "fixture")
+
+            occurrence_root = base / "occurrences"
+            source = occurrence_root / "config/ignored.bin"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"benign")
+            with mock.patch.object(
+                self.hygiene,
+                "SEAL_WALK_MAX_TOTAL_PATH_BYTES",
+                len("config".encode("utf-8")) - 1,
+                create=True,
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "aggregate traversal path bytes",
+            ):
+                self.hygiene._seal_occurrences(occurrence_root, "fixture")
+
     def test_seal_metadata_labels_reject_symlinked_metadata(self) -> None:
         metadata_bytes = (
             'name = "Fixture"\n'
@@ -4551,6 +4620,77 @@ class GateRecipeAdversarialTests(unittest.TestCase):
                 "metadata file size",
             ):
                 self.hygiene._seal_archive_review_labels(oversized_root)
+
+    def test_seal_metadata_enumeration_has_aggregate_preparse_budgets(self) -> None:
+        metadata = (
+            'name = "Fixture"\n'
+            'filename = "fixture.jar"\n'
+            'side = "both"\n'
+        ).encode("utf-8")
+        for budget, expected in (
+            ("count", "metadata file count"),
+            ("path", "aggregate metadata path bytes"),
+            ("content", "aggregate metadata bytes"),
+        ):
+            with self.subTest(budget=budget):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    mods = root / "mods"
+                    mods.mkdir()
+                    first = mods / "first.pw.toml"
+                    first.write_bytes(metadata)
+                    patches = []
+                    if budget == "count":
+                        second = mods / "second.pw.toml"
+                        second.write_bytes(
+                            metadata.replace(b"fixture.jar", b"second.jar")
+                        )
+                        patches.append(
+                            mock.patch.object(
+                                self.hygiene,
+                                "SEAL_METADATA_MAX_FILES",
+                                1,
+                                create=True,
+                            )
+                        )
+                    elif budget == "path":
+                        relative_bytes = len(
+                            first.relative_to(root).as_posix().encode("utf-8")
+                        )
+                        patches.append(
+                            mock.patch.object(
+                                self.hygiene,
+                                "SEAL_METADATA_MAX_TOTAL_PATH_BYTES",
+                                relative_bytes - 1,
+                                create=True,
+                            )
+                        )
+                    else:
+                        patches.append(
+                            mock.patch.object(
+                                self.hygiene,
+                                "SEAL_METADATA_MAX_TOTAL_BYTES",
+                                len(metadata) - 1,
+                                create=True,
+                            )
+                        )
+                    for patcher in patches:
+                        patcher.start()
+                    try:
+                        with mock.patch.object(
+                            self.hygiene.tomllib,
+                            "loads",
+                            side_effect=AssertionError(
+                                "metadata parsed before aggregate preflight"
+                            ),
+                        ), self.assertRaisesRegex(
+                            self.hygiene.VerificationError,
+                            expected,
+                        ):
+                            self.hygiene._seal_archive_review_labels(root)
+                    finally:
+                        for patcher in reversed(patches):
+                            patcher.stop()
 
     def test_seal_metadata_labels_reject_path_identity_changes(self) -> None:
         metadata_bytes = (
@@ -4611,6 +4751,95 @@ class GateRecipeAdversarialTests(unittest.TestCase):
 
             self.assertEqual(inventory, {"kubejs/source.js": b"const safe = true\n"})
             self.assertNotIn(code, read_paths)
+
+    def test_seal_stable_file_rejects_fifo_before_open(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fifo = root / "kubejs/blocking.js"
+            fifo.parent.mkdir(parents=True)
+            os.mkfifo(fifo)
+            with mock.patch.object(
+                self.hygiene.os,
+                "open",
+                side_effect=AssertionError("FIFO reached os.open"),
+            ), self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "non-regular",
+            ):
+                with self.hygiene._SealStableFile(
+                    root,
+                    self.hygiene.PurePosixPath("kubejs/blocking.js"),
+                    "fixture",
+                ):
+                    pass
+
+    def test_seal_stable_file_uses_nonblocking_open_when_available(self) -> None:
+        if not hasattr(os, "O_NONBLOCK"):
+            self.skipTest("O_NONBLOCK is unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "kubejs/source.js"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"const safe = true\n")
+            real_open = os.open
+            observed_flags: list[int] = []
+
+            def record_open(path, flags, *args):
+                observed_flags.append(flags)
+                return real_open(path, flags, *args)
+
+            with mock.patch.object(
+                self.hygiene.os,
+                "open",
+                side_effect=record_open,
+            ):
+                with self.hygiene._SealStableFile(
+                    root,
+                    self.hygiene.PurePosixPath("kubejs/source.js"),
+                    "fixture",
+                ):
+                    pass
+
+            self.assertEqual(len(observed_flags), 1)
+            self.assertTrue(observed_flags[0] & os.O_NONBLOCK)
+
+    def test_seal_fifo_rejection_completes_in_bounded_subprocess(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fifo = root / "kubejs/blocking.js"
+            fifo.parent.mkdir(parents=True)
+            os.mkfifo(fifo)
+            script = textwrap.dedent(
+                f"""
+                import sys
+                from pathlib import Path, PurePosixPath
+
+                sys.path.insert(0, {str(TOOLS)!r})
+                import rc_hygiene
+
+                try:
+                    with rc_hygiene._SealStableFile(
+                        Path({str(root)!r}),
+                        PurePosixPath("kubejs/blocking.js"),
+                        "subprocess FIFO",
+                    ):
+                        pass
+                except rc_hygiene.VerificationError as error:
+                    print(error)
+                    raise SystemExit(0)
+                raise SystemExit(3)
+                """
+            )
+
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertRegex(result.stdout, "non-regular")
 
     def test_seal_zip_metadata_is_preflighted_before_zipfile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

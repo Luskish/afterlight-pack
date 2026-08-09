@@ -15,7 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
 FTB_LOCALIZATION_KEY = re.compile(
-    r"^(?P<prefix>(?:chapter|chapter_group|quest|task|reward)\.)"
+    r"^(?P<prefix>(?:chapter|chapter_group|image|quest|quest_link|reward|reward_table|task)\.)"
     r"(?P<identifier>[0-9A-F]{16})(?P<suffix>\..+)$"
 )
 MAX_FTB_ID = (1 << 63) - 1
@@ -26,6 +26,9 @@ MIGRATION_JOURNAL_BACKUP_NAME = "journal.backup.json"
 MIGRATION_STAGE_BACKUP_NAME = "stage-backup"
 MIGRATION_STATE_ROOT_ENV = "AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT"
 MIGRATION_TRANSACTION_VERSION = 2
+MIGRATION_REWARD_MAX_DEPTH = 32
+MIGRATION_REWARD_MAX_NODES = 100_000
+FTB_TABLE_REWARD_TYPES = frozenset({"all_table", "choice", "loot", "random"})
 DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
@@ -115,6 +118,18 @@ class _SnbtToken:
     value: str
     offset: int
     end: int
+
+
+@dataclass
+class _MigrationRewardBudget:
+    nodes: int = 0
+
+
+@dataclass(frozen=True)
+class _MigrationRewardRecord:
+    identifier: str
+    owner: str
+    table_reference: int | None
 
 
 @dataclass(frozen=True)
@@ -757,6 +772,52 @@ def _migration_image_click_action(value: str) -> str:
     return f"{prefix}{migrated}{separator}{suffix}"
 
 
+def _migration_legacy_image_click(value: str) -> str:
+    if not value.startswith("#"):
+        return value
+    identifier, separator, suffix = value[1:].partition("/")
+    if HEX_ID.fullmatch(identifier) is None:
+        raise ValueError(f"malformed legacy image click action: {value!r}")
+    migrated = ftb_safe_id(identifier)
+    return f"#{migrated}{separator}{suffix}"
+
+
+def _migration_reward_node_depth(
+    relative: Path,
+    path: tuple[str | int, ...],
+) -> int | None:
+    if len(relative.parts) == 2 and relative.parts[0] == "chapters":
+        if not (
+            len(path) >= 4
+            and path[0] == "quests"
+            and isinstance(path[1], int)
+            and path[2] == "rewards"
+            and isinstance(path[3], int)
+        ):
+            return None
+        tail = path[4:]
+    elif len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
+        if not (
+            len(path) >= 2
+            and path[0] == "rewards"
+            and isinstance(path[1], int)
+        ):
+            return None
+        tail = path[2:]
+    else:
+        return None
+    if len(tail) % 3 != 0:
+        return None
+    for position in range(0, len(tail), 3):
+        if not (
+            tail[position] == "table_data"
+            and tail[position + 1] == "rewards"
+            and isinstance(tail[position + 2], int)
+        ):
+            return None
+    return len(tail) // 3
+
+
 def _migration_snbt_role(
     relative: Path,
     path: tuple[str | int, ...],
@@ -794,6 +855,8 @@ def _migration_snbt_role(
                 return "definition"
             if path[2] == "dependency":
                 return "identity"
+            if path[2] == "click":
+                return "legacy_image_click"
             if path[2] == "click_action":
                 return "image_click_action"
         if (
@@ -815,36 +878,39 @@ def _migration_snbt_role(
             len(path) == 5
             and path[0] == "quests"
             and isinstance(path[1], int)
-            and path[2] in {"tasks", "rewards"}
+            and path[2] == "tasks"
             and isinstance(path[3], int)
+            and path[4] == "id"
         ):
-            if path[4] == "id":
+            return "definition"
+        reward_depth = _migration_reward_node_depth(relative, path[:-1])
+        if reward_depth is not None:
+            if path[-1] == "id":
                 return "definition"
-            if path[4] == "table_id":
+            if path[-1] == "table_id":
                 return "table_reference"
         return None
 
     if len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
         if path == ("id",):
             return "definition"
-        if (
-            len(path) == 3
-            and path[0] == "rewards"
-            and isinstance(path[1], int)
-        ):
-            if path[2] == "id":
+        reward_depth = _migration_reward_node_depth(relative, path[:-1])
+        if reward_depth is not None:
+            if path[-1] == "id":
                 return "definition"
-            if path[2] == "table_id":
+            if path[-1] == "table_id":
                 return "table_reference"
     return None
 
 
-def _migration_table_reference(value: str) -> str:
+def _migration_table_reference(value: str, *, embedded: bool = False) -> str:
     match = re.fullmatch(r"(-?[0-9]+)L", value)
     if match is None:
         raise ValueError(f"malformed reward table reference: {value!r}")
     signed_value = int(match.group(1))
     if signed_value >= 0:
+        return value
+    if signed_value == -1 and embedded:
         return value
     unsigned_identifier = f"{signed_value & ((1 << 64) - 1):016X}"
     return f"{int(ftb_safe_id(unsigned_identifier), 16)}L"
@@ -877,8 +943,13 @@ def _migration_apply_replacements(
 def _migration_scan_snbt(
     relative: Path,
     text: str,
+    reward_budget: _MigrationRewardBudget | None = None,
 ) -> tuple[str, tuple[tuple[str, str], ...]]:
     scalar_tokens, key_tokens = _SnbtPathScanner(text).scan()
+    active_reward_budget = reward_budget or _MigrationRewardBudget()
+    compound_keys = {
+        (parent_path, token.value) for parent_path, token in key_tokens
+    }
     replacements: list[tuple[_SnbtToken, str]] = []
     definitions: list[tuple[str, str]] = []
     for path, token in scalar_tokens:
@@ -891,10 +962,35 @@ def _migration_scan_snbt(
             target = ftb_safe_id(token.value)
             if role == "definition":
                 definitions.append((target, f"{relative}:{path}"))
+                reward_depth = _migration_reward_node_depth(relative, path[:-1])
+                if reward_depth is not None:
+                    if reward_depth > MIGRATION_REWARD_MAX_DEPTH:
+                        raise ValueError(
+                            "FTB reward table recursion depth exceeds limit: "
+                            f"{relative}:{path} depth={reward_depth}"
+                        )
+                    active_reward_budget.nodes += 1
+                    if active_reward_budget.nodes > MIGRATION_REWARD_MAX_NODES:
+                        raise ValueError(
+                            "FTB reward node count exceeds limit: "
+                            f"{active_reward_budget.nodes}"
+                        )
             if target != token.value:
                 replacements.append((token, target))
         elif role == "table_reference":
-            target = _migration_table_reference(token.value)
+            target = _migration_table_reference(
+                token.value,
+                embedded=(path[:-1], "table_data") in compound_keys,
+            )
+            if target != token.value:
+                replacements.append((token, target))
+        elif role == "legacy_image_click":
+            if token.kind != "string":
+                raise ValueError(
+                    f"malformed legacy image click action in {relative} at {path}: "
+                    f"{token.value!r}"
+                )
+            target = _migration_legacy_image_click(token.value)
             if target != token.value:
                 replacements.append((token, target))
         elif role == "image_click_action":
@@ -1512,10 +1608,88 @@ def _require_signed_safe_ftb_identity(value: object, label: str) -> str:
     return value
 
 
+def _migration_reward_table_id(value: object, label: str) -> int:
+    match = re.fullmatch(r"(-?[0-9]+)L", str(value))
+    if match is None:
+        raise ValueError(f"reward table reference is malformed for {label}: {value!r}")
+    table_id = int(match.group(1))
+    if not -(1 << 63) <= table_id <= MAX_FTB_ID:
+        raise ValueError(f"reward table reference is outside signed long range for {label}")
+    return table_id
+
+
+def _migration_reward_records(
+    rewards: object,
+    label: str,
+    budget: _MigrationRewardBudget,
+    depth: int = 0,
+) -> tuple[_MigrationRewardRecord, ...]:
+    if depth > MIGRATION_REWARD_MAX_DEPTH:
+        raise ValueError(
+            f"FTB reward table recursion depth exceeds limit: {label} depth={depth}"
+        )
+    if not isinstance(rewards, list):
+        raise ValueError(f"reward list is malformed for {label}")
+    records: list[_MigrationRewardRecord] = []
+    for position, reward in enumerate(rewards):
+        owner = f"{label}[{position}]"
+        budget.nodes += 1
+        if budget.nodes > MIGRATION_REWARD_MAX_NODES:
+            raise ValueError(
+                f"FTB reward node count exceeds limit: {budget.nodes}"
+            )
+        if not isinstance(reward, Mapping):
+            raise ValueError(f"reward is malformed for {owner}")
+        identifier = _require_signed_safe_ftb_identity(
+            reward.get("id"), f"{owner}.id"
+        )
+        has_table_id = "table_id" in reward
+        has_table_data = "table_data" in reward
+        if (
+            (has_table_id or has_table_data)
+            and reward.get("type") not in FTB_TABLE_REWARD_TYPES
+        ):
+            raise ValueError(
+                f"reward table fields require a table-backed reward type: {owner}"
+            )
+        table_reference: int | None = None
+        if has_table_data:
+            table_data = reward.get("table_data")
+            if not isinstance(table_data, Mapping):
+                raise ValueError(f"embedded reward table_data is malformed: {owner}")
+            if not has_table_id or reward.get("table_id") != "-1L":
+                raise ValueError(
+                    f"embedded reward table sentinel must be exact -1L: {owner}"
+                )
+            table_rewards = table_data.get("rewards")
+            records.extend(
+                _migration_reward_records(
+                    table_rewards,
+                    f"{owner}.table_data.rewards",
+                    budget,
+                    depth + 1,
+                )
+            )
+        elif has_table_id:
+            table_reference = _migration_reward_table_id(
+                reward.get("table_id"), f"{owner}.table_id"
+            )
+            if table_reference < 0:
+                raise ValueError(
+                    f"embedded reward table sentinel lacks table_data: {owner}"
+                )
+        records.append(
+            _MigrationRewardRecord(identifier, owner, table_reference)
+        )
+    return tuple(records)
+
+
 def _validate_known_ftb_identity_containers(
     relative: Path,
     parsed: object,
-) -> None:
+    reward_budget: _MigrationRewardBudget | None = None,
+) -> tuple[_MigrationRewardRecord, ...]:
+    active_reward_budget = reward_budget or _MigrationRewardBudget()
     if relative == Path("chapter_groups.snbt"):
         if not isinstance(parsed, Mapping):
             raise ValueError("chapter group registry is malformed")
@@ -1528,11 +1702,12 @@ def _validate_known_ftb_identity_containers(
             _require_signed_safe_ftb_identity(
                 group.get("id"), f"{relative}:chapter_groups[{position}].id"
             )
-        return
+        return ()
 
     if len(relative.parts) == 2 and relative.parts[0] == "chapters":
         if not isinstance(parsed, Mapping):
             raise ValueError(f"chapter is malformed: {relative}")
+        reward_records: list[_MigrationRewardRecord] = []
         _require_signed_safe_ftb_identity(relative.stem, f"{relative}:path")
         for key in ("filename", "group", "id"):
             _require_signed_safe_ftb_identity(
@@ -1573,6 +1748,19 @@ def _validate_known_ftb_identity_containers(
                     dependency,
                     f"{relative}:images[{position}].dependency",
                 )
+            legacy_click = image.get("click")
+            if legacy_click is not None:
+                if not isinstance(legacy_click, str):
+                    raise ValueError(
+                        f"legacy image click action is malformed: "
+                        f"{relative}:images[{position}].click"
+                    )
+                if legacy_click.startswith("#"):
+                    identifier = legacy_click[1:].partition("/")[0]
+                    _require_signed_safe_ftb_identity(
+                        identifier,
+                        f"{relative}:images[{position}].click",
+                    )
             click_action = image.get("click_action")
             if click_action is not None:
                 if not isinstance(click_action, str):
@@ -1620,24 +1808,26 @@ def _validate_known_ftb_identity_containers(
                     identifier,
                     f"{relative}:quests[{quest_position}].dep_control_pts key",
                 )
-            for container_name in ("tasks", "rewards"):
-                values = quest.get(container_name, [])
-                if not isinstance(values, list):
+            tasks = quest.get("tasks", [])
+            if not isinstance(tasks, list):
+                raise ValueError(f"quest tasks are malformed: {relative}")
+            for position, task in enumerate(tasks):
+                if not isinstance(task, Mapping):
                     raise ValueError(
-                        f"quest {container_name} are malformed: {relative}"
+                        f"quest tasks[{position}] is malformed: {relative}"
                     )
-                for position, value in enumerate(values):
-                    if not isinstance(value, Mapping):
-                        raise ValueError(
-                            f"quest {container_name}[{position}] is malformed: "
-                            f"{relative}"
-                        )
-                    _require_signed_safe_ftb_identity(
-                        value.get("id"),
-                        f"{relative}:quests[{quest_position}]."
-                        f"{container_name}[{position}].id",
-                    )
-        return
+                _require_signed_safe_ftb_identity(
+                    task.get("id"),
+                    f"{relative}:quests[{quest_position}].tasks[{position}].id",
+                )
+            reward_records.extend(
+                _migration_reward_records(
+                    quest.get("rewards", []),
+                    f"{relative}:quests[{quest_position}].rewards",
+                    active_reward_budget,
+                )
+            )
+        return tuple(reward_records)
 
     if len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
         if not isinstance(parsed, Mapping):
@@ -1645,27 +1835,28 @@ def _validate_known_ftb_identity_containers(
         _require_signed_safe_ftb_identity(
             parsed.get("id"), f"{relative}:id"
         )
-        rewards = parsed.get("rewards")
-        if not isinstance(rewards, list):
-            raise ValueError(f"reward table rewards are malformed: {relative}")
-        for position, reward in enumerate(rewards):
-            if not isinstance(reward, Mapping):
-                raise ValueError(
-                    f"reward table reward {position} is malformed: {relative}"
-                )
-            _require_signed_safe_ftb_identity(
-                reward.get("id"), f"{relative}:rewards[{position}].id"
-            )
+        return _migration_reward_records(
+            parsed.get("rewards"),
+            f"{relative}:rewards",
+            active_reward_budget,
+        )
+    return ()
 
 
 def _validate_migrated_quest_corpus(quest_root: Path) -> None:
     parsed_files: dict[Path, Any] = {}
     definition_owners: dict[str, list[str]] = {}
+    reward_records: dict[Path, tuple[_MigrationRewardRecord, ...]] = {}
+    reward_budget = _MigrationRewardBudget()
     for path in sorted(quest_root.rglob("*.snbt")):
         relative = path.relative_to(quest_root)
         text = path.read_text(encoding="utf-8")
         parsed_files[relative] = _parse_snbt(text)
-        _validate_known_ftb_identity_containers(relative, parsed_files[relative])
+        reward_records[relative] = _validate_known_ftb_identity_containers(
+            relative,
+            parsed_files[relative],
+            reward_budget,
+        )
         migrated, definitions = _migration_scan_snbt(relative, text)
         if migrated != text:
             raise ValueError(f"incomplete signed-safe FTB ID migration in {path}")
@@ -1684,31 +1875,108 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         group_data.get("chapter_groups"), list
     ):
         raise ValueError("migrated chapter group registry is malformed")
+    definition_ids: dict[str, set[str]] = {
+        kind: set()
+        for kind in (
+            "chapter_group",
+            "chapter",
+            "quest",
+            "task",
+            "reward",
+            "reward_table",
+            "quest_link",
+            "image",
+        )
+    }
     group_ids = {
         group.get("id")
         for group in group_data["chapter_groups"]
         if isinstance(group, Mapping) and isinstance(group.get("id"), str)
     }
-    quest_ids: set[str] = set()
-    dependencies: list[tuple[str, str]] = []
-    identity_references: list[tuple[str, str]] = []
-    table_references: list[tuple[str, int]] = []
-    for relative, chapter in parsed_files.items():
-        if len(relative.parts) != 2 or relative.parts[0] != "chapters":
+    definition_ids["chapter_group"].update(group_ids)
+    movable_chapters: dict[str, str] = {}
+    chapter_data: list[tuple[Path, Mapping[str, Any], str]] = []
+    table_ids: set[int] = set()
+    for relative, parsed in parsed_files.items():
+        if len(relative.parts) != 2:
             continue
-        if not isinstance(chapter, Mapping):
-            raise ValueError(f"migrated chapter is malformed: {relative}")
-        chapter_id = chapter.get("id")
+        if relative.parts[0] == "chapters":
+            if not isinstance(parsed, Mapping) or not isinstance(
+                parsed.get("id"), str
+            ):
+                raise ValueError(f"migrated chapter is malformed: {relative}")
+            chapter_id = parsed["id"]
+            chapter_data.append((relative, parsed, chapter_id))
+            definition_ids["chapter"].add(chapter_id)
+            for link in parsed.get("quest_links", []):
+                if isinstance(link, Mapping) and isinstance(link.get("id"), str):
+                    identifier = link["id"]
+                    definition_ids["quest_link"].add(identifier)
+                    movable_chapters[identifier] = chapter_id
+            for image in parsed.get("images", []):
+                if isinstance(image, Mapping) and isinstance(image.get("id"), str):
+                    identifier = image["id"]
+                    definition_ids["image"].add(identifier)
+                    movable_chapters[identifier] = chapter_id
+            for quest in parsed.get("quests", []):
+                if not isinstance(quest, Mapping) or not isinstance(
+                    quest.get("id"), str
+                ):
+                    raise ValueError(f"migrated quest is malformed: {relative}")
+                identifier = quest["id"]
+                definition_ids["quest"].add(identifier)
+                movable_chapters[identifier] = chapter_id
+                for task in quest.get("tasks", []):
+                    if isinstance(task, Mapping) and isinstance(task.get("id"), str):
+                        definition_ids["task"].add(task["id"])
+            definition_ids["reward"].update(
+                record.identifier for record in reward_records[relative]
+            )
+        elif relative.parts[0] == "reward_tables":
+            if not isinstance(parsed, Mapping) or not isinstance(
+                parsed.get("id"), str
+            ):
+                raise ValueError(f"migrated reward table is malformed: {relative}")
+            identifier = parsed["id"]
+            definition_ids["reward_table"].add(identifier)
+            table_ids.add(int(identifier, 16))
+            definition_ids["reward"].update(
+                record.identifier for record in reward_records[relative]
+            )
+
+    quest_ids = definition_ids["quest"]
+    progressing_ids = set().union(
+        definition_ids["chapter_group"],
+        definition_ids["chapter"],
+        definition_ids["quest"],
+        definition_ids["task"],
+        definition_ids["quest_link"],
+    )
+    open_quest_ids = set().union(
+        definition_ids["chapter"],
+        definition_ids["quest"],
+        definition_ids["task"],
+        definition_ids["quest_link"],
+    )
+    dependencies: list[tuple[str, str]] = []
+    progressing_references: list[tuple[str, str]] = []
+    quest_references: list[tuple[str, str]] = []
+    open_quest_references: list[tuple[str, str]] = []
+    autofocus_references: list[tuple[str, str, str]] = []
+    table_references: list[tuple[str, int]] = []
+    for relative, chapter, chapter_id in chapter_data:
         if chapter_id != chapter.get("filename") or chapter_id != relative.stem:
             raise ValueError(f"migrated chapter path identity mismatch: {relative}")
         if chapter.get("group") not in group_ids:
             raise ValueError(f"migrated chapter group is unresolved: {relative}")
         autofocus_id = chapter.get("autofocus_id")
         if isinstance(autofocus_id, str):
-            identity_references.append((f"{relative}:autofocus_id", autofocus_id))
+            autofocus_references.append(
+                (f"{relative}:autofocus_id", autofocus_id, chapter_id)
+            )
         quest_links = chapter.get("quest_links", [])
         if isinstance(quest_links, list):
-            identity_references.extend(
+            quest_references.extend(
                 (
                     f"{relative}:quest_links[{position}]",
                     str(link.get("linked_quest")),
@@ -1723,15 +1991,24 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
                     continue
                 dependency = image.get("dependency")
                 if isinstance(dependency, str):
-                    identity_references.append(
+                    quest_references.append(
                         (f"{relative}:images[{position}].dependency", dependency)
+                    )
+                legacy_click = image.get("click")
+                if isinstance(legacy_click, str) and legacy_click.startswith("#"):
+                    identifier = legacy_click[1:].partition("/")[0]
+                    open_quest_references.append(
+                        (
+                            f"{relative}:images[{position}].legacy image click",
+                            identifier,
+                        )
                     )
                 click_action = image.get("click_action")
                 if isinstance(click_action, str) and click_action.startswith(
                     "open_quest:"
                 ):
                     identifier = click_action[len("open_quest:") :].partition("/")[0]
-                    identity_references.append(
+                    open_quest_references.append(
                         (f"{relative}:images[{position}].click_action", identifier)
                     )
         quests = chapter.get("quests")
@@ -1748,57 +2025,93 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
                 dependencies.append((quest_id, dependency))
             dep_control_pts = quest.get("dep_control_pts", {})
             if isinstance(dep_control_pts, Mapping):
-                identity_references.extend(
+                progressing_references.extend(
                     (f"{relative}:quests[{quest_id}].dep_control_pts", str(identifier))
                     for identifier in dep_control_pts
                 )
-            for reward in quest.get("rewards", []):
-                if not isinstance(reward, Mapping):
-                    raise ValueError(f"migrated reward is malformed: {relative}")
-                table_id = reward.get("table_id")
-                if table_id is not None:
-                    match = re.fullmatch(r"([0-9]+)L", str(table_id))
-                    if match is None:
-                        raise ValueError(f"migrated table reference is malformed: {relative}")
-                    table_references.append((quest_id, int(match.group(1))))
+        table_references.extend(
+            (record.owner, record.table_reference)
+            for record in reward_records[relative]
+            if record.table_reference is not None
+        )
 
     unresolved_dependencies = [
         (quest_id, dependency)
         for quest_id, dependency in dependencies
-        if dependency not in quest_ids
+        if dependency not in progressing_ids
     ]
     if unresolved_dependencies:
         raise ValueError(
             f"migrated quest dependencies are unresolved: {unresolved_dependencies[:20]}"
         )
 
-    unresolved_identity_references = [
+    unresolved_progressing_references = [
         (owner, identifier)
-        for owner, identifier in identity_references
+        for owner, identifier in progressing_references
+        if identifier not in progressing_ids
+    ]
+    unresolved_quest_references = [
+        (owner, identifier)
+        for owner, identifier in quest_references
         if identifier not in quest_ids
     ]
+    unresolved_open_quest_references = [
+        (owner, identifier)
+        for owner, identifier in open_quest_references
+        if identifier not in open_quest_ids
+    ]
+    unresolved_autofocus = [
+        (owner, identifier)
+        for owner, identifier, chapter_id in autofocus_references
+        if movable_chapters.get(identifier) != chapter_id
+    ]
+    unresolved_identity_references = (
+        unresolved_progressing_references
+        + unresolved_quest_references
+        + unresolved_open_quest_references
+        + unresolved_autofocus
+    )
     if unresolved_identity_references:
         raise ValueError(
             "migrated FTB identities are unresolved: "
             f"{unresolved_identity_references[:20]}"
         )
 
-    table_ids = {
-        int(table["id"], 16)
-        for relative, table in parsed_files.items()
-        if len(relative.parts) == 2
-        and relative.parts[0] == "reward_tables"
-        and isinstance(table, Mapping)
-        and isinstance(table.get("id"), str)
-    }
+    for relative, records in reward_records.items():
+        if len(relative.parts) == 2 and relative.parts[0] == "reward_tables":
+            table_references.extend(
+                (record.owner, record.table_reference)
+                for record in records
+                if record.table_reference is not None
+            )
     unresolved_tables = [
-        (quest_id, table_id)
-        for quest_id, table_id in table_references
+        (owner, table_id)
+        for owner, table_id in table_references
         if table_id not in table_ids
     ]
     if unresolved_tables:
         raise ValueError(
             f"migrated reward table references are unresolved: {unresolved_tables[:20]}"
+        )
+
+    unresolved_localization: list[tuple[str, str, str]] = []
+    for relative, parsed in parsed_files.items():
+        if not relative.parts or relative.parts[0] != "lang":
+            continue
+        if not isinstance(parsed, Mapping):
+            raise ValueError(f"migrated localization is malformed: {relative}")
+        for key in parsed:
+            match = FTB_LOCALIZATION_KEY.fullmatch(str(key))
+            if match is None:
+                continue
+            kind = match.group("prefix")[:-1]
+            identifier = match.group("identifier")
+            if identifier not in definition_ids[kind]:
+                unresolved_localization.append((str(relative), kind, identifier))
+    if unresolved_localization:
+        raise ValueError(
+            "migrated localization references are unresolved: "
+            f"{unresolved_localization[:20]}"
         )
 
     state_path = quest_root / MANAGED_STATE_NAME
@@ -1812,20 +2125,46 @@ def _validate_migrated_quest_corpus(quest_root: Path) -> None:
         invalid_keys = sorted(
             key for key in localization_keys if _migration_localization_key(key) != key
         )
-        if invalid_chapters or invalid_keys:
+        unresolved_state_chapters = sorted(
+            identifier
+            for identifier in chapters
+            if identifier not in definition_ids["chapter"]
+        )
+        unresolved_state_keys = sorted(
+            key
+            for key in localization_keys
+            if (
+                (match := FTB_LOCALIZATION_KEY.fullmatch(key)) is not None
+                and match.group("identifier")
+                not in definition_ids[match.group("prefix")[:-1]]
+            )
+        )
+        if (
+            invalid_chapters
+            or invalid_keys
+            or unresolved_state_chapters
+            or unresolved_state_keys
+        ):
             raise ValueError(
                 "managed quest state migration is incomplete: "
-                f"chapters={invalid_chapters} localization_keys={invalid_keys}"
+                f"chapters={invalid_chapters} localization_keys={invalid_keys} "
+                f"unresolved_chapters={unresolved_state_chapters} "
+                f"unresolved_localization_keys={unresolved_state_keys}"
             )
 
 
 def _migration_build_transaction(quest_root: Path, transaction: Path) -> bool:
     transformed: dict[Path, str] = {}
     definition_owners: dict[str, list[str]] = {}
+    reward_budget = _MigrationRewardBudget()
     for path in sorted(quest_root.rglob("*.snbt")):
         relative = path.relative_to(quest_root)
         text = path.read_text(encoding="utf-8")
-        migrated, definitions = _migration_scan_snbt(relative, text)
+        migrated, definitions = _migration_scan_snbt(
+            relative,
+            text,
+            reward_budget,
+        )
         if migrated != text:
             transformed[relative] = migrated
         for identifier, owner in definitions:

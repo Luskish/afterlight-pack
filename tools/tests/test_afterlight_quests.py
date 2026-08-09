@@ -1362,7 +1362,10 @@ class QuestCompilerTests(unittest.TestCase):
             encoding="utf-8",
         )
         language = quest_root / "lang" / "en_us.snbt"
-        language_source = language.read_text(encoding="utf-8").rstrip()
+        language_source = language.read_text(encoding="utf-8").rstrip().replace(
+            "quest.2AAAAAAAAAAAAAAA.title",
+            "custom.2AAAAAAAAAAAAAAA.title",
+        )
         language.write_text(
             language_source[:-1]
             + '\tchapter.FEDCBA9876543210.title: "FEDCBA9876543210 stays prose"\n'
@@ -1391,6 +1394,174 @@ class QuestCompilerTests(unittest.TestCase):
             encoding="utf-8",
         )
         return quest_root, mods_dir, unsafe_chapter
+
+    def make_typed_validation_corpus(
+        self, base: Path
+    ) -> tuple[Path, dict[str, str]]:
+        identifiers = {
+            "group": "1111111111111111",
+            "chapter": "2222222222222222",
+            "other_chapter": "3333333333333333",
+            "quest": "4444444444444444",
+            "dependent_quest": "5555555555555555",
+            "task": "6666666666666666",
+            "reward": "0777777777777777",
+            "link": "1234567890ABCDEF",
+            "image": "234567890ABCDEF0",
+            "chapter_image": "234567890ABCDEF1",
+            "quest_image": "234567890ABCDEF2",
+            "task_image": "234567890ABCDEF3",
+            "link_image": "234567890ABCDEF4",
+            "table": "34567890ABCDEF01",
+            "max_table": "7FFFFFFFFFFFFFFF",
+            "table_reward": "4567890ABCDEF012",
+        }
+        quest_root = base / "config" / "ftbquests" / "quests"
+        (quest_root / "chapters").mkdir(parents=True)
+        (quest_root / "lang").mkdir()
+        (quest_root / "reward_tables").mkdir()
+        (quest_root / "chapter_groups.snbt").write_text(
+            "{\n\tchapter_groups: [{ id: \""
+            + identifiers["group"]
+            + "\" }]\n}\n",
+            encoding="utf-8",
+        )
+        chapter = quest_root / "chapters" / f'{identifiers["chapter"]}.snbt'
+        chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["chapter"]}"\n'
+            f'\tautofocus_id: "{identifiers["quest"]}"\n'
+            "\timages: [\n"
+            f'\t\t{{ id: "{identifiers["image"]}", image: "example:test", '
+            f'dependency: "{identifiers["quest"]}", '
+            f'click: "#{identifiers["other_chapter"]}/page/2" }}\n'
+            f'\t\t{{ id: "{identifiers["chapter_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["other_chapter"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["quest_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["quest"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["task_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["task"]}/true" }}\n'
+            f'\t\t{{ id: "{identifiers["link_image"]}", image: "example:test", '
+            f'click_action: "open_quest:{identifiers["link"]}/true" }}\n'
+            "\t]\n"
+            "\tquest_links: [{ id: \""
+            + identifiers["link"]
+            + "\", linked_quest: \""
+            + identifiers["quest"]
+            + "\" }]\n"
+            "\tquests: [\n"
+            f'\t\t{{ id: "{identifiers["quest"]}", '
+            f'tasks: [{{ id: "{identifiers["task"]}", type: "checkmark" }}], '
+            f'rewards: [{{ id: "{identifiers["reward"]}", type: "loot", '
+            f'table_id: {int(identifiers["max_table"], 16)}L }}] }}\n'
+            f'\t\t{{ id: "{identifiers["dependent_quest"]}", dependencies: ['
+            f'"{identifiers["group"]}", "{identifiers["other_chapter"]}", '
+            f'"{identifiers["quest"]}", "{identifiers["task"]}", '
+            f'"{identifiers["link"]}"], dep_control_pts: {{ '
+            f'{identifiers["task"]}: [1.0d, 2.0d, 3.0d, 4.0d], '
+            f'{identifiers["link"]}: [5.0d, 6.0d, 7.0d, 8.0d] }}, '
+            "tasks: [], rewards: [] }\n"
+            "\t]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        other_chapter = (
+            quest_root / "chapters" / f'{identifiers["other_chapter"]}.snbt'
+        )
+        other_chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["other_chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["other_chapter"]}"\n'
+            "\tquests: []\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "reward_tables" / "fixture.snbt").write_text(
+            "{\n"
+            f'\tid: "{identifiers["table"]}"\n'
+            "\trewards: [{ id: \""
+            + identifiers["table_reward"]
+            + "\", type: \"random\", table_id: "
+            + str(int(identifiers["max_table"], 16))
+            + "L }]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "reward_tables" / "max.snbt").write_text(
+            "{\n"
+            f'\tid: "{identifiers["max_table"]}"\n'
+            "\trewards: []\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "lang" / "en_us.snbt").write_text(
+            "{\n"
+            f'\tchapter_group.{identifiers["group"]}.title: "Group"\n'
+            f'\tchapter.{identifiers["chapter"]}.title: "Chapter"\n'
+            f'\tquest.{identifiers["quest"]}.title: "Quest"\n'
+            f'\ttask.{identifiers["task"]}.title: "Task"\n'
+            f'\treward.{identifiers["reward"]}.title: "Reward"\n'
+            f'\timage.{identifiers["image"]}.title: "Image"\n'
+            f'\tquest_link.{identifiers["link"]}.title: "Link"\n'
+            f'\treward_table.{identifiers["table"]}.title: "Table"\n'
+            "}\n",
+            encoding="utf-8",
+        )
+        return quest_root, identifiers
+
+    def write_simple_typed_chapters(
+        self,
+        quest_root: Path,
+        identifiers: dict[str, str],
+        reward_data: str,
+        *,
+        autofocus_id: str | None = None,
+        other_quest_id: str | None = None,
+    ) -> None:
+        autofocus = (
+            f'\tautofocus_id: "{autofocus_id}"\n'
+            if autofocus_id is not None
+            else ""
+        )
+        chapter = quest_root / "chapters" / f'{identifiers["chapter"]}.snbt'
+        chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["chapter"]}"\n'
+            + autofocus
+            + f'\timages: [{{ id: "{identifiers["image"]}", '
+            'image: "example:test" }]\n'
+            + f'\tquest_links: [{{ id: "{identifiers["link"]}", '
+            f'linked_quest: "{identifiers["quest"]}" }}]\n'
+            + "\tquests: [{\n"
+            f'\t\tid: "{identifiers["quest"]}"\n'
+            f'\t\ttasks: [{{ id: "{identifiers["task"]}", type: "checkmark" }}]\n'
+            f"\t\trewards: [{reward_data}]\n"
+            "\t}]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        other_quests = (
+            f'[{{ id: "{other_quest_id}", tasks: [], rewards: [] }}]'
+            if other_quest_id is not None
+            else "[]"
+        )
+        other_chapter = (
+            quest_root / "chapters" / f'{identifiers["other_chapter"]}.snbt'
+        )
+        other_chapter.write_text(
+            "{\n"
+            f'\tfilename: "{identifiers["other_chapter"]}"\n'
+            f'\tgroup: "{identifiers["group"]}"\n'
+            f'\tid: "{identifiers["other_chapter"]}"\n'
+            f"\tquests: {other_quests}\n"
+            "}\n",
+            encoding="utf-8",
+        )
 
     def test_stable_id_uses_signed_safe_truncated_uppercase_sha256(self) -> None:
         raw = int(
@@ -1432,7 +1603,10 @@ class QuestCompilerTests(unittest.TestCase):
                 encoding="utf-8",
             )
             language = quest_root / "lang" / "en_us.snbt"
-            language_source = language.read_text(encoding="utf-8").rstrip()
+            language_source = language.read_text(encoding="utf-8").rstrip().replace(
+                "quest.2AAAAAAAAAAAAAAA.title",
+                "custom.2AAAAAAAAAAAAAAA.title",
+            )
             language.write_text(
                 language_source[:-1]
                 + '\tchapter.FEDCBA9876543210.title: "Unsafe"\n'
@@ -1458,6 +1632,14 @@ class QuestCompilerTests(unittest.TestCase):
     def test_write_catalog_migrates_negative_reward_table_references(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
+            language = quest_root / "lang" / "en_us.snbt"
+            language.write_text(
+                language.read_text(encoding="utf-8").replace(
+                    "quest.2AAAAAAAAAAAAAAA.title",
+                    "custom.2AAAAAAAAAAAAAAA.title",
+                ),
+                encoding="utf-8",
+            )
             chapter_path = quest_root / "chapters" / "1234567890ABCDEF.snbt"
             chapter_path.write_text(
                 "{\n"
@@ -1469,7 +1651,7 @@ class QuestCompilerTests(unittest.TestCase):
                 '\t\ttasks: [ ]\n'
                 '\t\trewards: [{\n'
                 '\t\t\tid: "34567890ABCDEF01"\n'
-                '\t\t\ttype: "random"\n'
+                '\t\t\ttype: "loot"\n'
                 '\t\t\ttable_id: -7824471455364680287L\n'
                 '\t\t}]\n'
                 '\t}]\n'
@@ -1640,12 +1822,30 @@ class QuestCompilerTests(unittest.TestCase):
                 '\t\tid: "A222222222222222"\n'
                 '\t\timage: "example:test"\n'
                 '\t\tdependency: "EEDCBA9876543210"\n'
+                '\t\tclick: "#EEDCBA9876543210/page/2"\n'
                 '\t\tclick_action: "open_quest:EEDCBA9876543210/true"\n'
                 '\t\thover: ["FEDCBA9876543210 stays image prose"]\n'
                 '\t\tauthored_data: { value: "FEDCBA9876543210" }\n'
-                '\t}]\n'
+                '\t}\n'
+                '\t{ id: "1222222222222222", image: "example:test", '
+                'click: "https://example.invalid/FEDCBA9876543210" }\n'
+                '\t{ id: "1333333333333333", image: "example:test", '
+                'click: "custom:FEDCBA9876543210" }\n'
+                '\t{ id: "1444444444444444", image: "example:test", '
+                'click: "command:say FEDCBA9876543210" }]\n'
                 '\tquest_links: [{ id: "B111111111111111", linked_quest: "EEDCBA9876543210" }]\n'
                 '\tprose_map: { FEDCBA9876543210: "authored compound key" }\n',
+                1,
+            )
+            source = source.replace(
+                '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n',
+                '\t\trewards: [\n'
+                '\t\t\t{ id: "CEDCBA9876543210", type: "xp", xp: 1 }\n'
+                '\t\t\t{ id: "A555555555555555", type: "loot", table_id: -1L, '
+                'table_data: { rewards: [{ id: "B666666666666666", '
+                'type: "loot", table_id: -1L }] } }\n'
+                '\t\t\t{ id: "A777777777777777", type: "loot", table_id: -1L }\n'
+                '\t\t]\n',
                 1,
             )
             source = source.replace(
@@ -1656,6 +1856,46 @@ class QuestCompilerTests(unittest.TestCase):
                 1,
             )
             unsafe_chapter.write_text(source, encoding="utf-8")
+            reward_tables = quest_root / "reward_tables"
+            reward_tables.mkdir()
+            (reward_tables / "maximum.snbt").write_text(
+                "{\n"
+                '\tid: "FFFFFFFFFFFFFFFF"\n'
+                "\trewards: [{\n"
+                '\t\tid: "A333333333333333"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t\ttable_data: { rewards: [{\n"
+                '\t\t\tid: "B444444444444444"\n'
+                '\t\t\ttype: "loot"\n'
+                "\t\t\ttable_id: -1L\n"
+                "\t\t}] }\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            (reward_tables / "standalone.snbt").write_text(
+                "{\n"
+                '\tid: "0123456789ABCDEF"\n'
+                "\trewards: [{\n"
+                '\t\tid: "C888888888888888"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            language = quest_root / "lang/en_us.snbt"
+            language_source = language.read_text(encoding="utf-8").rstrip()
+            language.write_text(
+                language_source[:-1]
+                + '\timage.A222222222222222.title: "Image"\n'
+                + '\tquest_link.B111111111111111.title: "Link"\n'
+                + '\treward_table.FFFFFFFFFFFFFFFF.title: "Table"\n'
+                + '\tunknown.FFFFFFFFFFFFFFFF.title: "Preserved"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
 
             builder.normalize_quest_corpus_ids(quest_root)
 
@@ -1670,6 +1910,7 @@ class QuestCompilerTests(unittest.TestCase):
             )
             image = migrated["images"][0]
             self.assertEqual(image["id"], "2222222222222222")
+            self.assertEqual(image["click"], "#6EDCBA9876543210/page/2")
             for location, actual, expected in (
                 (
                     "image dependency",
@@ -1690,6 +1931,61 @@ class QuestCompilerTests(unittest.TestCase):
             ):
                 with self.subTest(location=location):
                     self.assertEqual(actual, expected)
+            self.assertEqual(
+                [entry["click"] for entry in migrated["images"][1:]],
+                [
+                    "https://example.invalid/FEDCBA9876543210",
+                    "custom:FEDCBA9876543210",
+                    "command:say FEDCBA9876543210",
+                ],
+            )
+            embedded = migrated["quests"][0]["rewards"][1]
+            external = migrated["quests"][0]["rewards"][2]
+            self.assertEqual(embedded["table_id"], "-1L")
+            self.assertEqual(embedded["id"], "2555555555555555")
+            self.assertEqual(
+                embedded["table_data"]["rewards"][0]["id"],
+                "3666666666666666",
+            )
+            self.assertEqual(
+                embedded["table_data"]["rewards"][0]["table_id"],
+                "9223372036854775807L",
+            )
+            self.assertEqual(external["table_id"], "9223372036854775807L")
+            migrated_table = builder._parse_snbt(
+                (reward_tables / "maximum.snbt").read_text(encoding="utf-8")
+            )
+            self.assertEqual(migrated_table["id"], "7FFFFFFFFFFFFFFF")
+            self.assertEqual(migrated_table["rewards"][0]["table_id"], "-1L")
+            self.assertEqual(
+                migrated_table["rewards"][0]["table_data"]["rewards"][0]["id"],
+                "3444444444444444",
+            )
+            self.assertEqual(
+                migrated_table["rewards"][0]["table_data"]["rewards"][0][
+                    "table_id"
+                ],
+                "9223372036854775807L",
+            )
+            standalone_table = builder._parse_snbt(
+                (reward_tables / "standalone.snbt").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                standalone_table["rewards"][0]["id"],
+                "4888888888888888",
+            )
+            self.assertEqual(
+                standalone_table["rewards"][0]["table_id"],
+                "9223372036854775807L",
+            )
+            migrated_language = language.read_text(encoding="utf-8")
+            self.assertIn("image.2222222222222222.title", migrated_language)
+            self.assertIn("quest_link.3111111111111111.title", migrated_language)
+            self.assertIn(
+                "reward_table.7FFFFFFFFFFFFFFF.title",
+                migrated_language,
+            )
+            self.assertIn("unknown.FFFFFFFFFFFFFFFF.title", migrated_language)
             self.assertEqual(
                 image["hover"],
                 ["FEDCBA9876543210 stays image prose"],
@@ -1730,6 +2026,7 @@ class QuestCompilerTests(unittest.TestCase):
             "quest dep_control_pts",
             "image dependency",
             "image open_quest",
+            "legacy image open_quest",
         ):
             with self.subTest(location=location):
                 chapter = json.loads(json.dumps(base))
@@ -1739,10 +2036,12 @@ class QuestCompilerTests(unittest.TestCase):
                     }
                 elif location == "image dependency":
                     chapter["images"][0]["dependency"] = "F111111111111111"
-                else:
+                elif location == "image open_quest":
                     chapter["images"][0]["click_action"] = (
                         "open_quest:F111111111111111/true"
                     )
+                else:
+                    chapter["images"][0]["click"] = "#F111111111111111/page/2"
                 with mock.patch.object(
                     builder,
                     "_migration_snbt_role",
@@ -1756,6 +2055,236 @@ class QuestCompilerTests(unittest.TestCase):
                             relative,
                             chapter,
                         )
+
+    def test_migrated_oracle_binds_localization_to_exact_object_types(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+            language = quest_root / "lang/en_us.snbt"
+            language.write_text(
+                language.read_text(encoding="utf-8").replace(
+                    f'image.{identifiers["image"]}.title',
+                    f'image.{identifiers["quest"]}.title',
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                builder,
+                "_migration_localization_key",
+                side_effect=lambda value: value,
+            ), self.assertRaisesRegex(ValueError, "localization.*image"):
+                builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_uses_pinned_typed_reference_universes(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        for autofocus_kind in ("quest", "link", "image"):
+            with self.subTest(autofocus_kind=autofocus_kind):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    chapter = (
+                        quest_root
+                        / "chapters"
+                        / f'{identifiers["chapter"]}.snbt'
+                    )
+                    chapter.write_text(
+                        chapter.read_text(encoding="utf-8").replace(
+                            f'autofocus_id: "{identifiers["quest"]}"',
+                            f'autofocus_id: "{identifiers[autofocus_kind]}"',
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_migrated_oracle_rejects_cross_chapter_autofocus_and_unknown_legacy_click(
+        self,
+    ) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        other_quest = "0123456789ABCDEF"
+        reward_data_template = (
+            '{{ id: "{reward}", type: "loot", table_id: {table_id}L }}'
+        )
+        for case in ("cross-chapter autofocus", "unknown legacy click"):
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    reward_data = reward_data_template.format(
+                        reward=identifiers["reward"],
+                        table_id=int(identifiers["max_table"], 16),
+                    )
+                    self.write_simple_typed_chapters(
+                        quest_root,
+                        identifiers,
+                        reward_data,
+                        autofocus_id=(
+                            other_quest
+                            if case == "cross-chapter autofocus"
+                            else identifiers["quest"]
+                        ),
+                        other_quest_id=other_quest,
+                    )
+                    if case == "unknown legacy click":
+                        chapter = (
+                            quest_root
+                            / "chapters"
+                            / f'{identifiers["chapter"]}.snbt'
+                        )
+                        chapter.write_text(
+                            chapter.read_text(encoding="utf-8").replace(
+                                'image: "example:test"',
+                                'image: "example:test", '
+                                'click: "#0000000000000009/page/2"',
+                            ),
+                            encoding="utf-8",
+                        )
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "autofocus|legacy image click",
+                    ):
+                        builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_embedded_random_reward_sentinel_is_contextual(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        nested_reward = "567890ABCDEF0123"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                'table_id: -1L, table_data: { rewards: [{ '
+                f'id: "{nested_reward}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}] }} }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+
+            builder._validate_migrated_quest_corpus(quest_root)
+
+        malformed = (
+            (
+                "external-id-with-data",
+                'table_id: {table_id}L, table_data: {{ rewards: [] }}',
+            ),
+            ("missing-sentinel", "table_data: {{ rewards: [] }}"),
+            ("invalid-table-data", "table_id: -1L, table_data: []"),
+        )
+        for case, fields in malformed:
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root, identifiers = self.make_typed_validation_corpus(
+                        Path(temp_dir)
+                    )
+                    reward_data = (
+                        f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                        + fields.format(
+                            table_id=int(identifiers["max_table"], 16)
+                        )
+                        + " }"
+                    )
+                    self.write_simple_typed_chapters(
+                        quest_root,
+                        identifiers,
+                        reward_data,
+                        autofocus_id=identifiers["quest"],
+                    )
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "embedded reward table|table_data|sentinel",
+                    ):
+                        builder._validate_migrated_quest_corpus(quest_root)
+
+    def test_recursive_reward_validation_has_depth_and_node_bounds(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        relative = Path("reward_tables/fixture.snbt")
+        nested = builder._parse_snbt(
+            "{ id: \"34567890ABCDEF01\", rewards: [{ "
+            "id: \"4567890ABCDEF012\", type: \"random\", table_id: -1L, "
+            "table_data: { rewards: [{ id: \"567890ABCDEF0123\", "
+            "type: \"xp\", xp: 1 }] } }] }"
+        )
+        with mock.patch.object(
+            builder,
+            "MIGRATION_REWARD_MAX_DEPTH",
+            0,
+            create=True,
+        ), self.assertRaisesRegex(ValueError, "reward table recursion depth"):
+            builder._validate_known_ftb_identity_containers(relative, nested)
+
+        wide = builder._parse_snbt(
+            "{ id: \"34567890ABCDEF01\", rewards: ["
+            "{ id: \"4567890ABCDEF012\", type: \"xp\", xp: 1 },"
+            "{ id: \"567890ABCDEF0123\", type: \"xp\", xp: 1 }] }"
+        )
+        with mock.patch.object(
+            builder,
+            "MIGRATION_REWARD_MAX_NODES",
+            1,
+            create=True,
+        ), self.assertRaisesRegex(ValueError, "reward node count"):
+            builder._validate_known_ftb_identity_containers(relative, wide)
+
+    def test_recursive_reward_oracle_resolves_nested_external_tables(self) -> None:
+        builder = importlib.import_module("afterlight_quests.builder")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root, identifiers = self.make_typed_validation_corpus(
+                Path(temp_dir)
+            )
+            reward_data = (
+                f'{{ id: "{identifiers["reward"]}", type: "loot", '
+                f'table_id: {int(identifiers["max_table"], 16)}L }}'
+            )
+            self.write_simple_typed_chapters(
+                quest_root,
+                identifiers,
+                reward_data,
+                autofocus_id=identifiers["quest"],
+            )
+            (quest_root / "reward_tables/fixture.snbt").write_text(
+                "{\n"
+                f'\tid: "{identifiers["table"]}"\n'
+                "\trewards: [{\n"
+                f'\t\tid: "{identifiers["table_reward"]}"\n'
+                '\t\ttype: "loot"\n'
+                "\t\ttable_id: -1L\n"
+                "\t\ttable_data: { rewards: [{\n"
+                '\t\t\tid: "567890ABCDEF0123"\n'
+                '\t\t\ttype: "loot"\n'
+                "\t\t\ttable_id: 9L\n"
+                "\t\t}] }\n"
+                "\t}]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "reward table references are unresolved",
+            ):
+                builder._validate_migrated_quest_corpus(quest_root)
 
     def test_migration_preflights_all_payloads_before_repository_changes(self) -> None:
         builder = importlib.import_module("afterlight_quests.builder")

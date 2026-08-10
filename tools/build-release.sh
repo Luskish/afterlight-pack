@@ -95,9 +95,9 @@ PRISM_ZIP="$STAGING_DIR/$PRISM_NAME"
 MRPACK="$STAGING_DIR/$MRPACK_NAME"
 CURSEFORGE_ZIP="$STAGING_DIR/$CURSEFORGE_NAME"
 
-OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh
-
 DIST_DIR="$STAGING_DIR" ./tools/export.sh
+
+OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh
 
 python3 tools/release_artifacts.py inspect-friends --archive "$MRPACK"
 python3 tools/release_artifacts.py inspect-friends --archive "$CURSEFORGE_ZIP"

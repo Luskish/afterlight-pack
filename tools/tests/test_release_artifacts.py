@@ -261,6 +261,9 @@ class ReleasePolicyTests(unittest.TestCase):
         fake_curl = self.fake_bin / "curl"
         fake_curl.write_text("#!/usr/bin/env bash\nexit 97\n", encoding="utf-8")
         fake_curl.chmod(0o755)
+        fake_packwiz = self.fake_bin / "packwiz"
+        fake_packwiz.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        fake_packwiz.chmod(0o755)
 
     def _run_tool(self, *arguments):
         return subprocess.run(
@@ -1033,6 +1036,17 @@ class ReleasePolicyTests(unittest.TestCase):
             {sentinel.name},
         )
         self.assertIn("symlink", result.stdout + result.stderr)
+
+    def test_release_build_exports_before_writing_staged_prism(self):
+        source = BUILD_RELEASE.read_text(encoding="utf-8")
+
+        export_position = source.index(
+            'DIST_DIR="$STAGING_DIR" ./tools/export.sh'
+        )
+        prism_position = source.index(
+            'OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh'
+        )
+        self.assertLess(export_position, prism_position)
 
     def test_release_build_failure_preserves_existing_output(self):
         output_directory = self.root / "existing-output"

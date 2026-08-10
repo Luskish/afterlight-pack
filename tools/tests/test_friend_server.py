@@ -239,19 +239,26 @@ class FriendServerTests(unittest.TestCase):
         data_dir: str | Path | None = None,
         backup_dir: str | Path | None = None,
         secrets_dir: str | Path | None = None,
+        init_memory: str | None = None,
+        max_memory: str | None = None,
+        memory_limit: str | None = None,
     ) -> None:
         data_value = self.data_dir if data_dir is None else data_dir
         backup_value = self.backup_dir if backup_dir is None else backup_dir
         secrets_value = self.secrets_dir if secrets_dir is None else secrets_dir
+        assignments = [
+            f"DATA_DIR={data_value}",
+            f"BACKUP_DIR={backup_value}",
+            f"SECRETS_DIR={secrets_value}",
+        ]
+        if init_memory is not None:
+            assignments.append(f"AFTERLIGHT_INIT_MEMORY={init_memory}")
+        if max_memory is not None:
+            assignments.append(f"AFTERLIGHT_MAX_MEMORY={max_memory}")
+        if memory_limit is not None:
+            assignments.append(f"AFTERLIGHT_MEMORY_LIMIT={memory_limit}")
         self.env_file.write_text(
-            "\n".join(
-                (
-                    f"DATA_DIR={data_value}",
-                    f"BACKUP_DIR={backup_value}",
-                    f"SECRETS_DIR={secrets_value}",
-                    "",
-                )
-            ),
+            "\n".join((*assignments, "")),
             encoding="utf-8",
         )
 
@@ -378,12 +385,18 @@ class FriendServerTests(unittest.TestCase):
         self.assertRegex(source, r"(?m)^name: afterlight$")
         self.assertRegex(source, r'(?m)^\s+- "25565:25565/tcp"$')
         self.assertRegex(source, r'(?m)^\s+- "24454:24454/udp"$')
+        self.assertIn("INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}", source)
+        self.assertIn("MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}", source)
+        self.assertIn("mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}", source)
 
     def test_operator_owned_inputs_match_the_approved_values(self) -> None:
         expected_env = (
             "DATA_DIR=/srv/afterlight/data\n"
             "BACKUP_DIR=/srv/afterlight/backups\n"
             "SECRETS_DIR=/etc/afterlight/secrets\n"
+            "AFTERLIGHT_INIT_MEMORY=4G\n"
+            "AFTERLIGHT_MAX_MEMORY=10G\n"
+            "AFTERLIGHT_MEMORY_LIMIT=13G\n"
         )
         env_example = SERVER_DIR / ".env.example"
         properties_example = SERVER_DIR / "server.properties.example"
@@ -423,6 +436,33 @@ class FriendServerTests(unittest.TestCase):
                 "server.properties",
             }.issubset(exclusions)
         )
+
+    def test_operator_memory_budget_is_validated_before_docker(self) -> None:
+        self._write_env(
+            init_memory="6G",
+            max_memory="14G",
+            memory_limit="17G",
+        )
+        valid = self._run_operator("doctor")
+        self.assertEqual(valid.returncode, 0, valid.stderr)
+
+        invalid_cases = (
+            ("bad-unit", "6GB", "14G", "17G", "positive whole gigabytes"),
+            ("init-over-max", "15G", "14G", "17G", "must not exceed"),
+            ("insufficient-headroom", "6G", "14G", "15G", "at least 2G"),
+        )
+        for label, init_memory, max_memory, memory_limit, expected in invalid_cases:
+            with self.subTest(label=label):
+                self._clear_command_logs()
+                self._write_env(
+                    init_memory=init_memory,
+                    max_memory=max_memory,
+                    memory_limit=memory_limit,
+                )
+                result = self._run_operator("doctor")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, result.stderr)
+                self.assertEqual(self._docker_calls(), [])
 
     def test_docs_exclusions_and_tooling_cover_server_operations(self) -> None:
         paths = (

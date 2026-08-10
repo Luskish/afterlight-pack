@@ -42,6 +42,7 @@ git clone https://github.com/Luskish/afterlight-pack.git
 cd afterlight-pack
 git switch main
 cp server/.env.example server/.env
+# Adjust the three AFTERLIGHT memory values for the host before doctor.
 AFTERLIGHT_USER=$(id -un)
 AFTERLIGHT_GROUP=$(id -gn)
 sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups

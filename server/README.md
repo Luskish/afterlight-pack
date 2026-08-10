@@ -19,7 +19,7 @@ server/afterlight-server.sh doctor
 server/afterlight-server.sh start
 ```
 
-Each path value in `server/.env` must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths.
+Each path value in `server/.env` must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths. Memory values use positive whole gigabytes. Initial memory cannot exceed the maximum heap, and the container limit must leave at least 2 GiB above that heap.
 
 Populate the Minecraft whitelist before sharing the server address. RCON `25575` must never be forwarded.
 

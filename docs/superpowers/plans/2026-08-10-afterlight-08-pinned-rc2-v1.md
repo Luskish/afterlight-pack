@@ -366,7 +366,7 @@ Expected: exact `dev` CI passes, `main` fast-forwards to `SHA`, exact `main` CI 
 
 Record the gauntlet transcript path, both CI URLs, Pages hashes, Java and Packwiz versions, public and friends-only SHA-256 values, exact candidate SHA, and known boundaries in `docs/releases/0.9.0-rc.2.md`. Leave every unperformed manual result as `NOT RUN`.
 
-- [ ] **Step 5: Verify and push the evidence commit**
+- [x] **Step 5: Verify and push the evidence commit**
 
 ```bash
 git add docs/releases/0.9.0-rc.2.md docs/HANDOFF.md
@@ -377,7 +377,7 @@ gh run watch --repo Luskish/afterlight-pack --exit-status
 
 Expected: the exact evidence commit's `pack-ci` push run succeeds.
 
-- [ ] **Step 6: Publish the prerelease**
+- [x] **Step 6: Publish the prerelease**
 
 ```bash
 tools/publish-release.sh "$SHA" 0.9.0-rc.2 --prerelease --confirm
@@ -385,7 +385,7 @@ tools/publish-release.sh "$SHA" 0.9.0-rc.2 --prerelease --confirm
 
 Expected: GitHub release `v0.9.0-rc.2` exists with exactly three public-safe assets. The `.mrpack` and CurseForge ZIP remain only under `dist/gauntlet/$SHA/friends-only/`.
 
-- [ ] **Step 7: Record friend and VPS handoff facts**
+- [x] **Step 7: Record friend and VPS handoff facts**
 
 Update `docs/HANDOFF.md` with the release URL, accepted SHA, Prism ZIP checksum, private archive paths and checksums, manual acceptance status, and the exact ordered VPS setup commands from `docs/SERVER.md`.
 

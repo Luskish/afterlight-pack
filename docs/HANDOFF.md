@@ -8,14 +8,16 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Accepted release code: `3f6838ccdf27328d588aff09d8ec02d769206436`.
 - Stable branches and tag: `origin/dev`, `origin/main`, and annotated tag `v0.9.0-rc.2` all resolve to the accepted release code before the documentation evidence commit.
 - Exact CI: `dev` run https://github.com/Luskish/afterlight-pack/actions/runs/31412639303 and `main` run https://github.com/Luskish/afterlight-pack/actions/runs/31413707327 both passed.
+- Documentation evidence CI: https://github.com/Luskish/afterlight-pack/actions/runs/31415284933 passed at commit `cb57c95f3f0a163c896f2b738f84ad079eb5f257`.
 - Live Pages: https://luskish.github.io/afterlight-pack/pack.toml, SHA-256 `d3043d819cefc4f14011b7845f2dda8f8436a56686c220f6d6f23797f055d3dd`.
 - Live Pages index: https://luskish.github.io/afterlight-pack/index.toml, SHA-256 `07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f`.
-- Public prerelease URL: https://github.com/Luskish/afterlight-pack/releases/tag/v0.9.0-rc.2.
+- Public prerelease: https://github.com/Luskish/afterlight-pack/releases/tag/v0.9.0-rc.2, published `2026-08-10T17:53:59Z` as a non-draft prerelease.
+- Public asset audit: the release contains exactly `AFTERLIGHT-prism-instance.zip`, `release-metadata.json`, and `SHA256SUMS`. Fresh downloads matched the accepted local bytes and checksums.
 - Prism artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/public/AFTERLIGHT-prism-instance.zip`, SHA-256 `7b5ce8cf0b4bb55ece6ed3b64bb347dc8fa5e411565495c569b66797ca03eebf`.
 - CurseForge friend artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/friends-only/AFTERLIGHT-0.9.0-rc.2-curseforge.zip`, SHA-256 `fb17d2806282aa41c7e386c326c01f6310d648fcde3b5e9a837c9c05410e5dc5`.
 - Modrinth friend artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/friends-only/AFTERLIGHT-0.9.0-rc.2.mrpack`, SHA-256 `b8c3161579d822c8c7815e5bb3b060afa686be154199ed3e44fcc90dbe9f176a`.
 - Manual acceptance: all seven rows in `docs/releases/1.0.0-acceptance.md` remain honestly unrun. Do not publish `1.0.0` until each row records a real `PASS` with evidence.
-- Immediate next action: commit this evidence, require exact documentation CI, publish the RC2 prerelease, inspect its three public assets, then leave v1 blocked for Shane's real client, multiplayer, gameplay, and VPS checks.
+- Immediate next action: use the published RC2 for Shane's real Prism, quest, multiplayer, gameplay, and VPS acceptance matrix. Any failure produces a new release candidate. Only seven real passes permit the version-only `1.0.0` task.
 - Recovery if interrupted: stay on `dev`, run `git status`, read `docs/releases/0.9.0-rc.2.md`, inspect the exact CI and release state, and resume the first unfinished checkbox in the active plan.
 
 ### Friend Installation

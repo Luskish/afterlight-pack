@@ -1,4 +1,6 @@
 import os
+import hashlib
+import re
 import shutil
 import stat
 import subprocess
@@ -15,6 +17,7 @@ REQUIRED_GAUNTLET_TESTS = {
     "test_failure_stops_before_copying_accepted_artifacts",
     "test_success_copies_public_and_private_outputs_with_transcript",
     "test_cleanup_removes_only_the_temporary_worktree",
+    "test_failed_worktree_add_cleans_only_its_owned_temporary_path",
 }
 
 
@@ -74,7 +77,7 @@ class ReleaseGauntletTests(unittest.TestCase):
     def _write_fake_commands(self):
         self._write(
             self.fake_bin / "git",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'git' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"$1\" = -C ] && [ \"$3 $4\" = 'worktree remove' ]; then rm -rf \"$6\"; exit 0; fi\ncase \"$1 ${2:-}\" in\n  'status --porcelain'*) if [ \"${GAUNTLET_DIRTY:-0}\" = 1 ] || { [ \"${GAUNTLET_TRACK_ENV:-0}\" = 1 ] && [ -e server/.env.gauntlet ]; }; then printf ' M server/.env.gauntlet\\n'; fi;;\n  'rev-parse HEAD') printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'rev-parse --verify') [ \"${GAUNTLET_NONCOMMIT:-0}\" = 1 ] && exit 1; printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'worktree add') destination=$4; mkdir -p \"$destination\"; cp -R \"$GAUNTLET_REPOSITORY/.\" \"$destination\";;\n  'ls-files '*) printf 'tools/sample.sh\\n';;\n  'diff --exit-code') exit \"${GAUNTLET_DIFF_EXIT:-0}\";;\nesac\nexit 0\n",
+            "#!/usr/bin/env bash\nset -eu\nprintf 'git' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"$1\" = -C ] && [ \"$3 $4\" = 'worktree remove' ]; then [ \"${GAUNTLET_WORKTREE_REMOVE_FAIL:-0}\" = 1 ] && exit 1; rm -rf \"$6\"; exit 0; fi\ncase \"$1 ${2:-}\" in\n  'status --porcelain'*) if [ \"${GAUNTLET_DIRTY:-0}\" = 1 ] || { [ \"${GAUNTLET_TRACK_ENV:-0}\" = 1 ] && [ -e server/.env.gauntlet ]; }; then printf ' M server/.env.gauntlet\\n'; fi;;\n  'rev-parse HEAD') printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'rev-parse --verify') [ \"${GAUNTLET_NONCOMMIT:-0}\" = 1 ] && exit 1; printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'worktree add') destination=$4; mkdir -p \"$destination\"; if [ \"${GAUNTLET_WORKTREE_ADD_FAIL:-0}\" = 1 ]; then printf 'partial\\n' > \"$destination/partial.txt\"; exit 1; fi; cp -R \"$GAUNTLET_REPOSITORY/.\" \"$destination\";;\n  'ls-files '*) printf 'tools/sample.sh\\n';;\n  'diff --exit-code') exit \"${GAUNTLET_DIFF_EXIT:-0}\";;\nesac\nexit 0\n",
             executable=True,
         )
         self._write_fake_command("python3", "python3")
@@ -87,7 +90,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             executable=True,
         )
         self._write(self.fake_bin / "java", "#!/usr/bin/env bash\nexit 1\n", executable=True)
-        self._write(self.root / "fake-java" / "bin" / "java", "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n", executable=True)
+        self._write(self.root / "fake java" / "bin" / "java", "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n", executable=True)
         self._write(
             self.fake_bin / "cmp",
             "#!/usr/bin/env bash\nprintf 'cmp %s %s\\n' \"$1\" \"$2\" >> \"$GAUNTLET_LOG\"\n/usr/bin/cmp \"$@\"\n",
@@ -118,7 +121,7 @@ class ReleaseGauntletTests(unittest.TestCase):
                 "GAUNTLET_SHA": SHA,
                 "GAUNTLET_BUILD_COUNT_FILE": str(self.root / "build-count"),
                 "TMPDIR": str(self.worktree_root),
-                "GAUNTLET_FAKE_JAVA_HOME": str(self.root / "fake-java"),
+                "GAUNTLET_FAKE_JAVA_HOME": str(self.root / "fake java"),
             }
         )
         environment.update(overrides)
@@ -136,6 +139,13 @@ class ReleaseGauntletTests(unittest.TestCase):
         if not self.log_path.exists():
             return []
         return self.log_path.read_text(encoding="utf-8").splitlines()
+
+    def _normalized_log_lines(self):
+        worktree_pattern = r"[^ ]*/afterlight-gauntlet\.[^/ ]+"
+        return [
+            re.sub(worktree_pattern, "<WORKTREE>", line.replace(str(self.root), "<REPO>"))
+            for line in self._log_lines()
+        ]
 
     def test_rejects_dirty_tree_noncommit_and_nonhead_sha(self):
         for sha, environment in (
@@ -161,32 +171,25 @@ class ReleaseGauntletTests(unittest.TestCase):
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        lines = self._log_lines()
-        expected_prefixes = [
+        self.assertEqual(self._normalized_log_lines(), [
+            "git status --porcelain --untracked-files=all",
+            "git rev-parse HEAD",
+            f"git rev-parse --verify {SHA}^{{commit}}",
+            f"git worktree add --detach <WORKTREE> {SHA}",
             "python3 -m unittest discover -s tools/tests -p test_*.py -v",
             "verify-pack",
             "server-test",
-            "docker compose --project-name afterlight-gauntlet",
+            "docker compose --project-name afterlight-gauntlet --env-file <WORKTREE>/server/.env.gauntlet -f server/docker-compose.yml config --quiet",
+            "git ls-files *.sh",
             "shellcheck -x tools/sample.sh",
-            "build-release ",
-            "build-release ",
-            "cmp ",
+            f"build-release <WORKTREE>/dist/.release-gauntlet-first {SHA}",
+            f"build-release <WORKTREE>/dist/.release-gauntlet-second {SHA}",
+            "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-prism-instance.zip <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT-prism-instance.zip",
             "git diff --exit-code",
             "git status --porcelain --untracked-files=all",
-            "go version -m ",
-        ]
-        positions = []
-        start = 0
-        for prefix in expected_prefixes:
-            for position in range(start, len(lines)):
-                if lines[position].startswith(prefix):
-                    positions.append(position)
-                    start = position + 1
-                    break
-            else:
-                self.fail(f"missing command prefix: {prefix}; log: {lines}")
-        self.assertEqual(positions, sorted(positions))
-        self.assertEqual(len(lines), 17, lines)
+            "go version -m <REPO>/fake-bin/packwiz",
+            "git -C <REPO> worktree remove --force <WORKTREE>",
+        ])
 
     def test_compares_two_prism_archives_byte_for_byte(self):
         result = self._run(GAUNTLET_SECOND_PRISM_DIFFERENT="1")
@@ -222,15 +225,21 @@ class ReleaseGauntletTests(unittest.TestCase):
             {"AFTERLIGHT-0.9.0-rc.1.mrpack", "AFTERLIGHT-0.9.0-rc.1-curseforge.zip"},
         )
         transcript = (output / "gauntlet.txt").read_text(encoding="utf-8")
+        expected_hashes = {
+            "Prism": hashlib.sha256(b"identical\n").hexdigest(),
+            "Pack": hashlib.sha256((self.root / "pack.toml").read_bytes()).hexdigest(),
+            "Index": hashlib.sha256((self.root / "index.toml").read_bytes()).hexdigest(),
+        }
         self.assertIn(f"SHA: {SHA}", transcript)
-        self.assertIn("Prism SHA-256:", transcript)
-        self.assertIn("Pack SHA-256:", transcript)
-        self.assertIn("Index SHA-256:", transcript)
-        self.assertRegex(transcript, r"UTC start: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z")
-        self.assertRegex(transcript, r"UTC finish: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z")
-        self.assertRegex(transcript, r"Java: .+")
-        self.assertRegex(transcript, r"Packwiz: github.com/packwiz/packwiz v\S*dfd8b68a4796\S*")
-        self.assertEqual(len(__import__("re").findall(r"(?m)^.* SHA-256: [0-9a-f]{64}$", transcript)), 3)
+        self.assertRegex(transcript, r"(?m)^UTC start: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+        self.assertRegex(transcript, r"(?m)^UTC finish: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+        self.assertIn('Java: openjdk version "21.0.12"', transcript)
+        self.assertIn("Packwiz: github.com/packwiz/packwiz v0.0.0-dfd8b68a4796", transcript)
+        self.assertIn("Pack version: 0.9.0-rc.1", transcript)
+        self.assertIn("Minecraft version: 1.21.1", transcript)
+        self.assertIn("NeoForge version: 21.1.248", transcript)
+        for name, sha256 in expected_hashes.items():
+            self.assertIn(f"{name} SHA-256: {sha256}", transcript)
 
     def test_cleanup_removes_only_the_temporary_worktree(self):
         sentinel = self.root / "dist" / "gauntlet" / "existing-output"
@@ -238,6 +247,20 @@ class ReleaseGauntletTests(unittest.TestCase):
         (sentinel / "keep.txt").write_text("keep\n", encoding="utf-8")
 
         result = self._run(GAUNTLET_BOOT_EXIT="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((sentinel / "keep.txt").read_text(encoding="utf-8"), "keep\n")
+        self.assertEqual(list(self.worktree_root.iterdir()), [])
+
+    def test_failed_worktree_add_cleans_only_its_owned_temporary_path(self):
+        sentinel = self.root / "dist" / "gauntlet" / "existing-output"
+        sentinel.mkdir(parents=True)
+        (sentinel / "keep.txt").write_text("keep\n", encoding="utf-8")
+
+        result = self._run(
+            GAUNTLET_WORKTREE_ADD_FAIL="1",
+            GAUNTLET_WORKTREE_REMOVE_FAIL="1",
+        )
 
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((sentinel / "keep.txt").read_text(encoding="utf-8"), "keep\n")

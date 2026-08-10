@@ -83,7 +83,7 @@ EOF
   else
     JAVA_BINARY=$(command -v java) || fail "Java is not available"
   fi
-  JAVA_VERSION=$($JAVA_BINARY -version 2>&1)
+  JAVA_VERSION=$("$JAVA_BINARY" -version 2>&1)
   JAVA_VERSION=${JAVA_VERSION%%$'\n'*}
   case "$JAVA_VERSION" in *21*) ;; *) fail "Java 21 is required: $JAVA_VERSION";; esac
   PACKWIZ_BINARY=$(command -v packwiz) || fail "packwiz is not on PATH"

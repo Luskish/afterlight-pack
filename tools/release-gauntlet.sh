@@ -85,9 +85,10 @@ EOF
   fi
   JAVA_VERSION=$("$JAVA_BINARY" -version 2>&1)
   JAVA_VERSION=${JAVA_VERSION%%$'\n'*}
-  JAVA_MAJOR=$(printf '%s\n' "$JAVA_VERSION" | sed -n 's/^[^"]*"\([0-9][0-9]*\)[^"]*"[^"]*$/\1/p')
-  [ -n "$JAVA_MAJOR" ] || fail "malformed or missing Java version: $JAVA_VERSION"
-  [ "$JAVA_MAJOR" -eq 21 ] || fail "Java 21 is required: $JAVA_VERSION"
+  JAVA_VERSION_PATTERN='^(openjdk|java) version "([0-9]+)([.][0-9]+)*"([[:space:]][^"]*)?$'
+  [[ "$JAVA_VERSION" =~ $JAVA_VERSION_PATTERN ]] || fail "malformed or missing Java version: $JAVA_VERSION"
+  JAVA_MAJOR=${BASH_REMATCH[2]}
+  [ "$JAVA_MAJOR" = "21" ] || fail "Java 21 is required: $JAVA_VERSION"
   PACKWIZ_BINARY=$(command -v packwiz) || fail "packwiz is not on PATH"
   PACKWIZ_BUILD=$(go version -m "$PACKWIZ_BINARY")
   PACKWIZ_PATH=$(printf '%s\n' "$PACKWIZ_BUILD" | awk '$1 == "path" {print $2}')

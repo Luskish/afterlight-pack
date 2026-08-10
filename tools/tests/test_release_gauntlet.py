@@ -252,6 +252,44 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertNotIn("GAUNTLET: ACCEPTED", result.stdout)
         self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
 
+    def test_accepts_recognized_java_21_version_lines(self):
+        output = self.root / "dist" / "gauntlet" / SHA
+        for version in (
+            'openjdk version "21.0.12" 2026-07-21 LTS',
+            'java version "21"',
+        ):
+            with self.subTest(version=version):
+                shutil.rmtree(output, ignore_errors=True)
+                self.log_path.unlink(missing_ok=True)
+
+                result = self._run(GAUNTLET_JAVA_VERSION=version)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("GAUNTLET: ACCEPTED", result.stdout)
+                transcript = (output / "gauntlet.txt").read_text(encoding="utf-8")
+                self.assertIn(f"Java: {version}", transcript)
+
+    def test_rejects_malformed_java_version_lines(self):
+        output = self.root / "dist" / "gauntlet" / SHA
+        for version in (
+            'not-java-output "21.0.12"',
+            'openjdk version "21garbage"',
+            "openjdk version 21.0.12",
+            'openjdk version ""',
+            'openjdk version "21."',
+            'openjdk version "21.0.12" "extra"',
+        ):
+            with self.subTest(version=version):
+                shutil.rmtree(output, ignore_errors=True)
+                self.log_path.unlink(missing_ok=True)
+
+                result = self._run(GAUNTLET_JAVA_VERSION=version)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("malformed or missing Java version", result.stderr)
+                self.assertNotIn("GAUNTLET: ACCEPTED", result.stdout)
+                self.assertFalse(output.exists())
+
     def test_rejects_packwiz_build_without_module_version(self):
         result = self._run(GAUNTLET_PACKWIZ_OMIT_MOD_VERSION="1")
 

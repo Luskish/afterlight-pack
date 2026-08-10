@@ -329,6 +329,7 @@ class ServerMaintenanceTests(unittest.TestCase):
         timer = TIMER.read_text(encoding="utf-8")
 
         for expected in (
+            "ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh",
             "User=afterlight",
             "SupplementaryGroups=docker",
             "WorkingDirectory=/opt/afterlight",
@@ -339,6 +340,7 @@ class ServerMaintenanceTests(unittest.TestCase):
             "TimeoutStartSec=infinity",
         ):
             self.assertIn(expected, service)
+        self.assertNotIn("ConditionPathIsExecutable", service)
         self.assertNotIn("TimeoutStartSec=20min", service)
         for expected in (
             "Persistent=true",

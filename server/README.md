@@ -23,6 +23,8 @@ Each path value in `server/.env` must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]
 
 Populate the Minecraft whitelist before sharing the server address. RCON `25575` must never be forwarded.
 
+The operator command pins each start to the repository's immutable Packwiz revision and records it as `DATA_DIR/.afterlight-pack-sha`. `start` refuses an existing world from another or unknown revision, so use `update` after changing the checkout. Backups are accepted only when they contain that marker plus a nonempty `world/level.dat`.
+
 ## Operations
 
 ```bash
@@ -35,6 +37,6 @@ server/afterlight-server.sh update
 server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm
 ```
 
-`update` creates and verifies an on-demand backup before recreating Minecraft. A failed health check leaves both services stopped and prints the exact rollback command. Rollback renames the current data tree to a timestamped rescue sibling and never deletes the selected archive or either world tree.
+`update` creates and verifies an on-demand backup before recreating Minecraft at the new exact repository revision. A failed health check leaves both services stopped and prints the exact rollback command. Rollback performs a preflight check for `world/level.dat` and the recorded revision before stopping, renames the current data tree to a timestamped rescue sibling, starts the restored world from the archive's immutable Packwiz revision, and never deletes the selected archive or either world tree.
 
 See `docs/SERVER.md` for firewall setup, recovery details, and troubleshooting.

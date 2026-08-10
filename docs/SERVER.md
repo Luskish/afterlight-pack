@@ -54,17 +54,26 @@ server/afterlight-server.sh status
 server/afterlight-server.sh stop
 ```
 
+The supported operator command resolves the repository's exact `HEAD`, starts
+Minecraft from that immutable Packwiz revision, and records it in
+`DATA_DIR/.afterlight-pack-sha`. Run server operations from the stable `main`
+checkout. Do not start the Compose file directly for a supported deployment.
+`start` accepts a new world or an existing world already marked with the same
+revision. If the checkout changed, use `update` so a verified backup exists
+before Minecraft loads the new pack. An existing unmarked world must be moved
+through a separately planned migration or restored from a verified backup.
+
 Create and verify an on-demand archive before maintenance:
 
 ```bash
 server/afterlight-server.sh backup
 ```
 
-Backups also run every 6 hours and are retained for 14 days. Archives live outside the Minecraft data directory at the configured `BACKUP_DIR`.
+Backups also run every 6 hours and are retained for 14 days. Archives live outside the Minecraft data directory at the configured `BACKUP_DIR`. A usable archive must contain a nonempty `world/level.dat` plus the exact `.afterlight-pack-sha` marker.
 
 ## Update
 
-The update command creates a verified backup, stops both services, force-recreates only Minecraft so Packwiz synchronizes stable `main`, waits up to 10 minutes for health, then starts the backup service:
+The update command creates a verified backup, resolves the new repository `HEAD`, stops both services, force-recreates only Minecraft from that immutable Packwiz revision, waits up to 10 minutes for health, records the new revision marker, then starts the backup service:
 
 ```bash
 server/afterlight-server.sh update
@@ -80,7 +89,7 @@ Run rollback only with the archive path printed by `backup` or `update`:
 server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm
 ```
 
-Rollback accepts only a regular, non-symlinked archive beneath `BACKUP_DIR`. It stops both services, renames the current data directory to a UTC timestamped rescue sibling, creates a fresh data directory, restores the selected zstd tar archive without archive owner or permission restoration, starts both services, and waits for health. It preserves the archive, rescue tree, and restored tree if any later step fails.
+Rollback accepts only a regular, non-symlinked archive beneath `BACKUP_DIR`. Before stopping either service, it performs a preflight extraction and requires a nonempty `world/level.dat`, a valid `.afterlight-pack-sha`, and no symlinks. It then renames the current data directory to a UTC timestamped rescue sibling, promotes the staged tree, restarts Minecraft from the archive's immutable Packwiz revision, starts backups, and waits for health. It preserves the archive, rescue tree, and restored tree if any later step fails. A failed start receives a compensating stop so neither service is intentionally left running.
 
 ## Troubleshooting
 

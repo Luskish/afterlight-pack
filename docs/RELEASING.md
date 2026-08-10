@@ -6,34 +6,42 @@ Run the gauntlet from a clean `dev` checkout. It accepts only the exact local
 
 ## Promotion
 
-Run these commands in order. Do not substitute another SHA after the local
-gauntlet succeeds.
+Run the fail-closed promoter from the clean `dev` checkout that owns the
+accepted gauntlet output. Do not substitute another SHA after the local
+gauntlet succeeds. The promoter pushes `dev`, waits for its exact push-event CI
+run, fast-forwards `main`, waits for the exact `main` run, requires Pages byte
+parity, publishes the annotated tag, and returns to `dev`. Any missing or red
+gate stops before the next transition.
 
 ```bash
 SHA=$(git rev-parse HEAD)
 ./tools/release-gauntlet.sh "$SHA"
-git push origin dev
-DEV_RUN_ID=$(gh run list --workflow pack-ci --branch dev --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch "$DEV_RUN_ID" --exit-status
-git switch main
-git merge --ff-only "$SHA"
-git push origin main
-MAIN_RUN_ID=$(gh run list --workflow pack-ci --branch main --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch "$MAIN_RUN_ID" --exit-status
-curl -fsSL https://luskish.github.io/afterlight-pack/pack.toml | shasum -a 256
-curl -fsSL https://luskish.github.io/afterlight-pack/index.toml | shasum -a 256
-LOCAL_PACK_SHA=$(shasum -a 256 pack.toml | awk '{print $1}')
-LOCAL_INDEX_SHA=$(shasum -a 256 index.toml | awk '{print $1}')
-PAGES_PACK_SHA=$(curl -fsSL https://luskish.github.io/afterlight-pack/pack.toml | shasum -a 256 | awk '{print $1}')
-PAGES_INDEX_SHA=$(curl -fsSL https://luskish.github.io/afterlight-pack/index.toml | shasum -a 256 | awk '{print $1}')
-[ "$LOCAL_PACK_SHA" = "$PAGES_PACK_SHA" ] && [ "$LOCAL_INDEX_SHA" = "$PAGES_INDEX_SHA" ] || exit 1
-git tag -a v0.9.0-rc.1 "$SHA" -m "AFTERLIGHT 0.9.0-rc.1"
-git push origin v0.9.0-rc.1
-gh release create v0.9.0-rc.1 --prerelease --title "AFTERLIGHT 0.9.0-rc.1" --notes-file docs/releases/0.9.0-rc.1.md dist/gauntlet/$SHA/public/AFTERLIGHT-prism-instance.zip dist/gauntlet/$SHA/public/release-metadata.json dist/gauntlet/$SHA/public/SHA256SUMS
+tools/promote-release.sh "$SHA" --confirm
+```
+
+Record the promoter's exact SHA, CI URLs, and Pages hashes in
+`docs/releases/0.9.0-rc.1.md`. Populate every automated evidence field and the
+five artifact hashes before publication. The automated evidence through the
+friends-only artifact section must contain no automated `NOT RUN` values.
+Manual acceptance stays `NOT RUN` until a player or host observes it.
+
+Commit the populated evidence on `dev` with the required agent trailer, push
+it, and require that exact docs commit's `pack-ci` run to succeed. Then publish
+only the accepted public files in one fail-closed shell:
+
+```bash
+set -euo pipefail
+SHA=REPLACE_WITH_ACCEPTED_CODE_SHA
+if sed -n '/^## Automated Evidence$/,/^## Known Boundaries$/p' docs/releases/0.9.0-rc.1.md | grep -Fq 'NOT RUN'; then
+  printf '%s\n' 'release notes still contain automated NOT RUN evidence' >&2
+  exit 1
+fi
+REMOTE_TAG_SHA=$(git ls-remote origin 'refs/tags/v0.9.0-rc.1^{}' | awk '{print $1}')
+[ "$REMOTE_TAG_SHA" = "$SHA" ] || exit 1
+gh release create v0.9.0-rc.1 --verify-tag --prerelease --title "AFTERLIGHT 0.9.0-rc.1" --notes-file docs/releases/0.9.0-rc.1.md "dist/gauntlet/$SHA/public/AFTERLIGHT-prism-instance.zip" "dist/gauntlet/$SHA/public/release-metadata.json" "dist/gauntlet/$SHA/public/SHA256SUMS"
 EXPECTED_ASSETS=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
 ACTUAL_ASSETS=$(gh release view v0.9.0-rc.1 --json assets --jq '.assets[].name' | sort)
 [ "$ACTUAL_ASSETS" = "$EXPECTED_ASSETS" ] || exit 1
-git switch dev
 ```
 
 The GitHub prerelease may contain only the three files from `public/`. The
@@ -42,7 +50,7 @@ attached to a public release.
 
 ## Recovery
 
-If `main` CI fails, do not publish the tag. Leave `main` at its failed
-fast-forward, switch back to `dev`, fix forward, rerun the gauntlet for the new
-SHA, and promote that new SHA through both CI runs. Never force-push `dev` or
-`main`.
+If `main` CI fails, the promoter does not publish the tag. It returns to `dev`
+and leaves `main` at its failed fast-forward. Fix forward, rerun the gauntlet
+for the new SHA, and promote that new SHA through both CI runs. Never
+force-push `dev` or `main`.

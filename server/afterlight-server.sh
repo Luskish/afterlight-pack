@@ -2,15 +2,19 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 ENV_FILE="${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
 CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
+PACK_SHA_FILE_NAME=.afterlight-pack-sha
+RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
 
 DATA_DIR=""
 BACKUP_DIR=""
 SECRETS_DIR=""
+PACKWIZ_URL_OVERRIDE=""
 
 usage() {
   printf '%s\n' \
@@ -97,11 +101,85 @@ load_paths() {
 }
 
 compose() {
-  docker compose \
-    --project-name afterlight \
-    --env-file "$ENV_FILE" \
-    -f "$COMPOSE_FILE" \
-    "$@"
+  if [[ -n "$PACKWIZ_URL_OVERRIDE" ]]; then
+    AFTERLIGHT_PACKWIZ_URL="$PACKWIZ_URL_OVERRIDE" docker compose \
+      --project-name afterlight \
+      --env-file "$ENV_FILE" \
+      -f "$COMPOSE_FILE" \
+      "$@"
+  else
+    docker compose \
+      --project-name afterlight \
+      --env-file "$ENV_FILE" \
+      -f "$COMPOSE_FILE" \
+      "$@"
+  fi
+}
+
+pack_sha_is_valid() {
+  local pack_sha=$1
+  [[ "$pack_sha" =~ ^[0-9a-f]{40}$ ]]
+}
+
+repository_pack_sha() {
+  local pack_sha
+  require_command git || return 1
+  pack_sha=$(git -C "$REPOSITORY_ROOT" rev-parse --verify 'HEAD^{commit}') || {
+    fail "Unable to resolve the repository pack revision"
+    return 1
+  }
+  if ! pack_sha_is_valid "$pack_sha"; then
+    fail "Repository pack revision must be 40 lowercase hexadecimal characters"
+    return 1
+  fi
+  printf '%s\n' "$pack_sha"
+}
+
+use_pack_sha() {
+  local pack_sha=$1
+  if ! pack_sha_is_valid "$pack_sha"; then
+    fail "Pack revision must be 40 lowercase hexadecimal characters"
+    return 1
+  fi
+  PACKWIZ_URL_OVERRIDE="$RAW_PACK_URL_PREFIX/$pack_sha/pack.toml"
+}
+
+write_pack_sha() {
+  local pack_sha=$1
+  local marker_path="$DATA_DIR/$PACK_SHA_FILE_NAME"
+  local temporary_path="$DATA_DIR/.${PACK_SHA_FILE_NAME}.tmp.$$"
+  use_pack_sha "$pack_sha" || return 1
+  printf '%s\n' "$pack_sha" > "$temporary_path" || return 1
+  mv "$temporary_path" "$marker_path"
+}
+
+tree_pack_sha() {
+  local tree_root=$1
+  local marker_path="$tree_root/$PACK_SHA_FILE_NAME"
+  local line_count
+  local pack_sha
+
+  [[ -f "$marker_path" && ! -L "$marker_path" ]] || return 1
+  line_count=$(awk 'END { print NR }' "$marker_path") || return 1
+  pack_sha=$(sed -n '1p' "$marker_path") || return 1
+  [[ "$line_count" -eq 1 ]] || return 1
+  pack_sha_is_valid "$pack_sha" || return 1
+  printf '%s\n' "$pack_sha"
+}
+
+restored_tree_is_valid() {
+  local tree_root=$1
+  local level_file="$tree_root/world/level.dat"
+  local symlink
+  local size
+
+  [[ -d "$tree_root/world" && ! -L "$tree_root/world" ]] || return 1
+  [[ -f "$level_file" && ! -L "$level_file" ]] || return 1
+  size=$(stat_size "$level_file") || return 1
+  [[ "$size" =~ ^[0-9]+$ && "$size" -gt 0 ]] || return 1
+  symlink=$(find "$tree_root" -type l -print -quit) || return 1
+  [[ -z "$symlink" ]] || return 1
+  tree_pack_sha "$tree_root" >/dev/null
 }
 
 path_is_nested() {
@@ -338,14 +416,22 @@ archive_name_is_approved() {
 
 archive_is_recoverable() {
   local archive_path=$1
+  local recoverable=false
   local size
+  local validation_path
 
   [[ -f "$archive_path" && ! -L "$archive_path" ]] || return 1
   size=$(stat_size "$archive_path") || return 1
   [[ "$size" =~ ^[0-9]+$ && "$size" -gt 0 ]] || return 1
-  zstd --test --quiet "$archive_path" >/dev/null 2>&1 || return 1
-  zstd --decompress --stdout "$archive_path" 2>/dev/null |
-    tar --list --file - >/dev/null 2>&1
+  validation_path=$(mktemp -d "$BACKUP_DIR/.afterlight-verify.XXXXXX") || return 1
+  if zstd --decompress --stdout "$archive_path" 2>/dev/null |
+    tar --extract --file - --directory "$validation_path" --no-same-owner --no-same-permissions 2>/dev/null; then
+    if restored_tree_is_valid "$validation_path"; then
+      recoverable=true
+    fi
+  fi
+  find "$validation_path" -depth -delete || return 1
+  [[ "$recoverable" == "true" ]]
 }
 
 run_doctor() {
@@ -372,8 +458,9 @@ run_doctor() {
 }
 
 install_properties_once() {
+  local data_root=${1:-$DATA_DIR}
   local properties_file
-  properties_file="$DATA_DIR/server.properties"
+  properties_file="$data_root/server.properties"
   if [[ -L "$properties_file" ]]; then
     fail "server.properties must not be a symlink"
     return 1
@@ -386,10 +473,55 @@ install_properties_once() {
   fi
 }
 
+validate_start_revision() {
+  local expected_pack_sha=$1
+  local existing_pack_sha
+  local world_path="$DATA_DIR/world"
+
+  if [[ ! -e "$world_path" && ! -L "$world_path" ]]; then
+    return 0
+  fi
+  if [[ ! -d "$world_path" || -L "$world_path" ]]; then
+    fail "Existing world path must be a regular directory"
+    return 1
+  fi
+  existing_pack_sha=$(tree_pack_sha "$DATA_DIR") || {
+    fail "Existing world requires a valid pack revision marker; use a new DATA_DIR or restore a verified backup"
+    return 1
+  }
+  if [[ "$existing_pack_sha" != "$expected_pack_sha" ]]; then
+    fail "Existing world uses pack revision $existing_pack_sha; run update instead of start"
+    return 1
+  fi
+}
+
 run_start() {
+  local pack_sha
+  pack_sha=$(repository_pack_sha) || return 1
+  use_pack_sha "$pack_sha" || return 1
   run_doctor true || return 1
+  validate_start_revision "$pack_sha" || return 1
   install_properties_once || return 1
-  compose up -d minecraft backup
+  if ! compose up -d minecraft; then
+    compose stop backup minecraft || true
+    fail "Minecraft start failed"
+    return 1
+  fi
+  if ! wait_healthy; then
+    compose stop backup minecraft || true
+    fail "Minecraft health check failed"
+    return 1
+  fi
+  if ! write_pack_sha "$pack_sha"; then
+    compose stop backup minecraft || true
+    fail "Pack revision marker update failed"
+    return 1
+  fi
+  if ! compose up -d backup; then
+    compose stop backup minecraft || true
+    fail "Backup service start failed"
+    return 1
+  fi
 }
 
 run_stop() {
@@ -454,6 +586,10 @@ stop_after_failed_update() {
 
 run_update() {
   local backup_path
+  local pack_sha
+  prepare_paths || return 1
+  pack_sha=$(repository_pack_sha) || return 1
+  use_pack_sha "$pack_sha" || return 1
   backup_path=$(run_backup) || return 1
   if ! compose stop backup minecraft; then
     stop_after_failed_update "$backup_path"
@@ -464,6 +600,10 @@ run_update() {
     return 1
   fi
   if ! wait_healthy; then
+    stop_after_failed_update "$backup_path"
+    return 1
+  fi
+  if ! write_pack_sha "$pack_sha"; then
     stop_after_failed_update "$backup_path"
     return 1
   fi
@@ -486,6 +626,8 @@ run_rollback() {
   local data_parent
   local data_basename
   local rescue_path
+  local restored_pack_sha
+  local staging_path
 
   prepare_paths || return 1
   if [[ "$requested_backup" != /* ]]; then
@@ -512,25 +654,33 @@ run_rollback() {
 
   data_parent=$(dirname "$DATA_DIR")
   validate_data_parent "$data_parent" || return 1
-  run_doctor true || return 1
   data_basename=$(basename "$DATA_DIR")
+  staging_path=$(mktemp -d "$data_parent/.${data_basename}.restore.XXXXXX") || return 1
+  if ! zstd --decompress --stdout "$canonical_backup" |
+    tar --extract --file - --directory "$staging_path" --no-same-owner --no-same-permissions; then
+    fail "Rollback archive is not recoverable; preflight extraction failed and staging was preserved at $staging_path"
+    return 1
+  fi
+  if ! restored_tree_is_valid "$staging_path"; then
+    fail "Rollback archive is not recoverable; preflight tree is invalid and staging was preserved at $staging_path"
+    return 1
+  fi
+  restored_pack_sha=$(tree_pack_sha "$staging_path") || return 1
+  use_pack_sha "$restored_pack_sha" || return 1
+  install_properties_once "$staging_path" || {
+    fail "Rollback preflight properties setup failed; archive and staging tree were preserved at $staging_path"
+    return 1
+  }
+  run_doctor true || return 1
   rescue_path="$data_parent/$data_basename.rescue-$(date -u +%Y%m%dT%H%M%SZ)"
   [[ ! -e "$rescue_path" && ! -L "$rescue_path" ]] ||
     fail "Rollback rescue path already exists: $rescue_path"
 
   compose stop backup minecraft
   mv "$DATA_DIR" "$rescue_path"
-  mkdir "$DATA_DIR"
-  if ! zstd --decompress --stdout "$canonical_backup" |
-    tar --extract --file - --directory "$DATA_DIR" --no-same-owner --no-same-permissions; then
-    fail "Rollback extraction failed; archive, rescue tree, and restored tree were preserved"
-    return 1
-  fi
-  if ! install_properties_once; then
-    fail "Rollback properties setup failed; archive, rescue tree, and restored tree were preserved"
-    return 1
-  fi
+  mv "$staging_path" "$DATA_DIR"
   if ! compose up -d minecraft backup; then
+    compose stop backup minecraft || true
     fail "Rollback start failed; archive, rescue tree, and restored tree were preserved"
     return 1
   fi

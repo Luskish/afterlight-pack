@@ -5,6 +5,14 @@ cd "$(dirname "$0")/.."
 source tools/versions.env
 export PATH="$PATH_EXTRA:$PATH"
 
+APPROVED_PACKWIZ_BOOTSTRAP_VERSION=0.0.3
+APPROVED_PACKWIZ_BOOTSTRAP_SHA256=a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c
+if [ "$PACKWIZ_BOOTSTRAP_VERSION" != "$APPROVED_PACKWIZ_BOOTSTRAP_VERSION" ] ||
+  [ "$PACKWIZ_BOOTSTRAP_SHA256" != "$APPROVED_PACKWIZ_BOOTSTRAP_SHA256" ]; then
+  echo "FAIL: release builds require the approved Packwiz bootstrap pin" >&2
+  exit 2
+fi
+
 DIST_DIR=${DIST_DIR:-dist}
 GIT_SHA=${GIT_SHA:-$(git rev-parse HEAD)}
 if [ "${PACK_URL+x}" = x ]; then

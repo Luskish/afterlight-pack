@@ -278,7 +278,9 @@ class ReleasePolicyTests(unittest.TestCase):
             msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
         )
 
-    def _run_release_build(self, dist_directory, pack_url=None):
+    def _run_release_build(
+        self, dist_directory, pack_url=None, environment_overrides=None
+    ):
         environment = os.environ.copy()
         environment.update(
             {
@@ -290,6 +292,8 @@ class ReleasePolicyTests(unittest.TestCase):
             environment["PACK_URL"] = pack_url
         else:
             environment.pop("PACK_URL", None)
+        if environment_overrides:
+            environment.update(environment_overrides)
         return subprocess.run(
             [str(BUILD_RELEASE)],
             cwd=REPOSITORY_ROOT,
@@ -1093,6 +1097,22 @@ class ReleasePolicyTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("PACK_URL override is not allowed", result.stderr)
+        self.assertFalse(output_directory.exists())
+
+    def test_release_build_rejects_bootstrap_pin_overrides(self):
+        output_directory = self.root / "bootstrap-override-output"
+
+        result = self._run_release_build(
+            output_directory,
+            environment_overrides={
+                "PACKWIZ_BOOTSTRAP_VERSION": "9.9.9",
+                "PACKWIZ_BOOTSTRAP_SHA256": "f" * 64,
+            },
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("approved packwiz bootstrap pin", result.stderr.lower())
+        self.assertNotIn("download packwiz-installer-bootstrap", result.stderr)
         self.assertFalse(output_directory.exists())
 
 

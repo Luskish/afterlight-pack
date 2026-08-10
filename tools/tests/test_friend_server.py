@@ -27,6 +27,9 @@ EXPECTED_BACKUP_IMAGE = (
     "ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32"
 )
 EXPECTED_PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
+RAW_PACK_URL_PREFIX = "https://raw.githubusercontent.com/Luskish/afterlight-pack"
+CURRENT_PACK_SHA = "2" * 40
+BACKUP_PACK_SHA = "1" * 40
 EXPECTED_PATH_GRAMMAR = "^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
 REQUIRED_OPERATOR_TESTS = {
     "test_unknown_command_fails_with_usage",
@@ -35,8 +38,11 @@ REQUIRED_OPERATOR_TESTS = {
     "test_backup_requires_a_new_regular_archive",
     "test_update_backs_up_before_recreating_minecraft",
     "test_failed_update_stops_services_and_prints_exact_rollback_command",
+    "test_backup_rejects_archives_missing_required_markers",
+    "test_rollback_rejects_invalid_archive_before_stopping_services",
     "test_rollback_requires_confirm_and_archive_beneath_backup_root",
     "test_rollback_renames_data_restores_and_never_invokes_rm",
+    "test_rollback_start_failure_stops_both_services",
 }
 
 
@@ -64,6 +70,7 @@ class FriendServerTests(unittest.TestCase):
         self.secret_file.chmod(0o600)
         self.env_file = self.temp_path / "server.env"
         self.docker_log = self.temp_path / "docker.log"
+        self.pack_url_log = self.temp_path / "pack-url.log"
         self.rm_log = self.temp_path / "rm.log"
         self._write_env()
         self._install_fakes()
@@ -75,6 +82,8 @@ class FriendServerTests(unittest.TestCase):
                 "AFTERLIGHT_ENV_FILE": str(self.env_file),
                 "AFTERLIGHT_HEALTH_TIMEOUT": "0",
                 "FAKE_DOCKER_LOG": str(self.docker_log),
+                "FAKE_PACK_URL_LOG": str(self.pack_url_log),
+                "FAKE_GIT_SHA": CURRENT_PACK_SHA,
                 "FAKE_RM_LOG": str(self.rm_log),
             }
         )
@@ -93,6 +102,7 @@ class FriendServerTests(unittest.TestCase):
             r"""
             #!/usr/bin/env bash
             set -u
+            printf '%s\n' "${AFTERLIGHT_PACKWIZ_URL:-}" >> "$FAKE_PACK_URL_LOG"
             {
               first=1
               for argument in "$@"; do
@@ -163,6 +173,18 @@ class FriendServerTests(unittest.TestCase):
             if [ -n "$output" ]; then printf '%s\n' "$output"; fi
             if [ -n "${error_output:-}" ]; then printf '%s\n' "$error_output" >&2; fi
             exit "$exit_code"
+            """,
+        )
+        self._write_executable(
+            "git",
+            r"""
+            #!/usr/bin/env bash
+            if [ "$#" -eq 5 ] && [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--verify" ] && [ "$5" = "HEAD^{commit}" ]; then
+              printf '%s\n' "${FAKE_GIT_SHA:?FAKE_GIT_SHA must be set}"
+              exit 0
+            fi
+            printf 'unexpected fake git command: %s\n' "$*" >&2
+            exit 94
             """,
         )
         self._write_executable(
@@ -276,7 +298,13 @@ class FriendServerTests(unittest.TestCase):
 
     def _clear_command_logs(self) -> None:
         self.docker_log.write_text("", encoding="utf-8")
+        self.pack_url_log.write_text("", encoding="utf-8")
         self.rm_log.write_text("", encoding="utf-8")
+
+    def _pack_urls(self) -> list[str]:
+        if not self.pack_url_log.exists():
+            return []
+        return self.pack_url_log.read_text(encoding="utf-8").splitlines()
 
     def _make_backup_archive(self, relative_path: str = "nested/restore.tar.zst") -> Path:
         archive = self.backup_dir / relative_path
@@ -284,18 +312,36 @@ class FriendServerTests(unittest.TestCase):
         return archive
 
     def _write_valid_archive(
-        self, archive: Path, world_contents: str = "restored world\n"
+        self,
+        archive: Path,
+        world_contents: str = "restored world\n",
+        *,
+        include_world: bool = True,
+        include_pack_revision: bool = True,
+        pack_sha: str = BACKUP_PACK_SHA,
+        pack_revision_contents: str | None = None,
     ) -> None:
         archive.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=self.temp_path) as payload_name:
             payload = Path(payload_name)
-            (payload / "world").mkdir()
-            (payload / "world" / "level.dat").write_text(
-                world_contents, encoding="utf-8"
-            )
+            members: list[str] = []
+            if include_world:
+                (payload / "world").mkdir()
+                (payload / "world" / "level.dat").write_text(
+                    world_contents, encoding="utf-8"
+                )
+                members.append("world")
+            if include_pack_revision:
+                (payload / ".afterlight-pack-sha").write_text(
+                    pack_revision_contents
+                    if pack_revision_contents is not None
+                    else f"{pack_sha}\n",
+                    encoding="utf-8",
+                )
+                members.append(".afterlight-pack-sha")
             uncompressed = payload / "backup.tar"
             subprocess.run(
-                ["tar", "-C", str(payload), "-cf", str(uncompressed), "world"],
+                ["tar", "-C", str(payload), "-cf", str(uncompressed), *members],
                 check=True,
             )
             subprocess.run(
@@ -413,6 +459,9 @@ class FriendServerTests(unittest.TestCase):
                 (SERVER_DIR / "README.md").read_text(encoding="utf-8"),
             )
         )
+        self.assertIn(".afterlight-pack-sha", docs)
+        self.assertRegex(docs, r"(?i)immutable.*packwiz.*revision")
+        self.assertRegex(docs, r"(?i)preflight.*world/level\.dat")
         for command in (
             "cp server/.env.example server/.env",
             "AFTERLIGHT_USER=$(id -un)",
@@ -547,8 +596,18 @@ class FriendServerTests(unittest.TestCase):
                 ("version",),
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
-                ("up", "-d", "minecraft", "backup"),
+                ("up", "-d", "minecraft"),
+                ("ps", "--format", "json", "minecraft"),
+                ("up", "-d", "backup"),
             ],
+        )
+        self.assertEqual(
+            (self.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
+            f"{CURRENT_PACK_SHA}\n",
+        )
+        self.assertEqual(
+            {value for value in self._pack_urls() if value},
+            {f"{RAW_PACK_URL_PREFIX}/{CURRENT_PACK_SHA}/pack.toml"},
         )
 
         installed_properties.write_text("operator-owned=true\n", encoding="utf-8")
@@ -565,7 +624,9 @@ class FriendServerTests(unittest.TestCase):
                 ("version",),
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
-                ("up", "-d", "minecraft", "backup"),
+                ("up", "-d", "minecraft"),
+                ("ps", "--format", "json", "minecraft"),
+                ("up", "-d", "backup"),
             ],
         )
 
@@ -635,6 +696,128 @@ class FriendServerTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("recoverable backup archive", result.stderr.lower())
 
+    def test_backup_rejects_archives_missing_required_markers(self) -> None:
+        fixture_cases = (
+            ("missing-world", False, True),
+            ("missing-pack-revision", True, False),
+        )
+        for label, include_world, include_pack_revision in fixture_cases:
+            with self.subTest(label=label):
+                self._clear_command_logs()
+                archive = self.backup_dir / f"afterlight-{label}.tar.zst"
+                source = self.temp_path / f"source-{label}.tar.zst"
+                self._write_valid_archive(
+                    source,
+                    include_world=include_world,
+                    include_pack_revision=include_pack_revision,
+                )
+                result = self._run_operator(
+                    "backup",
+                    environment={
+                        "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
+                        "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
+                    },
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("recoverable backup archive", result.stderr.lower())
+
+    def test_backup_rejects_archive_rollback_would_reject(self) -> None:
+        multiline_archive = self.backup_dir / "afterlight-multiline.tar.zst"
+        multiline_source = self.temp_path / "source-multiline.tar.zst"
+        self._write_valid_archive(
+            multiline_source,
+            pack_revision_contents=f"{BACKUP_PACK_SHA}\n\n",
+        )
+        multiline = self._run_operator(
+            "backup",
+            environment={
+                "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(multiline_archive),
+                "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(multiline_source),
+            },
+        )
+        self.assertNotEqual(multiline.returncode, 0)
+
+        self._clear_command_logs()
+        symlink_archive = self.backup_dir / "afterlight-symlink.tar.zst"
+        symlink_source = self.temp_path / "source-symlink.tar.zst"
+        with tempfile.TemporaryDirectory(dir=self.temp_path) as payload_name:
+            payload = Path(payload_name)
+            (payload / "world").mkdir()
+            (payload / "world" / "level.dat").write_text(
+                "restored world\n", encoding="utf-8"
+            )
+            (payload / ".afterlight-pack-sha").write_text(
+                f"{BACKUP_PACK_SHA}\n", encoding="utf-8"
+            )
+            (payload / "linked-state").symlink_to("world")
+            uncompressed = payload / "backup.tar"
+            subprocess.run(
+                [
+                    "tar",
+                    "-C",
+                    str(payload),
+                    "-cf",
+                    str(uncompressed),
+                    "world",
+                    ".afterlight-pack-sha",
+                    "linked-state",
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["zstd", "-q", "-f", str(uncompressed), "-o", str(symlink_source)],
+                check=True,
+            )
+        symlinked = self._run_operator(
+            "backup",
+            environment={
+                "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(symlink_archive),
+                "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(symlink_source),
+            },
+        )
+        self.assertNotEqual(symlinked.returncode, 0)
+
+    def test_failed_start_preserves_previous_pack_revision(self) -> None:
+        marker = self.data_dir / ".afterlight-pack-sha"
+        marker.write_text(f"{BACKUP_PACK_SHA}\n", encoding="utf-8")
+
+        result = self._run_operator(
+            "start", environment={"FAKE_DOCKER_UP_EXIT": "42"}
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(encoding="utf-8"), f"{BACKUP_PACK_SHA}\n")
+
+    def test_start_refuses_existing_world_without_matching_revision(self) -> None:
+        world = self.data_dir / "world"
+        world.mkdir()
+        (world / "level.dat").write_text("existing world\n", encoding="utf-8")
+        marker = self.data_dir / ".afterlight-pack-sha"
+
+        for label, marker_contents, expected_message in (
+            ("missing", None, "valid pack revision marker"),
+            ("different", f"{BACKUP_PACK_SHA}\n", "run update instead"),
+        ):
+            with self.subTest(label=label):
+                self._clear_command_logs()
+                marker.unlink(missing_ok=True)
+                if marker_contents is not None:
+                    marker.write_text(marker_contents, encoding="utf-8")
+
+                result = self._run_operator("start")
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_message, result.stderr.lower())
+                self.assertFalse(
+                    any(command[0] == "up" for command in self._compose_commands())
+                )
+                if marker_contents is None:
+                    self.assertFalse(marker.exists())
+                else:
+                    self.assertEqual(
+                        marker.read_text(encoding="utf-8"), marker_contents
+                    )
+
     def test_backup_accepts_changed_recoverable_archive(self) -> None:
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         self._write_valid_archive(archive, "old world\n")
@@ -670,6 +853,14 @@ class FriendServerTests(unittest.TestCase):
                 ("ps", "--format", "json", "minecraft"),
                 ("up", "-d", "backup"),
             ],
+        )
+        self.assertEqual(
+            (self.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
+            f"{CURRENT_PACK_SHA}\n",
+        )
+        self.assertEqual(
+            {value for value in self._pack_urls() if value},
+            {f"{RAW_PACK_URL_PREFIX}/{CURRENT_PACK_SHA}/pack.toml"},
         )
 
     def test_update_separates_backup_process_output_from_selected_path(self) -> None:
@@ -758,6 +949,25 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("symlink", linked.stderr.lower())
         self.assertEqual(self._docker_calls(), [])
 
+    def test_rollback_rejects_invalid_archive_before_stopping_services(self) -> None:
+        archive = self.backup_dir / "empty.tar.zst"
+        with tempfile.TemporaryDirectory(dir=self.temp_path) as payload_name:
+            uncompressed = Path(payload_name) / "empty.tar"
+            subprocess.run(
+                ["tar", "-cf", str(uncompressed), "--files-from", "/dev/null"],
+                check=True,
+            )
+            subprocess.run(
+                ["zstd", "-q", "-f", str(uncompressed), "-o", str(archive)],
+                check=True,
+            )
+
+        result = self._run_operator("rollback", str(archive), "--confirm")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("recoverable", result.stderr.lower())
+        self.assertEqual(self._docker_calls(), [])
+
     def test_rollback_rejects_unwritable_data_parent_before_stop(self) -> None:
         data_parent = self.temp_path / "locked-parent"
         data_parent.mkdir()
@@ -798,6 +1008,10 @@ class FriendServerTests(unittest.TestCase):
             (self.data_dir / "world" / "level.dat").read_text(encoding="utf-8"),
             "restored world\n",
         )
+        self.assertEqual(
+            (self.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
+            f"{BACKUP_PACK_SHA}\n",
+        )
         restored_properties = self.data_dir / "server.properties"
         self.assertTrue(
             restored_properties.is_file(),
@@ -810,6 +1024,10 @@ class FriendServerTests(unittest.TestCase):
         self.assertTrue(archive.is_file())
         self.assertFalse(self.rm_log.exists())
         self.assertEqual(
+            {value for value in self._pack_urls() if value},
+            {f"{RAW_PACK_URL_PREFIX}/{BACKUP_PACK_SHA}/pack.toml"},
+        )
+        self.assertEqual(
             self._compose_commands(),
             [
                 ("version",),
@@ -818,6 +1036,34 @@ class FriendServerTests(unittest.TestCase):
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "minecraft", "backup"),
                 ("ps", "--format", "json", "minecraft"),
+            ],
+        )
+
+    def test_rollback_start_failure_stops_both_services(self) -> None:
+        (self.data_dir / "world").mkdir()
+        (self.data_dir / "world" / "level.dat").write_text(
+            "current world\n", encoding="utf-8"
+        )
+        (self.data_dir / ".afterlight-pack-sha").write_text(
+            f"{CURRENT_PACK_SHA}\n", encoding="utf-8"
+        )
+        archive = self._make_backup_archive()
+
+        result = self._run_operator(
+            "rollback",
+            str(archive),
+            "--confirm",
+            environment={"FAKE_DOCKER_UP_EXIT": "42"},
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("rollback start failed", result.stderr.lower())
+        self.assertEqual(
+            self._compose_commands()[-3:],
+            [
+                ("stop", "backup", "minecraft"),
+                ("up", "-d", "minecraft", "backup"),
+                ("stop", "backup", "minecraft"),
             ],
         )
 

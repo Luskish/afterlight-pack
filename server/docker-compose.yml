@@ -9,7 +9,7 @@ services:
       TYPE: NEOFORGE
       VERSION: "1.21.1"
       NEOFORGE_VERSION: "21.1.248"
-      PACKWIZ_URL: https://luskish.github.io/afterlight-pack/pack.toml
+      PACKWIZ_URL: ${AFTERLIGHT_PACKWIZ_URL:-https://luskish.github.io/afterlight-pack/pack.toml}
       INIT_MEMORY: 4G
       MAX_MEMORY: 10G
       ENABLE_RCON: "TRUE"

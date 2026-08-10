@@ -10,7 +10,7 @@ RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
 MIN_UPTIME_SECONDS=${AFTERLIGHT_MIN_UPTIME_SECONDS:-72000}
 ENV_FILE="$SCRIPT_DIR/.env"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-PLAYER_PATTERN='There are ([0-9]+) of a max of ([0-9]+) players online'
+PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?[A-Za-z0-9_, ]*$'
 
 compose() {
   docker compose \
@@ -41,8 +41,13 @@ player_count() {
     return 1
   fi
   cleaned_output=$(printf '%s\n' "$rcon_output" | sed $'s/\033\\[[0-9;]*[[:alpha:]]//g')
-  if [[ ! "$cleaned_output" =~ $PLAYER_PATTERN ]]; then
+  cleaned_output=${cleaned_output//$'\r'/}
+  if [[ "$cleaned_output" == *$'\n'* || ! "$cleaned_output" =~ $PLAYER_PATTERN ]]; then
     fail "Unable to parse RCON player count"
+    return 1
+  fi
+  if ((${BASH_REMATCH[1]} > ${BASH_REMATCH[2]})); then
+    fail "RCON player count exceeds configured maximum"
     return 1
   fi
   printf '%s\n' "${BASH_REMATCH[1]}"
@@ -61,6 +66,7 @@ main() {
   local container_id
   local current_container_id
   local current_epoch
+  local current_started_at
   local health
   local players
   local started_at
@@ -74,6 +80,10 @@ main() {
   [[ -d "$RUNTIME_DIR" ]] || fail "Runtime directory is missing: $RUNTIME_DIR"
   if [[ ! "$MIN_UPTIME_SECONDS" =~ ^[0-9]+$ ]]; then
     fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be a nonnegative integer"
+    return 1
+  fi
+  if ((MIN_UPTIME_SECONDS < 72000)); then
+    fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be at least 72000"
     return 1
   fi
 
@@ -132,6 +142,11 @@ main() {
   current_container_id=$(compose ps -q minecraft)
   if [[ "$current_container_id" != "$container_id" ]]; then
     fail "Minecraft container changed during maintenance"
+    return 1
+  fi
+  current_started_at=$(docker inspect --format '{{.State.StartedAt}}' "$container_id") || return 1
+  if [[ "$current_started_at" != "$started_at" ]]; then
+    fail "Minecraft container start time changed during maintenance"
     return 1
   fi
   health=$(container_health "$container_id") || return 1

@@ -146,9 +146,10 @@ def _validate_zip_metadata(info):
         raise ValueError(f"archive entry timestamp is not normalized: {info.filename!r}")
     if info.create_system != 3:
         raise ValueError(f"archive entry is not Unix metadata: {info.filename!r}")
-    mode = info.external_attr >> 16
-    if stat.S_IFMT(mode) != stat.S_IFREG or stat.S_IMODE(mode) != 0o644:
-        raise ValueError(f"archive entry mode is not 0644: {info.filename!r}")
+    if info.external_attr != FILE_MODE << 16:
+        raise ValueError(
+            f"archive entry external attributes are not normalized: {info.filename!r}"
+        )
     if info.compress_type != zipfile.ZIP_DEFLATED:
         raise ValueError(f"archive entry is not deflated: {info.filename!r}")
     if info.flag_bits & UTF8_FLAG:

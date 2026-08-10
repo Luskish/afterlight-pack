@@ -100,9 +100,37 @@ class PrismArtifactTests(unittest.TestCase):
             self.assertNotIn("\\", info.filename)
             self.assertEqual(info.date_time, FIXED_TIMESTAMP)
             self.assertEqual(info.create_system, 3)
-            self.assertEqual((info.external_attr >> 16) & 0o777, 0o644)
+            self.assertEqual(
+                info.external_attr,
+                (stat.S_IFREG | 0o644) << 16,
+            )
             self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
             self.assertEqual(info.flag_bits, 0)
+
+    def test_inspection_rejects_lower_dos_directory_flag(self):
+        valid_path = self._build("valid-external-attr.zip")
+        with zipfile.ZipFile(valid_path) as source:
+            entries = [(info, source.read(info)) for info in source.infolist()]
+
+        crafted_path = self.root / "dos-directory-flag.zip"
+        with zipfile.ZipFile(
+            crafted_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        ) as archive:
+            for info, data in entries:
+                if info.filename == "instance.cfg":
+                    info.external_attr |= 0x10
+                archive.writestr(
+                    info,
+                    data,
+                    compress_type=zipfile.ZIP_DEFLATED,
+                    compresslevel=9,
+                )
+
+        with self.assertRaisesRegex(ValueError, "external attributes"):
+            inspect_prism_archive(crafted_path, PACK_URL, self.bootstrap_sha256)
 
     def test_only_bootstrap_jar_is_allowed(self):
         archive_path = self._build("allowed.zip")

@@ -8,12 +8,16 @@ ENV_FILE="${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
 CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
+MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
 RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
 
 DATA_DIR=""
 BACKUP_DIR=""
 SECRETS_DIR=""
+AFTERLIGHT_INIT_MEMORY=4G
+AFTERLIGHT_MAX_MEMORY=10G
+AFTERLIGHT_MEMORY_LIMIT=13G
 PACKWIZ_URL_OVERRIDE=""
 
 usage() {
@@ -43,12 +47,39 @@ validate_configured_path_syntax() {
   fi
 }
 
+validate_memory_budget() {
+  local label
+  local value
+  for label in AFTERLIGHT_INIT_MEMORY AFTERLIGHT_MAX_MEMORY AFTERLIGHT_MEMORY_LIMIT; do
+    value=${!label}
+    if [[ ! "$value" =~ $MEMORY_GRAMMAR ]]; then
+      fail "$label must use positive whole gigabytes such as 6G"
+      return 1
+    fi
+  done
+
+  local init_gib=${AFTERLIGHT_INIT_MEMORY%G}
+  local max_gib=${AFTERLIGHT_MAX_MEMORY%G}
+  local limit_gib=${AFTERLIGHT_MEMORY_LIMIT%G}
+  if ((init_gib > max_gib)); then
+    fail "AFTERLIGHT_INIT_MEMORY must not exceed AFTERLIGHT_MAX_MEMORY"
+    return 1
+  fi
+  if ((limit_gib < max_gib + 2)); then
+    fail "AFTERLIGHT_MEMORY_LIMIT must leave at least 2G above AFTERLIGHT_MAX_MEMORY"
+    return 1
+  fi
+}
+
 load_paths() {
   [[ -f "$ENV_FILE" ]] || fail "Environment file not found: $ENV_FILE"
 
   local data_seen=0
   local backup_seen=0
   local secrets_seen=0
+  local init_memory_seen=0
+  local max_memory_seen=0
+  local memory_limit_seen=0
   local assignment
   while IFS= read -r assignment || [[ -n "$assignment" ]]; do
     case "$assignment" in
@@ -76,6 +107,30 @@ load_paths() {
         SECRETS_DIR=${assignment#SECRETS_DIR=}
         secrets_seen=1
         ;;
+      AFTERLIGHT_INIT_MEMORY=*)
+        if [[ "$init_memory_seen" -ne 0 ]]; then
+          fail "Duplicate AFTERLIGHT_INIT_MEMORY assignment in $ENV_FILE"
+          return 1
+        fi
+        AFTERLIGHT_INIT_MEMORY=${assignment#AFTERLIGHT_INIT_MEMORY=}
+        init_memory_seen=1
+        ;;
+      AFTERLIGHT_MAX_MEMORY=*)
+        if [[ "$max_memory_seen" -ne 0 ]]; then
+          fail "Duplicate AFTERLIGHT_MAX_MEMORY assignment in $ENV_FILE"
+          return 1
+        fi
+        AFTERLIGHT_MAX_MEMORY=${assignment#AFTERLIGHT_MAX_MEMORY=}
+        max_memory_seen=1
+        ;;
+      AFTERLIGHT_MEMORY_LIMIT=*)
+        if [[ "$memory_limit_seen" -ne 0 ]]; then
+          fail "Duplicate AFTERLIGHT_MEMORY_LIMIT assignment in $ENV_FILE"
+          return 1
+        fi
+        AFTERLIGHT_MEMORY_LIMIT=${assignment#AFTERLIGHT_MEMORY_LIMIT=}
+        memory_limit_seen=1
+        ;;
       *)
         fail "Invalid assignment in $ENV_FILE: $assignment"
         return 1
@@ -98,17 +153,25 @@ load_paths() {
   validate_configured_path_syntax DATA_DIR "$DATA_DIR" || return 1
   validate_configured_path_syntax BACKUP_DIR "$BACKUP_DIR" || return 1
   validate_configured_path_syntax SECRETS_DIR "$SECRETS_DIR" || return 1
+  validate_memory_budget || return 1
 }
 
 compose() {
   if [[ -n "$PACKWIZ_URL_OVERRIDE" ]]; then
-    AFTERLIGHT_PACKWIZ_URL="$PACKWIZ_URL_OVERRIDE" docker compose \
+    AFTERLIGHT_PACKWIZ_URL="$PACKWIZ_URL_OVERRIDE" \
+      AFTERLIGHT_INIT_MEMORY="$AFTERLIGHT_INIT_MEMORY" \
+      AFTERLIGHT_MAX_MEMORY="$AFTERLIGHT_MAX_MEMORY" \
+      AFTERLIGHT_MEMORY_LIMIT="$AFTERLIGHT_MEMORY_LIMIT" \
+      docker compose \
       --project-name afterlight \
       --env-file "$ENV_FILE" \
       -f "$COMPOSE_FILE" \
       "$@"
   else
-    docker compose \
+    AFTERLIGHT_INIT_MEMORY="$AFTERLIGHT_INIT_MEMORY" \
+      AFTERLIGHT_MAX_MEMORY="$AFTERLIGHT_MAX_MEMORY" \
+      AFTERLIGHT_MEMORY_LIMIT="$AFTERLIGHT_MEMORY_LIMIT" \
+      docker compose \
       --project-name afterlight \
       --env-file "$ENV_FILE" \
       -f "$COMPOSE_FILE" \

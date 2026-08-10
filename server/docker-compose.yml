@@ -10,8 +10,8 @@ services:
       VERSION: "1.21.1"
       NEOFORGE_VERSION: "21.1.248"
       PACKWIZ_URL: ${AFTERLIGHT_PACKWIZ_URL:-https://luskish.github.io/afterlight-pack/pack.toml}
-      INIT_MEMORY: 4G
-      MAX_MEMORY: 10G
+      INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}
+      MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}
       ENABLE_RCON: "TRUE"
       RCON_PASSWORD_FILE: /run/secrets/rcon_password
     ports:
@@ -29,7 +29,7 @@ services:
       timeout: 5s
       retries: 48
       start_period: 2m
-    mem_limit: 13G
+    mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}
     stop_grace_period: 2m
   backup:
     image: itzg/mc-backup:2026.8.0@sha256:ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32

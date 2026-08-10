@@ -30,7 +30,9 @@ server/afterlight-server.sh doctor
 server/afterlight-server.sh start
 ```
 
-The three values in `server/.env` must remain exact absolute host paths matching `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths. The operator command parses the file as data. It does not execute it.
+The first three values in `server/.env` must remain exact absolute host paths matching `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths. The operator command parses the file as data. It does not execute it.
+
+The three optional memory values use positive whole gigabytes. `AFTERLIGHT_INIT_MEMORY` must not exceed `AFTERLIGHT_MAX_MEMORY`, and `AFTERLIGHT_MEMORY_LIMIT` must leave at least 2 GiB above the maximum Java heap for native JVM memory. The portable defaults are `4G`, `10G`, and `13G`. A dedicated host with about 24 GiB usable RAM can use `6G`, `14G`, and `17G` while retaining operating-system and backup headroom.
 
 ## Firewall
 

@@ -323,7 +323,7 @@ git commit -m "release: prepare AFTERLIGHT 0.9.0 rc2" -m "Co-Authored-By: Codex 
 - Consumes: the exact clean `dev` HEAD and its accepted gauntlet directory.
 - Produces: immutable tag `v0.9.0-rc.2`, stable `main` and Pages parity at the accepted SHA, a public GitHub prerelease with three safe assets, and local friends-only Prism alternative archives for direct sharing.
 
-- [ ] **Step 1: Run the complete local suite**
+- [x] **Step 1: Run the complete local suite**
 
 Run:
 
@@ -345,7 +345,7 @@ git status --short
 
 Expected: full Python suite passes, `VERIFY: ALL GREEN`, `SERVER BOOT: OK`, Compose and ShellCheck pass, and the tree is clean.
 
-- [ ] **Step 2: Run the exact detached-SHA gauntlet**
+- [x] **Step 2: Run the exact detached-SHA gauntlet**
 
 ```bash
 SHA=$(git rev-parse HEAD)
@@ -354,7 +354,7 @@ SHA=$(git rev-parse HEAD)
 
 Expected: two release builds are byte-identical, the clean client install prints `CLIENT INSTALL: OK`, and the command ends with `GAUNTLET: ACCEPTED $SHA`.
 
-- [ ] **Step 3: Promote through exact CI and Pages parity**
+- [x] **Step 3: Promote through exact CI and Pages parity**
 
 ```bash
 tools/promote-release.sh "$SHA" --confirm
@@ -362,11 +362,11 @@ tools/promote-release.sh "$SHA" --confirm
 
 Expected: exact `dev` CI passes, `main` fast-forwards to `SHA`, exact `main` CI passes, Pages matches local `pack.toml` and `index.toml`, tag `v0.9.0-rc.2` is pushed, and the command returns to `dev`.
 
-- [ ] **Step 4: Populate automated evidence**
+- [x] **Step 4: Populate automated evidence**
 
 Record the gauntlet transcript path, both CI URLs, Pages hashes, Java and Packwiz versions, public and friends-only SHA-256 values, exact candidate SHA, and known boundaries in `docs/releases/0.9.0-rc.2.md`. Leave every unperformed manual result as `NOT RUN`.
 
-- [ ] **Step 5: Verify and push the evidence commit**
+- [x] **Step 5: Verify and push the evidence commit**
 
 ```bash
 git add docs/releases/0.9.0-rc.2.md docs/HANDOFF.md
@@ -377,7 +377,7 @@ gh run watch --repo Luskish/afterlight-pack --exit-status
 
 Expected: the exact evidence commit's `pack-ci` push run succeeds.
 
-- [ ] **Step 6: Publish the prerelease**
+- [x] **Step 6: Publish the prerelease**
 
 ```bash
 tools/publish-release.sh "$SHA" 0.9.0-rc.2 --prerelease --confirm
@@ -385,7 +385,7 @@ tools/publish-release.sh "$SHA" 0.9.0-rc.2 --prerelease --confirm
 
 Expected: GitHub release `v0.9.0-rc.2` exists with exactly three public-safe assets. The `.mrpack` and CurseForge ZIP remain only under `dist/gauntlet/$SHA/friends-only/`.
 
-- [ ] **Step 7: Record friend and VPS handoff facts**
+- [x] **Step 7: Record friend and VPS handoff facts**
 
 Update `docs/HANDOFF.md` with the release URL, accepted SHA, Prism ZIP checksum, private archive paths and checksums, manual acceptance status, and the exact ordered VPS setup commands from `docs/SERVER.md`.
 

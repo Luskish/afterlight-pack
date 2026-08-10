@@ -6,6 +6,7 @@ You aren't discovering technology: you're remembering it.
 - **Design spec:** docs/superpowers/specs/2026-08-07-afterlight-modpack-design.md
 - **Pack source:** this repo is a [packwiz](https://packwiz.infra.link/) pack; mods are TOML metadata under `mods/`, no jars in git.
 - **Players:** see docs/INSTALL.md (created in Plan 01 Task 7) for the auto-updating Prism instance.
+- **Friend server:** see docs/SERVER.md for host setup, firewall, backups, updates, and rollback.
 - **Dev loop:** `packwiz serve` + a Prism dev instance; `tools/server-test.sh` for headless server verification.
 
 ## Layout

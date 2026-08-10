@@ -1,0 +1,68 @@
+name: afterlight
+services:
+  minecraft:
+    image: itzg/minecraft-server:2026.8.0-java21@sha256:b76b9298a2a60d5cf9d223e009cd0b8ad620c2080abd83f9a1fa5084fa87f9ab
+    restart: unless-stopped
+    init: true
+    environment:
+      EULA: "TRUE"
+      TYPE: NEOFORGE
+      VERSION: "1.21.1"
+      NEOFORGE_VERSION: "21.1.248"
+      PACKWIZ_URL: https://luskish.github.io/afterlight-pack/pack.toml
+      INIT_MEMORY: 4G
+      MAX_MEMORY: 10G
+      ENABLE_RCON: "TRUE"
+      RCON_PASSWORD_FILE: /run/secrets/rcon_password
+    ports:
+      - "25565:25565/tcp"
+      - "24454:24454/udp"
+    secrets: [rcon_password]
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?DATA_DIR must be set}
+        target: /data
+        bind: { create_host_path: false }
+    healthcheck:
+      test: ["CMD", "mc-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 48
+      start_period: 2m
+    mem_limit: 13G
+    stop_grace_period: 2m
+  backup:
+    image: itzg/mc-backup:2026.8.0@sha256:ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32
+    restart: unless-stopped
+    init: true
+    depends_on:
+      minecraft: { condition: service_healthy }
+    environment:
+      RCON_HOST: minecraft
+      RCON_PASSWORD_FILE: /run/secrets/rcon_password
+      BACKUP_METHOD: tar
+      TAR_COMPRESS_METHOD: zstd
+      BACKUP_INTERVAL: "6h"
+      INITIAL_DELAY: "0"
+      BACKUP_ON_STARTUP: "true"
+      ENABLE_SAVE_ALL: "true"
+      ENABLE_SYNC: "true"
+      EXCLUDES: ""
+      EXCLUDES_FILE: /etc/afterlight-backup-excludes.txt
+      PRUNE_BACKUPS_DAYS: "14"
+      LINK_LATEST: "false"
+    secrets: [rcon_password]
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?DATA_DIR must be set}
+        target: /data
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${BACKUP_DIR:?BACKUP_DIR must be set}
+        target: /backups
+        bind: { create_host_path: false }
+      - ./backup-excludes.txt:/etc/afterlight-backup-excludes.txt:ro
+secrets:
+  rcon_password:
+    file: ${SECRETS_DIR:?SECRETS_DIR must be set}/rcon_password

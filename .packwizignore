@@ -15,6 +15,7 @@ server-test/**
 config/ftbquests/quests/.afterlight-managed.json
 **/.gitkeep
 dist/**
+server/**
 AGENTS.md
 CLAUDE.md
 .nojekyll

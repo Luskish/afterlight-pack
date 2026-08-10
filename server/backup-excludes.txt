@@ -1,0 +1,11 @@
+*.jar
+cache/
+caches/
+libraries/
+versions/
+logs/
+crash-reports/
+*.lock
+*.partial
+*.part
+server.properties

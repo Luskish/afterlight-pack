@@ -57,7 +57,7 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh tools/server-test.sh; do
+for s in tools/export.sh tools/server-test.sh server/afterlight-server.sh; do
   bash -n "$s" && echo "OK: $s parses" || { echo "FAIL: $s syntax"; FAIL=1; }
   [ -x "$s" ] && echo "OK: $s executable" || { echo "FAIL: $s not executable"; FAIL=1; }
 done

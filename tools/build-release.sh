@@ -26,21 +26,23 @@ validate_release_entries() {
   shopt -s dotglob nullglob
   entries=("$directory"/*)
   shopt -u dotglob nullglob
-  for entry in "${entries[@]}"; do
-    entry_name=${entry##*/}
-    case "$entry_name" in
-      "$PRISM_NAME"|"$METADATA_NAME"|"$CHECKSUMS_NAME"|"$MRPACK_NAME"|"$CURSEFORGE_NAME")
-        ;;
-      *)
-        echo "FAIL: unclassified release output entry: $entry" >&2
+  if ((${#entries[@]})); then
+    for entry in "${entries[@]}"; do
+      entry_name=${entry##*/}
+      case "$entry_name" in
+        "$PRISM_NAME"|"$METADATA_NAME"|"$CHECKSUMS_NAME"|"$MRPACK_NAME"|"$CURSEFORGE_NAME")
+          ;;
+        *)
+          echo "FAIL: unclassified release output entry: $entry" >&2
+          return 2
+          ;;
+      esac
+      if [ -L "$entry" ] || [ ! -f "$entry" ]; then
+        echo "FAIL: nonregular release output entry: $entry" >&2
         return 2
-        ;;
-    esac
-    if [ -L "$entry" ] || [ ! -f "$entry" ]; then
-      echo "FAIL: nonregular release output entry: $entry" >&2
-      return 2
-    fi
-  done
+      fi
+    done
+  fi
 }
 
 if [ -L "$DIST_DIR" ]; then

@@ -1046,6 +1046,18 @@ class ReleasePolicyTests(unittest.TestCase):
             {sentinel.name},
         )
 
+    def test_release_build_accepts_existing_empty_output(self):
+        output_directory = self.root / "existing-empty-output"
+        output_directory.mkdir()
+
+        result = self._run_release_build(output_directory)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("download packwiz-installer-bootstrap", result.stderr)
+        self.assertNotIn("unbound variable", result.stderr)
+        self.assertTrue(output_directory.is_dir())
+        self.assertEqual(list(output_directory.iterdir()), [])
+
     def test_release_build_rejects_parent_basename(self):
         unsafe_parent = self.root / "unsafe-parent"
         unsafe_parent.mkdir()

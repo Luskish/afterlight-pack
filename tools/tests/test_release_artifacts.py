@@ -16,9 +16,10 @@ from tools.release_artifacts import build_prism_archive, inspect_prism_archive
 REQUIRED_PRISM_TESTS = {
     "test_same_inputs_produce_byte_identical_archives",
     "test_zip_entries_are_sorted_normalized_and_path_safe",
-    "test_only_bootstrap_jar_is_allowed",
+    "test_only_approved_installer_jars_are_allowed",
     "test_instance_uses_exact_pack_url_and_loader_versions",
     "test_inspection_rejects_wrong_bootstrap_digest",
+    "test_inspection_rejects_wrong_installer_digest_or_size",
     "test_inspection_rejects_duplicate_or_parent_paths",
 }
 
@@ -33,6 +34,7 @@ REQUIRED_RELEASE_POLICY_TESTS = {
 
 EXPECTED_PRISM_NAMES = (
     ".minecraft/packwiz-installer-bootstrap.jar",
+    ".minecraft/packwiz-installer.jar",
     "instance.cfg",
     "mmc-pack.json",
 )
@@ -43,6 +45,16 @@ NEOFORGE_VERSION = "21.1.248"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 RELEASE_VERSION = "0.9.0-rc.1"
 RELEASE_GIT_SHA = "0123456789abcdef0123456789abcdef01234567"
+BOOTSTRAP_VERSION = "0.0.3"
+BOOTSTRAP_SIZE = 98989
+BOOTSTRAP_SHA256 = (
+    "a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c"
+)
+INSTALLER_VERSION = "0.5.14"
+INSTALLER_SIZE = 4378828
+INSTALLER_SHA256 = (
+    "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
+)
 PUBLIC_RELEASE_FILES = {
     "AFTERLIGHT-prism-instance.zip",
     "release-metadata.json",
@@ -77,14 +89,29 @@ class PrismArtifactTests(unittest.TestCase):
         self.bootstrap_path = self.root / "packwiz-installer-bootstrap.jar"
         self.bootstrap_path.write_bytes(self.bootstrap_bytes)
         self.bootstrap_sha256 = hashlib.sha256(self.bootstrap_bytes).hexdigest()
+        self.installer_bytes = b"temporary packwiz installer fixture\n"
+        self.installer_path = self.root / "packwiz-installer.jar"
+        self.installer_path.write_bytes(self.installer_bytes)
+        self.installer_sha256 = hashlib.sha256(self.installer_bytes).hexdigest()
+        self.installer_size = len(self.installer_bytes)
 
     def _build(self, filename):
         return build_prism_archive(
             self.bootstrap_path,
+            self.installer_path,
             self.root / filename,
             PACK_URL,
             MINECRAFT_VERSION,
             NEOFORGE_VERSION,
+        )
+
+    def _inspect(self, archive_path):
+        return inspect_prism_archive(
+            archive_path,
+            PACK_URL,
+            self.bootstrap_sha256,
+            self.installer_sha256,
+            self.installer_size,
         )
 
     def _normalized_info(self, name):
@@ -167,19 +194,18 @@ class PrismArtifactTests(unittest.TestCase):
                 )
 
         with self.assertRaisesRegex(ValueError, "external attributes"):
-            inspect_prism_archive(crafted_path, PACK_URL, self.bootstrap_sha256)
+            self._inspect(crafted_path)
 
-    def test_only_bootstrap_jar_is_allowed(self):
+    def test_only_approved_installer_jars_are_allowed(self):
         archive_path = self._build("allowed.zip")
-        summary = inspect_prism_archive(
-            archive_path,
-            PACK_URL,
-            self.bootstrap_sha256,
-        )
-        self.assertEqual(summary["entry_count"], 3)
+        summary = self._inspect(archive_path)
+        self.assertEqual(summary["entry_count"], 4)
         self.assertEqual(
             summary["jar_entries"],
-            [".minecraft/packwiz-installer-bootstrap.jar"],
+            [
+                ".minecraft/packwiz-installer-bootstrap.jar",
+                ".minecraft/packwiz-installer.jar",
+            ],
         )
 
         entries = self._valid_entries()
@@ -188,7 +214,7 @@ class PrismArtifactTests(unittest.TestCase):
         self._write_fixture_archive(malicious_path, entries)
 
         with self.assertRaisesRegex(ValueError, "JAR"):
-            inspect_prism_archive(malicious_path, PACK_URL, self.bootstrap_sha256)
+            self._inspect(malicious_path)
 
     def test_instance_uses_exact_pack_url_and_loader_versions(self):
         archive_path = self._build("instance.zip")
@@ -205,6 +231,8 @@ class PrismArtifactTests(unittest.TestCase):
             "OverrideCommands=true\n"
             'PreLaunchCommand="$INST_JAVA" -jar '
             "packwiz-installer-bootstrap.jar "
+            "--bootstrap-no-update "
+            "--bootstrap-main-jar packwiz-installer.jar -g "
             "https://luskish.github.io/afterlight-pack/pack.toml\n",
         )
         self.assertEqual(
@@ -226,7 +254,53 @@ class PrismArtifactTests(unittest.TestCase):
         archive_path = self._build("wrong-digest.zip")
 
         with self.assertRaisesRegex(ValueError, "bootstrap SHA-256"):
-            inspect_prism_archive(archive_path, PACK_URL, "0" * 64)
+            inspect_prism_archive(
+                archive_path,
+                PACK_URL,
+                "0" * 64,
+                self.installer_sha256,
+                self.installer_size,
+            )
+
+    def test_inspection_rejects_wrong_installer_digest_or_size(self):
+        archive_path = self._build("wrong-installer.zip")
+
+        with self.assertRaisesRegex(ValueError, "installer SHA-256"):
+            inspect_prism_archive(
+                archive_path,
+                PACK_URL,
+                self.bootstrap_sha256,
+                "0" * 64,
+                self.installer_size,
+            )
+
+        with self.assertRaisesRegex(ValueError, "installer size"):
+            inspect_prism_archive(
+                archive_path,
+                PACK_URL,
+                self.bootstrap_sha256,
+                self.installer_sha256,
+                self.installer_size + 1,
+            )
+
+    def test_inspection_rejects_mutable_installer_command(self):
+        entries = self._valid_entries()
+        mutable_config = next(data for name, data in entries if name == "instance.cfg")
+        mutable_config = mutable_config.replace(
+            b" --bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar -g",
+            b"",
+        )
+        crafted_path = self.root / "mutable-command.zip"
+        self._write_fixture_archive(
+            crafted_path,
+            [
+                (name, mutable_config if name == "instance.cfg" else data)
+                for name, data in entries
+            ],
+        )
+
+        with self.assertRaisesRegex(ValueError, "exact Packwiz launch command"):
+            self._inspect(crafted_path)
 
     def test_inspection_rejects_duplicate_or_parent_paths(self):
         entries = self._valid_entries()
@@ -239,7 +313,7 @@ class PrismArtifactTests(unittest.TestCase):
                 [*entries, ("instance.cfg", entries[1][1])],
             )
         with self.assertRaisesRegex(ValueError, "duplicate"):
-            inspect_prism_archive(duplicate_path, PACK_URL, self.bootstrap_sha256)
+            self._inspect(duplicate_path)
 
         parent_path = self.root / "parent.zip"
         self._write_fixture_archive(
@@ -247,7 +321,7 @@ class PrismArtifactTests(unittest.TestCase):
             [("../instance.cfg", entries[1][1]), *entries],
         )
         with self.assertRaisesRegex(ValueError, "parent traversal"):
-            inspect_prism_archive(parent_path, PACK_URL, self.bootstrap_sha256)
+            self._inspect(parent_path)
 
 
 class ReleasePolicyTests(unittest.TestCase):
@@ -396,7 +470,24 @@ class ReleasePolicyTests(unittest.TestCase):
     def _write_metadata_fixture(self, directory):
         prism_bytes = (directory / "AFTERLIGHT-prism-instance.zip").read_bytes()
         metadata = {
+            "format": 2,
             "version": RELEASE_VERSION,
+            "git_sha": RELEASE_GIT_SHA,
+            "minecraft": MINECRAFT_VERSION,
+            "neoforge": NEOFORGE_VERSION,
+            "pack_url": PACK_URL,
+            "packwiz": {
+                "bootstrap": {
+                    "version": BOOTSTRAP_VERSION,
+                    "size": BOOTSTRAP_SIZE,
+                    "sha256": BOOTSTRAP_SHA256,
+                },
+                "installer": {
+                    "version": INSTALLER_VERSION,
+                    "size": INSTALLER_SIZE,
+                    "sha256": INSTALLER_SHA256,
+                },
+            },
             "public_artifacts": {
                 "AFTERLIGHT-prism-instance.zip": {
                     "sha256": hashlib.sha256(prism_bytes).hexdigest(),
@@ -477,16 +568,40 @@ class ReleasePolicyTests(unittest.TestCase):
             NEOFORGE_VERSION,
             "--pack-url",
             PACK_URL,
+            "--bootstrap-version",
+            BOOTSTRAP_VERSION,
+            "--bootstrap-size",
+            str(BOOTSTRAP_SIZE),
+            "--bootstrap-sha256",
+            BOOTSTRAP_SHA256,
+            "--installer-version",
+            INSTALLER_VERSION,
+            "--installer-size",
+            str(INSTALLER_SIZE),
+            "--installer-sha256",
+            INSTALLER_SHA256,
         )
         self._assert_tool_succeeds(result)
 
         expected = {
-            "format": 1,
+            "format": 2,
             "version": RELEASE_VERSION,
             "git_sha": RELEASE_GIT_SHA,
             "minecraft": MINECRAFT_VERSION,
             "neoforge": NEOFORGE_VERSION,
             "pack_url": PACK_URL,
+            "packwiz": {
+                "bootstrap": {
+                    "version": BOOTSTRAP_VERSION,
+                    "size": BOOTSTRAP_SIZE,
+                    "sha256": BOOTSTRAP_SHA256,
+                },
+                "installer": {
+                    "version": INSTALLER_VERSION,
+                    "size": INSTALLER_SIZE,
+                    "sha256": INSTALLER_SHA256,
+                },
+            },
             "public_artifacts": {
                 "AFTERLIGHT-prism-instance.zip": {
                     "sha256": hashlib.sha256(b"p").hexdigest(),
@@ -527,6 +642,18 @@ class ReleasePolicyTests(unittest.TestCase):
                     NEOFORGE_VERSION,
                     "--pack-url",
                     PACK_URL,
+                    "--bootstrap-version",
+                    BOOTSTRAP_VERSION,
+                    "--bootstrap-size",
+                    str(BOOTSTRAP_SIZE),
+                    "--bootstrap-sha256",
+                    BOOTSTRAP_SHA256,
+                    "--installer-version",
+                    INSTALLER_VERSION,
+                    "--installer-size",
+                    str(INSTALLER_SIZE),
+                    "--installer-sha256",
+                    INSTALLER_SHA256,
                 )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("40 lowercase hexadecimal", result.stderr)
@@ -1113,7 +1240,7 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertIn("PACK_URL override is not allowed", result.stderr)
         self.assertFalse(output_directory.exists())
 
-    def test_release_build_rejects_bootstrap_pin_overrides(self):
+    def test_release_build_rejects_installer_pin_overrides(self):
         output_directory = self.root / "bootstrap-override-output"
 
         result = self._run_release_build(
@@ -1121,11 +1248,14 @@ class ReleasePolicyTests(unittest.TestCase):
             environment_overrides={
                 "PACKWIZ_BOOTSTRAP_VERSION": "9.9.9",
                 "PACKWIZ_BOOTSTRAP_SHA256": "f" * 64,
+                "PACKWIZ_INSTALLER_VERSION": "9.9.9",
+                "PACKWIZ_INSTALLER_SHA256": "e" * 64,
+                "PACKWIZ_INSTALLER_SIZE": "1",
             },
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("approved packwiz bootstrap pin", result.stderr.lower())
+        self.assertIn("approved packwiz installer pins", result.stderr.lower())
         self.assertNotIn("download packwiz-installer-bootstrap", result.stderr)
         self.assertFalse(output_directory.exists())
 

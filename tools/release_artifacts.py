@@ -17,10 +17,13 @@ from pathlib import Path, PurePosixPath
 
 EXPECTED_PRISM_NAMES = (
     ".minecraft/packwiz-installer-bootstrap.jar",
+    ".minecraft/packwiz-installer.jar",
     "instance.cfg",
     "mmc-pack.json",
 )
-APPROVED_PRISM_JAR = ".minecraft/packwiz-installer-bootstrap.jar"
+PRISM_BOOTSTRAP_JAR = ".minecraft/packwiz-installer-bootstrap.jar"
+PRISM_INSTALLER_JAR = ".minecraft/packwiz-installer.jar"
+APPROVED_PRISM_JARS = (PRISM_BOOTSTRAP_JAR, PRISM_INSTALLER_JAR)
 PRISM_MINECRAFT_VERSION = "1.21.1"
 PRISM_NEOFORGE_VERSION = "21.1.248"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
@@ -61,7 +64,9 @@ def _instance_config(pack_url):
         "name=AFTERLIGHT\n"
         "iconKey=default\n"
         "OverrideCommands=true\n"
-        f'PreLaunchCommand="$INST_JAVA" -jar packwiz-installer-bootstrap.jar {pack_url}\n'
+        'PreLaunchCommand="$INST_JAVA" -jar packwiz-installer-bootstrap.jar '
+        "--bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar -g "
+        f"{pack_url}\n"
     ).encode("utf-8")
 
 
@@ -231,18 +236,23 @@ def _write_prism_archive(archive_path, entries):
 
 def build_prism_archive(
     bootstrap_path,
+    installer_path,
     output_path,
     pack_url,
     minecraft_version,
     neoforge_version,
 ):
     bootstrap_path = Path(bootstrap_path)
+    installer_path = Path(installer_path)
     output_path = Path(output_path)
     if not bootstrap_path.is_file():
         raise ValueError(f"bootstrap JAR is not a regular file: {bootstrap_path}")
+    if not installer_path.is_file():
+        raise ValueError(f"installer JAR is not a regular file: {installer_path}")
 
     entries = {
-        APPROVED_PRISM_JAR: bootstrap_path.read_bytes(),
+        PRISM_BOOTSTRAP_JAR: bootstrap_path.read_bytes(),
+        PRISM_INSTALLER_JAR: installer_path.read_bytes(),
         "instance.cfg": _instance_config(pack_url),
         "mmc-pack.json": _mmc_pack(minecraft_version, neoforge_version),
     }
@@ -262,7 +272,9 @@ def build_prism_archive(
         inspect_prism_archive(
             temporary_path,
             pack_url,
-            hashlib.sha256(entries[APPROVED_PRISM_JAR]).hexdigest(),
+            hashlib.sha256(entries[PRISM_BOOTSTRAP_JAR]).hexdigest(),
+            hashlib.sha256(entries[PRISM_INSTALLER_JAR]).hexdigest(),
+            len(entries[PRISM_INSTALLER_JAR]),
         )
         os.replace(temporary_path, output_path)
     finally:
@@ -290,25 +302,43 @@ def _validate_zip_metadata(info):
         raise ValueError(f"archive entry has non-normalized metadata: {info.filename!r}")
 
 
-def _validate_sha256(value):
+def _validate_sha256(value, label):
     if not re.fullmatch(r"[0-9a-fA-F]{64}", value):
-        raise ValueError("bootstrap SHA-256 must be exactly 64 hexadecimal characters")
+        raise ValueError(
+            f"{label} SHA-256 must be exactly 64 hexadecimal characters"
+        )
     return value.lower()
 
 
-def inspect_prism_archive(archive_path, pack_url, bootstrap_sha256):
+def _validate_positive_size(value, label):
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"{label} size must be a positive integer")
+    return value
+
+
+def inspect_prism_archive(
+    archive_path,
+    pack_url,
+    bootstrap_sha256,
+    installer_sha256,
+    installer_size,
+):
     archive_path = Path(archive_path)
-    expected_bootstrap_sha256 = _validate_sha256(bootstrap_sha256)
+    expected_bootstrap_sha256 = _validate_sha256(bootstrap_sha256, "bootstrap")
+    expected_installer_sha256 = _validate_sha256(installer_sha256, "installer")
+    expected_installer_size = _validate_positive_size(installer_size, "installer")
 
     with zipfile.ZipFile(archive_path) as archive:
         infos, names = _inspect_zip_safety(archive, allow_directories=False)
 
         jar_entries = [name for name in names if name.lower().endswith(".jar")]
-        disallowed_jars = [name for name in jar_entries if name != APPROVED_PRISM_JAR]
+        disallowed_jars = [
+            name for name in jar_entries if name not in APPROVED_PRISM_JARS
+        ]
         if disallowed_jars:
             raise ValueError(f"disallowed JAR in Prism archive: {disallowed_jars[0]!r}")
-        if jar_entries != [APPROVED_PRISM_JAR]:
-            raise ValueError("Prism archive must contain exactly one approved JAR")
+        if tuple(jar_entries) != APPROVED_PRISM_JARS:
+            raise ValueError("Prism archive must contain exactly two approved JARs")
         if tuple(names) != EXPECTED_PRISM_NAMES:
             raise ValueError(
                 "Prism archive entries must be exactly sorted as "
@@ -318,12 +348,26 @@ def inspect_prism_archive(archive_path, pack_url, bootstrap_sha256):
         for info in infos:
             _validate_zip_metadata(info)
 
-        bootstrap_bytes = archive.read(APPROVED_PRISM_JAR)
+        bootstrap_bytes = archive.read(PRISM_BOOTSTRAP_JAR)
         actual_bootstrap_sha256 = hashlib.sha256(bootstrap_bytes).hexdigest()
         if actual_bootstrap_sha256 != expected_bootstrap_sha256:
             raise ValueError(
                 "bootstrap SHA-256 mismatch: "
                 f"expected {expected_bootstrap_sha256}, got {actual_bootstrap_sha256}"
+            )
+
+        installer_bytes = archive.read(PRISM_INSTALLER_JAR)
+        actual_installer_size = len(installer_bytes)
+        if actual_installer_size != expected_installer_size:
+            raise ValueError(
+                "installer size mismatch: "
+                f"expected {expected_installer_size}, got {actual_installer_size}"
+            )
+        actual_installer_sha256 = hashlib.sha256(installer_bytes).hexdigest()
+        if actual_installer_sha256 != expected_installer_sha256:
+            raise ValueError(
+                "installer SHA-256 mismatch: "
+                f"expected {expected_installer_sha256}, got {actual_installer_sha256}"
             )
 
         expected_instance_config = _instance_config(pack_url)
@@ -340,6 +384,8 @@ def inspect_prism_archive(archive_path, pack_url, bootstrap_sha256):
     return {
         "archive": str(archive_path),
         "bootstrap_sha256": actual_bootstrap_sha256,
+        "installer_sha256": actual_installer_sha256,
+        "installer_size": actual_installer_size,
         "entries": names,
         "entry_count": len(names),
         "jar_entries": jar_entries,
@@ -563,6 +609,12 @@ def write_release_metadata(
     minecraft,
     neoforge,
     pack_url,
+    bootstrap_version,
+    bootstrap_size,
+    bootstrap_sha256,
+    installer_version,
+    installer_size,
+    installer_sha256,
 ):
     if not re.fullmatch(r"[0-9a-f]{40}", git_sha):
         raise ValueError("GIT_SHA must be exactly 40 lowercase hexadecimal characters")
@@ -577,13 +629,27 @@ def write_release_metadata(
             f"friends-only artifact {artifact_name}",
         )
 
+    installer_records = {}
+    for label, installer_version_value, size, sha256 in (
+        ("bootstrap", bootstrap_version, bootstrap_size, bootstrap_sha256),
+        ("installer", installer_version, installer_size, installer_sha256),
+    ):
+        if not isinstance(installer_version_value, str) or not installer_version_value:
+            raise ValueError(f"Packwiz {label} version is missing")
+        installer_records[label] = {
+            "version": installer_version_value,
+            "size": _validate_positive_size(size, f"Packwiz {label}"),
+            "sha256": _validate_sha256(sha256, f"Packwiz {label}"),
+        }
+
     metadata = {
-        "format": 1,
+        "format": 2,
         "version": version,
         "git_sha": git_sha,
         "minecraft": minecraft,
         "neoforge": neoforge,
         "pack_url": pack_url,
+        "packwiz": installer_records,
         "public_artifacts": {
             PRISM_ARTIFACT_NAME: {
                 "sha256": _sha256_file(prism_path),
@@ -620,6 +686,24 @@ def _classified_release_names(dist_path):
     expected_private_artifacts = _private_artifact_names(version)
     if private_artifacts != expected_private_artifacts:
         raise ValueError("release metadata private artifact classification is invalid")
+
+    if metadata.get("format") != 2:
+        raise ValueError("release metadata format must be 2")
+    packwiz = metadata.get("packwiz")
+    if not isinstance(packwiz, dict) or set(packwiz) != {"bootstrap", "installer"}:
+        raise ValueError("release metadata Packwiz classification is invalid")
+    for label in ("bootstrap", "installer"):
+        record = packwiz[label]
+        if not isinstance(record, dict) or set(record) != {
+            "version",
+            "size",
+            "sha256",
+        }:
+            raise ValueError(f"release metadata Packwiz {label} record is invalid")
+        if not isinstance(record["version"], str) or not record["version"]:
+            raise ValueError(f"release metadata Packwiz {label} version is invalid")
+        _validate_positive_size(record["size"], f"release metadata Packwiz {label}")
+        _validate_sha256(record["sha256"], f"release metadata Packwiz {label}")
 
     prism_record = public_artifacts[PRISM_ARTIFACT_NAME]
     if not isinstance(prism_record, dict):
@@ -694,6 +778,7 @@ def _parser():
 
     build_parser = subparsers.add_parser("build-prism")
     build_parser.add_argument("--bootstrap", required=True)
+    build_parser.add_argument("--installer", required=True)
     build_parser.add_argument("--output", required=True)
     build_parser.add_argument("--pack-url", required=True)
     build_parser.add_argument("--minecraft-version", required=True)
@@ -703,6 +788,8 @@ def _parser():
     inspect_parser.add_argument("--archive", required=True)
     inspect_parser.add_argument("--pack-url", required=True)
     inspect_parser.add_argument("--bootstrap-sha256", required=True)
+    inspect_parser.add_argument("--installer-sha256", required=True)
+    inspect_parser.add_argument("--installer-size", required=True, type=int)
 
     friends_parser = subparsers.add_parser("inspect-friends")
     friends_parser.add_argument("--archive", required=True)
@@ -717,6 +804,12 @@ def _parser():
     metadata_parser.add_argument("--minecraft", required=True)
     metadata_parser.add_argument("--neoforge", required=True)
     metadata_parser.add_argument("--pack-url", required=True)
+    metadata_parser.add_argument("--bootstrap-version", required=True)
+    metadata_parser.add_argument("--bootstrap-size", required=True, type=int)
+    metadata_parser.add_argument("--bootstrap-sha256", required=True)
+    metadata_parser.add_argument("--installer-version", required=True)
+    metadata_parser.add_argument("--installer-size", required=True, type=int)
+    metadata_parser.add_argument("--installer-sha256", required=True)
 
     checksums_parser = subparsers.add_parser("write-checksums")
     checksums_parser.add_argument("--dist-dir", required=True)
@@ -728,6 +821,7 @@ def main(argv=None):
     if args.command == "build-prism":
         archive_path = build_prism_archive(
             args.bootstrap,
+            args.installer,
             args.output,
             args.pack_url,
             args.minecraft_version,
@@ -741,6 +835,8 @@ def main(argv=None):
             args.archive,
             args.pack_url,
             args.bootstrap_sha256,
+            args.installer_sha256,
+            args.installer_size,
         )
         print(json.dumps(summary, sort_keys=True))
         return 0
@@ -763,6 +859,12 @@ def main(argv=None):
             args.minecraft,
             args.neoforge,
             args.pack_url,
+            args.bootstrap_version,
+            args.bootstrap_size,
+            args.bootstrap_sha256,
+            args.installer_version,
+            args.installer_size,
+            args.installer_sha256,
         )
         print(json.dumps({"output": str(output_path)}, sort_keys=True))
         return 0

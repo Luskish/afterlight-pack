@@ -6,10 +6,18 @@ source tools/versions.env
 export PATH="$PATH_EXTRA:$PATH"
 
 APPROVED_PACKWIZ_BOOTSTRAP_VERSION=0.0.3
+APPROVED_PACKWIZ_BOOTSTRAP_SIZE=98989
 APPROVED_PACKWIZ_BOOTSTRAP_SHA256=a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c
+APPROVED_PACKWIZ_INSTALLER_VERSION=0.5.14
+APPROVED_PACKWIZ_INSTALLER_SIZE=4378828
+APPROVED_PACKWIZ_INSTALLER_SHA256=c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598
 if [ "$PACKWIZ_BOOTSTRAP_VERSION" != "$APPROVED_PACKWIZ_BOOTSTRAP_VERSION" ] ||
-  [ "$PACKWIZ_BOOTSTRAP_SHA256" != "$APPROVED_PACKWIZ_BOOTSTRAP_SHA256" ]; then
-  echo "FAIL: release builds require the approved Packwiz bootstrap pin" >&2
+  [ "$PACKWIZ_BOOTSTRAP_SIZE" != "$APPROVED_PACKWIZ_BOOTSTRAP_SIZE" ] ||
+  [ "$PACKWIZ_BOOTSTRAP_SHA256" != "$APPROVED_PACKWIZ_BOOTSTRAP_SHA256" ] ||
+  [ "$PACKWIZ_INSTALLER_VERSION" != "$APPROVED_PACKWIZ_INSTALLER_VERSION" ] ||
+  [ "$PACKWIZ_INSTALLER_SIZE" != "$APPROVED_PACKWIZ_INSTALLER_SIZE" ] ||
+  [ "$PACKWIZ_INSTALLER_SHA256" != "$APPROVED_PACKWIZ_INSTALLER_SHA256" ]; then
+  echo "FAIL: release builds require the approved Packwiz installer pins" >&2
   exit 2
 fi
 
@@ -108,7 +116,13 @@ python3 tools/release_artifacts.py write-metadata \
   --git-sha "$GIT_SHA" \
   --minecraft "$MC_VERSION" \
   --neoforge "$NEOFORGE_VERSION" \
-  --pack-url "$PACK_URL"
+  --pack-url "$PACK_URL" \
+  --bootstrap-version "$PACKWIZ_BOOTSTRAP_VERSION" \
+  --bootstrap-size "$PACKWIZ_BOOTSTRAP_SIZE" \
+  --bootstrap-sha256 "$PACKWIZ_BOOTSTRAP_SHA256" \
+  --installer-version "$PACKWIZ_INSTALLER_VERSION" \
+  --installer-size "$PACKWIZ_INSTALLER_SIZE" \
+  --installer-sha256 "$PACKWIZ_INSTALLER_SHA256"
 
 python3 tools/release_artifacts.py write-checksums --dist-dir "$STAGING_DIR"
 

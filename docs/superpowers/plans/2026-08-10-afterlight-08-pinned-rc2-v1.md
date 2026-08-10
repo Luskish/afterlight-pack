@@ -64,7 +64,7 @@
 - Produces: `inspect_prism_archive(archive_path, pack_url, bootstrap_sha256, installer_sha256, installer_size) -> dict[str, object]`.
 - Produces: release metadata containing `packwiz.bootstrap` and `packwiz.installer`, each with exact `version`, `size`, and `sha256` values.
 
-- [ ] **Step 1: Write failing archive tests**
+- [x] **Step 1: Write failing archive tests**
 
 Add tests that require these sorted entries and exact command:
 
@@ -84,7 +84,7 @@ EXPECTED_PRELAUNCH = (
 
 Cover byte-identical builds, both correct digests, exact main-installer size, missing or extra entries, renamed JAR aliases, mutable prelaunch commands, links, and embedded mod JARs. Update metadata tests to require both installer records.
 
-- [ ] **Step 2: Run focused tests and prove RED**
+- [x] **Step 2: Run focused tests and prove RED**
 
 Run:
 
@@ -96,15 +96,15 @@ python3 -m unittest \
 
 Expected: failures because only the bootstrap is accepted and metadata has no `packwiz` object.
 
-- [ ] **Step 3: Implement dual-installer construction and inspection**
+- [x] **Step 3: Implement dual-installer construction and inspection**
 
 Add separate constants for `.minecraft/packwiz-installer-bootstrap.jar` and `.minecraft/packwiz-installer.jar`. Make `_instance_config()` emit the exact no-update command. Validate the bootstrap SHA-256, main-installer SHA-256, and main-installer positive integer size before replacing the destination archive. Return both installer facts in the inspection summary.
 
-- [ ] **Step 4: Authenticate both downloads in Bash**
+- [x] **Step 4: Authenticate both downloads in Bash**
 
 Add `PACKWIZ_BOOTSTRAP_SIZE=98989` to `tools/versions.env`. Update `tools/build-prism-instance.sh` to download both exact GitHub release URLs into separate temporary files, verify each size and SHA-256, pass both paths to `build-prism`, and pass both expected hashes plus main-installer size to `inspect-prism`. Extend `tools/build-release.sh` immutable pin checks to both versions, sizes, and hashes.
 
-- [ ] **Step 5: Record both installer identities in metadata**
+- [x] **Step 5: Record both installer identities in metadata**
 
 Extend `write_release_metadata()` and its CLI with these required values:
 
@@ -119,7 +119,7 @@ Extend `write_release_metadata()` and its CLI with these required values:
 
 Write schema `format: 2` with exact `packwiz.bootstrap` and `packwiz.installer` records. Make checksum classification reject malformed or missing installer metadata.
 
-- [ ] **Step 6: Run focused tests and prove GREEN**
+- [x] **Step 6: Run focused tests and prove GREEN**
 
 Run:
 
@@ -133,7 +133,7 @@ shellcheck -x tools/build-prism-instance.sh tools/build-release.sh
 
 Expected: all focused tests pass and both scripts pass syntax and ShellCheck.
 
-- [ ] **Step 7: Commit Task 1**
+- [x] **Step 7: Commit Task 1**
 
 ```bash
 git add tools/tests/test_release_artifacts.py tools/release_artifacts.py tools/build-prism-instance.sh tools/build-release.sh tools/versions.env
@@ -465,4 +465,3 @@ Expected: final GitHub release `v1.0.0` contains exactly the three public-safe a
 - [ ] **Step 7: Run the final repository gauntlet**
 
 Run the complete Python suite, Packwiz verification, fresh server boot, client installation, Compose rendering, ShellCheck, repository secret and U+2014 scan, clean-tree check, exact CI inspection, release asset inspection, tag ancestry check, and Pages byte parity. Record every command and result in `docs/HANDOFF.md` before claiming completion.
-

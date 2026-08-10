@@ -39,4 +39,21 @@ server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809
 
 `update` creates and verifies an on-demand backup before recreating Minecraft at the new exact repository revision. A failed health check leaves both services stopped and prints the exact rollback command. Rollback performs a preflight check for `world/level.dat` and the recorded revision before stopping, renames the current data tree to a timestamped rescue sibling, starts the restored world from the archive's immutable Packwiz revision, and never deletes the selected archive or either world tree.
 
+## Idle-Safe Maintenance
+
+The supplied systemd timer checks every two hours, but restarts only when Minecraft is healthy, its uptime is at least 20 hours (`AFTERLIGHT_MIN_UPTIME_SECONDS=72000`), and RCON reports zero players. It creates a verified backup and checks the same container, health, and player count again immediately before stopping. Any failed or unparseable check leaves the server running.
+
+The unit files target the dedicated VPS layout with the repository at `/opt/afterlight` and the operator account named `afterlight`:
+
+```bash
+sudo install -m 0644 server/systemd/afterlight-maintenance.service /etc/systemd/system/
+sudo install -m 0644 server/systemd/afterlight-maintenance.timer /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/afterlight-maintenance.service /etc/systemd/system/afterlight-maintenance.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now afterlight-maintenance.timer
+systemctl list-timers afterlight-maintenance.timer
+```
+
+Inspect the most recent check with `journalctl -u afterlight-maintenance.service -n 100 --no-pager`.
+
 See `docs/SERVER.md` for firewall setup, recovery details, and troubleshooting.

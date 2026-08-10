@@ -96,6 +96,34 @@ server/afterlight-server.sh backup
 
 Backups also run every 6 hours and are retained for 14 days. Archives live outside the Minecraft data directory at the configured `BACKUP_DIR`. A usable archive must contain a nonempty `world/level.dat` plus the exact `.afterlight-pack-sha` marker.
 
+## Idle-Safe Maintenance
+
+For the dedicated VPS layout, keep the repository at `/opt/afterlight` and run the stack as the `afterlight` account. Install the supplied systemd units instead of a blind cron restart:
+
+```bash
+sudo install -m 0644 server/systemd/afterlight-maintenance.service /etc/systemd/system/
+sudo install -m 0644 server/systemd/afterlight-maintenance.timer /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/afterlight-maintenance.service /etc/systemd/system/afterlight-maintenance.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now afterlight-maintenance.timer
+systemctl list-timers afterlight-maintenance.timer
+```
+
+The timer checks every two hours. It restarts only after all of these conditions pass:
+
+- Minecraft is running and healthy.
+- Container uptime is at least 20 hours (`AFTERLIGHT_MIN_UPTIME_SECONDS=72000`).
+- RCON reports zero players.
+- A new verified backup succeeds.
+- The same container remains healthy and still has zero players immediately before shutdown.
+
+An RCON failure, unparseable player count, changed container, failed backup, or failed health check stops the maintenance attempt without stopping a running server. A successful attempt uses the lifecycle wrapper for backup, stop, start, and final status. Review timer state and logs with:
+
+```bash
+systemctl status afterlight-maintenance.timer --no-pager
+journalctl -u afterlight-maintenance.service -n 100 --no-pager
+```
+
 ## Update
 
 The update command creates a verified backup, resolves the new repository `HEAD`, stops both services, force-recreates only Minecraft from that immutable Packwiz revision, waits up to 10 minutes for health, records the new revision marker, then starts the backup service:

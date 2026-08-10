@@ -1,0 +1,12 @@
+[Unit]
+Description=Check AFTERLIGHT for idle-safe maintenance every two hours
+
+[Timer]
+OnCalendar=*-*-* 01,03,05,07,09,11,13,15,17,19,21,23:00:00 UTC
+Persistent=true
+RandomizedDelaySec=5m
+AccuracySec=1m
+Unit=afterlight-maintenance.service
+
+[Install]
+WantedBy=timers.target

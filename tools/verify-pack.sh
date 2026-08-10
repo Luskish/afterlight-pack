@@ -57,7 +57,7 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/client-install-test.sh tools/promote-release.sh tools/publish-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh; do
+for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/client-install-test.sh tools/promote-release.sh tools/publish-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh server/afterlight-maintenance.sh; do
   if bash -n "$s"; then
     echo "OK: $s parses"
   else

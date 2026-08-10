@@ -1,0 +1,29 @@
+[Unit]
+Description=AFTERLIGHT idle-safe server maintenance
+Requires=docker.service
+After=docker.service network-online.target
+ConditionPathIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh
+
+[Service]
+Type=oneshot
+User=afterlight
+Group=afterlight
+SupplementaryGroups=docker
+WorkingDirectory=/opt/afterlight
+Environment=AFTERLIGHT_MIN_UPTIME_SECONDS=72000
+ExecStart=/opt/afterlight/server/afterlight-maintenance.sh
+RuntimeDirectory=afterlight
+RuntimeDirectoryMode=0750
+UMask=0077
+TimeoutStartSec=infinity
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/opt/afterlight /etc/afterlight
+ReadWritePaths=/srv/afterlight /run/afterlight

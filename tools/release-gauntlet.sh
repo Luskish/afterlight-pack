@@ -85,13 +85,16 @@ EOF
   fi
   JAVA_VERSION=$("$JAVA_BINARY" -version 2>&1)
   JAVA_VERSION=${JAVA_VERSION%%$'\n'*}
-  case "$JAVA_VERSION" in *21*) ;; *) fail "Java 21 is required: $JAVA_VERSION";; esac
+  JAVA_MAJOR=$(printf '%s\n' "$JAVA_VERSION" | sed -n 's/^[^"]*"\([0-9][0-9]*\)[^"]*"[^"]*$/\1/p')
+  [ -n "$JAVA_MAJOR" ] || fail "malformed or missing Java version: $JAVA_VERSION"
+  [ "$JAVA_MAJOR" -eq 21 ] || fail "Java 21 is required: $JAVA_VERSION"
   PACKWIZ_BINARY=$(command -v packwiz) || fail "packwiz is not on PATH"
   PACKWIZ_BUILD=$(go version -m "$PACKWIZ_BINARY")
   PACKWIZ_PATH=$(printf '%s\n' "$PACKWIZ_BUILD" | awk '$1 == "path" {print $2}')
   PACKWIZ_VERSION=$(printf '%s\n' "$PACKWIZ_BUILD" | awk '$1 == "mod" && $2 == "github.com/packwiz/packwiz" {print $3}')
   [ "$PACKWIZ_PATH" = "github.com/packwiz/packwiz" ] || fail "unexpected Packwiz module path: $PACKWIZ_PATH"
-  [ -n "$PACKWIZ_VERSION" ] && case "$PACKWIZ_VERSION" in *dfd8b68a4796*) ;; *) fail "unexpected Packwiz module version: $PACKWIZ_VERSION";; esac
+  [ -n "$PACKWIZ_VERSION" ] || fail "missing Packwiz module version"
+  case "$PACKWIZ_VERSION" in *dfd8b68a4796*) ;; *) fail "unexpected Packwiz module version: $PACKWIZ_VERSION";; esac
   PACK_VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' pack.toml | head -n 1)
   MINECRAFT_VERSION=$(sed -n 's/^minecraft = "\(.*\)"$/\1/p' pack.toml | head -n 1)
   NEOFORGE_VERSION=$(sed -n 's/^neoforge = "\(.*\)"$/\1/p' pack.toml | head -n 1)

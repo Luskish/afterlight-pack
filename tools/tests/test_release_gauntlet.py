@@ -86,11 +86,15 @@ class ReleaseGauntletTests(unittest.TestCase):
         self._write_fake_command("packwiz", "packwiz")
         self._write(
             self.fake_bin / "go",
-            "#!/usr/bin/env bash\nprintf 'go version -m %s\\n' \"$3\" >> \"$GAUNTLET_LOG\"\nprintf '\\tpath\\tgithub.com/packwiz/packwiz\\n\\tmod\\tgithub.com/packwiz/packwiz\\tv0.0.0-dfd8b68a4796\\n'\n",
+            "#!/usr/bin/env bash\nprintf 'go version -m %s\\n' \"$3\" >> \"$GAUNTLET_LOG\"\nprintf '\\tpath\\tgithub.com/packwiz/packwiz\\n'\nif [ \"${GAUNTLET_PACKWIZ_OMIT_MOD_VERSION:-0}\" != 1 ]; then printf '\\tmod\\tgithub.com/packwiz/packwiz\\tv0.0.0-dfd8b68a4796\\n'; fi\nprintf '\\tbuild\\t-buildmode=exe\\n'\n",
             executable=True,
         )
         self._write(self.fake_bin / "java", "#!/usr/bin/env bash\nexit 1\n", executable=True)
-        self._write(self.root / "fake java" / "bin" / "java", "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n", executable=True)
+        self._write(
+            self.root / "fake java" / "bin" / "java",
+            "#!/usr/bin/env bash\nprintf '%s\\n' \"${GAUNTLET_JAVA_VERSION:-openjdk version \\\"21.0.12\\\"}\" >&2\n",
+            executable=True,
+        )
         self._write(
             self.fake_bin / "cmp",
             "#!/usr/bin/env bash\nprintf 'cmp %s %s\\n' \"$1\" \"$2\" >> \"$GAUNTLET_LOG\"\n/usr/bin/cmp \"$@\"\n",
@@ -240,6 +244,20 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertIn("NeoForge version: 21.1.248", transcript)
         for name, sha256 in expected_hashes.items():
             self.assertIn(f"{name} SHA-256: {sha256}", transcript)
+
+    def test_rejects_java_17_even_when_version_contains_21(self):
+        result = self._run(GAUNTLET_JAVA_VERSION='openjdk version "17.0.21"')
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("GAUNTLET: ACCEPTED", result.stdout)
+        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
+
+    def test_rejects_packwiz_build_without_module_version(self):
+        result = self._run(GAUNTLET_PACKWIZ_OMIT_MOD_VERSION="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("GAUNTLET: ACCEPTED", result.stdout)
+        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
 
     def test_cleanup_removes_only_the_temporary_worktree(self):
         sentinel = self.root / "dist" / "gauntlet" / "existing-output"

@@ -64,6 +64,8 @@ REVIEWED_SKILL_SYMLINKS = {
 }
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RELEASE_TOOL = REPOSITORY_ROOT / "tools" / "release_artifacts.py"
+BUILD_RELEASE = REPOSITORY_ROOT / "tools" / "build-release.sh"
+PACK_CI_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "pack-ci.yml"
 
 
 class PrismArtifactTests(unittest.TestCase):
@@ -254,6 +256,11 @@ class ReleasePolicyTests(unittest.TestCase):
         self.addCleanup(temporary_directory.cleanup)
         self.root = Path(temporary_directory.name)
         self.fixture_number = 0
+        self.fake_bin = self.root / "fake-bin"
+        self.fake_bin.mkdir()
+        fake_curl = self.fake_bin / "curl"
+        fake_curl.write_text("#!/usr/bin/env bash\nexit 97\n", encoding="utf-8")
+        fake_curl.chmod(0o755)
 
     def _run_tool(self, *arguments):
         return subprocess.run(
@@ -269,6 +276,27 @@ class ReleasePolicyTests(unittest.TestCase):
             result.returncode,
             0,
             msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
+
+    def _run_release_build(self, dist_directory, pack_url=None):
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "DIST_DIR": str(dist_directory),
+                "PATH_EXTRA": str(self.fake_bin),
+            }
+        )
+        if pack_url is not None:
+            environment["PACK_URL"] = pack_url
+        else:
+            environment.pop("PACK_URL", None)
+        return subprocess.run(
+            [str(BUILD_RELEASE)],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
         )
 
     def _new_repository(self, tracked_files=None, symlink=None, unreadable=None):
@@ -359,9 +387,15 @@ class ReleasePolicyTests(unittest.TestCase):
         )
 
     def _write_metadata_fixture(self, directory):
+        prism_bytes = (directory / "AFTERLIGHT-prism-instance.zip").read_bytes()
         metadata = {
             "version": RELEASE_VERSION,
-            "public_artifacts": {"AFTERLIGHT-prism-instance.zip": {}},
+            "public_artifacts": {
+                "AFTERLIGHT-prism-instance.zip": {
+                    "sha256": hashlib.sha256(prism_bytes).hexdigest(),
+                    "size": len(prism_bytes),
+                }
+            },
             "private_artifacts": sorted(PRIVATE_RELEASE_FILES),
         }
         metadata_bytes = (json.dumps(metadata, sort_keys=True) + "\n").encode("utf-8")
@@ -523,6 +557,59 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertIn("unclassified release output", result.stderr)
         self.assertFalse((dist_directory / "SHA256SUMS").exists())
 
+    def test_checksums_reject_replaced_prism(self):
+        dist_directory = self.root / "replaced-prism"
+        self._write_release_inputs(dist_directory, prism_bytes=b"original\n")
+        self._write_metadata_fixture(dist_directory)
+        (dist_directory / "AFTERLIGHT-prism-instance.zip").write_bytes(b"replaced\n")
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Prism SHA-256 mismatch", result.stderr)
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+    def test_checksums_reject_invalid_or_mismatched_prism_size(self):
+        invalid_sizes = (0, -1, "1", True)
+        for invalid_size in invalid_sizes:
+            with self.subTest(invalid_size=invalid_size):
+                dist_directory = self.root / f"invalid-size-{invalid_size!r}"
+                self._write_release_inputs(dist_directory)
+                self._write_metadata_fixture(dist_directory)
+                metadata_path = dist_directory / "release-metadata.json"
+                metadata = json.loads(metadata_path.read_bytes())
+                metadata["public_artifacts"]["AFTERLIGHT-prism-instance.zip"][
+                    "size"
+                ] = invalid_size
+                metadata_path.write_text(
+                    json.dumps(metadata, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = self._run_tool(
+                    "write-checksums",
+                    "--dist-dir",
+                    dist_directory,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("positive integer", result.stderr)
+                self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+        dist_directory = self.root / "mismatched-size"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+        metadata_path = dist_directory / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_bytes())
+        metadata["public_artifacts"]["AFTERLIGHT-prism-instance.zip"]["size"] = 2
+        metadata_path.write_text(
+            json.dumps(metadata, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Prism size mismatch", result.stderr)
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
     def test_repository_scan_rejects_tracked_jar_secret_and_u2014(self):
         cases = (
             ("tracked JAR", {"mods/unsafe.jar": b"safe fixture\n"}),
@@ -589,6 +676,19 @@ class ReleasePolicyTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("tracked path is not valid UTF-8", result.stderr)
+
+    def test_repository_scan_rejects_u2014_in_tracked_path_bytes(self):
+        repository = self._new_repository(
+            tracked_files={"docs/before\u2014after.txt": b"safe fixture\n"}
+        )
+
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            repository,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("U+2014 found in tracked path", result.stderr)
 
     def test_repository_scan_binds_each_path_to_exact_index_object(self):
         repository = self._new_repository(
@@ -835,6 +935,191 @@ class ReleasePolicyTests(unittest.TestCase):
         result = self._inspect_friends(private_key_archive)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("private-key header", result.stderr)
+
+    def test_archive_scan_rejects_local_only_encryption_flag(self):
+        archive_path = self._write_archive(
+            "local-only-encrypted.zip",
+            [self._regular_entry("overrides/config.txt")],
+        )
+        raw_archive = bytearray(archive_path.read_bytes())
+        position = raw_archive.find(b"PK\x03\x04")
+        self.assertNotEqual(position, -1)
+        flags_position = position + 6
+        flags = int.from_bytes(raw_archive[flags_position : flags_position + 2], "little")
+        raw_archive[flags_position : flags_position + 2] = (flags | 1).to_bytes(
+            2, "little"
+        )
+        archive_path.write_bytes(raw_archive)
+
+        result = self._inspect_friends(archive_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("encrypted archive entry", result.stderr)
+
+    def test_archive_scan_rejects_central_only_encryption_flag(self):
+        archive_path = self._write_archive(
+            "central-only-encrypted.zip",
+            [self._regular_entry("overrides/config.txt")],
+        )
+        raw_archive = bytearray(archive_path.read_bytes())
+        position = raw_archive.find(b"PK\x01\x02")
+        self.assertNotEqual(position, -1)
+        flags_position = position + 8
+        flags = int.from_bytes(raw_archive[flags_position : flags_position + 2], "little")
+        raw_archive[flags_position : flags_position + 2] = (flags | 1).to_bytes(
+            2, "little"
+        )
+        archive_path.write_bytes(raw_archive)
+
+        result = self._inspect_friends(archive_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("encrypted archive entry", result.stderr)
+
+    def test_archive_scan_rejects_non_encryption_flag_mismatch(self):
+        archive_path = self._write_archive(
+            "flag-mismatch.zip",
+            [self._regular_entry("overrides/config.txt")],
+        )
+        raw_archive = bytearray(archive_path.read_bytes())
+        position = raw_archive.find(b"PK\x03\x04")
+        self.assertNotEqual(position, -1)
+        flags_position = position + 6
+        flags = int.from_bytes(raw_archive[flags_position : flags_position + 2], "little")
+        raw_archive[flags_position : flags_position + 2] = (flags | (1 << 3)).to_bytes(
+            2, "little"
+        )
+        archive_path.write_bytes(raw_archive)
+
+        result = self._inspect_friends(archive_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("local and central ZIP flags differ", result.stderr)
+
+    def test_archive_scan_rejects_normalized_name_aliases(self):
+        aliases = (
+            ("overrides/item", "overrides/item/"),
+            ("overrides/Config.txt", "overrides/config.txt"),
+            ("overrides/caf\u00e9.txt", "overrides/cafe\u0301.txt"),
+        )
+        for first_name, second_name in aliases:
+            with self.subTest(first_name=first_name, second_name=second_name):
+                archive_path = self._write_archive(
+                    "normalized-alias.zip",
+                    [
+                        self._regular_entry(first_name),
+                        self._regular_entry(second_name),
+                    ],
+                )
+                result = self._inspect_friends(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("duplicate archive entry", result.stderr)
+
+    def test_release_build_rejects_symlink_output_without_touching_target(self):
+        target_directory = self.root / "symlink-target"
+        target_directory.mkdir()
+        sentinel = target_directory / "AFTERLIGHT-prism-instance.zip"
+        sentinel.write_bytes(b"sentinel\n")
+        output_link = self.root / "release-output"
+        output_link.symlink_to(target_directory, target_is_directory=True)
+
+        result = self._run_release_build(output_link)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(sentinel.exists(), msg=result.stdout + result.stderr)
+        self.assertEqual(sentinel.read_bytes(), b"sentinel\n")
+        self.assertEqual(
+            {path.name for path in target_directory.iterdir()},
+            {sentinel.name},
+        )
+        self.assertIn("symlink", result.stdout + result.stderr)
+
+    def test_release_build_failure_preserves_existing_output(self):
+        output_directory = self.root / "existing-output"
+        output_directory.mkdir()
+        sentinel = output_directory / "AFTERLIGHT-prism-instance.zip"
+        sentinel.write_bytes(b"existing release\n")
+
+        result = self._run_release_build(output_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("download packwiz-installer-bootstrap", result.stderr)
+        self.assertTrue(sentinel.exists(), msg=result.stdout + result.stderr)
+        self.assertEqual(sentinel.read_bytes(), b"existing release\n")
+        self.assertEqual(
+            {path.name for path in output_directory.iterdir()},
+            {sentinel.name},
+        )
+
+    def test_release_build_rejects_parent_basename(self):
+        unsafe_parent = self.root / "unsafe-parent"
+        unsafe_parent.mkdir()
+        output_directory = unsafe_parent / "child" / ".."
+
+        result = self._run_release_build(output_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("release output directory is unsafe", result.stderr)
+
+    def test_release_build_preserves_unclassified_existing_content(self):
+        output_directory = self.root / "existing-output-with-unrelated-content"
+        gauntlet_directory = output_directory / "gauntlet"
+        gauntlet_directory.mkdir(parents=True)
+        sentinel = gauntlet_directory / "sentinel.txt"
+        sentinel.write_bytes(b"must survive\n")
+
+        result = self._run_release_build(output_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unclassified release output entry", result.stderr)
+        self.assertTrue(sentinel.exists(), msg=result.stdout + result.stderr)
+        self.assertEqual(sentinel.read_bytes(), b"must survive\n")
+        self.assertEqual(
+            {path.name for path in output_directory.iterdir()},
+            {gauntlet_directory.name},
+        )
+
+    def test_release_build_rejects_pack_url_override(self):
+        output_directory = self.root / "custom-url-output"
+
+        result = self._run_release_build(
+            output_directory,
+            pack_url="https://attacker.invalid/pack.toml",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PACK_URL override is not allowed", result.stderr)
+        self.assertFalse(output_directory.exists())
+
+
+class ReleaseWorkflowPolicyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow = PACK_CI_WORKFLOW.read_text(encoding="utf-8")
+
+    def _step_block(self, step_name):
+        marker = f"      - name: {step_name}\n"
+        start = self.workflow.index(marker)
+        next_step = self.workflow.find("\n      - ", start + len(marker))
+        if next_step == -1:
+            return self.workflow[start:]
+        return self.workflow[start:next_step]
+
+    def test_private_release_build_runs_only_on_trusted_events(self):
+        build_step = self._step_block("Build release")
+        self.assertIn(
+            "if: github.event_name == 'push' || "
+            "github.event_name == 'workflow_dispatch'",
+            build_step,
+        )
+        self.assertEqual(build_step.count("./tools/build-release.sh"), 1)
+
+    def test_pull_requests_keep_all_read_only_verification_steps(self):
+        required_steps = (
+            "Python tests",
+            "Verify pack",
+            "Headless server boot smoke test",
+            "Render Docker Compose config",
+            "ShellCheck",
+            "Verify generated files are unchanged",
+            "Verify worktree is clean",
+        )
+        for step_name in required_steps:
+            with self.subTest(step_name=step_name):
+                step_block = self._step_block(step_name)
+                self.assertNotIn("github.event_name", step_block)
 
 
 if __name__ == "__main__":

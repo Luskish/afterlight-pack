@@ -6,9 +6,11 @@ import json
 import os
 import re
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -49,6 +51,8 @@ RUNTIME_PATH_PREFIXES = (
     ("server", "data"),
     ("server", "backups"),
 )
+LOCAL_FILE_HEADER = struct.Struct("<4s5H3L2H")
+LOCAL_FILE_HEADER_SIGNATURE = b"PK\x03\x04"
 
 
 def _instance_config(pack_url):
@@ -129,6 +133,24 @@ def _scan_binary_stream(stream, label, reject_u2014=False):
         overlap = combined[-STREAM_OVERLAP_SIZE:]
 
 
+def _local_file_header_flags(archive, info):
+    if archive.fp is None:
+        raise ValueError("archive file is closed")
+    try:
+        archive.fp.seek(info.header_offset)
+        header = archive.fp.read(LOCAL_FILE_HEADER.size)
+    except (OSError, ValueError) as error:
+        raise ValueError(
+            f"cannot read local file header: {info.filename!r}"
+        ) from error
+    if len(header) != LOCAL_FILE_HEADER.size:
+        raise ValueError(f"truncated local file header: {info.filename!r}")
+    fields = LOCAL_FILE_HEADER.unpack(header)
+    if fields[0] != LOCAL_FILE_HEADER_SIGNATURE:
+        raise ValueError(f"invalid local file header: {info.filename!r}")
+    return fields[2]
+
+
 def _inspect_zip_safety(archive, allow_directories):
     if archive.comment:
         raise ValueError("archive comment is not allowed")
@@ -137,16 +159,27 @@ def _inspect_zip_safety(archive, allow_directories):
     names = []
     seen_names = set()
     for info in infos:
-        _validate_archive_name(info.filename, allow_directory=allow_directories)
-        if info.filename in seen_names:
+        normalized_name = _validate_archive_name(
+            info.filename,
+            allow_directory=allow_directories,
+        )
+        collision_key = unicodedata.normalize("NFC", normalized_name).casefold()
+        if collision_key in seen_names:
             raise ValueError(f"duplicate archive entry: {info.filename!r}")
-        seen_names.add(info.filename)
+        seen_names.add(collision_key)
         names.append(info.filename)
 
         if _is_secret_bearing_path(info.filename):
             raise ValueError(f"secret-bearing path in archive: {info.filename!r}")
         if stat.S_ISLNK(info.external_attr >> 16):
             raise ValueError(f"symlink archive entry: {info.filename!r}")
+        local_flags = _local_file_header_flags(archive, info)
+        if (local_flags ^ info.flag_bits) & ~ENCRYPTED_FLAG:
+            raise ValueError(
+                f"local and central ZIP flags differ: {info.filename!r}"
+            )
+        if local_flags & ENCRYPTED_FLAG:
+            raise ValueError(f"encrypted archive entry: {info.filename!r}")
         if info.flag_bits & ENCRYPTED_FLAG:
             raise ValueError(f"encrypted archive entry: {info.filename!r}")
 
@@ -347,6 +380,8 @@ def _tracked_paths(root_path):
 
     tracked_paths = []
     for raw_path in raw_paths:
+        if U2014_BYTES in raw_path:
+            raise ValueError(f"U+2014 found in tracked path: {raw_path!r}")
         try:
             relative_path = raw_path.decode("utf-8", errors="strict")
         except UnicodeDecodeError as error:
@@ -585,6 +620,33 @@ def _classified_release_names(dist_path):
     expected_private_artifacts = _private_artifact_names(version)
     if private_artifacts != expected_private_artifacts:
         raise ValueError("release metadata private artifact classification is invalid")
+
+    prism_record = public_artifacts[PRISM_ARTIFACT_NAME]
+    if not isinstance(prism_record, dict):
+        raise ValueError("release metadata Prism record is invalid")
+    recorded_sha256 = prism_record.get("sha256")
+    if not isinstance(recorded_sha256, str) or not re.fullmatch(
+        r"[0-9a-f]{64}",
+        recorded_sha256,
+    ):
+        raise ValueError("release metadata Prism SHA-256 is invalid")
+    recorded_size = prism_record.get("size")
+    if type(recorded_size) is not int or recorded_size <= 0:
+        raise ValueError("release metadata Prism size must be a positive integer")
+
+    prism_path = dist_path / PRISM_ARTIFACT_NAME
+    prism_status = _require_regular_file(prism_path, "Prism artifact")
+    if prism_status.st_size != recorded_size:
+        raise ValueError(
+            "release metadata Prism size mismatch: "
+            f"expected {recorded_size}, got {prism_status.st_size}"
+        )
+    actual_sha256 = _sha256_file(prism_path)
+    if actual_sha256 != recorded_sha256:
+        raise ValueError(
+            "release metadata Prism SHA-256 mismatch: "
+            f"expected {recorded_sha256}, got {actual_sha256}"
+        )
 
     return {
         PRISM_ARTIFACT_NAME,

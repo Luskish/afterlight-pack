@@ -62,6 +62,7 @@ jobs:
           mapfile -d '' shell_files < <(git ls-files -z -- '*.sh')
           shellcheck -x "${shell_files[@]}"
       - name: Build release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           GIT_SHA: ${{ github.sha }}
         run: |

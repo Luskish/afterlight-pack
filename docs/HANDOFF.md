@@ -2,7 +2,71 @@
 
 For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-10 by Codex during the streamlined friend-release work. The executable plan files exist under `docs/superpowers/plans/`.
 
-## Active completion run (Codex)
+## Current RC2 Handoff
+
+- Active plan: `docs/superpowers/plans/2026-08-10-afterlight-08-pinned-rc2-v1.md`.
+- Accepted release code: `3f6838ccdf27328d588aff09d8ec02d769206436`.
+- Stable branches and tag: `origin/dev`, `origin/main`, and annotated tag `v0.9.0-rc.2` all resolve to the accepted release code before the documentation evidence commit.
+- Exact CI: `dev` run https://github.com/Luskish/afterlight-pack/actions/runs/31412639303 and `main` run https://github.com/Luskish/afterlight-pack/actions/runs/31413707327 both passed.
+- Live Pages: https://luskish.github.io/afterlight-pack/pack.toml, SHA-256 `d3043d819cefc4f14011b7845f2dda8f8436a56686c220f6d6f23797f055d3dd`.
+- Live Pages index: https://luskish.github.io/afterlight-pack/index.toml, SHA-256 `07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f`.
+- Public prerelease URL: https://github.com/Luskish/afterlight-pack/releases/tag/v0.9.0-rc.2.
+- Prism artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/public/AFTERLIGHT-prism-instance.zip`, SHA-256 `7b5ce8cf0b4bb55ece6ed3b64bb347dc8fa5e411565495c569b66797ca03eebf`.
+- CurseForge friend artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/friends-only/AFTERLIGHT-0.9.0-rc.2-curseforge.zip`, SHA-256 `fb17d2806282aa41c7e386c326c01f6310d648fcde3b5e9a837c9c05410e5dc5`.
+- Modrinth friend artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/friends-only/AFTERLIGHT-0.9.0-rc.2.mrpack`, SHA-256 `b8c3161579d822c8c7815e5bb3b060afa686be154199ed3e44fcc90dbe9f176a`.
+- Manual acceptance: all seven rows in `docs/releases/1.0.0-acceptance.md` remain honestly unrun. Do not publish `1.0.0` until each row records a real `PASS` with evidence.
+- Immediate next action: commit this evidence, require exact documentation CI, publish the RC2 prerelease, inspect its three public assets, then leave v1 blocked for Shane's real client, multiplayer, gameplay, and VPS checks.
+- Recovery if interrupted: stay on `dev`, run `git status`, read `docs/releases/0.9.0-rc.2.md`, inspect the exact CI and release state, and resume the first unfinished checkbox in the active plan.
+
+### Friend Installation
+
+- Prism is recommended. Download `AFTERLIGHT-prism-instance.zip` from the RC2 release, add it through Prism's import flow, sign in with Microsoft, and launch. The instance uses the stable Pages channel for later pack updates.
+- CurseForge users need the private `AFTERLIGHT-0.9.0-rc.2-curseforge.zip`. Share it privately, then use `My Modpacks`, `Create Custom Profile`, `Import`, and select the ZIP. CurseForge updates require a newly shared ZIP.
+- Do not publish either friends-only archive. The public GitHub release contains only the Prism ZIP, `release-metadata.json`, and `SHA256SUMS`.
+- The group uses Discord. Leave UDP `24454` closed unless Simple Voice Chat is intentionally enabled.
+
+### VPS Requirements
+
+- Ubuntu 24.04 LTS or another current x86-64 Linux distribution.
+- Docker Engine, Docker Compose v2, Git, OpenSSL, SSH access, at least 16 GiB RAM, 4 CPU threads, and 30 GiB free storage.
+- One normal operator account with Docker access. Never expose TCP `25575`.
+
+### VPS Setup Commands
+
+Run these in order as the normal operator. Confirm the real SSH port before enabling UFW.
+
+```bash
+git clone https://github.com/Luskish/afterlight-pack.git
+cd afterlight-pack
+git switch main
+cp server/.env.example server/.env
+AFTERLIGHT_USER=$(id -un)
+AFTERLIGHT_GROUP=$(id -gn)
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets
+umask 077
+openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password
+chmod 0600 /etc/afterlight/secrets/rcon_password
+server/afterlight-server.sh doctor
+server/afterlight-server.sh start
+
+SSH_PORT=22
+sudo ufw allow "$SSH_PORT/tcp"
+sudo ufw allow 25565/tcp
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+sudo ufw status verbose
+
+docker compose --project-name afterlight --env-file server/.env -f server/docker-compose.yml exec minecraft rcon-cli whitelist add FRIEND_NAME
+docker compose --project-name afterlight --env-file server/.env -f server/docker-compose.yml exec minecraft rcon-cli whitelist list
+server/afterlight-server.sh status
+server/afterlight-server.sh backup
+```
+
+Also allow TCP `25565` in the VPS provider firewall. Only add `sudo ufw allow 24454/udp` and the matching provider rule if the group chooses Simple Voice Chat. Full update, rollback, backup, and restore procedures are in `docs/SERVER.md`.
+
+## Historical rc1 Completion Record
 
 - Goal: ship the practical `0.9.0-rc.1` friend release now, then treat optional polish and broader hardening as later work. Version `1.0.0` remains gated by Shane's manual acceptance matrix.
 - Active plan: `docs/superpowers/plans/2026-08-09-afterlight-07-friend-release.md`.
@@ -25,7 +89,7 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Recovery instruction if interrupted: run `git status`, read this section and `docs/releases/0.9.0-rc.1.md`, then begin with the unclaimed manual acceptance checks. Do not rerun any retired quest generator. All four retired scripts are committed with mode `100644`, not executable.
 - Plan 07 launch audit: AutoModpack is disabled and is not a launch dependency because 13 denied, 13 manual-review, and 7 unknown client entries block complete hosting. The rewritten plan uses one `/data` bind; separate backup, state, quarantine, and secret paths; exact OCI image digests; a shared maintenance lock; authenticated archive bundles; transactional pack ownership; exact-SHA GitHub workflow acceptance; Pages parity; raw full-SHA production staging; and checksum-pinned Packwiz bootstrap plus main installer JARs. Automated completion releases `0.9.0-rc.1`. Version `1.0.0` waits for Shane's manual client, multiplayer, voice, gameplay, update, rollback, and encrypted empty-host restore matrix.
 
-## Current state (verified, not aspirational)
+## Historical rc1 State
 
 - Repo: https://github.com/Luskish/afterlight-pack (public). The streamlined friend release is promoted at exact code SHA `6e153d760479088beae9640d99472c5705017f92`, tagged `v0.9.0-rc.1`, and published at https://github.com/Luskish/afterlight-pack/releases/tag/v0.9.0-rc.1.
 - Auto-update URL live and byte-exact: https://luskish.github.io/afterlight-pack/pack.toml (GitHub Pages from main root).

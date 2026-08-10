@@ -4,19 +4,22 @@ This is the supported operating procedure for the private AFTERLIGHT server. The
 
 ## Initial Setup
 
-Clone or update the repository on the host, switch to the stable `main` branch, and run from the repository root:
+The supported model is one normal dedicated operator account with access to Docker. Clone or update the repository as that operator, switch to the stable `main` branch, and run from the repository root:
 
 ```bash
 cp server/.env.example server/.env
-sudo install -d -m 0750 /srv/afterlight/data /srv/afterlight/backups
-sudo install -d -m 0700 /etc/afterlight/secrets
-openssl rand -base64 36 | sudo tee /etc/afterlight/secrets/rcon_password >/dev/null
-sudo chmod 0600 /etc/afterlight/secrets/rcon_password
+AFTERLIGHT_USER=$(id -un)
+AFTERLIGHT_GROUP=$(id -gn)
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets
+umask 077
+openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password
+chmod 0600 /etc/afterlight/secrets/rcon_password
 server/afterlight-server.sh doctor
 server/afterlight-server.sh start
 ```
 
-The three values in `server/.env` must remain exact absolute host paths. The operator command parses that file as data. It does not execute it.
+The three values in `server/.env` must remain exact absolute host paths matching `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths. The operator command parses the file as data. It does not execute it.
 
 ## Firewall
 

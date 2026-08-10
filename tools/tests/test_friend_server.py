@@ -27,6 +27,7 @@ EXPECTED_BACKUP_IMAGE = (
     "ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32"
 )
 EXPECTED_PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
+EXPECTED_PATH_GRAMMAR = "^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
 REQUIRED_OPERATOR_TESTS = {
     "test_unknown_command_fails_with_usage",
     "test_doctor_rejects_relative_nested_or_symlinked_paths",
@@ -140,9 +141,14 @@ class FriendServerTests(unittest.TestCase):
                 ;;
               exec)
                 output="${FAKE_DOCKER_EXEC_OUTPUT:-}"
+                error_output="${FAKE_DOCKER_EXEC_STDERR:-}"
                 exit_code="${FAKE_DOCKER_EXEC_EXIT:-0}"
                 if [ "$exit_code" -eq 0 ] && [ -n "${FAKE_DOCKER_EXEC_CREATE_ARCHIVE:-}" ]; then
-                  printf 'fake backup archive\n' > "$FAKE_DOCKER_EXEC_CREATE_ARCHIVE"
+                  if [ -n "${FAKE_DOCKER_EXEC_ARCHIVE_SOURCE:-}" ]; then
+                    cp "$FAKE_DOCKER_EXEC_ARCHIVE_SOURCE" "$FAKE_DOCKER_EXEC_CREATE_ARCHIVE"
+                  else
+                    printf 'fake backup archive\n' > "$FAKE_DOCKER_EXEC_CREATE_ARCHIVE"
+                  fi
                 fi
                 ;;
               logs)
@@ -155,6 +161,7 @@ class FriendServerTests(unittest.TestCase):
                 ;;
             esac
             if [ -n "$output" ]; then printf '%s\n' "$output"; fi
+            if [ -n "${error_output:-}" ]; then printf '%s\n' "$error_output" >&2; fi
             exit "$exit_code"
             """,
         )
@@ -273,22 +280,36 @@ class FriendServerTests(unittest.TestCase):
 
     def _make_backup_archive(self, relative_path: str = "nested/restore.tar.zst") -> Path:
         archive = self.backup_dir / relative_path
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        payload = self.temp_path / "restore-payload"
-        (payload / "world").mkdir(parents=True)
-        (payload / "world" / "level.dat").write_text(
-            "restored world\n", encoding="utf-8"
-        )
-        uncompressed = self.temp_path / "restore.tar"
-        subprocess.run(
-            ["tar", "-C", str(payload), "-cf", str(uncompressed), "."],
-            check=True,
-        )
-        subprocess.run(
-            ["zstd", "-q", "-f", str(uncompressed), "-o", str(archive)],
-            check=True,
-        )
+        self._write_valid_archive(archive)
         return archive
+
+    def _write_valid_archive(
+        self, archive: Path, world_contents: str = "restored world\n"
+    ) -> None:
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=self.temp_path) as payload_name:
+            payload = Path(payload_name)
+            (payload / "world").mkdir()
+            (payload / "world" / "level.dat").write_text(
+                world_contents, encoding="utf-8"
+            )
+            uncompressed = payload / "backup.tar"
+            subprocess.run(
+                ["tar", "-C", str(payload), "-cf", str(uncompressed), "world"],
+                check=True,
+            )
+            subprocess.run(
+                ["zstd", "-q", "-f", str(uncompressed), "-o", str(archive)],
+                check=True,
+            )
+
+    def _valid_backup_environment(self, archive: Path) -> dict[str, str]:
+        source = self.temp_path / f"source-{archive.name}"
+        self._write_valid_archive(source)
+        return {
+            "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
+            "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
+        }
 
     def test_required_operator_contract_is_complete(self) -> None:
         methods = {
@@ -394,10 +415,13 @@ class FriendServerTests(unittest.TestCase):
         )
         for command in (
             "cp server/.env.example server/.env",
-            "sudo install -d -m 0750 /srv/afterlight/data /srv/afterlight/backups",
-            "sudo install -d -m 0700 /etc/afterlight/secrets",
-            "openssl rand -base64 36 | sudo tee /etc/afterlight/secrets/rcon_password >/dev/null",
-            "sudo chmod 0600 /etc/afterlight/secrets/rcon_password",
+            "AFTERLIGHT_USER=$(id -un)",
+            "AFTERLIGHT_GROUP=$(id -gn)",
+            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
+            "umask 077",
+            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
+            "chmod 0600 /etc/afterlight/secrets/rcon_password",
             "server/afterlight-server.sh doctor",
             "server/afterlight-server.sh start",
             "server/afterlight-server.sh backup",
@@ -410,6 +434,28 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("default deny incoming", docs)
         self.assertRegex(docs, r"(?i)RCON `25575` must never be forwarded")
         self.assertRegex(docs, r"(?i)whitelist.*before.*address")
+
+    def test_setup_assigns_restrictive_paths_to_normal_operator(self) -> None:
+        required_commands = (
+            "AFTERLIGHT_USER=$(id -un)",
+            "AFTERLIGHT_GROUP=$(id -gn)",
+            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
+            "umask 077",
+            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
+            "chmod 0600 /etc/afterlight/secrets/rcon_password",
+        )
+        for path in (ROOT / "docs" / "SERVER.md", SERVER_DIR / "README.md"):
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8")
+                for command in required_commands:
+                    self.assertIn(command, source)
+                self.assertNotIn("| sudo tee", source)
+                self.assertNotIn("sudo chmod 0600", source)
+                self.assertRegex(
+                    source,
+                    r"(?i)normal dedicated operator.*access to Docker",
+                )
 
     def test_unknown_command_fails_with_usage(self) -> None:
         result = self._run_operator("not-a-command")
@@ -455,6 +501,36 @@ class FriendServerTests(unittest.TestCase):
         self.assertNotRegex(source, r"(?m)(?:^|[;&|]\s*)eval(?:\s|$)")
         self.assertNotRegex(source, r"(?m)(?:^|[;&|]\s*)rm(?:\s|$)")
 
+    def test_doctor_rejects_compose_sensitive_path_syntax_before_docker(self) -> None:
+        unsafe_components = (
+            "dollar$HOME",
+            'double"quote',
+            "single'quote",
+            "back\\slash",
+            "white space",
+            "hash#comment",
+        )
+        for component in unsafe_components:
+            with self.subTest(component=component):
+                self._clear_command_logs()
+                unsafe_data = self.temp_path / component
+                unsafe_data.mkdir()
+                self._write_env(data_dir=unsafe_data)
+                result = self._run_operator("doctor")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(EXPECTED_PATH_GRAMMAR, result.stderr)
+                self.assertEqual(self._docker_calls(), [])
+
+    def test_docs_publish_the_exact_conservative_path_grammar(self) -> None:
+        for path in (ROOT / "docs" / "SERVER.md", SERVER_DIR / "README.md"):
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(f"`{EXPECTED_PATH_GRAMMAR}`", source)
+                self.assertRegex(
+                    source,
+                    r"(?i)dollar.*quotes.*backslashes.*whitespace.*comments",
+                )
+
     def test_start_copies_properties_once_then_starts_both_services(self) -> None:
         expected_properties = SERVER_DIR / "server.properties.example"
         self._assert_task_file(expected_properties)
@@ -496,7 +572,10 @@ class FriendServerTests(unittest.TestCase):
     def test_backup_requires_a_new_regular_archive(self) -> None:
         no_archive = self._run_operator("backup")
         self.assertNotEqual(no_archive.returncode, 0)
-        self.assertIn("no new regular backup archive", no_archive.stderr.lower())
+        self.assertIn(
+            "no new or changed recoverable backup archive",
+            no_archive.stderr.lower(),
+        )
         self.assertEqual(
             self._compose_commands(),
             [
@@ -511,20 +590,102 @@ class FriendServerTests(unittest.TestCase):
         self._clear_command_logs()
         created = self._run_operator(
             "backup",
-            environment={"FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive)},
+            environment=self._valid_backup_environment(archive),
         )
         self.assertEqual(created.returncode, 0, created.stderr)
         self.assertEqual(created.stdout.strip(), str(archive))
         self.assertTrue(archive.is_file())
 
+    def test_backup_rejects_unapproved_archive_name(self) -> None:
+        archive = self.backup_dir / "afterlight-20260809-120000.zst"
+        result = self._run_operator(
+            "backup",
+            environment=self._valid_backup_environment(archive),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("recoverable backup archive", result.stderr.lower())
+
+    def test_backup_rejects_empty_or_unreadable_archive(self) -> None:
+        fixture_cases: list[tuple[str, bytes, bool]] = [
+            ("empty", b"", False),
+            ("plain-text", b"not zstd", False),
+            ("zstd-non-tar", b"not a tar archive", True),
+        ]
+        for label, payload, compress in fixture_cases:
+            with self.subTest(label=label):
+                self._clear_command_logs()
+                archive = self.backup_dir / f"afterlight-{label}.tar.zst"
+                source = self.temp_path / f"source-{label}.bin"
+                if compress:
+                    plain = self.temp_path / f"source-{label}.txt"
+                    plain.write_bytes(payload)
+                    subprocess.run(
+                        ["zstd", "-q", "-f", str(plain), "-o", str(source)],
+                        check=True,
+                    )
+                else:
+                    source.write_bytes(payload)
+                result = self._run_operator(
+                    "backup",
+                    environment={
+                        "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
+                        "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
+                    },
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("recoverable backup archive", result.stderr.lower())
+
+    def test_backup_accepts_changed_recoverable_archive(self) -> None:
+        archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
+        self._write_valid_archive(archive, "old world\n")
+        source = self.temp_path / "changed-backup.tar.zst"
+        self._write_valid_archive(source, "new world contents are longer\n")
+        result = self._run_operator(
+            "backup",
+            environment={
+                "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
+                "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(archive))
+
     def test_update_backs_up_before_recreating_minecraft(self) -> None:
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         result = self._run_operator(
             "update",
-            environment={"FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive)},
+            environment=self._valid_backup_environment(archive),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"Backup: {archive}", result.stdout)
+        self.assertEqual(
+            self._compose_commands(),
+            [
+                ("version",),
+                ("config", "--quiet"),
+                ("ps", "--format", "json", "minecraft"),
+                ("exec", "backup", "backup", "now"),
+                ("stop", "backup", "minecraft"),
+                ("up", "-d", "--force-recreate", "minecraft"),
+                ("ps", "--format", "json", "minecraft"),
+                ("up", "-d", "backup"),
+            ],
+        )
+
+    def test_update_separates_backup_process_output_from_selected_path(self) -> None:
+        archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
+        environment = self._valid_backup_environment(archive)
+        environment.update(
+            {
+                "FAKE_DOCKER_EXEC_OUTPUT": "backup stdout one\nbackup stdout two",
+                "FAKE_DOCKER_EXEC_STDERR": "backup stderr one\nbackup stderr two",
+            }
+        )
+        result = self._run_operator("update", environment=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, f"Backup: {archive}\n")
+        self.assertIn("backup stdout one\nbackup stdout two\n", result.stderr)
+        self.assertIn("backup stderr one\nbackup stderr two\n", result.stderr)
         self.assertEqual(
             self._compose_commands(),
             [
@@ -544,7 +705,7 @@ class FriendServerTests(unittest.TestCase):
         result = self._run_operator(
             "update",
             environment={
-                "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
+                **self._valid_backup_environment(archive),
                 "FAKE_DOCKER_PS_OUTPUT": (
                     '[{"Service":"minecraft","State":"running",'
                     '"Health":"starting"}]'
@@ -596,6 +757,28 @@ class FriendServerTests(unittest.TestCase):
         self.assertNotEqual(linked.returncode, 0)
         self.assertIn("symlink", linked.stderr.lower())
         self.assertEqual(self._docker_calls(), [])
+
+    def test_rollback_rejects_unwritable_data_parent_before_stop(self) -> None:
+        data_parent = self.temp_path / "locked-parent"
+        data_parent.mkdir()
+        data_dir = data_parent / "data"
+        (data_dir / "world").mkdir(parents=True)
+        level_file = data_dir / "world" / "level.dat"
+        level_file.write_text("current world\n", encoding="utf-8")
+        self._write_env(data_dir=data_dir)
+        archive = self._make_backup_archive()
+
+        data_parent.chmod(0o555)
+        try:
+            result = self._run_operator("rollback", str(archive), "--confirm")
+        finally:
+            data_parent.chmod(0o755)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("data parent", result.stderr.lower())
+        self.assertNotIn(("stop", "backup", "minecraft"), self._compose_commands())
+        self.assertEqual(level_file.read_text(encoding="utf-8"), "current world\n")
+        self.assertEqual(list(self.temp_path.glob("locked-parent/data.rescue-*")), [])
 
     def test_rollback_renames_data_restores_and_never_invokes_rm(self) -> None:
         (self.data_dir / "world").mkdir()

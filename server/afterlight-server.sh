@@ -6,6 +6,7 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 ENV_FILE="${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
+CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
 
 DATA_DIR=""
 BACKUP_DIR=""
@@ -25,6 +26,15 @@ require_command() {
   local command_name=$1
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "Required command not found: $command_name"
+    return 1
+  fi
+}
+
+validate_configured_path_syntax() {
+  local label=$1
+  local configured_path=$2
+  if [[ ! "$configured_path" =~ $CONFIGURED_PATH_GRAMMAR ]]; then
+    fail "$label must match conservative absolute Linux path grammar $CONFIGURED_PATH_GRAMMAR"
     return 1
   fi
 }
@@ -81,6 +91,9 @@ load_paths() {
     fail "SECRETS_DIR must be assigned once"
     return 1
   fi
+  validate_configured_path_syntax DATA_DIR "$DATA_DIR" || return 1
+  validate_configured_path_syntax BACKUP_DIR "$BACKUP_DIR" || return 1
+  validate_configured_path_syntax SECRETS_DIR "$SECRETS_DIR" || return 1
 }
 
 compose() {
@@ -165,6 +178,25 @@ validate_writable_dirs() {
   fi
   if [[ -L "$SECRETS_DIR" ]]; then
     fail "Secrets directory must not be a symlink: $SECRETS_DIR"
+    return 1
+  fi
+}
+
+validate_data_parent() {
+  local data_parent=$1
+  local canonical_parent
+
+  canonical_parent=$(realpath -m "$data_parent") || return 1
+  if [[ "$data_parent" != "$canonical_parent" ]]; then
+    fail "Rollback data parent must be canonical and must not use symlinks: $data_parent"
+    return 1
+  fi
+  if [[ ! -d "$data_parent" || -L "$data_parent" ]]; then
+    fail "Rollback data parent must be an existing non-symlinked directory: $data_parent"
+    return 1
+  fi
+  if [[ ! -w "$data_parent" ]]; then
+    fail "Rollback data parent is not writable: $data_parent"
     return 1
   fi
 }
@@ -299,6 +331,23 @@ latest_backup_snapshot() {
     LC_ALL=C sort
 }
 
+archive_name_is_approved() {
+  local relative_name=$1
+  [[ "$relative_name" =~ ^([A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*\.tar\.zst$ ]]
+}
+
+archive_is_recoverable() {
+  local archive_path=$1
+  local size
+
+  [[ -f "$archive_path" && ! -L "$archive_path" ]] || return 1
+  size=$(stat_size "$archive_path") || return 1
+  [[ "$size" =~ ^[0-9]+$ && "$size" -gt 0 ]] || return 1
+  zstd --test --quiet "$archive_path" >/dev/null 2>&1 || return 1
+  zstd --decompress --stdout "$archive_path" 2>/dev/null |
+    tar --list --file - >/dev/null 2>&1
+}
+
 run_doctor() {
   local quiet=${1:-false}
   local state
@@ -360,28 +409,32 @@ run_status() {
 
 run_backup() {
   local before_snapshot
-  local before_names
   local after_snapshot
   local relative_name
   local size
   local mtime
+  local inventory_record
+  local candidate_path
   local backup_path=""
 
   run_doctor true || return 1
   before_snapshot=$(latest_backup_snapshot) || return 1
-  before_names=$(printf '%s\n' "$before_snapshot" | cut -f1)
-  compose exec backup backup now || return 1
+  compose exec backup backup now >&2 || return 1
   after_snapshot=$(latest_backup_snapshot) || return 1
 
   while IFS=$'\t' read -r relative_name size mtime; do
     [[ -n "$relative_name" ]] || continue
-    if ! printf '%s\n' "$before_names" | grep -Fqx "$relative_name"; then
-      backup_path="$BACKUP_DIR/$relative_name"
+    inventory_record=$(printf '%s\t%s\t%s' "$relative_name" "$size" "$mtime")
+    if ! printf '%s\n' "$before_snapshot" | grep -Fqx "$inventory_record"; then
+      candidate_path="$BACKUP_DIR/$relative_name"
+      if archive_name_is_approved "$relative_name" && archive_is_recoverable "$candidate_path"; then
+        backup_path="$candidate_path"
+      fi
     fi
   done <<< "$after_snapshot"
 
-  if [[ -z "$backup_path" || ! -f "$backup_path" || -L "$backup_path" ]]; then
-    fail "Backup command produced no new regular backup archive"
+  if [[ -z "$backup_path" ]]; then
+    fail "Backup command produced no new or changed recoverable backup archive"
     return 1
   fi
   printf '%s\n' "$backup_path"
@@ -457,8 +510,9 @@ run_rollback() {
     return 1
   fi
 
-  run_doctor true || return 1
   data_parent=$(dirname "$DATA_DIR")
+  validate_data_parent "$data_parent" || return 1
+  run_doctor true || return 1
   data_basename=$(basename "$DATA_DIR")
   rescue_path="$data_parent/$data_basename.rescue-$(date -u +%Y%m%dT%H%M%SZ)"
   [[ ! -e "$rescue_path" && ! -L "$rescue_path" ]] ||

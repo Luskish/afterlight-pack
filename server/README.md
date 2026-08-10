@@ -4,17 +4,22 @@ This directory contains the private-friend Docker Compose stack and its operator
 
 ## Host Setup
 
-Run these commands from the repository root on the Linux host:
+The supported model is one normal dedicated operator account with access to Docker. Run these commands as that operator from the repository root on the Linux host:
 
 ```bash
 cp server/.env.example server/.env
-sudo install -d -m 0750 /srv/afterlight/data /srv/afterlight/backups
-sudo install -d -m 0700 /etc/afterlight/secrets
-openssl rand -base64 36 | sudo tee /etc/afterlight/secrets/rcon_password >/dev/null
-sudo chmod 0600 /etc/afterlight/secrets/rcon_password
+AFTERLIGHT_USER=$(id -un)
+AFTERLIGHT_GROUP=$(id -gn)
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups
+sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets
+umask 077
+openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password
+chmod 0600 /etc/afterlight/secrets/rcon_password
 server/afterlight-server.sh doctor
 server/afterlight-server.sh start
 ```
+
+Each path value in `server/.env` must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths.
 
 Populate the Minecraft whitelist before sharing the server address. RCON `25575` must never be forwarded.
 

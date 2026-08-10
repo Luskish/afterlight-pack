@@ -1,38 +1,50 @@
 #!/usr/bin/env bash
 # Build the friend-facing auto-updating Prism instance zip.
-# Usage: PACK_URL=https://<user>.github.io/<repo>/pack.toml ./tools/build-prism-instance.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env
-: "${PACK_URL:?Set PACK_URL to the hosted pack.toml URL (GitHub Pages) before building}"
-BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/latest/download/packwiz-installer-bootstrap.jar"
-STAGE=dist/prism-instance
-ZIP=dist/AFTERLIGHT-prism-instance.zip
-rm -rf "$STAGE" && mkdir -p "$STAGE/.minecraft"
 
-curl -sfL -o "$STAGE/.minecraft/packwiz-installer-bootstrap.jar" "$BOOTSTRAP_URL" \
-  || { echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)"; exit 3; }
+BOOTSTRAP_URL="https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v${PACKWIZ_BOOTSTRAP_VERSION}/packwiz-installer-bootstrap.jar"
+PACK_URL=${PACK_URL:-https://luskish.github.io/afterlight-pack/pack.toml}
+OUTPUT=${OUTPUT:-dist/AFTERLIGHT-prism-instance.zip}
 
-cat > "$STAGE/instance.cfg" <<CFG
-InstanceType=OneSix
-name=AFTERLIGHT
-iconKey=default
-OverrideCommands=true
-PreLaunchCommand="\$INST_JAVA" -jar packwiz-installer-bootstrap.jar ${PACK_URL}
-CFG
+mkdir -p "$(dirname "$OUTPUT")"
+rm -f "$OUTPUT"
+BOOTSTRAP_PATH=$(mktemp)
+trap 'rm -f "$BOOTSTRAP_PATH"' EXIT
 
-cat > "$STAGE/mmc-pack.json" <<JSON
-{
-  "components": [
-    { "uid": "net.minecraft", "version": "${MC_VERSION}", "important": true },
-    { "uid": "net.neoforged", "version": "${NEOFORGE_VERSION}" }
-  ],
-  "formatVersion": 1
-}
-JSON
+curl --fail --location --silent --show-error \
+  --output "$BOOTSTRAP_PATH" \
+  "$BOOTSTRAP_URL" \
+  || { echo "FAIL: download packwiz-installer-bootstrap ($BOOTSTRAP_URL)" >&2; exit 3; }
 
-# Start from a clean archive. `zip -r` otherwise updates an existing zip in place,
-# which would let a stale entry from a previous build survive a rebuild.
-rm -f "$ZIP"
-(cd "$STAGE" && zip -qr "../$(basename "$ZIP")" .)
-echo "Built $ZIP (pack URL: ${PACK_URL})"
+if command -v shasum >/dev/null 2>&1; then
+  BOOTSTRAP_DIGEST=$(shasum -a 256 "$BOOTSTRAP_PATH")
+elif command -v sha256sum >/dev/null 2>&1; then
+  BOOTSTRAP_DIGEST=$(sha256sum "$BOOTSTRAP_PATH")
+else
+  echo "FAIL: shasum or sha256sum is required" >&2
+  exit 4
+fi
+BOOTSTRAP_DIGEST=${BOOTSTRAP_DIGEST%% *}
+
+if [ "$BOOTSTRAP_DIGEST" != "$PACKWIZ_BOOTSTRAP_SHA256" ]; then
+  echo "FAIL: packwiz bootstrap SHA-256 mismatch" >&2
+  echo "expected: $PACKWIZ_BOOTSTRAP_SHA256" >&2
+  echo "actual:   $BOOTSTRAP_DIGEST" >&2
+  exit 4
+fi
+
+python3 tools/release_artifacts.py build-prism \
+  --bootstrap "$BOOTSTRAP_PATH" \
+  --output "$OUTPUT" \
+  --pack-url "$PACK_URL" \
+  --minecraft-version "$MC_VERSION" \
+  --neoforge-version "$NEOFORGE_VERSION"
+
+python3 tools/release_artifacts.py inspect-prism \
+  --archive "$OUTPUT" \
+  --pack-url "$PACK_URL" \
+  --bootstrap-sha256 "$PACKWIZ_BOOTSTRAP_SHA256"
+
+echo "Built $OUTPUT (pack URL: $PACK_URL)"

@@ -57,9 +57,12 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh tools/server-test.sh server/afterlight-server.sh; do
+for s in tools/export.sh tools/build-prism-instance.sh tools/server-test.sh server/afterlight-server.sh; do
   bash -n "$s" && echo "OK: $s parses" || { echo "FAIL: $s syntax"; FAIL=1; }
   [ -x "$s" ] && echo "OK: $s executable" || { echo "FAIL: $s not executable"; FAIL=1; }
 done
+python3 -m py_compile tools/release_artifacts.py \
+  && echo "OK: tools/release_artifacts.py compiles" \
+  || { echo "FAIL: tools/release_artifacts.py compile"; FAIL=1; }
 
 if [ "$FAIL" -eq 0 ]; then echo "VERIFY: ALL GREEN"; else echo "VERIFY: FAILURES PRESENT"; exit 1; fi

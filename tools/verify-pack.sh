@@ -57,7 +57,7 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/promote-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh; do
+for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/client-install-test.sh tools/promote-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh; do
   if bash -n "$s"; then
     echo "OK: $s parses"
   else
@@ -71,11 +71,13 @@ for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh to
     FAIL=1
   fi
 done
-if python3 -m py_compile tools/release_artifacts.py; then
-  echo "OK: tools/release_artifacts.py compiles"
-else
-  echo "FAIL: tools/release_artifacts.py compile"
-  FAIL=1
-fi
+for python_file in tools/client_install_support.py tools/release_artifacts.py; do
+  if python3 -m py_compile "$python_file"; then
+    echo "OK: $python_file compiles"
+  else
+    echo "FAIL: $python_file compile"
+    FAIL=1
+  fi
+done
 
 if [ "$FAIL" -eq 0 ]; then echo "VERIFY: ALL GREEN"; else echo "VERIFY: FAILURES PRESENT"; exit 1; fi

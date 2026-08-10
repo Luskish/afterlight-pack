@@ -14,6 +14,7 @@ REQUIRED_GAUNTLET_TESTS = {
     "test_creates_detached_worktree_for_exact_sha",
     "test_runs_tests_verify_boot_compose_shellcheck_and_two_builds_in_order",
     "test_compares_two_prism_archives_byte_for_byte",
+    "test_client_install_failure_stops_before_acceptance",
     "test_failure_stops_before_copying_accepted_artifacts",
     "test_success_copies_public_and_private_outputs_with_transcript",
     "test_cleanup_removes_only_the_temporary_worktree",
@@ -70,6 +71,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self._write(
             self.root / "tools" / "build-release.sh",
             "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\nprintf '%s\\n' \"$prism\" > \"$DIST_DIR/AFTERLIGHT-prism-instance.zip\"\nprintf '{\\\"sha\\\":\\\"%s\\\"}\\n' \"$GIT_SHA\" > \"$DIST_DIR/release-metadata.json\"\nprintf 'checksum\\n' > \"$DIST_DIR/SHA256SUMS\"\nprintf 'mrpack\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"\nprintf 'curseforge\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1-curseforge.zip\"\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
+            executable=True,
+        )
+        self._write(
+            self.root / "tools" / "client-install-test.sh",
+            "#!/usr/bin/env bash\nprintf 'client-install %s\\n' \"$1\" >> \"$GAUNTLET_LOG\"\nexit \"${GAUNTLET_CLIENT_EXIT:-0}\"\n",
             executable=True,
         )
         self._write(self.root / "tools" / "sample.sh", "#!/usr/bin/env bash\nexit 0\n", executable=True)
@@ -194,6 +200,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             f"build-release <WORKTREE>/dist/.release-gauntlet-first {SHA}",
             f"build-release <WORKTREE>/dist/.release-gauntlet-second {SHA}",
             "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-prism-instance.zip <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT-prism-instance.zip",
+            "client-install <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-prism-instance.zip",
             "git diff --exit-code",
             "git status --porcelain --untracked-files=all",
             "go version -m <REPO>/fake-bin/packwiz",
@@ -205,6 +212,13 @@ class ReleaseGauntletTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(any(line.startswith("cmp ") for line in self._log_lines()))
+        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
+
+    def test_client_install_failure_stops_before_acceptance(self):
+        result = self._run(GAUNTLET_CLIENT_EXIT="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(any(line.startswith("client-install ") for line in self._log_lines()))
         self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
 
     def test_failure_stops_before_copying_accepted_artifacts(self):

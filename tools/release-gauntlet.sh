@@ -74,6 +74,7 @@ EOF
   run_build "$FIRST"
   run_build "$SECOND"
   run cmp "$FIRST/AFTERLIGHT-prism-instance.zip" "$SECOND/AFTERLIGHT-prism-instance.zip"
+  run ./tools/client-install-test.sh "$FIRST/AFTERLIGHT-prism-instance.zip"
   run git diff --exit-code
   require_clean_tree
 

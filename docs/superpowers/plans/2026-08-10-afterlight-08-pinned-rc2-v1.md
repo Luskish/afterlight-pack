@@ -159,11 +159,11 @@ git commit -m "fix(release): pin both Prism installers" -m "Co-Authored-By: Code
 - Produces: `validate_client_install(instance_dir: pathlib.Path, mods_dir: pathlib.Path) -> dict[str, object]` with `client_mod_count`, `server_only_count`, and deterministic `modset_sha256`.
 - Produces: `tools/client-install-test.sh PRISM_ZIP`, which prints `CLIENT INSTALL: OK` only after a clean install and idempotent second update.
 
-- [ ] **Step 1: Write failing client inventory tests**
+- [x] **Step 1: Write failing client inventory tests**
 
 Use temporary `.pw.toml` fixtures with `client`, `both`, and `server` sides. Require missing side, duplicate filename, absent expected JAR, unexpected JAR, and present server-only JAR to fail. Require the current repository inventory to report exactly `152` client-required filenames and `15` server-only filenames.
 
-- [ ] **Step 2: Write failing shell contract tests**
+- [x] **Step 2: Write failing shell contract tests**
 
 Read `tools/client-install-test.sh` and require it to extract both approved JARs from the supplied Prism ZIP, serve the current Packwiz source over loopback HTTP, invoke:
 
@@ -173,7 +173,7 @@ java -jar packwiz-installer-bootstrap.jar --bootstrap-no-update --bootstrap-main
 
 Require two installer invocations, Java 21 validation, trap-based server and temporary-directory cleanup, a first and second modset digest comparison, and the exact success marker.
 
-- [ ] **Step 3: Run client tests and prove RED**
+- [x] **Step 3: Run client tests and prove RED**
 
 Run:
 
@@ -183,19 +183,19 @@ python3 -m unittest tools.tests.test_client_install -v
 
 Expected: import and file-not-found failures because the support module and harness do not exist.
 
-- [ ] **Step 4: Implement inventory validation**
+- [x] **Step 4: Implement inventory validation**
 
 Parse every `mods/*.pw.toml` with `tomllib`, require a deliberate side, require a unique nonempty filename, and compare exact filenames against `<instance>/mods/*.jar`. Compute the digest from sorted lines in the form `<sha256>  <filename>\n`, not filesystem order or timestamps.
 
-- [ ] **Step 5: Implement the client install harness**
+- [x] **Step 5: Implement the client install harness**
 
 Create a temporary instance and local HTTP server, verify the Prism archive through `release_artifacts.py`, extract only its two installer JARs, run the exact pinned no-update command from the temporary `.minecraft` directory, validate the installed mod inventory, rerun the same command, validate again, compare digests, and clean all owned processes and paths on success or failure.
 
-- [ ] **Step 6: Add the client gate to verification and CI**
+- [x] **Step 6: Add the client gate to verification and CI**
 
 Run `tools/client-install-test.sh "$FIRST/AFTERLIGHT-prism-instance.zip"` after the two deterministic release builds in `tools/release-gauntlet.sh`. Extend `tools/verify-pack.sh` to parse and require executable status for the new shell script and compile the new Python module. Keep CI's ordinary push path on the existing server gate; the exact client download gate runs inside the release gauntlet to avoid duplicating a large install on every documentation push.
 
-- [ ] **Step 7: Run focused tests and prove GREEN**
+- [x] **Step 7: Run focused tests and prove GREEN**
 
 Run:
 
@@ -207,7 +207,7 @@ shellcheck -x tools/client-install-test.sh tools/release-gauntlet.sh tools/verif
 
 Expected: all focused tests pass, scripts parse, and ShellCheck reports no findings.
 
-- [ ] **Step 8: Commit Task 2**
+- [x] **Step 8: Commit Task 2**
 
 ```bash
 git add .github/workflows/pack-ci.yml tools/client_install_support.py tools/client-install-test.sh tools/tests/test_client_install.py tools/release-gauntlet.sh tools/tests/test_release_gauntlet.py tools/verify-pack.sh

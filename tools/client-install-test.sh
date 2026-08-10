@@ -51,7 +51,9 @@ case "$(printf '%s\n' "$JAVA_VERSION_OUTPUT" | head -1)" in
   *) fail "need a working Java 21 runtime" ;;
 esac
 
-[ -f "$PRISM_ZIP" ] && [ ! -L "$PRISM_ZIP" ] || fail "Prism archive is not a regular file: $PRISM_ZIP"
+if [ ! -f "$PRISM_ZIP" ] || [ -L "$PRISM_ZIP" ]; then
+  fail "Prism archive is not a regular file: $PRISM_ZIP"
+fi
 python3 tools/release_artifacts.py inspect-prism \
   --archive "$PRISM_ZIP" \
   --pack-url "$PACK_URL" \

@@ -182,6 +182,14 @@ class ReleasePublicationTests(unittest.TestCase):
             return []
         return self.gh_log.read_text(encoding="utf-8").splitlines()
 
+    def test_publisher_avoids_ambiguous_and_or_guards(self):
+        source = PUBLICATION_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotRegex(
+            source,
+            r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|",
+        )
+
     def test_success_creates_prerelease_with_only_public_assets(self):
         result = self._run()
 

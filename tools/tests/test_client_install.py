@@ -139,6 +139,12 @@ class ClientHarnessContractTests(unittest.TestCase):
         self.assertIn("SECOND_MODSET_SHA256", self.source)
         self.assertIn("CLIENT INSTALL: OK", self.source)
 
+    def test_harness_avoids_ambiguous_and_or_guards(self):
+        self.assertNotRegex(
+            self.source,
+            r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

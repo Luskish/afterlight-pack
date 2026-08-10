@@ -44,7 +44,9 @@ METADATA="$PUBLIC_ROOT/release-metadata.json"
 EXPECTED_PUBLIC=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
 EXPECTED_PRIVATE=$(printf '%s\n' "AFTERLIGHT-$VERSION-curseforge.zip" "AFTERLIGHT-$VERSION.mrpack" | LC_ALL=C sort)
 
-[ -f "$RELEASE_DOC" ] && [ ! -L "$RELEASE_DOC" ] || fail "release notes are missing: $RELEASE_DOC"
+if [ ! -f "$RELEASE_DOC" ] || [ -L "$RELEASE_DOC" ]; then
+  fail "release notes are missing: $RELEASE_DOC"
+fi
 [ "$(head -1 "$RELEASE_DOC")" = "# AFTERLIGHT $VERSION" ] || fail "release-note title does not match requested version"
 grep -Fqx "## Automated Evidence" "$RELEASE_DOC" || fail "release notes lack Automated Evidence"
 grep -Fqx "## Known Boundaries" "$RELEASE_DOC" || fail "release notes lack Known Boundaries"
@@ -53,8 +55,12 @@ if printf '%s\n' "$AUTOMATED_EVIDENCE" | grep -Fq "NOT RUN"; then
   fail "release notes still contain automated NOT RUN evidence"
 fi
 
-[ -d "$PUBLIC_ROOT" ] && [ ! -L "$PUBLIC_ROOT" ] || fail "accepted public directory is missing"
-[ -d "$PRIVATE_ROOT" ] && [ ! -L "$PRIVATE_ROOT" ] || fail "accepted friends-only directory is missing"
+if [ ! -d "$PUBLIC_ROOT" ] || [ -L "$PUBLIC_ROOT" ]; then
+  fail "accepted public directory is missing"
+fi
+if [ ! -d "$PRIVATE_ROOT" ] || [ -L "$PRIVATE_ROOT" ]; then
+  fail "accepted friends-only directory is missing"
+fi
 ACTUAL_PUBLIC=$(find "$PUBLIC_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; | LC_ALL=C sort)
 ACTUAL_PRIVATE=$(find "$PRIVATE_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; | LC_ALL=C sort)
 [ "$ACTUAL_PUBLIC" = "$EXPECTED_PUBLIC" ] || fail "accepted public artifact inventory changed"
@@ -65,7 +71,9 @@ for artifact in \
   "$PUBLIC_ROOT/SHA256SUMS" \
   "$PRIVATE_ROOT/AFTERLIGHT-$VERSION.mrpack" \
   "$PRIVATE_ROOT/AFTERLIGHT-$VERSION-curseforge.zip"; do
-  [ -f "$artifact" ] && [ ! -L "$artifact" ] || fail "release artifact is not a regular file: $artifact"
+  if [ ! -f "$artifact" ] || [ -L "$artifact" ]; then
+    fail "release artifact is not a regular file: $artifact"
+  fi
 done
 
 python3 - "$METADATA" "$VERSION" "$SHA" <<'PY'

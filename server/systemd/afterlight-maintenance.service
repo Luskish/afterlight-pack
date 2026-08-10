@@ -2,7 +2,7 @@
 Description=AFTERLIGHT idle-safe server maintenance
 Requires=docker.service
 After=docker.service network-online.target
-ConditionPathIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh
+ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh
 
 [Service]
 Type=oneshot

@@ -78,11 +78,18 @@ EOF
   require_clean_tree
 
   STARTED_AT=${GAUNTLET_STARTED_AT:?GAUNTLET_STARTED_AT is required}
-  JAVA_VERSION=$(java -version 2>&1 | head -n 1)
+  if [ -x "${JAVA_HOME:-}/bin/java" ]; then
+    JAVA_BINARY="$JAVA_HOME/bin/java"
+  else
+    JAVA_BINARY=$(command -v java) || fail "Java is not available"
+  fi
+  JAVA_VERSION=$($JAVA_BINARY -version 2>&1)
+  JAVA_VERSION=${JAVA_VERSION%%$'\n'*}
+  case "$JAVA_VERSION" in *21*) ;; *) fail "Java 21 is required: $JAVA_VERSION";; esac
   PACKWIZ_BINARY=$(command -v packwiz) || fail "packwiz is not on PATH"
   PACKWIZ_BUILD=$(go version -m "$PACKWIZ_BINARY")
-  PACKWIZ_PATH=$(printf '%s\n' "$PACKWIZ_BUILD" | awk -F '\t' '$1 == "path" {print $2}')
-  PACKWIZ_VERSION=$(printf '%s\n' "$PACKWIZ_BUILD" | awk -F '\t' '$1 == "mod" && $2 == "github.com/packwiz/packwiz" {print $3}')
+  PACKWIZ_PATH=$(printf '%s\n' "$PACKWIZ_BUILD" | awk '$1 == "path" {print $2}')
+  PACKWIZ_VERSION=$(printf '%s\n' "$PACKWIZ_BUILD" | awk '$1 == "mod" && $2 == "github.com/packwiz/packwiz" {print $3}')
   [ "$PACKWIZ_PATH" = "github.com/packwiz/packwiz" ] || fail "unexpected Packwiz module path: $PACKWIZ_PATH"
   [ -n "$PACKWIZ_VERSION" ] && case "$PACKWIZ_VERSION" in *dfd8b68a4796*) ;; *) fail "unexpected Packwiz module version: $PACKWIZ_VERSION";; esac
   PACK_VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' pack.toml | head -n 1)
@@ -150,7 +157,7 @@ outer() {
   cleanup() {
     if [ -n "${WORKTREE:-}" ] && [ -d "$WORKTREE" ]; then
       git -C "$REPOSITORY_ROOT" worktree remove --force "$WORKTREE" || true
-      rmdir "$WORKTREE" 2>/dev/null || true
+      rm -rf "$WORKTREE"
       WORKTREE=""
     fi
   }

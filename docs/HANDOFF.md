@@ -5,7 +5,6 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 ## Active completion run (Codex)
 
 - Goal: finish all 20 story chapters, side groups, certifications, Gate finale, VPS package, the 0.9.0 release candidate, and full-project gauntlet. Version 1.0.0 remains gated by Shane's manual acceptance matrix.
-- Active plan: `docs/superpowers/plans/2026-08-08-afterlight-07-launch.md`.
 - Active plan: `docs/superpowers/plans/2026-08-09-afterlight-07-friend-release.md`.
 - Active task: Friend Release Task 4 fix and review, then controller-owned promotion.
 - Current checkpoint: Plan 06 and the accepted Plan 07 architecture are live on both `dev` and `main` at `39af8c5cbdd80aa2ad83144be9951c9e08f9802a`. Exact-SHA `dev` CI run `31342382644` and exact-SHA `main` CI run `31342813826` both passed complete manifest, export, and headless server gates. Pages deployment run `31342813055` passed at the same SHA. Cache-busted live Pages bytes match immutable raw full-SHA bytes exactly: `pack.toml` SHA-256 `3578c0879f3c8b54ea90d1ee0475bb1e6f5eb29fa14868c3ed862458538ab8f1`, and `index.toml` SHA-256 `07ce0081692e373baf42e78a3b26d347120632ee9ebf26510fa9f605a911009f`.

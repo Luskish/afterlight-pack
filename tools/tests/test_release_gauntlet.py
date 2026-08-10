@@ -51,7 +51,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             "version = \"0.9.0-rc.1\"\n\n[versions]\nminecraft = \"1.21.1\"\nneoforge = \"21.1.248\"\n",
         )
         self._write(self.root / "index.toml", "hash-format = \"sha256\"\n")
-        self._write(self.root / "tools" / "versions.env", "PATH_EXTRA=\n")
+        self._write(self.root / "tools" / "versions.env", "PATH_EXTRA=\nJAVA_HOME=${GAUNTLET_FAKE_JAVA_HOME:?}\n")
         self._write(self.root / "server" / ".env.example", "DATA_DIR=/tmp/data\nBACKUP_DIR=/tmp/backups\nSECRETS_DIR=/tmp/secrets\n")
         self._write(self.root / "server" / "docker-compose.yml", "services: {}\n")
         self._write(
@@ -83,14 +83,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self._write_fake_command("packwiz", "packwiz")
         self._write(
             self.fake_bin / "go",
-            "#!/usr/bin/env bash\nprintf 'go version -m %s\\n' \"$3\" >> \"$GAUNTLET_LOG\"\nprintf 'path\\tgithub.com/packwiz/packwiz\\nmod\\tgithub.com/packwiz/packwiz\\tv0.0.0-dfd8b68a4796\\n'\n",
+            "#!/usr/bin/env bash\nprintf 'go version -m %s\\n' \"$3\" >> \"$GAUNTLET_LOG\"\nprintf '\\tpath\\tgithub.com/packwiz/packwiz\\n\\tmod\\tgithub.com/packwiz/packwiz\\tv0.0.0-dfd8b68a4796\\n'\n",
             executable=True,
         )
-        self._write(
-            self.fake_bin / "java",
-            "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n",
-            executable=True,
-        )
+        self._write(self.fake_bin / "java", "#!/usr/bin/env bash\nexit 1\n", executable=True)
+        self._write(self.root / "fake-java" / "bin" / "java", "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n", executable=True)
         self._write(
             self.fake_bin / "cmp",
             "#!/usr/bin/env bash\nprintf 'cmp %s %s\\n' \"$1\" \"$2\" >> \"$GAUNTLET_LOG\"\n/usr/bin/cmp \"$@\"\n",
@@ -121,6 +118,7 @@ class ReleaseGauntletTests(unittest.TestCase):
                 "GAUNTLET_SHA": SHA,
                 "GAUNTLET_BUILD_COUNT_FILE": str(self.root / "build-count"),
                 "TMPDIR": str(self.worktree_root),
+                "GAUNTLET_FAKE_JAVA_HOME": str(self.root / "fake-java"),
             }
         )
         environment.update(overrides)

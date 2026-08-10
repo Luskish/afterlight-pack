@@ -4,6 +4,12 @@
 
 `AFTERLIGHT-prism-instance.zip` is the only public-safe client artifact. Import it once, then Packwiz checks for Shane's updates before every launch.
 
+The public release contains exactly these three files:
+
+- `AFTERLIGHT-prism-instance.zip`: the Prism client instance.
+- `release-metadata.json`: the pack version, full Git commit, loader versions, Packwiz URL, Prism size, and Prism SHA-256.
+- `SHA256SUMS`: sorted checksums for the Prism ZIP and metadata file only. It does not hash itself.
+
 1. Install [Prism Launcher](https://prismlauncher.org/download/) and sign in with your Microsoft account.
 2. Install Java 21. Prism can find or download it from Settings → Java → Auto-detect.
 3. Get `AFTERLIGHT-prism-instance.zip` from Shane's release link.
@@ -13,7 +19,7 @@
 
 ## Friends-only manual archives
 
-Both `AFTERLIGHT-<version>.mrpack` and `AFTERLIGHT-<version>-curseforge.zip` embed third-party mod JARs. They are friends-only, are not public-safe, and must never be re-uploaded or attached to a public release.
+Both `AFTERLIGHT-0.9.0-rc.1.mrpack` and `AFTERLIGHT-0.9.0-rc.1-curseforge.zip` embed third-party mod JARs. They are friends-only, are not public-safe, and must never be re-uploaded or attached to a public release.
 
 If Shane sends one directly, import it through the launcher's normal Import flow. Manual archives do not auto-update, so import the replacement Shane sends for each update.
 

@@ -15,27 +15,79 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with: { distribution: temurin, java-version: "21" }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version: "1.26.5" }
       - name: Install packwiz
         run: go install github.com/packwiz/packwiz@dfd8b68a4796c763e25bad50265ea1f1233e24f1 && echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - name: Manifest integrity
+      - name: Python tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
+      - name: Verify pack
         run: |
-          packwiz refresh
-          git diff --exit-code index.toml pack.toml || (echo "::error::index.toml drifted: run packwiz refresh and commit" && exit 1)
-      - name: Export artifacts
-        run: ./tools/export.sh
+          source tools/versions.env
+          export PATH="$PATH_EXTRA:$PATH"
+          ./tools/verify-pack.sh
       - name: Headless server boot smoke test
-        run: BOOT_TIMEOUT=600 ./tools/server-test.sh
-      # No pack artifacts are uploaded: both export formats can embed
-      # third-party jars once CurseForge-sourced mods exist in the pack
-      # (docs/INSTALL.md marks them friends-only). The export step above
-      # still proves the pipeline works; Shane builds share-files locally
-      # with tools/export.sh.
+        run: |
+          source tools/versions.env
+          export PATH="$PATH_EXTRA:$PATH"
+          BOOT_TIMEOUT=600 ./tools/server-test.sh
+      - name: Render Docker Compose config
+        run: |
+          temporary_root=$(mktemp -d)
+          trap 'rm -rf "$temporary_root"' EXIT
+          mkdir -p "$temporary_root/data" "$temporary_root/backups" "$temporary_root/secrets"
+          printf 'ci-rcon-password\n' > "$temporary_root/secrets/rcon_password"
+          chmod 600 "$temporary_root/secrets/rcon_password"
+          printf 'DATA_DIR=%s\nBACKUP_DIR=%s\nSECRETS_DIR=%s\n' \
+            "$temporary_root/data" \
+            "$temporary_root/backups" \
+            "$temporary_root/secrets" \
+            > "$temporary_root/server.env"
+          docker compose \
+            --project-name afterlight \
+            --env-file "$temporary_root/server.env" \
+            -f server/docker-compose.yml \
+            config --quiet
+          docker compose \
+            --project-name afterlight \
+            --env-file "$temporary_root/server.env" \
+            -f server/docker-compose.yml \
+            config --services
+      - name: ShellCheck
+        run: |
+          mapfile -d '' shell_files < <(git ls-files -z -- '*.sh')
+          shellcheck -x "${shell_files[@]}"
+      - name: Build release
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          source tools/versions.env
+          export PATH="$PATH_EXTRA:$PATH"
+          ./tools/build-release.sh
+      - name: Verify generated files are unchanged
+        run: git diff --exit-code
+      - name: Verify worktree is clean
+        run: |
+          status=$(git status --porcelain --untracked-files=all)
+          if [[ -n "$status" ]]; then
+            printf '%s\n' "$status"
+            exit 1
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: failure()
+        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        with:
+          name: afterlight-public-release
+          path: |
+            dist/AFTERLIGHT-prism-instance.zip
+            dist/release-metadata.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         with:
           name: server-test-logs
           path: server-test/evidence/

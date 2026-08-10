@@ -1,6 +1,9 @@
 import hashlib
 import json
+import os
 import stat
+import subprocess
+import sys
 import tempfile
 import unittest
 import warnings
@@ -19,6 +22,15 @@ REQUIRED_PRISM_TESTS = {
     "test_inspection_rejects_duplicate_or_parent_paths",
 }
 
+REQUIRED_RELEASE_POLICY_TESTS = {
+    "test_friends_archive_allows_mod_jars_but_rejects_secrets",
+    "test_public_file_set_contains_only_prism_metadata_and_checksums",
+    "test_metadata_binds_version_commit_pack_url_size_and_sha256",
+    "test_checksums_are_sorted_and_cover_only_public_files",
+    "test_repository_scan_rejects_tracked_jar_secret_and_u2014",
+    "test_archive_scan_rejects_absolute_parent_duplicate_and_symlink_entries",
+}
+
 EXPECTED_PRISM_NAMES = (
     ".minecraft/packwiz-installer-bootstrap.jar",
     "instance.cfg",
@@ -29,6 +41,29 @@ PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
 MINECRAFT_VERSION = "1.21.1"
 NEOFORGE_VERSION = "21.1.248"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+RELEASE_VERSION = "0.9.0-rc.1"
+RELEASE_GIT_SHA = "0123456789abcdef0123456789abcdef01234567"
+PUBLIC_RELEASE_FILES = {
+    "AFTERLIGHT-prism-instance.zip",
+    "release-metadata.json",
+    "SHA256SUMS",
+}
+PRIVATE_RELEASE_FILES = {
+    "AFTERLIGHT-0.9.0-rc.1-curseforge.zip",
+    "AFTERLIGHT-0.9.0-rc.1.mrpack",
+}
+REVIEWED_SKILL_SYMLINKS = {
+    ".claude/skills/ftb-quests": "../../.agents/skills/ftb-quests",
+    ".claude/skills/kubejs-modding": "../../.agents/skills/kubejs-modding",
+    ".claude/skills/minecraft-modding": "../../.agents/skills/minecraft-modding",
+    ".claude/skills/minecraft-modpack-authoring": (
+        "../../.agents/skills/minecraft-modpack-authoring"
+    ),
+    ".claude/skills/modrinth-api": "../../.agents/skills/modrinth-api",
+    ".claude/skills/neoforge-modding": "../../.agents/skills/neoforge-modding",
+}
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+RELEASE_TOOL = REPOSITORY_ROOT / "tools" / "release_artifacts.py"
 
 
 class PrismArtifactTests(unittest.TestCase):
@@ -211,6 +246,595 @@ class PrismArtifactTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "parent traversal"):
             inspect_prism_archive(parent_path, PACK_URL, self.bootstrap_sha256)
+
+
+class ReleasePolicyTests(unittest.TestCase):
+    def setUp(self):
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        self.root = Path(temporary_directory.name)
+        self.fixture_number = 0
+
+    def _run_tool(self, *arguments):
+        return subprocess.run(
+            [sys.executable, str(RELEASE_TOOL), *map(str, arguments)],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+    def _assert_tool_succeeds(self, result):
+        self.assertEqual(
+            result.returncode,
+            0,
+            msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
+
+    def _new_repository(self, tracked_files=None, symlink=None, unreadable=None):
+        self.fixture_number += 1
+        repository = self.root / f"repository-{self.fixture_number}"
+        repository.mkdir()
+        subprocess.run(
+            ["git", "init", "--quiet", str(repository)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        tracked_paths = []
+        for relative_path, data in (tracked_files or {}).items():
+            path = repository / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            tracked_paths.append(relative_path)
+
+        if symlink is not None:
+            relative_path, target = symlink
+            path = repository / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.symlink_to(target)
+            tracked_paths.append(relative_path)
+
+        if unreadable is not None:
+            relative_path, data = unreadable
+            path = repository / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            tracked_paths.append(relative_path)
+
+        if tracked_paths:
+            subprocess.run(
+                ["git", "-C", str(repository), "add", "--", *tracked_paths],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        if unreadable is not None:
+            unreadable_path = repository / unreadable[0]
+            unreadable_path.chmod(0)
+            self.addCleanup(unreadable_path.chmod, 0o600)
+
+        return repository
+
+    def _write_archive(self, name, entries):
+        self.fixture_number += 1
+        archive_path = self.root / f"{self.fixture_number}-{name}"
+        with zipfile.ZipFile(
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        ) as archive:
+            for entry_name, data, external_attr in entries:
+                info = zipfile.ZipInfo(entry_name, FIXED_TIMESTAMP)
+                info.create_system = 3
+                info.external_attr = external_attr
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(
+                    info,
+                    data,
+                    compress_type=zipfile.ZIP_DEFLATED,
+                    compresslevel=9,
+                )
+        return archive_path
+
+    def _regular_entry(self, name, data=b"safe fixture\n"):
+        return name, data, (stat.S_IFREG | 0o644) << 16
+
+    def _inspect_friends(self, archive_path):
+        return self._run_tool(
+            "inspect-friends",
+            "--archive",
+            archive_path,
+        )
+
+    def _write_release_inputs(self, directory, prism_bytes=b"p"):
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "AFTERLIGHT-prism-instance.zip").write_bytes(prism_bytes)
+        (directory / "AFTERLIGHT-0.9.0-rc.1.mrpack").write_bytes(b"private mrpack\n")
+        (directory / "AFTERLIGHT-0.9.0-rc.1-curseforge.zip").write_bytes(
+            b"private curseforge\n"
+        )
+
+    def _write_metadata_fixture(self, directory):
+        metadata = {
+            "version": RELEASE_VERSION,
+            "public_artifacts": {"AFTERLIGHT-prism-instance.zip": {}},
+            "private_artifacts": sorted(PRIVATE_RELEASE_FILES),
+        }
+        metadata_bytes = (json.dumps(metadata, sort_keys=True) + "\n").encode("utf-8")
+        (directory / "release-metadata.json").write_bytes(metadata_bytes)
+        return metadata_bytes
+
+    def test_friends_archive_allows_mod_jars_but_rejects_secrets(self):
+        legitimate_archive = self._write_archive(
+            "legitimate-mod-names.zip",
+            [
+                self._regular_entry("overrides/mods/secretroomsmod.jar"),
+                self._regular_entry("overrides/mods/tokenizer.jar"),
+                self._regular_entry("overrides/mods/credentialed.jar"),
+            ],
+        )
+        result = self._inspect_friends(legitimate_archive)
+        self._assert_tool_succeeds(result)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["classification"], "friends-only")
+        self.assertEqual(summary["embedded_jar_count"], 3)
+
+        secret_paths = (
+            "overrides/secret/settings.txt",
+            "overrides/api-token.txt",
+            "overrides/client_credential.json",
+            "overrides/server.env",
+            "overrides/.env.production",
+            "overrides/rcon_password.txt",
+        )
+        for secret_path in secret_paths:
+            with self.subTest(secret_path=secret_path):
+                archive_path = self._write_archive(
+                    "secret-path.zip",
+                    [self._regular_entry(secret_path)],
+                )
+                result = self._inspect_friends(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("secret-bearing path", result.stderr)
+
+    def test_public_file_set_contains_only_prism_metadata_and_checksums(self):
+        dist_directory = self.root / "public-file-set"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+        self._assert_tool_succeeds(result)
+
+        covered_files = {
+            line.split("  ", 1)[1]
+            for line in (dist_directory / "SHA256SUMS").read_text(
+                encoding="utf-8"
+            ).splitlines()
+        }
+        self.assertEqual(covered_files | {"SHA256SUMS"}, PUBLIC_RELEASE_FILES)
+        self.assertTrue(PRIVATE_RELEASE_FILES.isdisjoint(covered_files))
+
+    def test_metadata_binds_version_commit_pack_url_size_and_sha256(self):
+        dist_directory = self.root / "metadata"
+        self._write_release_inputs(dist_directory, prism_bytes=b"p")
+
+        result = self._run_tool(
+            "write-metadata",
+            "--dist-dir",
+            dist_directory,
+            "--version",
+            RELEASE_VERSION,
+            "--git-sha",
+            RELEASE_GIT_SHA,
+            "--minecraft",
+            MINECRAFT_VERSION,
+            "--neoforge",
+            NEOFORGE_VERSION,
+            "--pack-url",
+            PACK_URL,
+        )
+        self._assert_tool_succeeds(result)
+
+        expected = {
+            "format": 1,
+            "version": RELEASE_VERSION,
+            "git_sha": RELEASE_GIT_SHA,
+            "minecraft": MINECRAFT_VERSION,
+            "neoforge": NEOFORGE_VERSION,
+            "pack_url": PACK_URL,
+            "public_artifacts": {
+                "AFTERLIGHT-prism-instance.zip": {
+                    "sha256": hashlib.sha256(b"p").hexdigest(),
+                    "size": 1,
+                }
+            },
+            "private_artifacts": sorted(PRIVATE_RELEASE_FILES),
+        }
+        metadata_path = dist_directory / "release-metadata.json"
+        self.assertEqual(json.loads(metadata_path.read_bytes()), expected)
+        self.assertEqual(
+            metadata_path.read_bytes(),
+            (json.dumps(expected, indent=2, sort_keys=True) + "\n").encode("utf-8"),
+        )
+
+    def test_metadata_rejects_malformed_git_sha(self):
+        malformed_values = (
+            "0" * 39,
+            "0" * 41,
+            "g" * 40,
+            "ABCDEF0123456789abcdef0123456789abcdef01",
+        )
+        for git_sha in malformed_values:
+            with self.subTest(git_sha=git_sha):
+                dist_directory = self.root / f"bad-sha-{len(git_sha)}-{git_sha[:1]}"
+                self._write_release_inputs(dist_directory)
+                result = self._run_tool(
+                    "write-metadata",
+                    "--dist-dir",
+                    dist_directory,
+                    "--version",
+                    RELEASE_VERSION,
+                    "--git-sha",
+                    git_sha,
+                    "--minecraft",
+                    MINECRAFT_VERSION,
+                    "--neoforge",
+                    NEOFORGE_VERSION,
+                    "--pack-url",
+                    PACK_URL,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("40 lowercase hexadecimal", result.stderr)
+                self.assertFalse((dist_directory / "release-metadata.json").exists())
+
+    def test_checksums_are_sorted_and_cover_only_public_files(self):
+        dist_directory = self.root / "checksums"
+        prism_bytes = b"prism fixture\n"
+        self._write_release_inputs(dist_directory, prism_bytes=prism_bytes)
+        metadata_bytes = self._write_metadata_fixture(dist_directory)
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+        self._assert_tool_succeeds(result)
+
+        expected = (
+            f"{hashlib.sha256(prism_bytes).hexdigest()}  "
+            "AFTERLIGHT-prism-instance.zip\n"
+            f"{hashlib.sha256(metadata_bytes).hexdigest()}  "
+            "release-metadata.json\n"
+        )
+        checksum_path = dist_directory / "SHA256SUMS"
+        self.assertEqual(checksum_path.read_text(encoding="utf-8"), expected)
+        self.assertNotIn("SHA256SUMS", expected)
+        for private_file in PRIVATE_RELEASE_FILES:
+            self.assertNotIn(private_file, expected)
+
+    def test_checksums_reject_unclassified_release_output(self):
+        dist_directory = self.root / "unclassified-output"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+        (dist_directory / "stale-public-build.zip").write_bytes(b"stale\n")
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unclassified release output", result.stderr)
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+    def test_repository_scan_rejects_tracked_jar_secret_and_u2014(self):
+        cases = (
+            ("tracked JAR", {"mods/unsafe.jar": b"safe fixture\n"}),
+            (
+                "private-key header",
+                {
+                    "config/signing.txt": (
+                        b"-----BEGIN OPENSSH " b"PRIVATE KEY-----\nfixture\n"
+                    )
+                },
+            ),
+            ("U+2014", {"docs/story.txt": b"before\xe2\x80\x94after\n"}),
+        )
+        for expected_error, tracked_files in cases:
+            with self.subTest(expected_error=expected_error):
+                repository = self._new_repository(tracked_files=tracked_files)
+                result = self._run_tool(
+                    "scan-repository",
+                    "--root",
+                    repository,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_repository_scan_rejects_private_runtime_paths(self):
+        runtime_paths = (
+            "dist/output.txt",
+            "server-test/evidence.txt",
+            "server/data/world.dat",
+            "server/backups/world.tar",
+        )
+        for runtime_path in runtime_paths:
+            with self.subTest(runtime_path=runtime_path):
+                repository = self._new_repository(
+                    tracked_files={runtime_path: b"safe fixture\n"}
+                )
+                result = self._run_tool(
+                    "scan-repository",
+                    "--root",
+                    repository,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("tracked runtime path", result.stderr)
+
+    def test_repository_scan_rejects_invalid_tracked_path_bytes(self):
+        repository = self._new_repository()
+        object_id = subprocess.run(
+            ["git", "-C", str(repository), "hash-object", "-w", "--stdin"],
+            input=b"safe fixture\n",
+            check=True,
+            capture_output=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(repository), "update-index", "-z", "--index-info"],
+            input=b"100644 " + object_id + b"\tinvalid-\xff-name.txt\0",
+            check=True,
+            capture_output=True,
+        )
+
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            repository,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("tracked path is not valid UTF-8", result.stderr)
+
+    def test_repository_scan_binds_each_path_to_exact_index_object(self):
+        repository = self._new_repository(
+            tracked_files={
+                "safe.txt": b"safe fixture\n",
+                "0:safe.txt": (
+                    b"-----BEGIN OPENSSH " b"PRIVATE KEY-----\nfixture\n"
+                ),
+            }
+        )
+
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            repository,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("private-key header", result.stderr)
+
+    def test_repository_scan_reads_index_blobs_not_worktree_paths(self):
+        symlink_repository = self._new_repository(
+            symlink=("linked.txt", "untracked-target.txt")
+        )
+        (symlink_repository / "untracked-target.txt").write_bytes(
+            b"-----BEGIN OPENSSH " b"PRIVATE KEY-----\nbefore\xe2\x80\x94after\n"
+        )
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            symlink_repository,
+        )
+        self._assert_tool_succeeds(result)
+
+        changed_repository = self._new_repository(
+            tracked_files={"changed.txt": b"safe index fixture\n"}
+        )
+        (changed_repository / "changed.txt").write_bytes(
+            b"-----BEGIN RSA " b"PRIVATE KEY-----\nbefore\xe2\x80\x94after\n"
+        )
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            changed_repository,
+        )
+        self._assert_tool_succeeds(result)
+
+        unreadable_repository = self._new_repository(
+            unreadable=("locked.txt", b"safe fixture\n")
+        )
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            unreadable_repository,
+        )
+        self._assert_tool_succeeds(result)
+
+        missing_repository = self._new_repository(
+            tracked_files={"missing.txt": b"safe fixture\n"}
+        )
+        (missing_repository / "missing.txt").unlink()
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            missing_repository,
+        )
+        self._assert_tool_succeeds(result)
+
+    def test_repository_scan_preserves_reviewed_skill_symlinks(self):
+        before = {}
+        for relative_path, expected_target in REVIEWED_SKILL_SYMLINKS.items():
+            path = REPOSITORY_ROOT / relative_path
+            self.assertTrue(path.is_symlink(), msg=relative_path)
+            self.assertEqual(os.readlink(path), expected_target)
+            before[relative_path] = (path.lstat(), os.readlink(path))
+
+            index_entry = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(REPOSITORY_ROOT),
+                    "ls-files",
+                    "-s",
+                    "--",
+                    relative_path,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertTrue(index_entry.startswith("120000 "), msg=index_entry)
+            index_blob = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(REPOSITORY_ROOT),
+                    "cat-file",
+                    "blob",
+                    f":{relative_path}",
+                ],
+                check=True,
+                capture_output=True,
+            ).stdout
+            self.assertEqual(index_blob, expected_target.encode("utf-8"))
+
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            REPOSITORY_ROOT,
+        )
+        self._assert_tool_succeeds(result)
+
+        after = {
+            relative_path: (path.lstat(), os.readlink(path))
+            for relative_path in REVIEWED_SKILL_SYMLINKS
+            for path in [REPOSITORY_ROOT / relative_path]
+        }
+        self.assertEqual(after, before)
+
+    def test_repository_scan_ignores_untracked_policy_violations(self):
+        untracked_cases = (
+            ("mods/untracked.jar", b"safe fixture\n"),
+            ("config/untracked-token.txt", b"safe fixture\n"),
+            ("story.txt", b"before\xe2\x80\x94after\n"),
+        )
+        for relative_path, data in untracked_cases:
+            with self.subTest(relative_path=relative_path):
+                repository = self._new_repository(
+                    tracked_files={"tracked.txt": b"safe fixture\n"}
+                )
+                untracked_path = repository / relative_path
+                untracked_path.parent.mkdir(parents=True, exist_ok=True)
+                untracked_path.write_bytes(data)
+                result = self._run_tool(
+                    "scan-repository",
+                    "--root",
+                    repository,
+                )
+                self._assert_tool_succeeds(result)
+
+    def test_repository_scan_allows_nonsecret_marker_names(self):
+        repository = self._new_repository(
+            tracked_files={
+                "server/.env.example": b"DATA_DIR=/safe/example\n",
+                "tools/versions.env": b"VERSION=fixture\n",
+                "docs/progression-token-recovery.md": b"safe documentation\n",
+            }
+        )
+
+        result = self._run_tool(
+            "scan-repository",
+            "--root",
+            repository,
+        )
+        self._assert_tool_succeeds(result)
+
+    def test_archive_scan_rejects_absolute_parent_duplicate_and_symlink_entries(self):
+        fixtures = []
+        fixtures.append(
+            (
+                "absolute path",
+                self._write_archive(
+                    "absolute.zip",
+                    [self._regular_entry("/absolute.txt")],
+                ),
+            )
+        )
+        fixtures.append(
+            (
+                "absolute path",
+                self._write_archive(
+                    "drive-absolute.zip",
+                    [self._regular_entry("C:/absolute.txt")],
+                ),
+            )
+        )
+        fixtures.append(
+            (
+                "parent traversal",
+                self._write_archive(
+                    "parent.zip",
+                    [self._regular_entry("../parent.txt")],
+                ),
+            )
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            duplicate_archive = self._write_archive(
+                "duplicate.zip",
+                [
+                    self._regular_entry("overrides/config.txt"),
+                    self._regular_entry("overrides/config.txt"),
+                ],
+            )
+        fixtures.append(("duplicate archive entry", duplicate_archive))
+
+        symlink_archive = self._write_archive(
+            "symlink.zip",
+            [
+                (
+                    "overrides/link",
+                    b"target.txt",
+                    (stat.S_IFLNK | 0o777) << 16,
+                )
+            ],
+        )
+        fixtures.append(("symlink archive entry", symlink_archive))
+
+        for expected_error, archive_path in fixtures:
+            with self.subTest(expected_error=expected_error):
+                result = self._inspect_friends(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_archive_scan_rejects_encrypted_entries_and_private_key_headers(self):
+        encrypted_archive = self._write_archive(
+            "encrypted.zip",
+            [self._regular_entry("overrides/config.txt")],
+        )
+        raw_archive = bytearray(encrypted_archive.read_bytes())
+        for signature, flag_offset in ((b"PK\x03\x04", 6), (b"PK\x01\x02", 8)):
+            position = raw_archive.find(signature)
+            self.assertNotEqual(position, -1)
+            flags_position = position + flag_offset
+            flags = int.from_bytes(raw_archive[flags_position : flags_position + 2], "little")
+            raw_archive[flags_position : flags_position + 2] = (flags | 1).to_bytes(
+                2, "little"
+            )
+        encrypted_archive.write_bytes(raw_archive)
+
+        result = self._inspect_friends(encrypted_archive)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("encrypted archive entry", result.stderr)
+
+        private_key_archive = self._write_archive(
+            "private-key.zip",
+            [
+                self._regular_entry(
+                    "overrides/config.txt",
+                    b"-----BEGIN RSA " b"PRIVATE KEY-----\nfixture\n",
+                )
+            ],
+        )
+        result = self._inspect_friends(private_key_archive)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("private-key header", result.stderr)
 
 
 if __name__ == "__main__":

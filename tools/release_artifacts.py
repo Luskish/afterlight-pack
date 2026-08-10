@@ -6,6 +6,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
 import tempfile
 import zipfile
@@ -24,6 +25,30 @@ FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 FILE_MODE = stat.S_IFREG | 0o644
 DEFLATE_LEVEL = 9
 UTF8_FLAG = 0x800
+ENCRYPTED_FLAG = 0x1
+PRISM_ARTIFACT_NAME = "AFTERLIGHT-prism-instance.zip"
+RELEASE_METADATA_NAME = "release-metadata.json"
+CHECKSUMS_NAME = "SHA256SUMS"
+U2014_BYTES = b"\xe2\x80\x94"
+STREAM_CHUNK_SIZE = 1024 * 1024
+STREAM_OVERLAP_SIZE = 256
+PRIVATE_KEY_HEADER = re.compile(
+    rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
+)
+SECRET_PATH_COMPONENTS = frozenset(
+    {"secret", "token", "credential", "credentials", ".env", "rcon_password"}
+)
+SECRET_BASENAME_MARKER = re.compile(
+    r"(?<![a-z0-9])(?:secret|token|credentials?|rcon_password)(?![a-z0-9])",
+    re.IGNORECASE,
+)
+ENV_BASENAME_MARKER = re.compile(r"\.env(?:$|[^a-z0-9])", re.IGNORECASE)
+RUNTIME_PATH_PREFIXES = (
+    ("dist",),
+    ("server-test",),
+    ("server", "data"),
+    ("server", "backups"),
+)
 
 
 def _instance_config(pack_url):
@@ -51,20 +76,92 @@ def _mmc_pack(minecraft_version, neoforge_version):
     return (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
-def _validate_archive_name(name):
+def _validate_archive_name(name, allow_directory=False):
     if not name:
         raise ValueError("archive entry name is empty")
     if "\\" in name:
         raise ValueError(f"archive entry uses a backslash: {name!r}")
-    if name.startswith("/") or PurePosixPath(name).is_absolute():
+    is_directory = name.endswith("/")
+    if is_directory and not allow_directory:
+        raise ValueError(f"archive directory entry is not allowed: {name!r}")
+    normalized_name = name[:-1] if is_directory else name
+    if not normalized_name:
+        raise ValueError("archive entry name is empty")
+    if (
+        normalized_name.startswith("/")
+        or PurePosixPath(normalized_name).is_absolute()
+        or re.match(r"^[A-Za-z]:", normalized_name)
+    ):
         raise ValueError(f"archive entry uses an absolute path: {name!r}")
-    parts = name.split("/")
+    parts = normalized_name.split("/")
     if ".." in parts:
         raise ValueError(f"archive entry uses parent traversal: {name!r}")
     if any(part in {"", "."} for part in parts):
         raise ValueError(f"archive entry is not canonical: {name!r}")
-    if PurePosixPath(name).as_posix() != name:
+    if PurePosixPath(normalized_name).as_posix() != normalized_name:
         raise ValueError(f"archive entry is not canonical: {name!r}")
+    return normalized_name
+
+
+def _is_secret_bearing_path(name):
+    normalized_name = name[:-1] if name.endswith("/") else name
+    parts = normalized_name.split("/")
+    if any(part.casefold() in SECRET_PATH_COMPONENTS for part in parts):
+        return True
+    basename = parts[-1]
+    return bool(
+        SECRET_BASENAME_MARKER.search(basename)
+        or ENV_BASENAME_MARKER.search(basename)
+    )
+
+
+def _scan_binary_stream(stream, label, reject_u2014=False):
+    overlap = b""
+    while True:
+        chunk = stream.read(STREAM_CHUNK_SIZE)
+        if not chunk:
+            break
+        combined = overlap + chunk
+        if reject_u2014 and U2014_BYTES in combined:
+            raise ValueError(f"U+2014 found in {label}")
+        if PRIVATE_KEY_HEADER.search(combined):
+            raise ValueError(f"private-key header found in {label}")
+        overlap = combined[-STREAM_OVERLAP_SIZE:]
+
+
+def _inspect_zip_safety(archive, allow_directories):
+    if archive.comment:
+        raise ValueError("archive comment is not allowed")
+
+    infos = archive.infolist()
+    names = []
+    seen_names = set()
+    for info in infos:
+        _validate_archive_name(info.filename, allow_directory=allow_directories)
+        if info.filename in seen_names:
+            raise ValueError(f"duplicate archive entry: {info.filename!r}")
+        seen_names.add(info.filename)
+        names.append(info.filename)
+
+        if _is_secret_bearing_path(info.filename):
+            raise ValueError(f"secret-bearing path in archive: {info.filename!r}")
+        if stat.S_ISLNK(info.external_attr >> 16):
+            raise ValueError(f"symlink archive entry: {info.filename!r}")
+        if info.flag_bits & ENCRYPTED_FLAG:
+            raise ValueError(f"encrypted archive entry: {info.filename!r}")
+
+    for info in infos:
+        if info.is_dir():
+            continue
+        try:
+            with archive.open(info, "r") as member:
+                _scan_binary_stream(member, f"archive entry {info.filename!r}")
+        except (EOFError, NotImplementedError, RuntimeError) as error:
+            raise ValueError(
+                f"cannot safely read archive entry {info.filename!r}: {error}"
+            ) from error
+
+    return infos, names
 
 
 def _normalized_zip_info(name):
@@ -171,18 +268,7 @@ def inspect_prism_archive(archive_path, pack_url, bootstrap_sha256):
     expected_bootstrap_sha256 = _validate_sha256(bootstrap_sha256)
 
     with zipfile.ZipFile(archive_path) as archive:
-        if archive.comment:
-            raise ValueError("Prism archive comment is not allowed")
-
-        infos = archive.infolist()
-        names = []
-        seen_names = set()
-        for info in infos:
-            _validate_archive_name(info.filename)
-            if info.filename in seen_names:
-                raise ValueError(f"duplicate archive entry: {info.filename!r}")
-            seen_names.add(info.filename)
-            names.append(info.filename)
+        infos, names = _inspect_zip_safety(archive, allow_directories=False)
 
         jar_entries = [name for name in names if name.lower().endswith(".jar")]
         disallowed_jars = [name for name in jar_entries if name != APPROVED_PRISM_JAR]
@@ -228,6 +314,318 @@ def inspect_prism_archive(archive_path, pack_url, bootstrap_sha256):
     }
 
 
+def inspect_friends_archive(archive_path):
+    archive_path = Path(archive_path)
+    with zipfile.ZipFile(archive_path) as archive:
+        _, names = _inspect_zip_safety(archive, allow_directories=True)
+
+    embedded_jar_count = sum(name.casefold().endswith(".jar") for name in names)
+    return {
+        "archive": str(archive_path),
+        "classification": "friends-only",
+        "embedded_jar_count": embedded_jar_count,
+        "entry_count": len(names),
+    }
+
+
+def _tracked_paths(root_path):
+    result = subprocess.run(
+        ["git", "-C", str(root_path), "ls-files", "-z"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(f"git ls-files failed: {error or 'unknown error'}")
+    if result.stdout and not result.stdout.endswith(b"\0"):
+        raise ValueError("git ls-files returned a malformed NUL-delimited inventory")
+
+    raw_paths = result.stdout.split(b"\0")[:-1] if result.stdout else []
+    if len(raw_paths) != len(set(raw_paths)):
+        raise ValueError("git ls-files returned duplicate tracked paths")
+
+    tracked_paths = []
+    for raw_path in raw_paths:
+        try:
+            relative_path = raw_path.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as error:
+            raise ValueError(f"tracked path is not valid UTF-8: {raw_path!r}") from error
+        try:
+            _validate_archive_name(relative_path)
+        except ValueError as error:
+            raise ValueError(f"invalid tracked path {relative_path!r}: {error}") from error
+        tracked_paths.append((raw_path, relative_path))
+    return tracked_paths
+
+
+def _tracked_index_entries(root_path, tracked_paths):
+    result = subprocess.run(
+        ["git", "-C", str(root_path), "ls-files", "--stage", "-z"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(f"git ls-files --stage failed: {error or 'unknown error'}")
+    if result.stdout and not result.stdout.endswith(b"\0"):
+        raise ValueError("git ls-files --stage returned a malformed inventory")
+
+    records = result.stdout.split(b"\0")[:-1] if result.stdout else []
+    index_entries = []
+    for record in records:
+        try:
+            metadata, raw_path = record.split(b"\t", 1)
+            mode, object_id, stage = metadata.split(b" ")
+        except ValueError as error:
+            raise ValueError("git ls-files --stage returned a malformed entry") from error
+        if mode not in {b"100644", b"100755", b"120000"}:
+            raise ValueError(f"tracked index entry is not blob-backed: {raw_path!r}")
+        if not re.fullmatch(rb"(?:[0-9a-f]{40}|[0-9a-f]{64})", object_id):
+            raise ValueError(f"tracked index object ID is malformed: {raw_path!r}")
+        if stage != b"0":
+            raise ValueError(f"tracked index entry is unmerged: {raw_path!r}")
+        index_entries.append((raw_path, object_id.decode("ascii")))
+
+    expected_raw_paths = [raw_path for raw_path, _ in tracked_paths]
+    actual_raw_paths = [raw_path for raw_path, _ in index_entries]
+    if actual_raw_paths != expected_raw_paths:
+        raise ValueError("tracked index inventory changed during scan")
+
+    return [
+        (relative_path, object_id)
+        for (_, relative_path), (_, object_id) in zip(tracked_paths, index_entries)
+    ]
+
+
+def _is_runtime_path(parts):
+    return any(parts[: len(prefix)] == prefix for prefix in RUNTIME_PATH_PREFIXES)
+
+
+def _scan_tracked_blob(root_path, relative_path, object_id):
+    parts = tuple(relative_path.split("/"))
+    if _is_runtime_path(parts):
+        raise ValueError(f"tracked runtime path: {relative_path!r}")
+    if relative_path.casefold().endswith(".jar"):
+        raise ValueError(f"tracked JAR is forbidden: {relative_path!r}")
+
+    process = subprocess.Popen(
+        [
+            "git",
+            "-C",
+            str(root_path),
+            "cat-file",
+            "blob",
+            object_id,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if process.stdout is None or process.stderr is None:
+        process.kill()
+        process.wait()
+        raise ValueError(f"cannot read tracked index blob: {relative_path!r}")
+
+    try:
+        _scan_binary_stream(
+            process.stdout,
+            f"tracked index blob {relative_path!r}",
+            reject_u2014=True,
+        )
+        error = process.stderr.read().decode("utf-8", errors="replace").strip()
+        returncode = process.wait()
+    except BaseException:
+        process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stdout.close()
+        process.stderr.close()
+
+    if returncode != 0:
+        raise ValueError(
+            f"git cat-file failed for tracked path {relative_path!r}: "
+            f"{error or 'unknown error'}"
+        )
+
+
+def scan_repository(root):
+    root_path = Path(root)
+    try:
+        root_status = root_path.lstat()
+    except OSError as error:
+        raise ValueError(f"repository root is unreadable: {root_path}") from error
+    if not stat.S_ISDIR(root_status.st_mode):
+        raise ValueError(f"repository root is not a directory: {root_path}")
+    root_path = root_path.resolve(strict=True)
+
+    tracked_paths = _tracked_paths(root_path)
+    index_entries = _tracked_index_entries(root_path, tracked_paths)
+    for relative_path, object_id in index_entries:
+        _scan_tracked_blob(root_path, relative_path, object_id)
+    return {
+        "root": str(root_path),
+        "tracked_file_count": len(index_entries),
+    }
+
+
+def _require_regular_file(path, label, positive_size=True):
+    path = Path(path)
+    try:
+        file_status = path.lstat()
+    except OSError as error:
+        raise ValueError(f"{label} is unreadable: {path}") from error
+    if not stat.S_ISREG(file_status.st_mode):
+        raise ValueError(f"{label} is not a regular file: {path}")
+    if positive_size and file_status.st_size <= 0:
+        raise ValueError(f"{label} must have a positive size: {path}")
+    return file_status
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as artifact:
+        while chunk := artifact.read(STREAM_CHUNK_SIZE):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _atomic_write_bytes(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+        delete=False,
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+        temporary_file.write(data)
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+
+    try:
+        temporary_path.chmod(0o644)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _private_artifact_names(version):
+    return sorted(
+        (
+            f"AFTERLIGHT-{version}-curseforge.zip",
+            f"AFTERLIGHT-{version}.mrpack",
+        )
+    )
+
+
+def write_release_metadata(
+    dist_dir,
+    version,
+    git_sha,
+    minecraft,
+    neoforge,
+    pack_url,
+):
+    if not re.fullmatch(r"[0-9a-f]{40}", git_sha):
+        raise ValueError("GIT_SHA must be exactly 40 lowercase hexadecimal characters")
+
+    dist_path = Path(dist_dir)
+    prism_path = dist_path / PRISM_ARTIFACT_NAME
+    prism_status = _require_regular_file(prism_path, "Prism artifact")
+    private_artifacts = _private_artifact_names(version)
+    for artifact_name in private_artifacts:
+        _require_regular_file(
+            dist_path / artifact_name,
+            f"friends-only artifact {artifact_name}",
+        )
+
+    metadata = {
+        "format": 1,
+        "version": version,
+        "git_sha": git_sha,
+        "minecraft": minecraft,
+        "neoforge": neoforge,
+        "pack_url": pack_url,
+        "public_artifacts": {
+            PRISM_ARTIFACT_NAME: {
+                "sha256": _sha256_file(prism_path),
+                "size": prism_status.st_size,
+            }
+        },
+        "private_artifacts": private_artifacts,
+    }
+    metadata_path = dist_path / RELEASE_METADATA_NAME
+    _atomic_write_bytes(
+        metadata_path,
+        (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8"),
+    )
+    return metadata_path
+
+
+def _classified_release_names(dist_path):
+    metadata_path = dist_path / RELEASE_METADATA_NAME
+    _require_regular_file(metadata_path, "release metadata")
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("release metadata is not valid UTF-8 JSON") from error
+
+    version = metadata.get("version")
+    if not isinstance(version, str) or not version:
+        raise ValueError("release metadata version is missing")
+    public_artifacts = metadata.get("public_artifacts")
+    if not isinstance(public_artifacts, dict) or set(public_artifacts) != {
+        PRISM_ARTIFACT_NAME
+    }:
+        raise ValueError("release metadata public artifact classification is invalid")
+    private_artifacts = metadata.get("private_artifacts")
+    expected_private_artifacts = _private_artifact_names(version)
+    if private_artifacts != expected_private_artifacts:
+        raise ValueError("release metadata private artifact classification is invalid")
+
+    return {
+        PRISM_ARTIFACT_NAME,
+        RELEASE_METADATA_NAME,
+        *expected_private_artifacts,
+    }
+
+
+def _validate_release_inventory(dist_path):
+    try:
+        dist_status = dist_path.lstat()
+    except OSError as error:
+        raise ValueError(f"release output directory is unreadable: {dist_path}") from error
+    if not stat.S_ISDIR(dist_status.st_mode):
+        raise ValueError(f"release output path is not a directory: {dist_path}")
+
+    classified_names = _classified_release_names(dist_path)
+    actual_names = {entry.name for entry in os.scandir(dist_path)}
+    unclassified_names = sorted(actual_names - classified_names - {CHECKSUMS_NAME})
+    if unclassified_names:
+        raise ValueError(f"unclassified release output: {unclassified_names[0]!r}")
+    missing_names = sorted(classified_names - actual_names)
+    if missing_names:
+        raise ValueError(f"classified release output is missing: {missing_names[0]!r}")
+
+
+def write_release_checksums(dist_dir):
+    dist_path = Path(dist_dir)
+    _validate_release_inventory(dist_path)
+    artifact_names = sorted((PRISM_ARTIFACT_NAME, RELEASE_METADATA_NAME))
+    lines = []
+    for artifact_name in artifact_names:
+        artifact_path = dist_path / artifact_name
+        _require_regular_file(artifact_path, f"public artifact {artifact_name}")
+        lines.append(f"{_sha256_file(artifact_path)}  {artifact_name}\n")
+
+    checksums_path = dist_path / CHECKSUMS_NAME
+    _atomic_write_bytes(checksums_path, "".join(lines).encode("utf-8"))
+    return checksums_path
+
+
 def _parser():
     parser = argparse.ArgumentParser(description="Build and inspect AFTERLIGHT artifacts")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -243,6 +641,23 @@ def _parser():
     inspect_parser.add_argument("--archive", required=True)
     inspect_parser.add_argument("--pack-url", required=True)
     inspect_parser.add_argument("--bootstrap-sha256", required=True)
+
+    friends_parser = subparsers.add_parser("inspect-friends")
+    friends_parser.add_argument("--archive", required=True)
+
+    repository_parser = subparsers.add_parser("scan-repository")
+    repository_parser.add_argument("--root", default=".")
+
+    metadata_parser = subparsers.add_parser("write-metadata")
+    metadata_parser.add_argument("--dist-dir", required=True)
+    metadata_parser.add_argument("--version", required=True)
+    metadata_parser.add_argument("--git-sha", required=True)
+    metadata_parser.add_argument("--minecraft", required=True)
+    metadata_parser.add_argument("--neoforge", required=True)
+    metadata_parser.add_argument("--pack-url", required=True)
+
+    checksums_parser = subparsers.add_parser("write-checksums")
+    checksums_parser.add_argument("--dist-dir", required=True)
     return parser
 
 
@@ -259,12 +674,39 @@ def main(argv=None):
         print(json.dumps({"archive": str(archive_path)}, sort_keys=True))
         return 0
 
-    summary = inspect_prism_archive(
-        args.archive,
-        args.pack_url,
-        args.bootstrap_sha256,
-    )
-    print(json.dumps(summary, sort_keys=True))
+    if args.command == "inspect-prism":
+        summary = inspect_prism_archive(
+            args.archive,
+            args.pack_url,
+            args.bootstrap_sha256,
+        )
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "inspect-friends":
+        summary = inspect_friends_archive(args.archive)
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "scan-repository":
+        summary = scan_repository(args.root)
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "write-metadata":
+        output_path = write_release_metadata(
+            args.dist_dir,
+            args.version,
+            args.git_sha,
+            args.minecraft,
+            args.neoforge,
+            args.pack_url,
+        )
+        print(json.dumps({"output": str(output_path)}, sort_keys=True))
+        return 0
+
+    output_path = write_release_checksums(args.dist_dir)
+    print(json.dumps({"output": str(output_path)}, sort_keys=True))
     return 0
 
 

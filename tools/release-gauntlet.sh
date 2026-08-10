@@ -66,7 +66,7 @@ inner() {
   SHELL_FILES=$(git ls-files '*.sh')
   [ -n "$SHELL_FILES" ] || fail "no tracked Bash files found for ShellCheck"
   while IFS= read -r shell_file; do
-    run shellcheck "$shell_file"
+    run shellcheck -x "$shell_file"
   done <<EOF
 $SHELL_FILES
 EOF
@@ -78,9 +78,13 @@ EOF
   require_clean_tree
 
   STARTED_AT=${GAUNTLET_STARTED_AT:?GAUNTLET_STARTED_AT is required}
-  FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   JAVA_VERSION=$(java -version 2>&1 | head -n 1)
-  PACKWIZ_VERSION=$(packwiz --version)
+  PACKWIZ_BINARY=$(command -v packwiz) || fail "packwiz is not on PATH"
+  PACKWIZ_BUILD=$(go version -m "$PACKWIZ_BINARY")
+  PACKWIZ_PATH=$(printf '%s\n' "$PACKWIZ_BUILD" | awk -F '\t' '$1 == "path" {print $2}')
+  PACKWIZ_VERSION=$(printf '%s\n' "$PACKWIZ_BUILD" | awk -F '\t' '$1 == "mod" && $2 == "github.com/packwiz/packwiz" {print $3}')
+  [ "$PACKWIZ_PATH" = "github.com/packwiz/packwiz" ] || fail "unexpected Packwiz module path: $PACKWIZ_PATH"
+  [ -n "$PACKWIZ_VERSION" ] && case "$PACKWIZ_VERSION" in *dfd8b68a4796*) ;; *) fail "unexpected Packwiz module version: $PACKWIZ_VERSION";; esac
   PACK_VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' pack.toml | head -n 1)
   MINECRAFT_VERSION=$(sed -n 's/^minecraft = "\(.*\)"$/\1/p' pack.toml | head -n 1)
   NEOFORGE_VERSION=$(sed -n 's/^neoforge = "\(.*\)"$/\1/p' pack.toml | head -n 1)
@@ -89,19 +93,24 @@ EOF
   INDEX_SHA256=$(shasum -a 256 index.toml | awk '{print $1}')
 
   [ ! -e "$GAUNTLET_OUTPUT_DIR" ] && [ ! -L "$GAUNTLET_OUTPUT_DIR" ] || fail "controller output already exists: $GAUNTLET_OUTPUT_DIR"
-  mkdir -p "$GAUNTLET_OUTPUT_DIR/public" "$GAUNTLET_OUTPUT_DIR/friends-only"
-  cp "$FIRST/AFTERLIGHT-prism-instance.zip" "$GAUNTLET_OUTPUT_DIR/public/"
-  cp "$FIRST/release-metadata.json" "$GAUNTLET_OUTPUT_DIR/public/"
-  cp "$FIRST/SHA256SUMS" "$GAUNTLET_OUTPUT_DIR/public/"
-  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}.mrpack" "$GAUNTLET_OUTPUT_DIR/friends-only/"
-  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}-curseforge.zip" "$GAUNTLET_OUTPUT_DIR/friends-only/"
+  OUTPUT_PARENT=$(dirname "$GAUNTLET_OUTPUT_DIR")
+  mkdir -p "$OUTPUT_PARENT"
+  STAGING=$(mktemp -d "$OUTPUT_PARENT/.${GAUNTLET_SHA}.staging.XXXXXX")
+  trap 'rm -rf "$STAGING"' EXIT
+  mkdir -p "$STAGING/public" "$STAGING/friends-only"
+  cp "$FIRST/AFTERLIGHT-prism-instance.zip" "$STAGING/public/"
+  cp "$FIRST/release-metadata.json" "$STAGING/public/"
+  cp "$FIRST/SHA256SUMS" "$STAGING/public/"
+  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}.mrpack" "$STAGING/friends-only/"
+  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}-curseforge.zip" "$STAGING/friends-only/"
+  FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   {
     printf 'AFTERLIGHT release gauntlet\n'
     printf 'SHA: %s\n' "$GAUNTLET_SHA"
     printf 'UTC start: %s\n' "$STARTED_AT"
     printf 'UTC finish: %s\n' "$FINISHED_AT"
     printf 'Java: %s\n' "$JAVA_VERSION"
-    printf 'Packwiz: %s\n' "$PACKWIZ_VERSION"
+    printf 'Packwiz: %s %s\n' "$PACKWIZ_PATH" "$PACKWIZ_VERSION"
     printf 'Pack version: %s\n' "$PACK_VERSION"
     printf 'Minecraft version: %s\n' "$MINECRAFT_VERSION"
     printf 'NeoForge version: %s\n' "$NEOFORGE_VERSION"
@@ -110,7 +119,9 @@ EOF
     printf 'Index SHA-256: %s\n' "$INDEX_SHA256"
     printf '\nCommand transcript:\n'
     cat "$TRANSCRIPT"
-  } > "$GAUNTLET_OUTPUT_DIR/gauntlet.txt"
+  } > "$STAGING/gauntlet.txt"
+  mv "$STAGING" "$GAUNTLET_OUTPUT_DIR"
+  STAGING=""
 
   echo "GAUNTLET: ACCEPTED $GAUNTLET_SHA"
 }
@@ -139,10 +150,12 @@ outer() {
   cleanup() {
     if [ -n "${WORKTREE:-}" ] && [ -d "$WORKTREE" ]; then
       git -C "$REPOSITORY_ROOT" worktree remove --force "$WORKTREE" || true
+      rmdir "$WORKTREE" 2>/dev/null || true
       WORKTREE=""
     fi
   }
-  trap cleanup EXIT HUP INT TERM
+  trap cleanup EXIT
+  trap 'exit 1' HUP INT TERM
 
   git worktree add --detach "$WORKTREE" "$REQUESTED_SHA"
   cp "$WORKTREE/server/.env.example" "$WORKTREE/server/.env.gauntlet"

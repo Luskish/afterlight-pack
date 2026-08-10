@@ -82,6 +82,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self._write_fake_command("shellcheck", "shellcheck")
         self._write_fake_command("packwiz", "packwiz")
         self._write(
+            self.fake_bin / "go",
+            "#!/usr/bin/env bash\nprintf 'go version -m %s\\n' \"$3\" >> \"$GAUNTLET_LOG\"\nprintf 'path\\tgithub.com/packwiz/packwiz\\nmod\\tgithub.com/packwiz/packwiz\\tv0.0.0-dfd8b68a4796\\n'\n",
+            executable=True,
+        )
+        self._write(
             self.fake_bin / "java",
             "#!/usr/bin/env bash\nprintf '%s\\n' 'openjdk version \"21.0.12\"' >&2\n",
             executable=True,
@@ -164,11 +169,13 @@ class ReleaseGauntletTests(unittest.TestCase):
             "verify-pack",
             "server-test",
             "docker compose --project-name afterlight-gauntlet",
-            "shellcheck tools/sample.sh",
+            "shellcheck -x tools/sample.sh",
             "build-release ",
             "build-release ",
             "cmp ",
             "git diff --exit-code",
+            "git status --porcelain --untracked-files=all",
+            "go version -m ",
         ]
         positions = []
         start = 0
@@ -181,6 +188,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             else:
                 self.fail(f"missing command prefix: {prefix}; log: {lines}")
         self.assertEqual(positions, sorted(positions))
+        self.assertEqual(len(lines), 17, lines)
 
     def test_compares_two_prism_archives_byte_for_byte(self):
         result = self._run(GAUNTLET_SECOND_PRISM_DIFFERENT="1")
@@ -220,6 +228,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertIn("Prism SHA-256:", transcript)
         self.assertIn("Pack SHA-256:", transcript)
         self.assertIn("Index SHA-256:", transcript)
+        self.assertRegex(transcript, r"UTC start: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z")
+        self.assertRegex(transcript, r"UTC finish: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z")
+        self.assertRegex(transcript, r"Java: .+")
+        self.assertRegex(transcript, r"Packwiz: github.com/packwiz/packwiz v\S*dfd8b68a4796\S*")
+        self.assertEqual(len(__import__("re").findall(r"(?m)^.* SHA-256: [0-9a-f]{64}$", transcript)), 3)
 
     def test_cleanup_removes_only_the_temporary_worktree(self):
         sentinel = self.root / "dist" / "gauntlet" / "existing-output"

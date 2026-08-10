@@ -22,9 +22,17 @@ MAIN_RUN_ID=$(gh run list --workflow pack-ci --branch main --commit "$SHA" --lim
 gh run watch "$MAIN_RUN_ID" --exit-status
 curl -fsSL https://luskish.github.io/afterlight-pack/pack.toml | shasum -a 256
 curl -fsSL https://luskish.github.io/afterlight-pack/index.toml | shasum -a 256
+LOCAL_PACK_SHA=$(shasum -a 256 pack.toml | awk '{print $1}')
+LOCAL_INDEX_SHA=$(shasum -a 256 index.toml | awk '{print $1}')
+PAGES_PACK_SHA=$(curl -fsSL https://luskish.github.io/afterlight-pack/pack.toml | shasum -a 256 | awk '{print $1}')
+PAGES_INDEX_SHA=$(curl -fsSL https://luskish.github.io/afterlight-pack/index.toml | shasum -a 256 | awk '{print $1}')
+[ "$LOCAL_PACK_SHA" = "$PAGES_PACK_SHA" ] && [ "$LOCAL_INDEX_SHA" = "$PAGES_INDEX_SHA" ] || exit 1
 git tag -a v0.9.0-rc.1 "$SHA" -m "AFTERLIGHT 0.9.0-rc.1"
 git push origin v0.9.0-rc.1
 gh release create v0.9.0-rc.1 --prerelease --title "AFTERLIGHT 0.9.0-rc.1" --notes-file docs/releases/0.9.0-rc.1.md dist/gauntlet/$SHA/public/AFTERLIGHT-prism-instance.zip dist/gauntlet/$SHA/public/release-metadata.json dist/gauntlet/$SHA/public/SHA256SUMS
+EXPECTED_ASSETS=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
+ACTUAL_ASSETS=$(gh release view v0.9.0-rc.1 --json assets --jq '.assets[].name' | sort)
+[ "$ACTUAL_ASSETS" = "$EXPECTED_ASSETS" ] || exit 1
 git switch dev
 ```
 

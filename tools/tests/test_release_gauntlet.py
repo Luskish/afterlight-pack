@@ -164,6 +164,11 @@ class ReleaseGauntletTests(unittest.TestCase):
                 self.assertFalse(any("worktree add" in line for line in self._log_lines()))
                 self.log_path.unlink(missing_ok=True)
 
+    def test_controller_output_guards_avoid_ambiguous_and_or_chains(self):
+        source = GAUNTLET_SOURCE.read_text(encoding="utf-8")
+
+        self.assertNotRegex(source, r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|")
+
     def test_creates_detached_worktree_for_exact_sha(self):
         result = self._run()
 

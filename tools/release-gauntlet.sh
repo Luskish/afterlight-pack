@@ -103,7 +103,9 @@ EOF
   PACK_SHA256=$(shasum -a 256 pack.toml | awk '{print $1}')
   INDEX_SHA256=$(shasum -a 256 index.toml | awk '{print $1}')
 
-  [ ! -e "$GAUNTLET_OUTPUT_DIR" ] && [ ! -L "$GAUNTLET_OUTPUT_DIR" ] || fail "controller output already exists: $GAUNTLET_OUTPUT_DIR"
+  if [ -e "$GAUNTLET_OUTPUT_DIR" ] || [ -L "$GAUNTLET_OUTPUT_DIR" ]; then
+    fail "controller output already exists: $GAUNTLET_OUTPUT_DIR"
+  fi
   OUTPUT_PARENT=$(dirname "$GAUNTLET_OUTPUT_DIR")
   mkdir -p "$OUTPUT_PARENT"
   STAGING=$(mktemp -d "$OUTPUT_PARENT/.${GAUNTLET_SHA}.staging.XXXXXX")
@@ -155,7 +157,9 @@ outer() {
   [ "$HEAD_SHA" = "$REQUESTED_SHA" ] || fail "commit SHA is not the exact clean HEAD"
 
   OUTPUT_DIR="$REPOSITORY_ROOT/dist/gauntlet/$REQUESTED_SHA"
-  [ ! -e "$OUTPUT_DIR" ] && [ ! -L "$OUTPUT_DIR" ] || fail "controller output already exists: $OUTPUT_DIR"
+  if [ -e "$OUTPUT_DIR" ] || [ -L "$OUTPUT_DIR" ]; then
+    fail "controller output already exists: $OUTPUT_DIR"
+  fi
 
   WORKTREE=$(mktemp -d "${TMPDIR:-/tmp}/afterlight-gauntlet.XXXXXX")
   cleanup() {

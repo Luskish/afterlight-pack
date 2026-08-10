@@ -235,11 +235,11 @@ git commit -m "test(release): prove clean client installs" -m "Co-Authored-By: C
 - Produces: one GitHub release whose tag is `v<VERSION>` and whose assets are exactly the three public-safe files from `dist/gauntlet/<SHA>/public/`.
 - Produces: friends-only files named from the exact `pack.toml` version for direct sharing through a private channel.
 
-- [ ] **Step 1: Write failing publication tests**
+- [x] **Step 1: Write failing publication tests**
 
 Use a temporary Git repository, accepted artifact fixtures, and a fake `gh` executable. Require rejection for a pack version mismatch, requested version mismatch, metadata version or SHA mismatch, missing or extra public assets, missing private files, release-note title mismatch, automated `NOT RUN` evidence, absent or moved tag, and a pre-existing release. Require `--prerelease` for versions containing `rc` and forbid it for `1.0.0`.
 
-- [ ] **Step 2: Run publication tests and prove RED**
+- [x] **Step 2: Run publication tests and prove RED**
 
 Run:
 
@@ -249,7 +249,7 @@ python3 -m unittest tools.tests.test_release_publication -v
 
 Expected: failure because `tools/publish-release.sh` does not exist.
 
-- [ ] **Step 3: Implement fail-closed publication**
+- [x] **Step 3: Implement fail-closed publication**
 
 Read `pack.toml`, `release-metadata.json`, `SHA256SUMS`, the annotated remote tag, and `docs/releases/<VERSION>.md`. Require all identities to match `SHA` and `VERSION`, require checksum verification, reject automated `NOT RUN` values before `Known Boundaries`, and invoke `gh release create` with only the three public paths. Query the created release and reject any asset inventory other than:
 
@@ -259,7 +259,7 @@ SHA256SUMS
 release-metadata.json
 ```
 
-- [ ] **Step 4: Move the pack to rc2 as one Packwiz change**
+- [x] **Step 4: Move the pack to rc2 as one Packwiz change**
 
 Set `pack.toml` version to `0.9.0-rc.2`, then run:
 
@@ -270,13 +270,13 @@ packwiz refresh
 
 Stage `pack.toml`, `index.toml`, and `mods/` together even if the mod metadata is unchanged.
 
-- [ ] **Step 5: Write rc2, launcher, and VPS documentation**
+- [x] **Step 5: Write rc2, launcher, and VPS documentation**
 
 Document Prism as the recommended auto-updating path. Document CurseForge App import as `My Modpacks`, `Create Custom Profile`, `Import`, then select `AFTERLIGHT-0.9.0-rc.2-curseforge.zip`; state that this file is friends-only, may show the manual non-CurseForge-file acknowledgement, and requires a newly shared ZIP for updates. State that Discord is expected and UDP `24454` can stay closed unless Simple Voice Chat is used.
 
 Create the rc2 evidence record with exact automated evidence fields and honest manual `NOT RUN` entries. Create the v1 acceptance record with seven rows for Prism launch, quest book, two-player server reconnect and whitelist, all hard gates and Seal preservation, Supercritical Phase Shifter timing, VPS update failure and rollback, and empty-directory backup restore. Each row requires `PASS` or `FAIL`, UTC date, tester, rc2 SHA, release URL, and evidence path.
 
-- [ ] **Step 6: Make release instructions version-derived**
+- [x] **Step 6: Make release instructions version-derived**
 
 Replace rc1 literals in `docs/RELEASING.md` commands with:
 
@@ -289,7 +289,7 @@ SHA=$(git rev-parse HEAD)
 
 Use `tools/promote-release.sh "$SHA" --confirm` and the new publication command. Keep `v0.9.0-rc.1` documented as immutable rollback evidence.
 
-- [ ] **Step 7: Run focused tests and repository gates**
+- [x] **Step 7: Run focused tests and repository gates**
 
 Run:
 
@@ -304,7 +304,7 @@ git diff --check
 
 Expected: tests pass, `VERIFY: ALL GREEN`, `SERVER BOOT: OK`, and no U+2014 or whitespace errors are present.
 
-- [ ] **Step 8: Commit Task 3**
+- [x] **Step 8: Commit Task 3**
 
 ```bash
 git add pack.toml index.toml mods/ docs/INSTALL.md docs/SERVER.md docs/RELEASING.md docs/releases/0.9.0-rc.2.md docs/releases/1.0.0-acceptance.md tools/publish-release.sh tools/tests/test_release_publication.py tools/verify-pack.sh

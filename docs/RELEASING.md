@@ -1,56 +1,65 @@
 # Releasing AFTERLIGHT
 
-Run the gauntlet from a clean `dev` checkout. It accepts only the exact local
-`HEAD` SHA and leaves accepted public and friends-only artifacts under
-`dist/gauntlet/$SHA/`.
+Run every release from a clean `dev` checkout. `v0.9.0-rc.1` is immutable rollback evidence and must never be moved, replaced, or force-pushed.
 
-## Promotion
+## Local Acceptance
 
-Run the fail-closed promoter from the clean `dev` checkout that owns the
-accepted gauntlet output. Do not substitute another SHA after the local
-gauntlet succeeds. The promoter pushes `dev`, waits for its exact push-event CI
-run, fast-forwards `main`, waits for the exact `main` run, requires Pages byte
-parity, publishes the annotated tag, and returns to `dev`. Any missing or red
-gate stops before the next transition.
-
-```bash
-SHA=$(git rev-parse HEAD)
-./tools/release-gauntlet.sh "$SHA"
-tools/promote-release.sh "$SHA" --confirm
-```
-
-Record the promoter's exact SHA, CI URLs, and Pages hashes in
-`docs/releases/0.9.0-rc.1.md`. Populate every automated evidence field and the
-five artifact hashes before publication. The automated evidence through the
-friends-only artifact section must contain no automated `NOT RUN` values.
-Manual acceptance stays `NOT RUN` until a player or host observes it.
-
-Commit the populated evidence on `dev` with the required agent trailer, push
-it, and require that exact docs commit's `pack-ci` run to succeed. Then publish
-only the accepted public files in one fail-closed shell:
+Derive every release identity from `pack.toml`:
 
 ```bash
 set -euo pipefail
-SHA=REPLACE_WITH_ACCEPTED_CODE_SHA
-if sed -n '/^## Automated Evidence$/,/^## Known Boundaries$/p' docs/releases/0.9.0-rc.1.md | grep -Fq 'NOT RUN'; then
-  printf '%s\n' 'release notes still contain automated NOT RUN evidence' >&2
-  exit 1
-fi
-REMOTE_TAG_SHA=$(git ls-remote origin 'refs/tags/v0.9.0-rc.1^{}' | awk '{print $1}')
-[ "$REMOTE_TAG_SHA" = "$SHA" ] || exit 1
-gh release create v0.9.0-rc.1 --verify-tag --prerelease --title "AFTERLIGHT 0.9.0-rc.1" --notes-file docs/releases/0.9.0-rc.1.md "dist/gauntlet/$SHA/public/AFTERLIGHT-prism-instance.zip" "dist/gauntlet/$SHA/public/release-metadata.json" "dist/gauntlet/$SHA/public/SHA256SUMS"
-EXPECTED_ASSETS=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
-ACTUAL_ASSETS=$(gh release view v0.9.0-rc.1 --json assets --jq '.assets[].name' | sort)
-[ "$ACTUAL_ASSETS" = "$EXPECTED_ASSETS" ] || exit 1
+VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pack.toml", "rb"))["version"])')
+TAG="v$VERSION"
+RELEASE_DOC="docs/releases/$VERSION.md"
+SHA=$(git rev-parse HEAD)
+test -f "$RELEASE_DOC"
+./tools/release-gauntlet.sh "$SHA"
 ```
 
-The GitHub prerelease may contain only the three files from `public/`. The
-`.mrpack` and CurseForge ZIP remain in `friends-only/` and must never be
-attached to a public release.
+The gauntlet accepts only the exact clean `HEAD`. It runs the full Python suite, Packwiz verification, a fresh dedicated-server boot, Compose rendering, ShellCheck, two release builds, byte comparison, and a clean two-pass client install from the built Prism bytes. Accepted public and friends-only artifacts are stored under `dist/gauntlet/$SHA/`.
+
+## Promotion
+
+Promote only the SHA accepted by the local gauntlet:
+
+```bash
+tools/promote-release.sh "$SHA" --confirm
+```
+
+The promoter pushes `dev`, waits for that exact push CI, fast-forwards `main`, waits for exact `main` CI, requires GitHub Pages byte parity, creates and pushes the annotated `TAG`, and returns to `dev`. Any missing or red gate stops before the next transition.
+
+## Evidence
+
+Record the promoter's exact SHA, CI URLs, Pages hashes, tool versions, and five artifact hashes in `RELEASE_DOC`. Populate every automated evidence field. The automated evidence through the friends-only artifact section must contain no automated `NOT RUN` value. Manual acceptance remains `NOT RUN` until a player or VPS operator actually observes it.
+
+Commit the populated evidence on `dev` with the required agent trailer, push it, and require that exact documentation commit's `pack-ci` push run to pass.
+
+## Publication
+
+The publisher verifies the requested version against current `pack.toml`, the accepted commit's `pack.toml`, metadata, filenames, release-note title, annotated local and remote tag, and the requested mode. It also checks both artifact inventories and public checksums before invoking GitHub.
+
+For a release candidate:
+
+```bash
+tools/publish-release.sh "$SHA" "$VERSION" --prerelease --confirm
+```
+
+For final `1.0.0` after the complete manual matrix passes:
+
+```bash
+tools/publish-release.sh "$SHA" "$VERSION" --confirm
+```
+
+The GitHub release may contain only:
+
+```text
+AFTERLIGHT-prism-instance.zip
+release-metadata.json
+SHA256SUMS
+```
+
+The `.mrpack` and CurseForge ZIP remain under `dist/gauntlet/$SHA/friends-only/`. Share them directly with trusted friends. Never attach them to a public release or CI artifact.
 
 ## Recovery
 
-If `main` CI fails, the promoter does not publish the tag. It returns to `dev`
-and leaves `main` at its failed fast-forward. Fix forward, rerun the gauntlet
-for the new SHA, and promote that new SHA through both CI runs. Never
-force-push `dev` or `main`.
+If `dev` CI, `main` CI, Pages parity, publication, or a manual gate fails, fix forward through a new candidate SHA. Never force-push `dev` or `main`, and never move a published tag.

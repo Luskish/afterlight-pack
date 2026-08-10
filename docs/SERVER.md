@@ -1,6 +1,17 @@
 # AFTERLIGHT Friend Server Operations
 
-This is the supported operating procedure for the private AFTERLIGHT server. The target is Ubuntu 24.04 LTS or another current x86-64 Linux host with Docker Engine, Docker Compose v2, at least 16 GiB RAM, 4 CPU threads, and 30 GiB free storage.
+This is the supported operating procedure for the private AFTERLIGHT server. The target is Ubuntu 24.04 LTS or another current x86-64 Linux host with Docker Engine, Docker Compose v2, Git, OpenSSL, working SSH access, at least 16 GiB RAM, 4 CPU threads, and 30 GiB free storage.
+
+## VPS Checklist
+
+1. Provision the host and confirm SSH access before changing any firewall rule.
+2. Install Docker Engine, Docker Compose v2, Git, and OpenSSL.
+3. Clone `https://github.com/Luskish/afterlight-pack.git` as one normal operator account, switch to `main`, and run all commands from the repository root.
+4. Create the exact data, backup, and secret paths shown below, then create the mode `0600` RCON secret.
+5. Run `server/afterlight-server.sh doctor`, then `server/afterlight-server.sh start`. Do not use Compose directly for lifecycle operations.
+6. Allow TCP `25565` in UFW and the provider firewall or router. Allow UDP `24454` only if the group decides to use Simple Voice Chat. Never expose TCP `25575`.
+7. Add every friend to the Minecraft whitelist before sharing the address.
+8. Run `status`, create one verified `backup`, and save the printed rollback command before opening the server.
 
 ## Initial Setup
 
@@ -29,14 +40,26 @@ Confirm the currently working SSH port before changing UFW. Set `SSH_PORT` to th
 SSH_PORT=22
 sudo ufw allow "$SSH_PORT/tcp"
 sudo ufw allow 25565/tcp
-sudo ufw allow 24454/udp
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw enable
 sudo ufw status verbose
 ```
 
-Forward TCP `25565` and UDP `24454` from the router or provider firewall when needed. RCON `25575` must never be forwarded. Populate the Minecraft whitelist before the address is shared.
+The group uses Discord, so UDP `24454` is optional. Only if Simple Voice Chat will be used, add this rule and the matching provider firewall or router forwarding rule:
+
+```bash
+sudo ufw allow 24454/udp
+```
+
+Forward TCP `25565` through the provider firewall or router. RCON `25575` must never be forwarded. Populate the Minecraft whitelist before the address is shared. The lifecycle wrapper does not expose a generic console command; for the one-time whitelist administration, use the internal RCON client and do not publish its port:
+
+```bash
+docker compose --project-name afterlight --env-file server/.env -f server/docker-compose.yml exec minecraft rcon-cli whitelist add FRIEND_NAME
+docker compose --project-name afterlight --env-file server/.env -f server/docker-compose.yml exec minecraft rcon-cli whitelist list
+```
+
+This direct Compose call is limited to Minecraft administration. Continue using `server/afterlight-server.sh` for start, stop, status, backup, update, and rollback.
 
 ## Routine Commands
 

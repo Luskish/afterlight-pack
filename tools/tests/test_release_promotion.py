@@ -227,13 +227,20 @@ class ReleasePromotionTests(unittest.TestCase):
     def test_release_docs_use_fail_closed_promoter_before_publication(self) -> None:
         releasing = (ROOT / "docs" / "RELEASING.md").read_text(encoding="utf-8")
         verifier = (ROOT / "tools" / "verify-pack.sh").read_text(encoding="utf-8")
+        publisher = (ROOT / "tools" / "publish-release.sh").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn('tools/promote-release.sh "$SHA" --confirm', releasing)
+        self.assertIn('TAG="v$VERSION"', releasing)
+        self.assertIn('RELEASE_DOC="docs/releases/$VERSION.md"', releasing)
         self.assertIn("Populate every automated evidence field", releasing)
         self.assertIn("must contain no automated `NOT RUN`", releasing)
-        self.assertIn("--verify-tag", releasing)
-        self.assertIn('refs/tags/v0.9.0-rc.1^{}', releasing)
+        self.assertIn('tools/publish-release.sh "$SHA" "$VERSION"', releasing)
+        self.assertNotIn("refs/tags/v0.9.0-rc.1^{}", releasing)
+        self.assertIn("--verify-tag", publisher)
         self.assertIn("tools/promote-release.sh", verifier)
+        self.assertIn("tools/publish-release.sh", verifier)
 
 
 if __name__ == "__main__":

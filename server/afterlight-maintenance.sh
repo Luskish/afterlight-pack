@@ -10,7 +10,7 @@ RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
 MIN_UPTIME_SECONDS=${AFTERLIGHT_MIN_UPTIME_SECONDS:-72000}
 ENV_FILE="$SCRIPT_DIR/.env"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?[A-Za-z0-9_, ]*$'
+PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?([A-Za-z0-9_, ]*)$'
 
 compose() {
   docker compose \
@@ -34,6 +34,9 @@ require_command() {
 player_count() {
   local container_id=$1
   local cleaned_output
+  local listed_players
+  local maximum_players
+  local reported_players
   local rcon_output
 
   if ! rcon_output=$(docker exec "$container_id" rcon-cli list </dev/null 2>&1); then
@@ -46,11 +49,18 @@ player_count() {
     fail "Unable to parse RCON player count"
     return 1
   fi
-  if ((${BASH_REMATCH[1]} > ${BASH_REMATCH[2]})); then
+  reported_players=${BASH_REMATCH[1]}
+  maximum_players=${BASH_REMATCH[2]}
+  listed_players=${BASH_REMATCH[3]// /}
+  if ((reported_players > maximum_players)); then
     fail "RCON player count exceeds configured maximum"
     return 1
   fi
-  printf '%s\n' "${BASH_REMATCH[1]}"
+  if ((reported_players == 0)) && [[ -n "$listed_players" ]]; then
+    fail "RCON zero player count contradicts listed names"
+    return 1
+  fi
+  printf '%s\n' "$reported_players"
 }
 
 container_health() {

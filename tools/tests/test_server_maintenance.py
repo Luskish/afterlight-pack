@@ -311,6 +311,17 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.assertEqual(self._operator_calls(), [])
         self.assertIn("Unable to parse RCON player count", result.stderr)
 
+    def test_zero_player_count_with_listed_name_fails_closed(self) -> None:
+        self.environment["FAKE_RCON_OUTPUT"] = (
+            "There are 0 of a max of 12 players online: Friend"
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self._operator_calls(), [])
+        self.assertIn("contradicts listed names", result.stderr)
+
     def test_systemd_timer_runs_hardened_idle_checks_every_two_hours(self) -> None:
         self.assertTrue(SERVICE.is_file(), "maintenance service is missing")
         self.assertTrue(TIMER.is_file(), "maintenance timer is missing")

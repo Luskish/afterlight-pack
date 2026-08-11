@@ -159,16 +159,16 @@ SABLE_MIXIN_CLASSES = {
 SABLE_ENABLED_METADATA_COUNT = 157
 SABLE_TOP_LEVEL_ARTIFACT_COUNT = 157
 SABLE_ARCHIVE_SCOPE_COUNT = 305
-SABLE_MIXIN_CONFIG_COUNT = 261
-SABLE_COMMON_MIXIN_COUNT = 2286
+SABLE_MIXIN_CONFIG_COUNT = 265
+SABLE_COMMON_MIXIN_COUNT = 2320
 SABLE_SERVER_MIXIN_COUNT = 5
 SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
 REVIEWED_SERVER_ARTIFACT_COUNT = 157
 REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
-    "3fab3746f050ff8fe52b09ab565df5afca72136d778c5dd9321c4eb7bd84bf67"
+    "846d3636995f2d00016f5d6c48be759fc4f182aebb9d78c61e1b11abffc381d2"
 )
 REVIEWED_MIXIN_CORPUS_SHA256 = (
-    "8f4b4b1736db5b6d91e30159b30059710476595100f0fb72dae423a5ddf841af"
+    "89b497a7f29cce05f3b53d8fbaa538d2999744c8814f2091da3e5410966362de"
 )
 REVIEWED_CLIENT_TARGET_COUNT = 31
 REVIEWED_CLIENT_TARGET_INVENTORY_SHA256 = (
@@ -401,13 +401,13 @@ SEVERE_OUTPUT_LIKE = re.compile(
     r"(?:Exception|Error|Throwable)(?![A-Za-z0-9_$])|"
     r"\bCaused by:|\bSegmentation fault\b|\bpanic:)",
 )
-REVIEWED_CONSOLE_SEVERE_COUNT = 62
+REVIEWED_CONSOLE_SEVERE_COUNT = 61
 REVIEWED_CONSOLE_SEVERE_SHA256 = (
-    "ed408c68bf375c658891ec372f94bfb5c766cffc9d52804e96012657ab07ec4b"
+    "85d2e2eb037c634e1996d5e72591c4d5c0bbb9f14af98c8a8d748ebae2fdd37b"
 )
-REVIEWED_DEBUG_SEVERE_COUNT = 80
+REVIEWED_DEBUG_SEVERE_COUNT = 78
 REVIEWED_DEBUG_SEVERE_SHA256 = (
-    "0292b411acc6145d69a97ca14ab08440451f5045aa49d543a3e2c6bfe964206a"
+    "52ed176590c1f28cb4b6a5f1f2a4d3376dd82a685fbb95e3e68bde75968b2109"
 )
 CONSOLE_LOGGER_CANONICAL = {
     "common.asm.RuntimeDistCleaner/DISTXFORM": (
@@ -482,10 +482,10 @@ SUPPLEMENTARIES_VOLATILE_WORKER_WARNINGS = frozenset(
         "exist? It should! Skipping way sign recipe generation",
     }
 )
-REVIEWED_WARNING_TOTAL = 477
-REVIEWED_WARNING_UNIQUE = 383
+REVIEWED_WARNING_TOTAL = 475
+REVIEWED_WARNING_UNIQUE = 381
 REVIEWED_WARNING_MULTISET_SHA256 = (
-    "5033a05cb2b3d17833c8824ef935e1190608faed1dd7ee9a370b502fb1cd5f2a"
+    "73a939a5a1237604d9d8998674474e765cd1bb6330cfd0922527a2407e8a4966"
 )
 REVIEWED_DUPLICATE_ZIP_MEMBERS = {
     ("mods/ars-nouveau.pw.toml", "META-INF/LICENSE.txt"): (
@@ -2500,6 +2500,17 @@ def _normalize_record_message(
         install_root=install_root,
     )
     if (
+        record.level == "WARN"
+        and record.logger
+        == "net.minecraft.server.packs.VanillaPackResourcesBuilder/"
+        and re.fullmatch(
+            r"Assets URL 'union:[^'\r\n]+\.jar%23\d+!/(?:assets|data)/"
+            r"\.mcassetsroot' uses unexpected schema",
+            message,
+        )
+    ):
+        return re.sub(r"(?<=\.jar)%23\d+(?=!/)", "%23N", message, count=1)
+    if (
         record.level == "DEBUG"
         and record.logger == "mixin/"
         and re.fullmatch(
@@ -3783,7 +3794,7 @@ SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258"
+    "bac4037040ac2b758e7eb605ae1e02fae816b78ea99a9310f6798cae2994dc4b"
 )
 SEAL_RENDERED_CODE_RELATIVES = frozenset(
     {

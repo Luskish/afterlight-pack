@@ -2,6 +2,18 @@
 
 For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-10 by Codex during the streamlined friend-release work. The executable plan files exist under `docs/superpowers/plans/`.
 
+## Pending RC3 Login And Multiplayer Update
+
+- Working branch: `codex/client-smartbrainlib-hotfix`, based on stable RC2.
+- Emergency source commit: `cf71be4f2ed6141354fb2fc305ee483d39e64f4d` restores SmartBrainLib to both sides and removes LuckPerms, which conflicted with FTB Ranks during player login.
+- Live VPS: pinned to `cf71be4f2ed6141354fb2fc305ee483d39e64f4d`. Successful authenticated joins were observed after that change. Do not update or restart the live server until Shane explicitly approves the RC3 maintenance window.
+- Pending RC3 roster: Controlling `19.0.5` plus Searchables `1.0.2`, FTB Ultimine `2101.1.15` replacing VeinMiner and VeinMiner Hotkey, and Lootr `1.11.38.123` on both sides.
+- Lootr behavior: it does not add structures or new loot tables. Unopened supported loot-table containers in the existing world can convert automatically after deployment. Opened containers cannot regain their original loot table, but an operator can use `/lootr custom-chest <target>` on a non-empty supported container to copy its remaining contents into a custom per-player inventory. Removing Lootr later would remove Lootr-converted containers, so treat it as a persistent world dependency.
+- Live whitelist additions: `ZSmitt` and `DylnDark`. Both were added through RCON without a restart.
+- Current local evidence: Packwiz refresh is idempotent with 168 metadata files and 307 indexed files. The isolated server authenticates 157 server artifacts, reaches a complete boot and clean shutdown, and passes the boot oracle with 14 reviewed errors and 475 reviewed warnings. The authenticated suite passes all 442 tests and the harness prints `SERVER BOOT: OK`. Quest validation reports 46 chapters, 313 quests, 334 tasks, and 436 rewards.
+- Deterministic loader policy: `config/fml.toml` disables NeoForge live config watching. Config changes require a restart. This prevents the macOS NightConfig polling race observed while Ars Nouveau generated temporary per-glyph config files.
+- Recovery if interrupted: open `/private/tmp/afterlight-client-smartbrainlib-hotfix`, inspect `git status`, use the required Packwiz environment prefix, and continue with `./tools/verify-pack.sh`, exact-tree inspection, branch CI, deterministic artifacts, and a held merge. Rerun `python3 tools/build-quests.py` only if authenticated registry inputs change. Do not touch `/private/tmp/afterlight-plan07-task1` or `codex/plan07-task1`.
+
 ## Current RC2 Handoff
 
 - Active plan: `docs/superpowers/plans/2026-08-10-afterlight-08-pinned-rc2-v1.md`.

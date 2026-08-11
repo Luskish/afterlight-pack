@@ -305,6 +305,19 @@ class ImmutableReleasePinTests(unittest.TestCase):
         )
 
 
+class DeterministicLoaderConfigTests(unittest.TestCase):
+    def test_neoforge_config_watcher_is_disabled(self) -> None:
+        config_path = ROOT / "config" / "fml.toml"
+        self.assertTrue(config_path.is_file(), "missing reviewed NeoForge config")
+        config_text = config_path.read_text(encoding="utf-8")
+        config = tomllib.loads(config_text)
+        self.assertIs(config.get("disableConfigWatcher"), True)
+        self.assertIn(
+            '#dependencyOverrides.targetMod = ["-dep1", "+dep2"]',
+            config_text,
+        )
+
+
 @requires_live_install(ROOT)
 class ReviewedConfigFixtureTests(unittest.TestCase):
     def test_reviewed_configs_reverse_to_clean_generated_fingerprints(self) -> None:
@@ -712,8 +725,8 @@ class JarOverrideFixtureTests(unittest.TestCase):
         self.assertEqual(evidence["enabled_metadata"], 157)
         self.assertEqual(evidence["top_level_artifacts"], 157)
         self.assertEqual(evidence["archive_scopes"], 305)
-        self.assertEqual(evidence["mixin_configs"], 261)
-        self.assertEqual(evidence["common_mixins"], 2286)
+        self.assertEqual(evidence["mixin_configs"], 265)
+        self.assertEqual(evidence["common_mixins"], 2320)
         self.assertEqual(evidence["annotation_clientlevel_mixins"], 3)
         self.assertEqual(len(evidence["pseudo_clientlevel_candidates"]), 3)
         self.assertEqual(

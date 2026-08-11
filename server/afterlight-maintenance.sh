@@ -185,8 +185,6 @@ main() {
       "AFTERLIGHT restart in 1 minute. Please disconnect safely." || return 1
     sleep 60 || return 1
     validate_same_healthy_container "$container_id" "$started_at" || return 1
-    announce_restart "$container_id" \
-      "AFTERLIGHT is restarting now. A verified world backup is being created." || return 1
   else
     started_epoch=$(date -d "$started_at" +%s) || {
       fail "Unable to parse container start time: $started_at"
@@ -232,6 +230,8 @@ main() {
 
   if [[ "$mode" == "scheduled" ]]; then
     printf 'Scheduled restart: backup=%s\n' "$backup_path"
+    announce_restart "$container_id" \
+      "AFTERLIGHT is restarting now. World backup verified." || return 1
   else
     printf 'Maintenance restart: backup=%s\n' "$backup_path"
   fi

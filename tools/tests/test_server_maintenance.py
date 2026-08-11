@@ -115,7 +115,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                   [ ! -f "$count_file" ] || count=$(cat "$count_file")
                   count=$((count + 1))
                   printf '%s\n' "$count" > "$count_file"
-                  if [ "$count" -gt 1 ] && [ -n "${FAKE_CONTAINER_ID_AFTER_BACKUP:-}" ]; then
+                  if [ "$count" -ge "${FAKE_CONTAINER_ID_CHANGE_AT:-2}" ] && [ -n "${FAKE_CONTAINER_ID_AFTER_BACKUP:-}" ]; then
                     printf '%s\n' "$FAKE_CONTAINER_ID_AFTER_BACKUP"
                   else
                     printf '%s\n' "${FAKE_CONTAINER_ID:-test-container}"
@@ -131,7 +131,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                     [ ! -f "$count_file" ] || count=$(cat "$count_file")
                     count=$((count + 1))
                     printf '%s\n' "$count" > "$count_file"
-                    if [ "$count" -gt 1 ] && [ -n "${FAKE_CONTAINER_STATE_AFTER_BACKUP:-}" ]; then
+                    if [ "$count" -ge "${FAKE_CONTAINER_STATE_CHANGE_AT:-2}" ] && [ -n "${FAKE_CONTAINER_STATE_AFTER_BACKUP:-}" ]; then
                       printf '%s\n' "$FAKE_CONTAINER_STATE_AFTER_BACKUP"
                     else
                       printf '%s\n' "${FAKE_CONTAINER_STATE:-running|healthy}"
@@ -144,7 +144,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                     [ ! -f "$count_file" ] || count=$(cat "$count_file")
                     count=$((count + 1))
                     printf '%s\n' "$count" > "$count_file"
-                    if [ "$count" -gt 1 ] && [ -n "${FAKE_STARTED_AT_AFTER_BACKUP:-}" ]; then
+                    if [ "$count" -ge "${FAKE_STARTED_AT_CHANGE_AT:-2}" ] && [ -n "${FAKE_STARTED_AT_AFTER_BACKUP:-}" ]; then
                       printf '%s\n' "$FAKE_STARTED_AT_AFTER_BACKUP"
                     else
                       printf '%s\n' "${FAKE_STARTED_AT:-2020-01-01T00:00:00Z}"
@@ -240,9 +240,27 @@ class ServerMaintenanceTests(unittest.TestCase):
             "rcon-say:AFTERLIGHT restart in 1 minute. "
             "Please disconnect safely.",
             "sleep:60",
-            "rcon-say:AFTERLIGHT is restarting now. "
-            "A verified world backup is being created.",
         ]
+
+    def _final_warning_event(self) -> str:
+        return (
+            "rcon-say:AFTERLIGHT is restarting now. "
+            "World backup verified."
+        )
+
+    def _reset_fake_state(self) -> None:
+        for path in (
+            self.docker_log,
+            self.event_log,
+            self.operator_log,
+            self.backup_path,
+            self.temp_path / "compose-ps-count",
+            self.temp_path / "health-count",
+            self.temp_path / "started-at-count",
+            self.temp_path / "rcon-list-count",
+            self.temp_path / "rcon-say-count",
+        ):
+            path.unlink(missing_ok=True)
 
     def _assert_scheduled_warning_failure(self, failure_index: int) -> None:
         self.environment["FAKE_RCON_SAY_FAIL_AT"] = str(failure_index)
@@ -250,8 +268,31 @@ class ServerMaintenanceTests(unittest.TestCase):
         result = self._run("scheduled")
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self._operator_calls(), [])
+        expected_calls = [] if failure_index < 4 else ["backup"]
+        self.assertEqual(self._operator_calls(), expected_calls)
         self.assertIn("RCON restart warning failed", result.stderr)
+
+    def _assert_scheduled_drift_failure(
+        self,
+        *,
+        changed_value_variable: str,
+        changed_value: str,
+        change_at_variable: str,
+        expected_error: str,
+    ) -> None:
+        self.environment[changed_value_variable] = changed_value
+        for checkpoint in range(2, 6):
+            with self.subTest(checkpoint=checkpoint):
+                self._reset_fake_state()
+                self.environment[change_at_variable] = str(checkpoint)
+
+                result = self._run("scheduled")
+
+                self.assertNotEqual(result.returncode, 0)
+                expected_calls = ["backup"] if checkpoint == 5 else []
+                self.assertEqual(self._operator_calls(), expected_calls)
+                self.assertNotIn(self._final_warning_event(), self._events())
+                self.assertIn(expected_error, result.stderr)
 
     def test_idle_healthy_server_restarts_after_verified_backup(self) -> None:
         result = self._run()
@@ -422,6 +463,7 @@ class ServerMaintenanceTests(unittest.TestCase):
             self._countdown_events()
             + [
                 "operator:backup",
+                self._final_warning_event(),
                 "operator:stop",
                 "operator:start",
                 "operator:status",
@@ -437,43 +479,38 @@ class ServerMaintenanceTests(unittest.TestCase):
     def test_scheduled_third_warning_failure_stops_before_backup(self) -> None:
         self._assert_scheduled_warning_failure(3)
 
-    def test_scheduled_final_warning_failure_stops_before_backup(self) -> None:
+    def test_scheduled_final_warning_failure_stops_after_backup_before_shutdown(
+        self,
+    ) -> None:
         self._assert_scheduled_warning_failure(4)
 
-    def test_scheduled_container_replacement_during_countdown_fails_closed(
+    def test_scheduled_container_replacement_fails_at_every_checkpoint(
         self,
     ) -> None:
-        self.environment["FAKE_CONTAINER_ID_AFTER_BACKUP"] = "replacement"
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_CONTAINER_ID_AFTER_BACKUP",
+            changed_value="replacement",
+            change_at_variable="FAKE_CONTAINER_ID_CHANGE_AT",
+            expected_error="container changed during maintenance",
+        )
 
-        result = self._run("scheduled")
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self._operator_calls(), [])
-        self.assertIn("container changed during maintenance", result.stderr)
-
-    def test_scheduled_start_time_drift_during_countdown_fails_closed(
+    def test_scheduled_start_time_drift_fails_at_every_checkpoint(
         self,
     ) -> None:
-        self.environment["FAKE_STARTED_AT_AFTER_BACKUP"] = (
-            "2020-01-02T00:00:00Z"
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_STARTED_AT_AFTER_BACKUP",
+            changed_value="2020-01-02T00:00:00Z",
+            change_at_variable="FAKE_STARTED_AT_CHANGE_AT",
+            expected_error="start time changed during maintenance",
         )
 
-        result = self._run("scheduled")
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self._operator_calls(), [])
-        self.assertIn("start time changed during maintenance", result.stderr)
-
-    def test_scheduled_health_drift_during_countdown_fails_closed(self) -> None:
-        self.environment["FAKE_CONTAINER_STATE_AFTER_BACKUP"] = (
-            "running|unhealthy"
+    def test_scheduled_health_drift_fails_at_every_checkpoint(self) -> None:
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_CONTAINER_STATE_AFTER_BACKUP",
+            changed_value="running|unhealthy",
+            change_at_variable="FAKE_CONTAINER_STATE_CHANGE_AT",
+            expected_error="became unhealthy during maintenance",
         )
-
-        result = self._run("scheduled")
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self._operator_calls(), [])
-        self.assertIn("became unhealthy during maintenance", result.stderr)
 
     def test_scheduled_backup_failure_never_stops_server(self) -> None:
         self.environment["FAKE_BACKUP_EXIT"] = "7"

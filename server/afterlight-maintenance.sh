@@ -70,31 +70,84 @@ container_health() {
     "$container_id"
 }
 
+validate_same_healthy_container() {
+  local expected_container_id=$1
+  local expected_started_at=$2
+  local current_container_id
+  local current_started_at
+  local health
+
+  current_container_id=$(compose ps -q minecraft) || return 1
+  if [[ "$current_container_id" != "$expected_container_id" ]]; then
+    fail "Minecraft container changed during maintenance"
+    return 1
+  fi
+  current_started_at=$(
+    docker inspect --format '{{.State.StartedAt}}' "$expected_container_id"
+  ) || return 1
+  if [[ "$current_started_at" != "$expected_started_at" ]]; then
+    fail "Minecraft container start time changed during maintenance"
+    return 1
+  fi
+  health=$(container_health "$expected_container_id") || return 1
+  if [[ "$health" != "running|healthy" ]]; then
+    fail "Minecraft became unhealthy during maintenance: $health"
+    return 1
+  fi
+}
+
+announce_restart() {
+  local container_id=$1
+  local message=$2
+
+  if ! docker exec "$container_id" rcon-cli say "$message" \
+    </dev/null >/dev/null 2>&1; then
+    fail "RCON restart warning failed"
+    return 1
+  fi
+}
+
 main() {
   local backup_path
   local container_age
   local container_id
-  local current_container_id
   local current_epoch
-  local current_started_at
   local health
+  local mode=${1:-idle}
   local players
   local started_at
   local started_epoch
+
+  if [[ "$#" -gt 1 ]]; then
+    fail "Usage: server/afterlight-maintenance.sh [idle|scheduled]"
+    return 1
+  fi
+  case "$mode" in
+    idle|scheduled) ;;
+    *)
+      fail "Usage: server/afterlight-maintenance.sh [idle|scheduled]"
+      return 1
+      ;;
+  esac
 
   require_command date || return 1
   require_command docker || return 1
   require_command flock || return 1
   require_command sed || return 1
+  if [[ "$mode" == "scheduled" ]]; then
+    require_command sleep || return 1
+  fi
   [[ -x "$OPERATOR" ]] || fail "Operator is not executable: $OPERATOR"
   [[ -d "$RUNTIME_DIR" ]] || fail "Runtime directory is missing: $RUNTIME_DIR"
-  if [[ ! "$MIN_UPTIME_SECONDS" =~ ^[0-9]+$ ]]; then
-    fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be a nonnegative integer"
-    return 1
-  fi
-  if ((MIN_UPTIME_SECONDS < 72000)); then
-    fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be at least 72000"
-    return 1
+  if [[ "$mode" == "idle" ]]; then
+    if [[ ! "$MIN_UPTIME_SECONDS" =~ ^[0-9]+$ ]]; then
+      fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be a nonnegative integer"
+      return 1
+    fi
+    if ((MIN_UPTIME_SECONDS < 72000)); then
+      fail "AFTERLIGHT_MIN_UPTIME_SECONDS must be at least 72000"
+      return 1
+    fi
   fi
 
   cd "$REPOSITORY_ROOT"
@@ -117,26 +170,45 @@ main() {
   fi
 
   started_at=$(docker inspect --format '{{.State.StartedAt}}' "$container_id") || return 1
-  started_epoch=$(date -d "$started_at" +%s) || {
-    fail "Unable to parse container start time: $started_at"
-    return 1
-  }
-  current_epoch=$(date -u +%s) || return 1
-  if ((started_epoch > current_epoch)); then
-    fail "Container start time is in the future"
-    return 1
-  fi
-  container_age=$((current_epoch - started_epoch))
-  if ((container_age < MIN_UPTIME_SECONDS)); then
-    printf 'Maintenance skipped: uptime %ss is below %ss\n' \
-      "$container_age" "$MIN_UPTIME_SECONDS"
-    return 0
-  fi
+  if [[ "$mode" == "scheduled" ]]; then
+    players=$(player_count "$container_id") || return 1
+    printf 'Scheduled restart: %s players online\n' "$players"
+    announce_restart "$container_id" \
+      "AFTERLIGHT restarts daily at 5:00 AM Eastern. Restart in 15 minutes." || return 1
+    sleep 600 || return 1
+    validate_same_healthy_container "$container_id" "$started_at" || return 1
+    announce_restart "$container_id" \
+      "AFTERLIGHT restart in 5 minutes. Please reach a safe stopping point." || return 1
+    sleep 240 || return 1
+    validate_same_healthy_container "$container_id" "$started_at" || return 1
+    announce_restart "$container_id" \
+      "AFTERLIGHT restart in 1 minute. Please disconnect safely." || return 1
+    sleep 60 || return 1
+    validate_same_healthy_container "$container_id" "$started_at" || return 1
+    announce_restart "$container_id" \
+      "AFTERLIGHT is restarting now. A verified world backup is being created." || return 1
+  else
+    started_epoch=$(date -d "$started_at" +%s) || {
+      fail "Unable to parse container start time: $started_at"
+      return 1
+    }
+    current_epoch=$(date -u +%s) || return 1
+    if ((started_epoch > current_epoch)); then
+      fail "Container start time is in the future"
+      return 1
+    fi
+    container_age=$((current_epoch - started_epoch))
+    if ((container_age < MIN_UPTIME_SECONDS)); then
+      printf 'Maintenance skipped: uptime %ss is below %ss\n' \
+        "$container_age" "$MIN_UPTIME_SECONDS"
+      return 0
+    fi
 
-  players=$(player_count "$container_id") || return 1
-  if ((players > 0)); then
-    printf 'Maintenance skipped: %s players online\n' "$players"
-    return 0
+    players=$(player_count "$container_id") || return 1
+    if ((players > 0)); then
+      printf 'Maintenance skipped: %s players online\n' "$players"
+      return 0
+    fi
   fi
 
   printf 'Maintenance backup: starting\n'
@@ -149,32 +221,28 @@ main() {
     return 1
   fi
 
-  current_container_id=$(compose ps -q minecraft)
-  if [[ "$current_container_id" != "$container_id" ]]; then
-    fail "Minecraft container changed during maintenance"
-    return 1
-  fi
-  current_started_at=$(docker inspect --format '{{.State.StartedAt}}' "$container_id") || return 1
-  if [[ "$current_started_at" != "$started_at" ]]; then
-    fail "Minecraft container start time changed during maintenance"
-    return 1
-  fi
-  health=$(container_health "$container_id") || return 1
-  if [[ "$health" != "running|healthy" ]]; then
-    fail "Minecraft became unhealthy during maintenance: $health"
-    return 1
-  fi
-  players=$(player_count "$container_id") || return 1
-  if ((players > 0)); then
-    printf 'Maintenance skipped after backup: %s players online\n' "$players"
-    return 0
+  validate_same_healthy_container "$container_id" "$started_at" || return 1
+  if [[ "$mode" == "idle" ]]; then
+    players=$(player_count "$container_id") || return 1
+    if ((players > 0)); then
+      printf 'Maintenance skipped after backup: %s players online\n' "$players"
+      return 0
+    fi
   fi
 
-  printf 'Maintenance restart: backup=%s\n' "$backup_path"
+  if [[ "$mode" == "scheduled" ]]; then
+    printf 'Scheduled restart: backup=%s\n' "$backup_path"
+  else
+    printf 'Maintenance restart: backup=%s\n' "$backup_path"
+  fi
   "$OPERATOR" stop </dev/null
   "$OPERATOR" start </dev/null
   "$OPERATOR" status </dev/null
-  printf 'Maintenance restart: OK\n'
+  if [[ "$mode" == "scheduled" ]]; then
+    printf 'Scheduled restart: OK\n'
+  else
+    printf 'Maintenance restart: OK\n'
+  fi
 }
 
 main "$@"

@@ -9,7 +9,13 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from tools.tests.release_fixtures import rewrite_checksums, write_public_release
+from tools.tests.release_fixtures import (
+    expected_tag_message,
+    rewrite_checksums,
+    write_gauntlet_receipt,
+    write_public_release,
+    write_release_policy,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +41,7 @@ class ReleasePublicationTests(unittest.TestCase):
         (self.root / "tools" / "release_artifacts.py").write_bytes(
             RELEASE_TOOL.read_bytes()
         )
+        write_release_policy(self.root / "tools" / "release-policy.env")
 
         self._write_pack(VERSION)
         self._write_release_note(VERSION)
@@ -42,6 +49,14 @@ class ReleasePublicationTests(unittest.TestCase):
         self.git_log = self.root / "git.log"
         self.gh_log = self.root / "gh.log"
         self.release_state = self.root / "release-state"
+        self.tag_message_file = self.root / "tag-message.txt"
+        self.tag_message_file.write_text(
+            expected_tag_message(
+                self.root / "dist" / "gauntlet" / SHA,
+                self.receipt_sha256,
+            ),
+            encoding="utf-8",
+        )
         self._install_fakes()
         self.environment = os.environ.copy()
         self.environment.update(
@@ -60,6 +75,7 @@ class ReleasePublicationTests(unittest.TestCase):
                 ),
                 "FAKE_LOCAL_TAG_OBJECT": TAG_OBJECT,
                 "FAKE_SHA": SHA,
+                "FAKE_TAG_MESSAGE_FILE": str(self.tag_message_file),
             }
         )
 
@@ -95,6 +111,7 @@ class ReleasePublicationTests(unittest.TestCase):
             f"AFTERLIGHT release gauntlet\nSHA: {git_sha}\n",
             encoding="utf-8",
         )
+        self.receipt_sha256 = write_gauntlet_receipt(accepted, version, git_sha)
 
     def _install_fakes(self):
         self._write_executable(
@@ -105,6 +122,10 @@ class ReleasePublicationTests(unittest.TestCase):
             printf '%s\n' "$*" >> "$FAKE_GIT_LOG"
             case "${1:-} ${2:-}" in
               "branch --show-current") printf 'dev\n' ;;
+              "rev-parse HEAD") printf '%s\n' "$FAKE_SHA" ;;
+              "status --porcelain")
+                if [ "${FAKE_DIRTY:-0}" = 1 ]; then printf ' M tools/release-policy.env\n'; fi
+                ;;
               "show "*) cat pack.toml ;;
               "cat-file -t") printf '%s\n' "${FAKE_TAG_TYPE:-tag}" ;;
               "rev-parse refs/tags/"*)
@@ -119,6 +140,7 @@ class ReleasePublicationTests(unittest.TestCase):
                   *) printf '%s\t%s\n' "${FAKE_REMOTE_TAG_OBJECT:-$FAKE_LOCAL_TAG_OBJECT}" "${3:-}" ;;
                 esac
                 ;;
+              "for-each-ref --format=%(contents)") cat "$FAKE_TAG_MESSAGE_FILE" ;;
               *) printf 'unexpected fake git command: %s\n' "$*" >&2; exit 91 ;;
             esac
             """,
@@ -154,11 +176,20 @@ class ReleasePublicationTests(unittest.TestCase):
             """,
         )
 
-    def _run(self, version=VERSION, prerelease=True, environment=None):
+    def _run(
+        self,
+        version=VERSION,
+        prerelease=True,
+        receipt_sha256=None,
+        environment=None,
+    ):
+        if receipt_sha256 is None:
+            receipt_sha256 = self.receipt_sha256
         command = [
             str(self.root / "tools" / "publish-release.sh"),
             SHA,
             version,
+            receipt_sha256,
         ]
         if prerelease:
             command.append("--prerelease")
@@ -186,6 +217,22 @@ class ReleasePublicationTests(unittest.TestCase):
         self.assertNotRegex(
             source,
             r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|",
+        )
+
+    def test_rejects_dirty_policy_before_sourcing_trusted_values(self):
+        marker = self.root / "policy-sourced"
+        policy_path = self.root / "tools" / "release-policy.env"
+        policy_path.write_text(
+            f'touch "{marker}"\n' + policy_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        result = self._run(environment={"FAKE_DIRTY": "1"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(marker.exists())
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
         )
 
     def test_success_attaches_exact_public_inventory(self):
@@ -358,6 +405,77 @@ class ReleasePublicationTests(unittest.TestCase):
         result = self._run(environment={"FAKE_REPLACE_AFTER_VIEW": "1"})
 
         self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_requires_exact_accepted_receipt_digest(self):
+        for receipt_sha256 in ("f" * 64, "not-a-digest"):
+            with self.subTest(receipt_sha256=receipt_sha256):
+                result = self._run(receipt_sha256=receipt_sha256)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("receipt", result.stderr.lower())
+                self.assertFalse(
+                    any(call.startswith("release create ") for call in self._gh_calls())
+                )
+                self.gh_log.unlink(missing_ok=True)
+
+    def test_rejects_tag_message_receipt_or_public_hash_replacement(self):
+        accepted = self.root / "dist" / "gauntlet" / SHA
+        original_message = self.tag_message_file.read_text(encoding="utf-8")
+        public_hash_lines = original_message.splitlines()
+        for index, line in enumerate(public_hash_lines):
+            if line.startswith("Public-File-SHA256: "):
+                digest = line.split()[1]
+                replacement = ("0" if digest[0] != "0" else "1") + digest[1:]
+                public_hash_lines[index] = line.replace(digest, replacement, 1)
+                break
+        changed_public_hash_message = "\n".join(public_hash_lines) + "\n"
+        cases = {
+            "receipt": original_message.replace(
+                self.receipt_sha256,
+                "f" * 64,
+                1,
+            ),
+            "public-hash": changed_public_hash_message,
+        }
+        for case, replacement_message in cases.items():
+            with self.subTest(case=case):
+                self.tag_message_file.write_text(
+                    replacement_message,
+                    encoding="utf-8",
+                )
+
+                result = self._run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("tag message", result.stderr)
+                self.assertFalse(
+                    any(call.startswith("release create ") for call in self._gh_calls())
+                )
+                self.gh_log.unlink(missing_ok=True)
+                self.tag_message_file.write_text(original_message, encoding="utf-8")
+
+        public = accepted / "public"
+        metadata_path = public / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata_path.write_text(
+            json.dumps(metadata, separators=(",", ":"), sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        rewrite_checksums(public)
+        replacement_digest = write_gauntlet_receipt(accepted, VERSION, SHA)
+        self.assertNotEqual(replacement_digest, self.receipt_sha256)
+        self.tag_message_file.write_text(
+            expected_tag_message(accepted, replacement_digest),
+            encoding="utf-8",
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("receipt SHA-256", result.stderr)
         self.assertFalse(
             any(call.startswith("release create ") for call in self._gh_calls())
         )

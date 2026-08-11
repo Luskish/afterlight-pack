@@ -13,6 +13,7 @@ import tempfile
 import unicodedata
 import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
 
 EXPECTED_PRISM_NAMES = (
@@ -45,6 +46,8 @@ PUBLIC_ARTIFACT_NAMES = tuple(
 )
 RELEASE_METADATA_NAME = "release-metadata.json"
 CHECKSUMS_NAME = "SHA256SUMS"
+GAUNTLET_RECEIPT_FORMAT = 1
+MAX_RECEIPT_SIZE = 64 * 1024
 PUBLIC_RELEASE_NAMES = tuple(
     sorted((*PUBLIC_ARTIFACT_NAMES, RELEASE_METADATA_NAME, CHECKSUMS_NAME))
 )
@@ -66,13 +69,22 @@ RELEASE_METADATA_KEYS = frozenset(
 U2014_BYTES = b"\xe2\x80\x94"
 STREAM_CHUNK_SIZE = 1024 * 1024
 STREAM_OVERLAP_SIZE = 256
+MAX_ARCHIVE_ENTRIES = 4096
+MAX_ARCHIVE_MEMBER_SIZE = 256 * 1024 * 1024
+MAX_ARCHIVE_TOTAL_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024
+MAX_ARCHIVE_COMPRESSION_RATIO = 200
+MAX_MANIFEST_SIZE = 1024 * 1024
+MAX_TEXT_LINE_SIZE = 1024 * 1024
 PRIVATE_KEY_HEADER = re.compile(
     rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
 )
 CREDENTIAL_ASSIGNMENT = re.compile(
     rb"(?:^|[\r\n,{])[\t ]*"
     rb"(?:(?:export|const|let|var)[\t ]+)?"
-    rb"[\"']?(?:api[._-]?key|token|password|secret|rcon[._-]?password)"
+    rb"[\"']?(?:api[._-]?key|rcon[._-]?password|"
+    rb"(?:access|auth|private|refresh)[._-]?token|"
+    rb"(?:client|consumer|signing|webhook)[._-]?secret|"
+    rb"(?:database|db)[._-]?password|token|password|secret)"
     rb"[\"']?[\t ]*[:=][\t ]*"
     rb"(?P<value>\"[^\"\r\n]*\"|'[^'\r\n]*'|[^,\s#;}\r\n]+)",
     re.IGNORECASE,
@@ -97,9 +109,13 @@ TEMPLATE_CREDENTIAL_VALUES = frozenset(
     }
 )
 TEMPLATE_CREDENTIAL_PATTERN = re.compile(
-    rb"(?:\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$[A-Za-z_][A-Za-z0-9_]*|"
-    rb"<[A-Za-z_][A-Za-z0-9_.-]*>|\{\{[^{}]+\}\}|__[^_]+__|"
-    rb"your[._-][A-Za-z0-9_.-]+[._-]here)",
+    rb"(?:\$\{[A-Za-z_][A-Za-z0-9_]*(?::[-+?=][^{}\r\n]*)?\}|"
+    rb"\$env:[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%|"
+    rb"\$[A-Za-z_][A-Za-z0-9_]*|"
+    rb"<[A-Za-z_][A-Za-z0-9_.-]*>|\{\{[^{}]+\}\}|"
+    rb"__[A-Za-z_][A-Za-z0-9_]*__|"
+    rb"your[._-][A-Za-z0-9_.-]+[._-]here|"
+    rb"(?:example|sample)[._-][A-Za-z0-9_.-]+)",
     re.IGNORECASE,
 )
 TEXT_CONFIG_SUFFIXES = frozenset(
@@ -133,10 +149,19 @@ WINDOWS_RESERVED_BASENAMES = frozenset(
         "prn",
         *(f"com{number}" for number in range(1, 10)),
         *(f"lpt{number}" for number in range(1, 10)),
+        "com¹",
+        "com²",
+        "com³",
+        "lpt¹",
+        "lpt²",
+        "lpt³",
     }
 )
 CURSEFORGE_MANIFEST_NAME = "manifest.json"
 MODRINTH_MANIFEST_NAME = "modrinth.index.json"
+JSON_MANIFEST_NAMES = frozenset(
+    {CURSEFORGE_MANIFEST_NAME, MODRINTH_MANIFEST_NAME, "mmc-pack.json"}
+)
 EXPECTED_PACK_NAME = "AFTERLIGHT"
 SECRET_PATH_COMPONENTS = frozenset(
     {"secret", "token", "credential", "credentials", ".env", "rcon_password"}
@@ -250,18 +275,26 @@ def _is_secret_bearing_path(name):
     )
 
 
-def _scan_binary_stream(stream, label, reject_u2014=False):
+def _scan_binary_stream(stream, label, reject_u2014=False, max_bytes=None):
     overlap = b""
+    total_bytes = 0
     while True:
-        chunk = stream.read(STREAM_CHUNK_SIZE)
+        read_size = STREAM_CHUNK_SIZE
+        if max_bytes is not None:
+            read_size = min(read_size, max_bytes - total_bytes + 1)
+        chunk = stream.read(read_size)
         if not chunk:
             break
+        total_bytes += len(chunk)
+        if max_bytes is not None and total_bytes > max_bytes:
+            raise ValueError(f"stream exceeds the byte limit for {label}")
         combined = overlap + chunk
         if reject_u2014 and U2014_BYTES in combined:
             raise ValueError(f"U+2014 found in {label}")
         if PRIVATE_KEY_HEADER.search(combined):
             raise ValueError(f"private-key header found in {label}")
         overlap = combined[-STREAM_OVERLAP_SIZE:]
+    return total_bytes
 
 
 def _is_text_config_member(name):
@@ -287,6 +320,50 @@ def _scan_credential_assignments(data, label):
             raise ValueError(f"credential assignment found in {label}")
 
 
+def _scan_text_stream(stream, label, max_bytes):
+    total_bytes = 0
+    while True:
+        line = stream.readline(MAX_TEXT_LINE_SIZE + 1)
+        if not line:
+            break
+        if len(line) > MAX_TEXT_LINE_SIZE:
+            raise ValueError(f"text line exceeds the byte limit in {label}")
+        total_bytes += len(line)
+        if total_bytes > max_bytes:
+            raise ValueError(f"stream exceeds the byte limit for {label}")
+        _scan_binary_stream_bytes(line, label)
+        _scan_credential_assignments(line, label)
+    return total_bytes
+
+
+def _read_bounded_zip_member(archive, name, label, size_limit):
+    info = archive.getinfo(name)
+    if info.file_size > size_limit:
+        raise ValueError(f"{label} exceeds the bounded read limit")
+    with archive.open(info, "r") as member:
+        data = member.read(size_limit + 1)
+        if len(data) > size_limit or member.read(1):
+            raise ValueError(f"{label} exceeds the bounded read limit")
+    if len(data) != info.file_size:
+        raise ValueError(f"{label} uncompressed size does not match ZIP metadata")
+    return data
+
+
+def _hash_zip_member(archive, name, label):
+    info = archive.getinfo(name)
+    digest = hashlib.sha256()
+    total_bytes = 0
+    with archive.open(info, "r") as member:
+        while chunk := member.read(STREAM_CHUNK_SIZE):
+            total_bytes += len(chunk)
+            if total_bytes > MAX_ARCHIVE_MEMBER_SIZE:
+                raise ValueError(f"{label} exceeds the per-member uncompressed limit")
+            digest.update(chunk)
+    if total_bytes != info.file_size:
+        raise ValueError(f"{label} uncompressed size does not match ZIP metadata")
+    return digest.hexdigest(), total_bytes
+
+
 def _local_file_header_flags(archive, info):
     if archive.fp is None:
         raise ValueError("archive file is closed")
@@ -310,6 +387,32 @@ def _inspect_zip_safety(archive, allow_directories):
         raise ValueError("archive comment is not allowed")
 
     infos = archive.infolist()
+    if len(infos) > MAX_ARCHIVE_ENTRIES:
+        raise ValueError("archive exceeds the entry-count limit")
+    total_uncompressed_size = 0
+    for info in infos:
+        if info.is_dir():
+            continue
+        if info.file_size > MAX_ARCHIVE_MEMBER_SIZE:
+            raise ValueError(
+                "archive entry exceeds the per-member uncompressed limit: "
+                f"{info.filename!r}"
+            )
+        if info.filename in JSON_MANIFEST_NAMES and info.file_size > MAX_MANIFEST_SIZE:
+            raise ValueError(f"launcher manifest exceeds the bounded read limit: {info.filename}")
+        total_uncompressed_size += info.file_size
+    if total_uncompressed_size > MAX_ARCHIVE_TOTAL_UNCOMPRESSED_SIZE:
+        raise ValueError("archive exceeds the total uncompressed limit")
+    for info in infos:
+        if info.is_dir() or info.file_size == 0:
+            continue
+        if info.compress_size <= 0 or (
+            info.file_size > info.compress_size * MAX_ARCHIVE_COMPRESSION_RATIO
+        ):
+            raise ValueError(
+                "archive entry exceeds the compression ratio limit: "
+                f"{info.filename!r}"
+            )
     names = []
     seen_names = set()
     for info in infos:
@@ -347,11 +450,21 @@ def _inspect_zip_safety(archive, allow_directories):
             with archive.open(info, "r") as member:
                 label = f"archive entry {info.filename!r}"
                 if _is_text_config_member(info.filename):
-                    member_bytes = member.read()
-                    _scan_binary_stream_bytes(member_bytes, label)
-                    _scan_credential_assignments(member_bytes, label)
+                    scanned_size = _scan_text_stream(
+                        member,
+                        label,
+                        info.file_size,
+                    )
                 else:
-                    _scan_binary_stream(member, label)
+                    scanned_size = _scan_binary_stream(
+                        member,
+                        label,
+                        max_bytes=info.file_size,
+                    )
+                if scanned_size != info.file_size:
+                    raise ValueError(
+                        f"archive entry uncompressed size does not match ZIP metadata: {info.filename!r}"
+                    )
         except (EOFError, NotImplementedError, RuntimeError) as error:
             raise ValueError(
                 f"cannot safely read archive entry {info.filename!r}: {error}"
@@ -511,22 +624,27 @@ def inspect_prism_archive(
         for info in infos:
             _validate_zip_metadata(info)
 
-        bootstrap_bytes = archive.read(PRISM_BOOTSTRAP_JAR)
-        actual_bootstrap_sha256 = hashlib.sha256(bootstrap_bytes).hexdigest()
+        actual_bootstrap_sha256, _ = _hash_zip_member(
+            archive,
+            PRISM_BOOTSTRAP_JAR,
+            "Packwiz bootstrap",
+        )
         if actual_bootstrap_sha256 != expected_bootstrap_sha256:
             raise ValueError(
                 "bootstrap SHA-256 mismatch: "
                 f"expected {expected_bootstrap_sha256}, got {actual_bootstrap_sha256}"
             )
 
-        installer_bytes = archive.read(PRISM_INSTALLER_JAR)
-        actual_installer_size = len(installer_bytes)
+        actual_installer_sha256, actual_installer_size = _hash_zip_member(
+            archive,
+            PRISM_INSTALLER_JAR,
+            "Packwiz installer",
+        )
         if actual_installer_size != expected_installer_size:
             raise ValueError(
                 "installer size mismatch: "
                 f"expected {expected_installer_size}, got {actual_installer_size}"
             )
-        actual_installer_sha256 = hashlib.sha256(installer_bytes).hexdigest()
         if actual_installer_sha256 != expected_installer_sha256:
             raise ValueError(
                 "installer SHA-256 mismatch: "
@@ -534,14 +652,24 @@ def inspect_prism_archive(
             )
 
         expected_instance_config = _instance_config(pack_url)
-        if archive.read("instance.cfg") != expected_instance_config:
+        if _read_bounded_zip_member(
+            archive,
+            "instance.cfg",
+            "instance.cfg",
+            MAX_MANIFEST_SIZE,
+        ) != expected_instance_config:
             raise ValueError("instance.cfg does not use the exact Packwiz launch command")
 
         expected_mmc_pack = _mmc_pack(
             PRISM_MINECRAFT_VERSION,
             PRISM_NEOFORGE_VERSION,
         )
-        if archive.read("mmc-pack.json") != expected_mmc_pack:
+        if _read_bounded_zip_member(
+            archive,
+            "mmc-pack.json",
+            "mmc-pack.json",
+            MAX_MANIFEST_SIZE,
+        ) != expected_mmc_pack:
             raise ValueError("mmc-pack.json does not use the exact loader versions")
 
     return {
@@ -564,7 +692,14 @@ def _read_launcher_manifest(archive, names, manifest_name, label):
     if manifest_name not in names:
         raise ValueError(f"{label} manifest is missing: {manifest_name}")
     try:
-        manifest = json.loads(archive.read(manifest_name))
+        manifest = json.loads(
+            _read_bounded_zip_member(
+                archive,
+                manifest_name,
+                f"{label} manifest",
+                MAX_MANIFEST_SIZE,
+            )
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError(f"{label} manifest is not valid UTF-8 JSON") from error
     if not isinstance(manifest, dict):
@@ -586,6 +721,106 @@ def _launcher_summary(archive_path, names, format_name):
     }
 
 
+def _validate_modrinth_files(files):
+    if not isinstance(files, list) or not files:
+        raise ValueError("Modrinth manifest must contain nonempty files")
+    seen_paths = set()
+    allowed_env_values = {"required", "optional", "unsupported"}
+    for record in files:
+        if not isinstance(record, dict) or set(record) != {
+            "path",
+            "hashes",
+            "env",
+            "downloads",
+            "fileSize",
+        }:
+            raise ValueError("Modrinth file record shape is invalid")
+
+        path = record["path"]
+        if not isinstance(path, str):
+            raise ValueError("Modrinth file path is invalid")
+        try:
+            normalized_path = _validate_archive_name(path)
+        except ValueError as error:
+            raise ValueError(f"Modrinth file path is invalid: {path!r}: {error}") from error
+        collision_key = _windows_collision_key(normalized_path)
+        if collision_key in seen_paths:
+            raise ValueError(f"Modrinth duplicate file path: {path!r}")
+        seen_paths.add(collision_key)
+
+        hashes = record["hashes"]
+        if not isinstance(hashes, dict) or set(hashes) != {"sha1", "sha512"}:
+            raise ValueError(f"Modrinth file hashes are invalid: {path!r}")
+        if not isinstance(hashes["sha1"], str) or not re.fullmatch(
+            r"[0-9a-f]{40}", hashes["sha1"]
+        ):
+            raise ValueError(f"Modrinth file SHA-1 is invalid: {path!r}")
+        if not isinstance(hashes["sha512"], str) or not re.fullmatch(
+            r"[0-9a-f]{128}", hashes["sha512"]
+        ):
+            raise ValueError(f"Modrinth file SHA-512 is invalid: {path!r}")
+
+        downloads = record["downloads"]
+        if not isinstance(downloads, list) or not downloads:
+            raise ValueError(f"Modrinth file HTTPS downloads are invalid: {path!r}")
+        for download in downloads:
+            if not isinstance(download, str) or not download:
+                raise ValueError(f"Modrinth file HTTPS download is invalid: {path!r}")
+            try:
+                parsed_download = urlsplit(download)
+            except ValueError as error:
+                raise ValueError(
+                    f"Modrinth file HTTPS download is invalid: {path!r}"
+                ) from error
+            if (
+                parsed_download.scheme != "https"
+                or not parsed_download.hostname
+                or parsed_download.username is not None
+                or parsed_download.password is not None
+                or any(character.isspace() for character in download)
+            ):
+                raise ValueError(f"Modrinth file HTTPS download is invalid: {path!r}")
+
+        environment = record["env"]
+        if not isinstance(environment, dict) or set(environment) != {
+            "client",
+            "server",
+        }:
+            raise ValueError(f"Modrinth file environment is invalid: {path!r}")
+        if any(value not in allowed_env_values for value in environment.values()):
+            raise ValueError(f"Modrinth file environment is invalid: {path!r}")
+
+        file_size = record["fileSize"]
+        if type(file_size) is not int or file_size <= 0:
+            raise ValueError(f"Modrinth fileSize is invalid: {path!r}")
+
+
+def _validate_curseforge_files(files):
+    if not isinstance(files, list) or not files:
+        raise ValueError("CurseForge manifest must contain nonempty files")
+    seen_files = set()
+    for record in files:
+        if not isinstance(record, dict) or set(record) != {
+            "projectID",
+            "fileID",
+            "required",
+        }:
+            raise ValueError("CurseForge file record shape is invalid")
+        project_id = record["projectID"]
+        file_id = record["fileID"]
+        required = record["required"]
+        if type(project_id) is not int or project_id <= 0:
+            raise ValueError("CurseForge projectID must be a positive integer")
+        if type(file_id) is not int or file_id <= 0:
+            raise ValueError("CurseForge fileID must be a positive integer")
+        if type(required) is not bool:
+            raise ValueError("CurseForge required flag must be a boolean")
+        file_key = (project_id, file_id)
+        if file_key in seen_files:
+            raise ValueError("CurseForge duplicate file record")
+        seen_files.add(file_key)
+
+
 def inspect_modrinth_archive(archive_path, version):
     archive_path = Path(archive_path)
     with zipfile.ZipFile(archive_path) as archive:
@@ -605,8 +840,7 @@ def inspect_modrinth_archive(archive_path, version):
         raise ValueError("Modrinth manifest pack name does not match AFTERLIGHT")
     if manifest.get("versionId") != version:
         raise ValueError("Modrinth manifest pack version does not match")
-    if not isinstance(manifest.get("files"), list):
-        raise ValueError("Modrinth manifest files must be a list")
+    _validate_modrinth_files(manifest.get("files"))
     dependencies = manifest.get("dependencies")
     if not isinstance(dependencies, dict):
         raise ValueError("Modrinth manifest dependencies are invalid")
@@ -641,8 +875,7 @@ def inspect_curseforge_archive(archive_path, version):
         raise ValueError("CurseForge manifest pack version does not match")
     if manifest.get("overrides") != "overrides":
         raise ValueError("CurseForge manifest overrides directory does not match")
-    if not isinstance(manifest.get("files"), list):
-        raise ValueError("CurseForge manifest files must be a list")
+    _validate_curseforge_files(manifest.get("files"))
     minecraft = manifest.get("minecraft")
     if not isinstance(minecraft, dict):
         raise ValueError("CurseForge Minecraft identity is invalid")
@@ -822,6 +1055,120 @@ def _sha256_file(path):
         while chunk := artifact.read(STREAM_CHUNK_SIZE):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _canonical_json_bytes(value):
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _public_file_records(dist_path):
+    records = {}
+    for name in PUBLIC_RELEASE_NAMES:
+        file_path = dist_path / name
+        file_status = _require_regular_file(file_path, f"public release entry {name}")
+        records[name] = {
+            "sha256": _sha256_file(file_path),
+            "size": file_status.st_size,
+        }
+    return records
+
+
+def _trusted_packwiz_records(
+    bootstrap_version,
+    bootstrap_size,
+    bootstrap_sha256,
+    installer_version,
+    installer_size,
+    installer_sha256,
+):
+    records = {}
+    for label, version, size, sha256 in (
+        ("bootstrap", bootstrap_version, bootstrap_size, bootstrap_sha256),
+        ("installer", installer_version, installer_size, installer_sha256),
+    ):
+        if not isinstance(version, str) or not version:
+            raise ValueError(f"trusted Packwiz {label} version is missing")
+        records[label] = {
+            "version": version,
+            "size": _validate_positive_size(size, f"trusted Packwiz {label}"),
+            "sha256": _validate_sha256(sha256, f"trusted Packwiz {label}"),
+        }
+    return records
+
+
+def _gauntlet_receipt(version, git_sha, pack_url, packwiz, public_files):
+    return {
+        "format": GAUNTLET_RECEIPT_FORMAT,
+        "git_sha": git_sha,
+        "pack_url": pack_url,
+        "packwiz": packwiz,
+        "public_files": public_files,
+        "version": version,
+    }
+
+
+def _read_gauntlet_receipt(receipt_path, receipt_sha256):
+    receipt_path = Path(receipt_path)
+    receipt_status = _require_regular_file(receipt_path, "gauntlet receipt")
+    if receipt_status.st_size > MAX_RECEIPT_SIZE:
+        raise ValueError("gauntlet receipt exceeds the size limit")
+    if not re.fullmatch(r"[0-9a-f]{64}", receipt_sha256):
+        raise ValueError("receipt SHA-256 must be exactly 64 lowercase hexadecimal characters")
+    actual_sha256 = _sha256_file(receipt_path)
+    if actual_sha256 != receipt_sha256:
+        raise ValueError(
+            "gauntlet receipt SHA-256 mismatch: "
+            f"expected {receipt_sha256}, got {actual_sha256}"
+        )
+    with receipt_path.open("rb") as receipt_file:
+        receipt_bytes = receipt_file.read(MAX_RECEIPT_SIZE + 1)
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("gauntlet receipt is not valid UTF-8 JSON") from error
+    if not isinstance(receipt, dict):
+        raise ValueError("gauntlet receipt must be a JSON object")
+    if receipt_bytes != _canonical_json_bytes(receipt):
+        raise ValueError("gauntlet receipt is not canonical JSON")
+    return receipt
+
+
+def render_gauntlet_tag_message(receipt_path, receipt_sha256):
+    receipt = _read_gauntlet_receipt(receipt_path, receipt_sha256)
+    if set(receipt) != {
+        "format",
+        "git_sha",
+        "pack_url",
+        "packwiz",
+        "public_files",
+        "version",
+    }:
+        raise ValueError("gauntlet receipt fields are invalid")
+    if receipt.get("format") != GAUNTLET_RECEIPT_FORMAT:
+        raise ValueError("gauntlet receipt format is invalid")
+    version = receipt.get("version")
+    if not isinstance(version, str) or not version:
+        raise ValueError("gauntlet receipt version is invalid")
+    public_files = receipt.get("public_files")
+    if not isinstance(public_files, dict) or set(public_files) != set(
+        PUBLIC_RELEASE_NAMES
+    ):
+        raise ValueError("gauntlet receipt public file inventory is invalid")
+    lines = [
+        f"AFTERLIGHT {version}",
+        "",
+        f"Gauntlet-Receipt-SHA256: {receipt_sha256}",
+    ]
+    for name in PUBLIC_RELEASE_NAMES:
+        record = public_files[name]
+        if not isinstance(record, dict) or set(record) != {"sha256", "size"}:
+            raise ValueError(f"gauntlet receipt public file record is invalid: {name}")
+        sha256 = record.get("sha256")
+        if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
+            raise ValueError(f"gauntlet receipt public file SHA-256 is invalid: {name}")
+        _validate_positive_size(record.get("size"), f"gauntlet receipt public file {name}")
+        lines.append(f"Public-File-SHA256: {sha256}  {name}")
+    return "\n".join(lines) + "\n"
 
 
 def _atomic_write_bytes(path, data):
@@ -1068,11 +1415,42 @@ def _verify_release_checksums(dist_path):
             )
 
 
-def verify_public_release(dist_dir, version, git_sha):
+def verify_public_release(
+    dist_dir,
+    version,
+    git_sha,
+    pack_url,
+    bootstrap_version,
+    bootstrap_size,
+    bootstrap_sha256,
+    installer_version,
+    installer_size,
+    installer_sha256,
+    *,
+    receipt_path=None,
+    receipt_sha256=None,
+    write_receipt=None,
+):
     if not isinstance(version, str) or not version:
         raise ValueError("release version is missing")
     if not re.fullmatch(r"[0-9a-f]{40}", git_sha):
         raise ValueError("release SHA must be exactly 40 lowercase hexadecimal characters")
+    if not isinstance(pack_url, str) or not pack_url:
+        raise ValueError("trusted production Packwiz URL is missing")
+    trusted_packwiz = _trusted_packwiz_records(
+        bootstrap_version,
+        bootstrap_size,
+        bootstrap_sha256,
+        installer_version,
+        installer_size,
+        installer_sha256,
+    )
+    if write_receipt is not None and receipt_path is not None:
+        raise ValueError("cannot write and verify a gauntlet receipt together")
+    if receipt_path is None and receipt_sha256 is not None:
+        raise ValueError("receipt SHA-256 requires a gauntlet receipt")
+    if receipt_path is not None and receipt_sha256 is None:
+        raise ValueError("gauntlet receipt requires an independently supplied receipt SHA-256")
 
     dist_path = Path(dist_dir)
     try:
@@ -1104,16 +1482,19 @@ def verify_public_release(dist_dir, version, git_sha):
         raise ValueError("release metadata Minecraft version does not match")
     if metadata.get("neoforge") != PRISM_NEOFORGE_VERSION:
         raise ValueError("release metadata NeoForge version does not match")
-    pack_url = metadata.get("pack_url")
-    if not isinstance(pack_url, str) or not pack_url:
-        raise ValueError("release metadata Packwiz URL is invalid")
+    if metadata.get("pack_url") != pack_url:
+        raise ValueError("release metadata does not match the trusted production Packwiz URL")
 
     _classified_release_names(dist_path)
     _verify_release_checksums(dist_path)
 
     packwiz = metadata["packwiz"]
-    bootstrap = packwiz["bootstrap"]
-    installer = packwiz["installer"]
+    if packwiz["bootstrap"] != trusted_packwiz["bootstrap"]:
+        raise ValueError("release metadata does not match trusted Packwiz bootstrap pins")
+    if packwiz["installer"] != trusted_packwiz["installer"]:
+        raise ValueError("release metadata does not match trusted Packwiz installer pins")
+    bootstrap = trusted_packwiz["bootstrap"]
+    installer = trusted_packwiz["installer"]
     prism = inspect_prism_archive(
         dist_path / PRISM_ARTIFACT_NAME,
         pack_url,
@@ -1130,7 +1511,15 @@ def verify_public_release(dist_dir, version, git_sha):
         version,
     )
 
-    return {
+    public_files = _public_file_records(dist_path)
+    expected_receipt = _gauntlet_receipt(
+        version,
+        git_sha,
+        pack_url,
+        trusted_packwiz,
+        public_files,
+    )
+    summary = {
         "dist_dir": str(dist_path),
         "formats": {
             CURSEFORGE_ARTIFACT_NAME: curseforge["format"],
@@ -1138,8 +1527,26 @@ def verify_public_release(dist_dir, version, git_sha):
             MRPACK_ARTIFACT_NAME: modrinth["format"],
         },
         "git_sha": git_sha,
+        "public_files": public_files,
         "version": version,
     }
+    if write_receipt is not None:
+        receipt_output = Path(write_receipt)
+        resolved_dist = dist_path.resolve()
+        resolved_receipt = receipt_output.resolve()
+        if resolved_receipt.is_relative_to(resolved_dist):
+            raise ValueError("gauntlet receipt must remain outside the public directory")
+        receipt_bytes = _canonical_json_bytes(expected_receipt)
+        _atomic_write_bytes(receipt_output, receipt_bytes)
+        summary["receipt"] = str(receipt_output)
+        summary["receipt_sha256"] = hashlib.sha256(receipt_bytes).hexdigest()
+    elif receipt_path is not None:
+        receipt = _read_gauntlet_receipt(receipt_path, receipt_sha256)
+        if receipt != expected_receipt:
+            raise ValueError("gauntlet receipt does not match the accepted public release")
+        summary["receipt"] = str(receipt_path)
+        summary["receipt_sha256"] = receipt_sha256
+    return summary
 
 
 def _parser():
@@ -1193,6 +1600,20 @@ def _parser():
     verifier_parser.add_argument("--dist-dir", required=True)
     verifier_parser.add_argument("--version", required=True)
     verifier_parser.add_argument("--git-sha", required=True)
+    verifier_parser.add_argument("--pack-url", required=True)
+    verifier_parser.add_argument("--bootstrap-version", required=True)
+    verifier_parser.add_argument("--bootstrap-size", required=True, type=int)
+    verifier_parser.add_argument("--bootstrap-sha256", required=True)
+    verifier_parser.add_argument("--installer-version", required=True)
+    verifier_parser.add_argument("--installer-size", required=True, type=int)
+    verifier_parser.add_argument("--installer-sha256", required=True)
+    verifier_parser.add_argument("--receipt")
+    verifier_parser.add_argument("--receipt-sha256")
+    verifier_parser.add_argument("--write-receipt")
+
+    tag_message_parser = subparsers.add_parser("render-gauntlet-tag-message")
+    tag_message_parser.add_argument("--receipt", required=True)
+    tag_message_parser.add_argument("--receipt-sha256", required=True)
     return parser
 
 
@@ -1255,8 +1676,28 @@ def main(argv=None):
         return 0
 
     if args.command == "verify-public-release":
-        summary = verify_public_release(args.dist_dir, args.version, args.git_sha)
+        summary = verify_public_release(
+            args.dist_dir,
+            args.version,
+            args.git_sha,
+            args.pack_url,
+            args.bootstrap_version,
+            args.bootstrap_size,
+            args.bootstrap_sha256,
+            args.installer_version,
+            args.installer_size,
+            args.installer_sha256,
+            receipt_path=args.receipt,
+            receipt_sha256=args.receipt_sha256,
+            write_receipt=args.write_receipt,
+        )
         print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "render-gauntlet-tag-message":
+        sys.stdout.write(
+            render_gauntlet_tag_message(args.receipt, args.receipt_sha256)
+        )
         return 0
 
     output_path = write_release_checksums(args.dist_dir)

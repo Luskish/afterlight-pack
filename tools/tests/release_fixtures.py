@@ -13,6 +13,15 @@ NEOFORGE_VERSION = "21.1.248"
 PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
 BOOTSTRAP_BYTES = b"Packwiz bootstrap fixture\n"
 INSTALLER_BYTES = b"Packwiz installer fixture\n"
+BOOTSTRAP_VERSION = "0.0.3-test"
+INSTALLER_VERSION = "0.5.14-test"
+PUBLIC_RELEASE_NAMES = (
+    "AFTERLIGHT-curseforge.zip",
+    "AFTERLIGHT-prism-instance.zip",
+    "AFTERLIGHT.mrpack",
+    "SHA256SUMS",
+    "release-metadata.json",
+)
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 FILE_MODE = stat.S_IFREG | 0o644
 
@@ -25,7 +34,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _instance_config() -> bytes:
+def _instance_config(pack_url: str = PACK_URL) -> bytes:
     return (
         "InstanceType=OneSix\n"
         "name=AFTERLIGHT\n"
@@ -33,7 +42,7 @@ def _instance_config() -> bytes:
         "OverrideCommands=true\n"
         'PreLaunchCommand="$INST_JAVA" -jar packwiz-installer-bootstrap.jar '
         "--bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar -g "
-        f"{PACK_URL}\n"
+        f"{pack_url}\n"
     ).encode("utf-8")
 
 
@@ -83,13 +92,19 @@ def _write_zip(path: Path, entries: dict[str, bytes], *, normalized: bool) -> No
                 archive.writestr(name, entries[name])
 
 
-def write_prism_archive(path: Path, installer_bytes: bytes = INSTALLER_BYTES) -> None:
+def write_prism_archive(
+    path: Path,
+    installer_bytes: bytes = INSTALLER_BYTES,
+    *,
+    bootstrap_bytes: bytes = BOOTSTRAP_BYTES,
+    pack_url: str = PACK_URL,
+) -> None:
     _write_zip(
         path,
         {
-            ".minecraft/packwiz-installer-bootstrap.jar": BOOTSTRAP_BYTES,
+            ".minecraft/packwiz-installer-bootstrap.jar": bootstrap_bytes,
             ".minecraft/packwiz-installer.jar": installer_bytes,
-            "instance.cfg": _instance_config(),
+            "instance.cfg": _instance_config(pack_url),
             "mmc-pack.json": _mmc_pack(),
         },
         normalized=True,
@@ -110,7 +125,13 @@ def write_curseforge_archive(path: Path, version: str) -> None:
         "version": version,
         "author": "Shane + ECHO",
         "projectID": 0,
-        "files": [],
+        "files": [
+            {
+                "projectID": 238222,
+                "fileID": 5629847,
+                "required": True,
+            }
+        ],
         "overrides": "overrides",
     }
     _write_zip(
@@ -129,7 +150,23 @@ def write_modrinth_archive(path: Path, version: str) -> None:
         "game": "minecraft",
         "versionId": version,
         "name": "AFTERLIGHT",
-        "files": [],
+        "files": [
+            {
+                "path": "mods/jei-1.21.1-neoforge-19.21.0.247.jar",
+                "hashes": {
+                    "sha1": "1" * 40,
+                    "sha512": "2" * 128,
+                },
+                "env": {
+                    "client": "required",
+                    "server": "required",
+                },
+                "downloads": [
+                    "https://cdn.modrinth.com/data/u6dRKJwZ/versions/fixture/jei.jar"
+                ],
+                "fileSize": 1378123,
+            }
+        ],
         "dependencies": {
             "minecraft": MINECRAFT_VERSION,
             "neoforge": NEOFORGE_VERSION,
@@ -162,12 +199,12 @@ def rewrite_metadata(public: Path, version: str, git_sha: str) -> None:
         "pack_url": PACK_URL,
         "packwiz": {
             "bootstrap": {
-                "version": "0.0.3-test",
+                "version": BOOTSTRAP_VERSION,
                 "size": len(BOOTSTRAP_BYTES),
                 "sha256": hashlib.sha256(BOOTSTRAP_BYTES).hexdigest(),
             },
             "installer": {
-                "version": "0.5.14-test",
+                "version": INSTALLER_VERSION,
                 "size": len(INSTALLER_BYTES),
                 "sha256": hashlib.sha256(INSTALLER_BYTES).hexdigest(),
             },
@@ -222,6 +259,95 @@ def write_public_release(
             encoding="utf-8",
         )
     rewrite_checksums(public)
+
+
+def trusted_release_arguments() -> list[str]:
+    return [
+        "--pack-url",
+        PACK_URL,
+        "--bootstrap-version",
+        BOOTSTRAP_VERSION,
+        "--bootstrap-size",
+        str(len(BOOTSTRAP_BYTES)),
+        "--bootstrap-sha256",
+        hashlib.sha256(BOOTSTRAP_BYTES).hexdigest(),
+        "--installer-version",
+        INSTALLER_VERSION,
+        "--installer-size",
+        str(len(INSTALLER_BYTES)),
+        "--installer-sha256",
+        hashlib.sha256(INSTALLER_BYTES).hexdigest(),
+    ]
+
+
+def write_release_policy(path: Path) -> None:
+    path.write_text(
+        f'RELEASE_PACK_URL="{PACK_URL}"\n'
+        f'RELEASE_PACKWIZ_BOOTSTRAP_VERSION="{BOOTSTRAP_VERSION}"\n'
+        f'RELEASE_PACKWIZ_BOOTSTRAP_SIZE="{len(BOOTSTRAP_BYTES)}"\n'
+        "RELEASE_PACKWIZ_BOOTSTRAP_SHA256="
+        f'"{hashlib.sha256(BOOTSTRAP_BYTES).hexdigest()}"\n'
+        f'RELEASE_PACKWIZ_INSTALLER_VERSION="{INSTALLER_VERSION}"\n'
+        f'RELEASE_PACKWIZ_INSTALLER_SIZE="{len(INSTALLER_BYTES)}"\n'
+        "RELEASE_PACKWIZ_INSTALLER_SHA256="
+        f'"{hashlib.sha256(INSTALLER_BYTES).hexdigest()}"\n',
+        encoding="utf-8",
+    )
+
+
+def public_file_records(public: Path) -> dict[str, dict[str, int | str]]:
+    return {
+        name: {
+            "sha256": _sha256(public / name),
+            "size": (public / name).stat().st_size,
+        }
+        for name in PUBLIC_RELEASE_NAMES
+    }
+
+
+def write_gauntlet_receipt(accepted: Path, version: str, git_sha: str) -> str:
+    public = accepted / "public"
+    receipt = {
+        "format": 1,
+        "git_sha": git_sha,
+        "pack_url": PACK_URL,
+        "packwiz": {
+            "bootstrap": {
+                "version": BOOTSTRAP_VERSION,
+                "size": len(BOOTSTRAP_BYTES),
+                "sha256": hashlib.sha256(BOOTSTRAP_BYTES).hexdigest(),
+            },
+            "installer": {
+                "version": INSTALLER_VERSION,
+                "size": len(INSTALLER_BYTES),
+                "sha256": hashlib.sha256(INSTALLER_BYTES).hexdigest(),
+            },
+        },
+        "public_files": public_file_records(public),
+        "version": version,
+    }
+    receipt_bytes = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    (accepted / "gauntlet-receipt.json").write_bytes(receipt_bytes)
+    return hashlib.sha256(receipt_bytes).hexdigest()
+
+
+def expected_tag_message(accepted: Path, receipt_sha256: str) -> str:
+    receipt = json.loads(
+        (accepted / "gauntlet-receipt.json").read_text(encoding="utf-8")
+    )
+    lines = [
+        f'AFTERLIGHT {receipt["version"]}',
+        "",
+        f"Gauntlet-Receipt-SHA256: {receipt_sha256}",
+    ]
+    for name in PUBLIC_RELEASE_NAMES:
+        lines.append(
+            "Public-File-SHA256: "
+            f'{receipt["public_files"][name]["sha256"]}  {name}'
+        )
+    return "\n".join(lines) + "\n"
 
 
 def write_empty_zip(path: Path) -> None:

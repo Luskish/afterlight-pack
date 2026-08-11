@@ -10,7 +10,8 @@ CI_POLL_SECONDS=${AFTERLIGHT_CI_POLL_SECONDS:-5}
 PAGES_POLL_ATTEMPTS=${AFTERLIGHT_PAGES_POLL_ATTEMPTS:-60}
 PAGES_POLL_SECONDS=${AFTERLIGHT_PAGES_POLL_SECONDS:-5}
 CI_RUN_URL=""
-EXPECTED_ACCEPTED_ROOT=$'gauntlet.txt\npublic'
+EXPECTED_ACCEPTED_ROOT=$'gauntlet-receipt.json\ngauntlet.txt\npublic'
+TAG_MESSAGE_FILE=""
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -39,6 +40,10 @@ return_to_dev() {
   local status=$?
   local current_branch
   trap - EXIT
+  if [[ -n "$TAG_MESSAGE_FILE" ]]; then
+    rm -f "$TAG_MESSAGE_FILE"
+    TAG_MESSAGE_FILE=""
+  fi
   current_branch=$(git branch --show-current 2>/dev/null || true)
   if [[ "$current_branch" == "main" ]]; then
     git switch dev >/dev/null 2>&1 || true
@@ -123,14 +128,19 @@ wait_for_pages_parity() {
   fail "GitHub Pages did not match pack.toml and index.toml for $sha"
 }
 
-if [[ "$#" -ne 2 || "$2" != "--confirm" ]]; then
-  fail "Usage: tools/promote-release.sh SHA --confirm"
+if [[ "$#" -ne 3 || "$3" != "--confirm" ]]; then
+  fail "Usage: tools/promote-release.sh SHA RECEIPT_SHA256 --confirm"
   exit 2
 fi
 
 SHA=$1
+RECEIPT_SHA256=$2
 if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
   fail "SHA must be exactly 40 lowercase hexadecimal characters"
+  exit 2
+fi
+if [[ ! "$RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  fail "RECEIPT_SHA256 must be exactly 64 lowercase hexadecimal characters"
   exit 2
 fi
 require_positive_integer AFTERLIGHT_CI_POLL_ATTEMPTS "$CI_POLL_ATTEMPTS"
@@ -152,11 +162,14 @@ if [[ -n "$status" ]]; then
   fail "Promotion requires a clean dev worktree"
   exit 2
 fi
+# shellcheck disable=SC1091
+source tools/release-policy.env
 
 VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pack.toml", "rb"))["version"])')
 TAG="v$VERSION"
 ACCEPTED_ROOT="dist/gauntlet/$SHA"
 PUBLIC_ROOT="$ACCEPTED_ROOT/public"
+RECEIPT_PATH="$ACCEPTED_ROOT/gauntlet-receipt.json"
 ACTUAL_ACCEPTED_ROOT=$(find "$ACCEPTED_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
 if [[ "$ACTUAL_ACCEPTED_ROOT" != "$EXPECTED_ACCEPTED_ROOT" ]]; then
   fail "Accepted gauntlet artifact inventory is incomplete or contains extra files"
@@ -170,7 +183,20 @@ fi
 python3 tools/release_artifacts.py verify-public-release \
   --dist-dir "$PUBLIC_ROOT" \
   --version "$VERSION" \
-  --git-sha "$SHA"
+  --git-sha "$SHA" \
+  --pack-url "$RELEASE_PACK_URL" \
+  --bootstrap-version "$RELEASE_PACKWIZ_BOOTSTRAP_VERSION" \
+  --bootstrap-size "$RELEASE_PACKWIZ_BOOTSTRAP_SIZE" \
+  --bootstrap-sha256 "$RELEASE_PACKWIZ_BOOTSTRAP_SHA256" \
+  --installer-version "$RELEASE_PACKWIZ_INSTALLER_VERSION" \
+  --installer-size "$RELEASE_PACKWIZ_INSTALLER_SIZE" \
+  --installer-sha256 "$RELEASE_PACKWIZ_INSTALLER_SHA256" \
+  --receipt "$RECEIPT_PATH" \
+  --receipt-sha256 "$RECEIPT_SHA256"
+TAG_MESSAGE_FILE=$(mktemp "${TMPDIR:-/tmp}/afterlight-tag-message.XXXXXX")
+python3 tools/release_artifacts.py render-gauntlet-tag-message \
+  --receipt "$RECEIPT_PATH" \
+  --receipt-sha256 "$RECEIPT_SHA256" > "$TAG_MESSAGE_FILE"
 
 if [[ -n "$(git tag --list "$TAG")" ]]; then
   fail "Local tag already exists: $TAG"
@@ -202,7 +228,7 @@ wait_for_exact_ci main "$SHA"
 MAIN_CI_URL=$CI_RUN_URL
 
 wait_for_pages_parity "$SHA"
-git tag -a "$TAG" "$SHA" -m "AFTERLIGHT $VERSION"
+git tag -a "$TAG" "$SHA" -F "$TAG_MESSAGE_FILE"
 git push origin "$TAG"
 git switch dev
 
@@ -211,3 +237,4 @@ printf 'DEV_CI_URL=%s\n' "$DEV_CI_URL"
 printf 'MAIN_CI_URL=%s\n' "$MAIN_CI_URL"
 printf 'PAGES_PACK_SHA=%s\n' "$PAGES_PACK_SHA"
 printf 'PAGES_INDEX_SHA=%s\n' "$PAGES_INDEX_SHA"
+printf 'RECEIPT_SHA256=%s\n' "$RECEIPT_SHA256"

@@ -1,5 +1,6 @@
 import os
 import hashlib
+import json
 import re
 import shutil
 import stat
@@ -9,6 +10,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tools.tests.release_fixtures import (
+    BOOTSTRAP_BYTES,
+    BOOTSTRAP_VERSION,
+    INSTALLER_BYTES,
+    INSTALLER_VERSION,
+    PACK_URL,
+    PUBLIC_RELEASE_NAMES,
+    write_release_policy,
+)
 
 REQUIRED_GAUNTLET_TESTS = {
     "test_rejects_dirty_tree_noncommit_and_nonhead_sha",
@@ -61,6 +71,7 @@ class ReleaseGauntletTests(unittest.TestCase):
         )
         self._write(self.root / "index.toml", "hash-format = \"sha256\"\n")
         self._write(self.root / "tools" / "versions.env", "PATH_EXTRA=\nJAVA_HOME=${GAUNTLET_FAKE_JAVA_HOME:?}\n")
+        write_release_policy(self.root / "tools" / "release-policy.env")
         self._write(self.root / "server" / ".env.example", "DATA_DIR=/tmp/data\nBACKUP_DIR=/tmp/backups\nSECRETS_DIR=/tmp/secrets\n")
         self._write(self.root / "server" / "docker-compose.yml", "services: {}\n")
         self._write(
@@ -75,7 +86,7 @@ class ReleaseGauntletTests(unittest.TestCase):
         )
         self._write(
             self.root / "tools" / "build-release.sh",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\n\"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\" \"$prism\"\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
+            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then\n  \"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\" different\nelse\n  \"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\"\nfi\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
             executable=True,
         )
         self._write(
@@ -227,7 +238,18 @@ class ReleaseGauntletTests(unittest.TestCase):
             "git diff --exit-code",
             "git status --porcelain --untracked-files=all",
             "go version -m <REPO>/fake-bin/packwiz",
-            f"python3 tools/release_artifacts.py verify-public-release --dist-dir <STAGING>/public --version 0.9.0-rc.1 --git-sha {SHA}",
+            "python3 tools/release_artifacts.py verify-public-release "
+            f"--dist-dir <STAGING>/public --version 0.9.0-rc.1 --git-sha {SHA} "
+            f"--pack-url {PACK_URL} "
+            f"--bootstrap-version {BOOTSTRAP_VERSION} "
+            f"--bootstrap-size {len(BOOTSTRAP_BYTES)} "
+            "--bootstrap-sha256 "
+            f"{hashlib.sha256(BOOTSTRAP_BYTES).hexdigest()} "
+            f"--installer-version {INSTALLER_VERSION} "
+            f"--installer-size {len(INSTALLER_BYTES)} "
+            "--installer-sha256 "
+            f"{hashlib.sha256(INSTALLER_BYTES).hexdigest()} "
+            "--write-receipt <STAGING>/gauntlet-receipt.json",
             "git -C <REPO> worktree remove --force <WORKTREE>",
         ])
 
@@ -274,6 +296,23 @@ class ReleaseGauntletTests(unittest.TestCase):
             },
         )
         self.assertFalse((output / "friends-only").exists())
+        receipt_path = output / "gauntlet-receipt.json"
+        self.assertTrue(receipt_path.is_file())
+        receipt_bytes = receipt_path.read_bytes()
+        receipt_sha256 = hashlib.sha256(receipt_bytes).hexdigest()
+        receipt = json.loads(receipt_bytes)
+        self.assertEqual(receipt["git_sha"], SHA)
+        self.assertEqual(receipt["version"], "0.9.0-rc.1")
+        self.assertEqual(set(receipt["public_files"]), set(PUBLIC_RELEASE_NAMES))
+        for name in PUBLIC_RELEASE_NAMES:
+            self.assertEqual(
+                receipt["public_files"][name]["sha256"],
+                hashlib.sha256((output / "public" / name).read_bytes()).hexdigest(),
+            )
+        self.assertIn(
+            f"GAUNTLET RECEIPT SHA-256: {receipt_sha256}",
+            result.stdout,
+        )
         transcript = (output / "gauntlet.txt").read_text(encoding="utf-8")
         expected_hashes = {
             "Prism": hashlib.sha256(
@@ -292,6 +331,30 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertIn("NeoForge version: 21.1.248", transcript)
         for name, sha256 in expected_hashes.items():
             self.assertIn(f"{name} SHA-256: {sha256}", transcript)
+
+    def test_trusted_release_pins_ignore_environment_overrides(self):
+        result = self._run(
+            RELEASE_PACK_URL="https://attacker.invalid/pack.toml",
+            RELEASE_PACKWIZ_BOOTSTRAP_SHA256="f" * 64,
+            RELEASE_PACKWIZ_INSTALLER_SHA256="e" * 64,
+            RELEASE_PACKWIZ_INSTALLER_SIZE="999",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        verifier_call = next(
+            line
+            for line in self._normalized_log_lines()
+            if "verify-public-release" in line
+        )
+        self.assertIn(f"--pack-url {PACK_URL}", verifier_call)
+        self.assertIn(
+            hashlib.sha256(BOOTSTRAP_BYTES).hexdigest(),
+            verifier_call,
+        )
+        self.assertIn(
+            hashlib.sha256(INSTALLER_BYTES).hexdigest(),
+            verifier_call,
+        )
 
     def test_rejects_archive_replacement_after_gauntlet_staging(self):
         result = self._run(GAUNTLET_REPLACE_STAGED_MRPACK="1")

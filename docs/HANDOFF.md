@@ -31,7 +31,15 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Deterministic loader policy: `config/fml.toml` disables NeoForge live config watching. Config changes require a restart. This prevents the macOS NightConfig polling race observed while Ars Nouveau generated temporary per-glyph config files.
 - Recovery if interrupted: open `/private/tmp/afterlight-client-smartbrainlib-hotfix`, inspect `git status`, use the required Packwiz environment prefix, and continue with `./tools/verify-pack.sh`, exact-tree inspection, branch CI, deterministic artifacts, and a held merge. Rerun `python3 tools/build-quests.py` only if authenticated registry inputs change. Do not touch `/private/tmp/afterlight-plan07-task1` or `codex/plan07-task1`.
 
-## Current RC2 Handoff
+## Current Public Release Policy
+
+### Public Artifact Policy Supersession, 2026-08-11
+
+- Current policy authorizes public distribution of the Prism ZIP, CurseForge ZIP, and Modrinth `.mrpack`. Every new public release contains exactly those three archives, `SHA256SUMS`, and `release-metadata.json`.
+- A canonical nonpublic gauntlet receipt binds all five public bytes, the accepted commit and version, the production Packwiz URL, and trusted installer pins. Promotion and publication require the independently captured receipt SHA-256. The receipt is never uploaded.
+- This dated policy supersedes the friends-only directions in the historical RC2 record below. Those RC2 statements remain accurate descriptions of what was published and permitted on 2026-08-10, but they are not current release instructions.
+
+## Historical RC2 Handoff
 
 - Active plan: `docs/superpowers/plans/2026-08-10-afterlight-08-pinned-rc2-v1.md`.
 - Accepted release code: `3f6838ccdf27328d588aff09d8ec02d769206436`.
@@ -50,11 +58,11 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - VPS maintenance selection: warnings begin daily at 4:45 AM Eastern and the verified-backup restart begins around 5:00 AM even when players are online. Pregen remains deferred, and no deliberate Chunky command or world-border change has run.
 - Recovery if interrupted: stay on `dev`, run `git status`, read `docs/releases/0.9.0-rc.2.md`, inspect the exact CI and release state, and resume the first unfinished checkbox in the active plan.
 
-### Friend Installation
+### Historical RC2 Friend Installation
 
 - Prism is recommended. Download `AFTERLIGHT-prism-instance.zip` from the RC2 release, add it through Prism's import flow, sign in with Microsoft, and launch. The instance uses the stable Pages channel for later pack updates.
 - CurseForge users need the private `AFTERLIGHT-0.9.0-rc.2-curseforge.zip`. Share it privately, then use `My Modpacks`, `Create Custom Profile`, `Import`, and select the ZIP. CurseForge updates require a newly shared ZIP.
-- Do not publish either friends-only archive. The public GitHub release contains only the Prism ZIP, `release-metadata.json`, and `SHA256SUMS`.
+- Historical RC2 policy: neither friends-only archive was public. That release contained only the Prism ZIP, `release-metadata.json`, and `SHA256SUMS`. The 2026-08-11 policy above supersedes this restriction for new releases.
 - The group uses Discord. Leave UDP `24454` closed unless Simple Voice Chat is intentionally enabled.
 
 ### VPS Requirements

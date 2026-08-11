@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 import os
@@ -12,9 +13,13 @@ from pathlib import Path, PurePosixPath
 
 from tools.release_artifacts import build_prism_archive, inspect_prism_archive
 from tools.tests.release_fixtures import (
+    expected_tag_message,
     rewrite_checksums,
     rewrite_metadata,
+    trusted_release_arguments,
     write_empty_zip,
+    write_gauntlet_receipt,
+    write_prism_archive,
     write_public_release,
 )
 
@@ -344,13 +349,27 @@ class ReleasePolicyTests(unittest.TestCase):
         fake_packwiz.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
         fake_packwiz.chmod(0o755)
 
-    def _run_tool(self, *arguments):
+    def _run_tool(self, *arguments, environment=None):
         return subprocess.run(
             [sys.executable, str(RELEASE_TOOL), *map(str, arguments)],
             cwd=REPOSITORY_ROOT,
+            env=environment,
             check=False,
             capture_output=True,
             text=True,
+        )
+
+    def _verify_public_release(self, public, *extra_arguments):
+        return self._run_tool(
+            "verify-public-release",
+            "--dist-dir",
+            public,
+            "--version",
+            RELEASE_VERSION,
+            "--git-sha",
+            RELEASE_GIT_SHA,
+            *trusted_release_arguments(),
+            *extra_arguments,
         )
 
     def _assert_tool_succeeds(self, result):
@@ -457,6 +476,54 @@ class ReleasePolicyTests(unittest.TestCase):
     def _regular_entry(self, name, data=b"safe fixture\n"):
         return name, data, (stat.S_IFREG | 0o644) << 16
 
+    def _patch_central_uncompressed_sizes(self, archive_path, sizes):
+        archive_bytes = bytearray(archive_path.read_bytes())
+        position = 0
+        patched_names = set()
+        while True:
+            position = archive_bytes.find(b"PK\x01\x02", position)
+            if position < 0:
+                break
+            name_length = int.from_bytes(
+                archive_bytes[position + 28 : position + 30], "little"
+            )
+            extra_length = int.from_bytes(
+                archive_bytes[position + 30 : position + 32], "little"
+            )
+            comment_length = int.from_bytes(
+                archive_bytes[position + 32 : position + 34], "little"
+            )
+            name_start = position + 46
+            name_end = name_start + name_length
+            name = bytes(archive_bytes[name_start:name_end]).decode("utf-8")
+            if name in sizes:
+                archive_bytes[position + 24 : position + 28] = sizes[name].to_bytes(
+                    4, "little"
+                )
+                patched_names.add(name)
+            position = name_end + extra_length + comment_length
+        self.assertEqual(patched_names, set(sizes))
+        archive_path.write_bytes(archive_bytes)
+
+    def _valid_modrinth_file(self, path="mods/fixture.jar"):
+        return {
+            "path": path,
+            "hashes": {
+                "sha1": "1" * 40,
+                "sha512": "2" * 128,
+            },
+            "env": {"client": "required", "server": "required"},
+            "downloads": ["https://cdn.modrinth.com/data/project/version/file.jar"],
+            "fileSize": 1378123,
+        }
+
+    def _valid_curseforge_file(self):
+        return {
+            "projectID": 238222,
+            "fileID": 5629847,
+            "required": True,
+        }
+
     def _modrinth_manifest_entry(
         self,
         *,
@@ -464,14 +531,17 @@ class ReleasePolicyTests(unittest.TestCase):
         neoforge=NEOFORGE_VERSION,
         loader="neoforge",
         version=RELEASE_VERSION,
+        files=None,
     ):
+        if files is None:
+            files = [self._valid_modrinth_file()]
         dependencies = {"minecraft": minecraft, loader: neoforge}
         manifest = {
             "formatVersion": 1,
             "game": "minecraft",
             "versionId": version,
             "name": "AFTERLIGHT",
-            "files": [],
+            "files": files,
             "dependencies": dependencies,
         }
         return self._regular_entry(
@@ -486,7 +556,10 @@ class ReleasePolicyTests(unittest.TestCase):
         neoforge=NEOFORGE_VERSION,
         loader="neoforge",
         version=RELEASE_VERSION,
+        files=None,
     ):
+        if files is None:
+            files = [self._valid_curseforge_file()]
         manifest = {
             "minecraft": {
                 "version": minecraft,
@@ -500,7 +573,7 @@ class ReleasePolicyTests(unittest.TestCase):
             "version": version,
             "author": "Shane + ECHO",
             "projectID": 0,
-            "files": [],
+            "files": files,
             "overrides": "overrides",
         }
         return self._regular_entry(
@@ -609,6 +682,15 @@ class ReleasePolicyTests(unittest.TestCase):
             ("overrides/config/login.cfg", b"password: hunter2-fixture\n"),
             ("overrides/config/runtime.ini", b"secret = actual-fixture-secret\n"),
             ("overrides/server.properties", b"rcon.password=fixture-rcon-value\n"),
+            ("overrides/config/oauth.toml", b'client_secret = "client-live-fixture"\n'),
+            ("overrides/config/session.json", b'{"access_token":"access-live-fixture"}\n'),
+            ("overrides/config/refresh.cfg", b"refresh_token=refresh-live-fixture\n"),
+            ("overrides/config/private.ini", b"private_token: private-live-fixture\n"),
+            ("overrides/config/auth.properties", b"auth.token=auth-live-fixture\n"),
+            ("overrides/config/consumer.yml", b"consumer-secret: consumer-live-fixture\n"),
+            ("overrides/config/signing.toml", b"signing_secret='signing-live-fixture'\n"),
+            ("overrides/config/webhook.json", b'{"webhook_secret":"hook-live-fixture"}\n'),
+            ("overrides/config/database.cfg", b"database_password=db-live-fixture\n"),
         )
         for member_name, content in fixtures:
             with self.subTest(member_name=member_name):
@@ -634,7 +716,23 @@ class ReleasePolicyTests(unittest.TestCase):
                 ),
                 self._regular_entry(
                     "overrides/config/templates.toml",
-                    b'password = ""\napi_key = "${API_KEY}"\nsecret = "CHANGEME"\n',
+                    b'password = ""\napi_key = "${API_KEY}"\nsecret = "CHANGEME"\n'
+                    b'client_secret = "example-client-secret"\n'
+                    b'access_token = "$ACCESS_TOKEN"\n'
+                    b'refresh_token = "sample-refresh-token"\n'
+                    b'private_token = "<PRIVATE_TOKEN>"\n'
+                    b'auth_token = "{{ auth_token }}"\n'
+                    b'consumer_secret = "__CONSUMER_SECRET__"\n'
+                    b'signing_secret = "placeholder"\n'
+                    b'webhook_secret = "your_webhook_secret_here"\n'
+                    b'database_password = "replace-me"\n',
+                ),
+                self._regular_entry(
+                    "overrides/config/environment-references.toml",
+                    b'client_secret = "${CLIENT_SECRET:-}"\n'
+                    b'access_token = "${ACCESS_TOKEN:?required}"\n'
+                    b'auth_token = "%AUTH_TOKEN%"\n'
+                    b'signing_secret = "$env:SIGNING_SECRET"\n',
                 ),
                 self._regular_entry(
                     "overrides/config/defaults.json",
@@ -696,6 +794,110 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
 
+    def test_modrinth_manifest_validates_every_realistic_file_record(self):
+        first = self._valid_modrinth_file("mods/first.jar")
+        first["env"] = {"client": "required", "server": "unsupported"}
+        second = self._valid_modrinth_file("mods/second.jar")
+        second["env"] = {"client": "optional", "server": "optional"}
+        valid_archive = self._write_archive(
+            "valid-modrinth-files.mrpack",
+            [self._modrinth_manifest_entry(files=[first, second])],
+        )
+        self._assert_tool_succeeds(self._inspect_public_launcher(valid_archive))
+
+        invalid_cases = []
+        invalid_cases.append(([], "nonempty files"))
+        invalid_cases.append((["not-a-record"], "file record"))
+
+        missing_field = self._valid_modrinth_file()
+        del missing_field["downloads"]
+        invalid_cases.append(([missing_field], "file record"))
+
+        extra_field = self._valid_modrinth_file()
+        extra_field["unexpected"] = True
+        invalid_cases.append(([extra_field], "file record"))
+
+        unsafe_path = self._valid_modrinth_file("../mods/escape.jar")
+        invalid_cases.append(([unsafe_path], "file path"))
+
+        invalid_hashes = self._valid_modrinth_file()
+        invalid_hashes["hashes"]["sha1"] = "1" * 39
+        invalid_cases.append(([invalid_hashes], "SHA-1"))
+
+        invalid_download = self._valid_modrinth_file()
+        invalid_download["downloads"] = ["http://cdn.modrinth.com/file.jar"]
+        invalid_cases.append(([invalid_download], "HTTPS download"))
+
+        invalid_env = self._valid_modrinth_file()
+        invalid_env["env"]["server"] = "maybe"
+        invalid_cases.append(([invalid_env], "environment"))
+
+        invalid_size = self._valid_modrinth_file()
+        invalid_size["fileSize"] = 0
+        invalid_cases.append(([invalid_size], "fileSize"))
+
+        duplicate_first = self._valid_modrinth_file("mods/Example.jar")
+        duplicate_second = self._valid_modrinth_file("mods/example.jar")
+        invalid_cases.append(
+            ([duplicate_first, duplicate_second], "duplicate file path")
+        )
+
+        for files, expected_error in invalid_cases:
+            with self.subTest(expected_error=expected_error, files=files):
+                archive_path = self._write_archive(
+                    "invalid-modrinth-files.mrpack",
+                    [self._modrinth_manifest_entry(files=files)],
+                )
+                result = self._inspect_public_launcher(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_curseforge_manifest_validates_every_realistic_file_record(self):
+        first = self._valid_curseforge_file()
+        second = {"projectID": 314906, "fileID": 5639982, "required": False}
+        valid_archive = self._write_archive(
+            "valid-curseforge-files.zip",
+            [self._curseforge_manifest_entry(files=[first, second])],
+        )
+        self._assert_tool_succeeds(self._inspect_curseforge(valid_archive))
+
+        invalid_cases = []
+        invalid_cases.append(([], "nonempty files"))
+        invalid_cases.append((["not-a-record"], "file record"))
+
+        missing_field = self._valid_curseforge_file()
+        del missing_field["required"]
+        invalid_cases.append(([missing_field], "file record"))
+
+        extra_field = self._valid_curseforge_file()
+        extra_field["unexpected"] = True
+        invalid_cases.append(([extra_field], "file record"))
+
+        zero_project = self._valid_curseforge_file()
+        zero_project["projectID"] = 0
+        invalid_cases.append(([zero_project], "projectID"))
+
+        string_file = self._valid_curseforge_file()
+        string_file["fileID"] = "5629847"
+        invalid_cases.append(([string_file], "fileID"))
+
+        integer_required = self._valid_curseforge_file()
+        integer_required["required"] = 1
+        invalid_cases.append(([integer_required], "required"))
+
+        duplicate = self._valid_curseforge_file()
+        invalid_cases.append(([duplicate, copy.deepcopy(duplicate)], "duplicate file"))
+
+        for files, expected_error in invalid_cases:
+            with self.subTest(expected_error=expected_error, files=files):
+                archive_path = self._write_archive(
+                    "invalid-curseforge-files.zip",
+                    [self._curseforge_manifest_entry(files=files)],
+                )
+                result = self._inspect_curseforge(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
         identity_cases = (
             (
                 self._inspect_public_launcher,
@@ -732,15 +934,7 @@ class ReleasePolicyTests(unittest.TestCase):
         public = self.root / "verified-public"
         write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
 
-        result = self._run_tool(
-            "verify-public-release",
-            "--dist-dir",
-            public,
-            "--version",
-            RELEASE_VERSION,
-            "--git-sha",
-            RELEASE_GIT_SHA,
-        )
+        result = self._verify_public_release(public)
 
         self._assert_tool_succeeds(result)
         summary = json.loads(result.stdout)
@@ -794,15 +988,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 if case != "extra":
                     rewrite_checksums(public)
 
-                result = self._run_tool(
-                    "verify-public-release",
-                    "--dist-dir",
-                    public,
-                    "--version",
-                    RELEASE_VERSION,
-                    "--git-sha",
-                    RELEASE_GIT_SHA,
-                )
+                result = self._verify_public_release(public)
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
@@ -825,18 +1011,140 @@ class ReleasePolicyTests(unittest.TestCase):
                 rewrite_metadata(public, RELEASE_VERSION, RELEASE_GIT_SHA)
                 rewrite_checksums(public)
 
-                result = self._run_tool(
-                    "verify-public-release",
-                    "--dist-dir",
-                    public,
-                    "--version",
-                    RELEASE_VERSION,
-                    "--git-sha",
-                    RELEASE_GIT_SHA,
-                )
+                result = self._verify_public_release(public)
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
+
+    def test_final_verifier_rejects_self_consistent_trusted_pin_replacements(self):
+        public = self.root / "trusted-pin-replacement"
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+
+        result = self._verify_public_release(public)
+        self._assert_tool_succeeds(result)
+
+        replacement_installer = b"attacker-controlled installer fixture\n"
+        write_public_release(
+            public,
+            RELEASE_VERSION,
+            RELEASE_GIT_SHA,
+            installer_bytes=replacement_installer,
+        )
+        result = self._verify_public_release(public)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("trusted Packwiz installer", result.stderr)
+
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        attacker_url = "https://attacker.invalid/pack.toml"
+        prism_path = public / "AFTERLIGHT-prism-instance.zip"
+        write_prism_archive(prism_path, pack_url=attacker_url)
+        metadata_path = public / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["pack_url"] = attacker_url
+        metadata["public_artifacts"][prism_path.name] = {
+            "sha256": hashlib.sha256(prism_path.read_bytes()).hexdigest(),
+            "size": prism_path.stat().st_size,
+        }
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        rewrite_checksums(public)
+
+        result = self._verify_public_release(public)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("trusted production Packwiz URL", result.stderr)
+
+    def test_final_verifier_writes_and_requires_canonical_gauntlet_receipt(self):
+        accepted = self.root / "accepted-receipt"
+        public = accepted / "public"
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        receipt_path = accepted / "gauntlet-receipt.json"
+
+        result = self._verify_public_release(
+            public,
+            "--write-receipt",
+            receipt_path,
+        )
+
+        self._assert_tool_succeeds(result)
+        summary = json.loads(result.stdout)
+        receipt_bytes = receipt_path.read_bytes()
+        receipt_sha256 = hashlib.sha256(receipt_bytes).hexdigest()
+        self.assertEqual(summary["receipt_sha256"], receipt_sha256)
+        self.assertEqual(receipt_bytes, receipt_path.read_text().encode("utf-8"))
+        receipt = json.loads(receipt_bytes)
+        self.assertEqual(receipt["format"], 1)
+        self.assertEqual(receipt["git_sha"], RELEASE_GIT_SHA)
+        self.assertEqual(receipt["version"], RELEASE_VERSION)
+        self.assertEqual(set(receipt["public_files"]), PUBLIC_RELEASE_FILES)
+
+        result = self._verify_public_release(
+            public,
+            "--receipt",
+            receipt_path,
+            "--receipt-sha256",
+            receipt_sha256,
+        )
+        self._assert_tool_succeeds(result)
+
+    def test_final_verifier_rejects_receipt_and_self_consistent_public_replacement(self):
+        accepted = self.root / "receipt-replacement"
+        public = accepted / "public"
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        accepted_receipt_sha256 = write_gauntlet_receipt(
+            accepted,
+            RELEASE_VERSION,
+            RELEASE_GIT_SHA,
+        )
+        receipt_path = accepted / "gauntlet-receipt.json"
+
+        metadata_path = public / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata_path.write_text(
+            json.dumps(metadata, separators=(",", ":"), sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        rewrite_checksums(public)
+        replacement_receipt_sha256 = write_gauntlet_receipt(
+            accepted,
+            RELEASE_VERSION,
+            RELEASE_GIT_SHA,
+        )
+        self.assertNotEqual(replacement_receipt_sha256, accepted_receipt_sha256)
+
+        result = self._verify_public_release(
+            public,
+            "--receipt",
+            receipt_path,
+            "--receipt-sha256",
+            accepted_receipt_sha256,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("receipt SHA-256", result.stderr)
+
+    def test_tag_message_binds_receipt_and_all_five_public_hashes(self):
+        accepted = self.root / "tag-message"
+        public = accepted / "public"
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        receipt_sha256 = write_gauntlet_receipt(
+            accepted,
+            RELEASE_VERSION,
+            RELEASE_GIT_SHA,
+        )
+        receipt_path = accepted / "gauntlet-receipt.json"
+
+        result = self._run_tool(
+            "render-gauntlet-tag-message",
+            "--receipt",
+            receipt_path,
+            "--receipt-sha256",
+            receipt_sha256,
+        )
+
+        self._assert_tool_succeeds(result)
+        self.assertEqual(result.stdout, expected_tag_message(accepted, receipt_sha256))
 
     def test_public_launcher_archive_rejects_malformed_zip(self):
         malformed_archive = self.root / "malformed-launcher.zip"
@@ -846,6 +1154,117 @@ class ReleasePolicyTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not a zip file", result.stderr.lower())
+
+    def test_archive_scan_rejects_zip_bomb_and_oversized_manifest(self):
+        zip_bomb = self._write_archive(
+            "compression-bomb.mrpack",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/config/compression-bomb.bin",
+                    b"0" * (4 * 1024 * 1024),
+                ),
+            ],
+        )
+        result = self._inspect_public_launcher(zip_bomb)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("compression ratio limit", result.stderr)
+
+        manifest = json.loads(self._modrinth_manifest_entry()[1])
+        manifest["summary"] = "x" * (1024 * 1024)
+        oversized_manifest = self._write_archive(
+            "oversized-manifest.mrpack",
+            [
+                self._regular_entry(
+                    "modrinth.index.json",
+                    json.dumps(manifest).encode("utf-8"),
+                )
+            ],
+        )
+        result = self._inspect_public_launcher(oversized_manifest)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("manifest exceeds", result.stderr)
+
+    def test_archive_scan_enforces_member_total_and_entry_count_limits(self):
+        oversized_member = self._write_archive(
+            "oversized-member.mrpack",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry("overrides/data/large.bin", b"x"),
+            ],
+        )
+        self._patch_central_uncompressed_sizes(
+            oversized_member,
+            {"overrides/data/large.bin": 300 * 1024 * 1024},
+        )
+        result = self._inspect_public_launcher(oversized_member)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("per-member uncompressed limit", result.stderr)
+
+        total_entries = [self._modrinth_manifest_entry()]
+        total_sizes = {}
+        for number in range(9):
+            name = f"overrides/data/total-{number}.bin"
+            total_entries.append(self._regular_entry(name, b"x"))
+            total_sizes[name] = 250 * 1024 * 1024
+        oversized_total = self._write_archive(
+            "oversized-total.mrpack",
+            total_entries,
+        )
+        self._patch_central_uncompressed_sizes(oversized_total, total_sizes)
+        result = self._inspect_public_launcher(oversized_total)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("total uncompressed limit", result.stderr)
+
+        too_many_entries = [self._modrinth_manifest_entry()]
+        too_many_entries.extend(
+            self._regular_entry(f"overrides/data/entry-{number}.bin", b"")
+            for number in range(4097)
+        )
+        entry_count_archive = self._write_archive(
+            "too-many-entries.mrpack",
+            too_many_entries,
+        )
+        result = self._inspect_public_launcher(entry_count_archive)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("entry-count limit", result.stderr)
+
+    def test_archive_inspection_never_uses_unbounded_member_reads(self):
+        archive_path = self._write_archive(
+            "bounded-reads.mrpack",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/config/template.toml",
+                    b'access_token = "${ACCESS_TOKEN}"\n',
+                ),
+            ],
+        )
+        site_directory = self.root / "bounded-read-site"
+        site_directory.mkdir()
+        (site_directory / "sitecustomize.py").write_text(
+            "import zipfile\n"
+            "original_read = zipfile.ZipExtFile.read\n"
+            "def bounded_read(self, size=-1):\n"
+            "    if size is None or size < 0:\n"
+            "        raise RuntimeError('unbounded ZIP member read')\n"
+            "    return original_read(self, size)\n"
+            "zipfile.ZipExtFile.read = bounded_read\n",
+            encoding="utf-8",
+        )
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = str(site_directory)
+
+        result = self._run_tool(
+            "inspect-modrinth",
+            "--archive",
+            archive_path,
+            "--version",
+            RELEASE_VERSION,
+            environment=environment,
+        )
+
+        self._assert_tool_succeeds(result)
 
     def test_public_file_set_is_exactly_the_canonical_inventory(self):
         dist_directory = self.root / "public-file-set"
@@ -1558,6 +1977,12 @@ class ReleasePolicyTests(unittest.TestCase):
             "overrides/trailing-dot.",
             "overrides/trailing-space ",
             "overrides/control-\x01.txt",
+            "overrides/COM¹",
+            "overrides/com².txt",
+            "overrides/CoM³.cfg",
+            "overrides/LPT¹",
+            "overrides/lpt².txt",
+            "overrides/LpT³.json",
         )
         for unsafe_name in unsafe_names:
             with self.subTest(unsafe_name=unsafe_name):

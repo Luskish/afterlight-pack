@@ -95,6 +95,8 @@ inner() {
   cd "$REPOSITORY_ROOT"
   # shellcheck disable=SC1091
   source tools/versions.env
+  # shellcheck disable=SC1091
+  source tools/release-policy.env
   export PATH="$PATH_EXTRA:$PATH"
 
   TRANSCRIPT="$REPOSITORY_ROOT/dist/.release-gauntlet-transcript.txt"
@@ -169,7 +171,16 @@ EOF
   run python3 tools/release_artifacts.py verify-public-release \
     --dist-dir "$STAGING/public" \
     --version "$PACK_VERSION" \
-    --git-sha "$GAUNTLET_SHA"
+    --git-sha "$GAUNTLET_SHA" \
+    --pack-url "$RELEASE_PACK_URL" \
+    --bootstrap-version "$RELEASE_PACKWIZ_BOOTSTRAP_VERSION" \
+    --bootstrap-size "$RELEASE_PACKWIZ_BOOTSTRAP_SIZE" \
+    --bootstrap-sha256 "$RELEASE_PACKWIZ_BOOTSTRAP_SHA256" \
+    --installer-version "$RELEASE_PACKWIZ_INSTALLER_VERSION" \
+    --installer-size "$RELEASE_PACKWIZ_INSTALLER_SIZE" \
+    --installer-sha256 "$RELEASE_PACKWIZ_INSTALLER_SHA256" \
+    --write-receipt "$STAGING/gauntlet-receipt.json"
+  RECEIPT_SHA256=$(shasum -a 256 "$STAGING/gauntlet-receipt.json" | awk '{print $1}')
   FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   {
     printf 'AFTERLIGHT release gauntlet\n'
@@ -184,12 +195,14 @@ EOF
     printf 'Prism SHA-256: %s\n' "$PRISM_SHA256"
     printf 'Pack SHA-256: %s\n' "$PACK_SHA256"
     printf 'Index SHA-256: %s\n' "$INDEX_SHA256"
+    printf 'Gauntlet receipt SHA-256: %s\n' "$RECEIPT_SHA256"
     printf '\nCommand transcript:\n'
     cat "$TRANSCRIPT"
   } > "$STAGING/gauntlet.txt"
   mv "$STAGING" "$GAUNTLET_OUTPUT_DIR"
   STAGING=""
 
+  echo "GAUNTLET RECEIPT SHA-256: $RECEIPT_SHA256"
   echo "GAUNTLET: ACCEPTED $GAUNTLET_SHA"
 }
 

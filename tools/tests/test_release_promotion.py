@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import stat
 import subprocess
@@ -9,10 +10,13 @@ import unittest
 from pathlib import Path
 
 from tools.tests.release_fixtures import (
+    expected_tag_message,
     rewrite_checksums,
     rewrite_metadata,
+    write_gauntlet_receipt,
     write_empty_zip,
     write_public_release,
+    write_release_policy,
 )
 
 
@@ -40,6 +44,7 @@ class ReleasePromotionTests(unittest.TestCase):
         (self.root / "tools" / "release_artifacts.py").write_bytes(
             RELEASE_TOOL.read_bytes()
         )
+        write_release_policy(self.root / "tools" / "release-policy.env")
 
         (self.root / "pack.toml").write_text(
             f'version = "{VERSION}"\n', encoding="utf-8"
@@ -51,11 +56,13 @@ class ReleasePromotionTests(unittest.TestCase):
         (accepted / "gauntlet.txt").write_text(
             f"AFTERLIGHT release gauntlet\nSHA: {SHA}\n", encoding="utf-8"
         )
+        self.receipt_sha256 = write_gauntlet_receipt(accepted, VERSION, SHA)
 
         self.git_log = self.root / "git.log"
         self.gh_log = self.root / "gh.log"
         self.branch_file = self.root / "branch"
         self.branch_file.write_text("dev\n", encoding="utf-8")
+        self.tag_message_file = self.root / "tag-message.txt"
         self._install_fakes()
 
         self.environment = os.environ.copy()
@@ -68,6 +75,7 @@ class ReleasePromotionTests(unittest.TestCase):
                 "FAKE_HEAD_SHA": SHA,
                 "FAKE_PACK_FILE": str(self.root / "pack.toml"),
                 "FAKE_INDEX_FILE": str(self.root / "index.toml"),
+                "FAKE_TAG_MESSAGE_FILE": str(self.tag_message_file),
                 "AFTERLIGHT_CI_POLL_ATTEMPTS": "2",
                 "AFTERLIGHT_CI_POLL_SECONDS": "0",
                 "AFTERLIGHT_PAGES_POLL_ATTEMPTS": "2",
@@ -100,14 +108,22 @@ class ReleasePromotionTests(unittest.TestCase):
             case "${1:-} ${2:-}" in
               "branch --show-current") cat "$FAKE_BRANCH_FILE" ;;
               "rev-parse HEAD") printf '%s\n' "$FAKE_HEAD_SHA" ;;
-              "status --porcelain") ;;
+              "status --porcelain")
+                if [ "${FAKE_DIRTY:-0}" = 1 ]; then printf ' M tools/release-policy.env\n'; fi
+                ;;
               "tag --list") ;;
               "ls-remote --exit-code") exit 2 ;;
               "push origin") ;;
               "switch main") printf 'main\n' > "$FAKE_BRANCH_FILE" ;;
               "switch dev") printf 'dev\n' > "$FAKE_BRANCH_FILE" ;;
               "merge --ff-only") ;;
-              "tag -a") ;;
+              "tag -a")
+                previous=""
+                for argument in "$@"; do
+                  if [ "$previous" = "-F" ]; then cat "$argument" > "$FAKE_TAG_MESSAGE_FILE"; fi
+                  previous=$argument
+                done
+                ;;
               *) printf 'unexpected fake git command: %s\n' "$*" >&2; exit 91 ;;
             esac
             """,
@@ -158,12 +174,24 @@ class ReleasePromotionTests(unittest.TestCase):
         )
         self._write_executable("sleep", "#!/usr/bin/env bash\nexit 0\n")
 
-    def _run(self, *, environment: dict[str, str] | None = None):
+    def _run(
+        self,
+        *,
+        receipt_sha256: str | None = None,
+        environment: dict[str, str] | None = None,
+    ):
         command_environment = self.environment.copy()
         if environment:
             command_environment.update(environment)
+        if receipt_sha256 is None:
+            receipt_sha256 = self.receipt_sha256
         return subprocess.run(
-            [str(self.root / "tools" / "promote-release.sh"), SHA, "--confirm"],
+            [
+                str(self.root / "tools" / "promote-release.sh"),
+                SHA,
+                receipt_sha256,
+                "--confirm",
+            ],
             cwd=self.root,
             env=command_environment,
             capture_output=True,
@@ -202,6 +230,20 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("positive integer", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+
+    def test_rejects_dirty_policy_before_sourcing_trusted_values(self) -> None:
+        marker = self.root / "policy-sourced"
+        policy_path = self.root / "tools" / "release-policy.env"
+        policy_path.write_text(
+            f'touch "{marker}"\n' + policy_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        result = self._run(environment={"FAKE_DIRTY": "1"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(marker.exists())
         self.assertNotIn("push origin dev", self._git_calls())
 
     def test_rejects_noncanonical_public_inventory_before_push(self) -> None:
@@ -285,14 +327,63 @@ class ReleasePromotionTests(unittest.TestCase):
         self.assertNotIn("push origin dev", self._git_calls())
         self.assertFalse(any(call.startswith("tag -a ") for call in self._git_calls()))
 
+    def test_requires_exact_accepted_receipt_digest_before_push(self) -> None:
+        for receipt_sha256 in ("f" * 64, "not-a-digest"):
+            with self.subTest(receipt_sha256=receipt_sha256):
+                result = self._run(receipt_sha256=receipt_sha256)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("receipt", result.stderr.lower())
+                self.assertNotIn("push origin dev", self._git_calls())
+                self.git_log.unlink(missing_ok=True)
+
+        result = subprocess.run(
+            [str(self.root / "tools" / "promote-release.sh"), SHA, "--confirm"],
+            cwd=self.root,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RECEIPT_SHA256", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+
+    def test_rejects_self_consistent_receipt_replacement_before_push(self) -> None:
+        accepted = self.root / "dist" / "gauntlet" / SHA
+        public = accepted / "public"
+        metadata_path = public / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata_path.write_text(
+            json.dumps(metadata, separators=(",", ":"), sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        rewrite_checksums(public)
+        replacement_digest = write_gauntlet_receipt(accepted, VERSION, SHA)
+        self.assertNotEqual(replacement_digest, self.receipt_sha256)
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("receipt SHA-256", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+
     def test_success_requires_exact_push_runs_pages_parity_and_then_tags(self) -> None:
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         git_calls = self._git_calls()
         self.assertLess(git_calls.index("push origin dev"), git_calls.index("switch main"))
-        self.assertLess(git_calls.index("push origin main"), git_calls.index(f"tag -a v{VERSION} {SHA} -m AFTERLIGHT {VERSION}"))
+        tag_call = next(call for call in git_calls if call.startswith(f"tag -a v{VERSION} {SHA} -F "))
+        self.assertLess(git_calls.index("push origin main"), git_calls.index(tag_call))
         self.assertIn(f"push origin v{VERSION}", git_calls)
+        self.assertEqual(
+            self.tag_message_file.read_text(encoding="utf-8"),
+            expected_tag_message(
+                self.root / "dist" / "gauntlet" / SHA,
+                self.receipt_sha256,
+            ),
+        )
         gh_calls = "\n".join(self._gh_calls())
         self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci --branch dev --event push --commit {SHA}", gh_calls)
         self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci --branch main --event push --commit {SHA}", gh_calls)
@@ -308,12 +399,18 @@ class ReleasePromotionTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('tools/promote-release.sh "$SHA" --confirm', releasing)
+        self.assertIn(
+            'tools/promote-release.sh "$SHA" "$RECEIPT_SHA256" --confirm',
+            releasing,
+        )
         self.assertIn('TAG="v$VERSION"', releasing)
         self.assertIn('RELEASE_DOC="docs/releases/$VERSION.md"', releasing)
         self.assertIn("Populate every automated evidence field", releasing)
         self.assertIn("must contain no automated `NOT RUN`", releasing)
-        self.assertIn('tools/publish-release.sh "$SHA" "$VERSION"', releasing)
+        self.assertIn(
+            'tools/publish-release.sh "$SHA" "$VERSION" "$RECEIPT_SHA256"',
+            releasing,
+        )
         self.assertNotIn("refs/tags/v0.9.0-rc.1^{}", releasing)
         self.assertIn("--verify-tag", publisher)
         self.assertIn("tools/promote-release.sh", verifier)

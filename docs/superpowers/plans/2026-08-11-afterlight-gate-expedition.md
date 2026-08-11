@@ -21,6 +21,7 @@
 - Every task updates `ReleaseJarContractTest` with the exact newly added JAR inventory in the same commit. The authenticated release contract must stay green throughout development, not only in Task 6.
 - No U+2014 em dash appears anywhere.
 - No JAR or secret is committed.
+- Every Gradle command supplies `-PafterlightLockContext=macos` on Shane's Mac or `-PafterlightLockContext=linux` on Linux CI.
 - Every commit ends with `Co-Authored-By: Codex <noreply@openai.com>`.
 
 ## File Structure
@@ -107,7 +108,7 @@ All other perimeter positions except controller are gate frames. Tests require 8
 
 - [ ] **Step 2: Run geometry tests and verify RED**
 
-Run: `gradle test --tests 'org.rllabs.afterlight.gate.GatePattern*Test' --no-daemon`
+Run: `gradle test --tests 'org.rllabs.afterlight.gate.GatePattern*Test' -PafterlightLockContext=macos --no-daemon`
 
 Expected: FAIL because pattern classes are missing.
 
@@ -142,8 +143,8 @@ Each recipe declares NeoForge mod-loaded conditions for every external namespace
 Run:
 
 ```bash
-gradle test --tests 'org.rllabs.afterlight.gate.GatePattern*Test' --no-daemon
-gradle runGameTestServer --no-daemon
+gradle test --tests 'org.rllabs.afterlight.gate.GatePattern*Test' -PafterlightLockContext=macos --no-daemon
+gradle runGameTestServer -PafterlightLockContext=macos --no-daemon
 ```
 
 Expected: pattern tests pass and all seven blocks register.
@@ -193,7 +194,7 @@ Test success deadline `220`, stale saved deadline closes on load, future saved d
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `gradle test --tests '*GateActivationServiceTest' --no-daemon`
+Run: `gradle test --tests '*GateActivationServiceTest' -PafterlightLockContext=macos --no-daemon`
 
 Expected: FAIL because activation types are missing.
 
@@ -221,8 +222,8 @@ On load:
 Run:
 
 ```bash
-gradle test --tests '*GateActivationServiceTest' --no-daemon
-gradle runGameTestServer --no-daemon
+gradle test --tests '*GateActivationServiceTest' -PafterlightLockContext=macos --no-daemon
+gradle runGameTestServer -PafterlightLockContext=macos --no-daemon
 ```
 
 Expected: activation tests and restart GameTests pass.
@@ -265,7 +266,7 @@ Require:
 
 - [ ] **Step 2: Run data tests and verify RED**
 
-Run: `gradle test --tests '*FarRelayDataContractTest' --no-daemon`
+Run: `gradle test --tests '*FarRelayDataContractTest' -PafterlightLockContext=macos --no-daemon`
 
 Expected: FAIL because Far Relay data is missing.
 
@@ -298,8 +299,8 @@ Do not overwrite non-replaceable player blocks after a site's bit is set. A part
 Run:
 
 ```bash
-gradle test --tests 'org.rllabs.afterlight.relay.*' --no-daemon
-gradle runGameTestServer --no-daemon
+gradle test --tests 'org.rllabs.afterlight.relay.*' -PafterlightLockContext=macos --no-daemon
+gradle runGameTestServer -PafterlightLockContext=macos --no-daemon
 ```
 
 Expected: worldgen loads, all five sites initialize once, and no mobs are configured.
@@ -348,7 +349,7 @@ Cover:
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `gradle test --tests '*GateTravel*Test' --no-daemon`
+Run: `gradle test --tests '*GateTravel*Test' -PafterlightLockContext=macos --no-daemon`
 
 Expected: FAIL because travel types are missing.
 
@@ -367,8 +368,8 @@ Use a codec-backed player attachment with dimension resource key, block position
 Run:
 
 ```bash
-gradle test --tests '*GateTravel*Test' --no-daemon
-gradle runGameTestServer --no-daemon
+gradle test --tests '*GateTravel*Test' -PafterlightLockContext=macos --no-daemon
+gradle runGameTestServer -PafterlightLockContext=macos --no-daemon
 ```
 
 Expected: all travel, fallback, restart, and multiplayer isolation tests pass.
@@ -403,7 +404,7 @@ Require every registered block to have a blockstate, block model, item model whe
 
 - [ ] **Step 2: Run asset tests and verify RED**
 
-Run: `gradle test --tests '*GateAssetContractTest' --no-daemon`
+Run: `gradle test --tests '*GateAssetContractTest' -PafterlightLockContext=macos --no-daemon`
 
 Expected: FAIL with the missing asset inventory.
 
@@ -420,8 +421,8 @@ Use `RegisterDimensionSpecialEffectsEvent` for `afterlight:far_relay`. Render a 
 Run:
 
 ```bash
-gradle test --tests '*GateAssetContractTest' --no-daemon
-gradle runClient --no-daemon
+gradle test --tests '*GateAssetContractTest' -PafterlightLockContext=macos --no-daemon
+gradle runClient -PafterlightLockContext=macos --no-daemon
 ```
 
 Build a Gate, capture idle, open, fault, Far Relay arrival, central relay, each satellite direction, and return screenshots. Confirm frame readability without shaders and with the pack's default renderer.
@@ -458,7 +459,8 @@ Run twice:
 
 ```bash
 gradle clean test runGameTestServer build verifyReleaseJar \
-  -PafterlightRelease=true --no-daemon --no-build-cache --rerun-tasks
+  -PafterlightRelease=true -PafterlightLockContext=macos \
+  --no-daemon --no-build-cache --rerun-tasks
 ```
 
 Expected: both runs pass and JAR SHA-256 values match.

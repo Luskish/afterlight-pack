@@ -1,6 +1,21 @@
 # AFTERLIGHT Handoff Guide
 
-For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-10 by Codex during the streamlined friend-release work. The executable plan files exist under `docs/superpowers/plans/`.
+For continuing this project in Codex, a fresh Claude session, or any capable agent. Last updated: 2026-08-11 by Codex during the Signal Reliquary and Gate rollout. The executable plan files exist under `docs/superpowers/plans/`.
+
+## Active Signal Reliquary Rollout
+
+- Controller worktree: `/private/tmp/afterlight-echo-signal-reliquary-20260811`, branch `codex/echo-signal-reliquary`, based on stable `origin/main` commit `7630bccff75b9faeb1415db3070d8f6b9e2aa88e`.
+- Companion repository: `/Users/shaneliszewski/afterlight-signal`, public remote `https://github.com/Luskish/afterlight-signal`. The remote is still empty. Do not push until the final whole-repository fix and scoped re-review approve.
+- Approved design: `docs/superpowers/specs/2026-08-11-afterlight-signal-reliquary-experience-design.md`.
+- Active plans, in order: `docs/superpowers/plans/2026-08-11-afterlight-signal-companion.md`, `docs/superpowers/plans/2026-08-11-afterlight-gate-expedition.md`, and `docs/superpowers/plans/2026-08-11-afterlight-public-delivery.md`.
+- Companion Tasks 1 through 4 are complete. Task 5 guided ECHO code is approved at `d3f03cd4bb33b82d15b5b56ef7aebd650527b810`. Task 6 title and physical ECHO code is approved at `d3afd7834153b9831f6022733a686ffc3d2456de`.
+- Task 7 release machinery is approved at `9b1b9f1dd08a496fcb6e2b15e7d1e73355688919`. Two clean release builds passed 204 unit tests and nine GameTests and produced byte-identical JARs with SHA-256 `e0d43440b923fd5543a7cf8e517f7f754833970e9d1741a7d695b0d791a699e5`.
+- Final whole-repository review requested seven corrections at `9b1b9f1dd08a496fcb6e2b15e7d1e73355688919`. The first final fix commit is `30000a6ea812fa5a424cecf58934458328ee5b2c`; its two exact release runs passed 216 unit tests and nine GameTests with byte-identical JARs. Scoped re-review closed five original findings but found two Important residuals and one Minor regression: the title sourced the companion version instead of a pack-owned version, supported compact layouts clipped required visible detail, and multi-error route validation omitted the finale mismatch. Round 2 is active with the original implementer `019ff124-1a3b-7fd0-8244-7082714989b1`. Read `.superpowers/sdd/2026-08-11-afterlight-signal-companion/final-review.md`, `final-fix-brief.md`, `final-fix-report.md`, `final-fix-review.md`, `final-fix-round-2-brief.md`, and the plan-specific ledger before any dispatch.
+- Never redispatch completed companion Tasks 1 through 6. Their reports, reviews, and ledgers are under `.superpowers/sdd/2026-08-11-afterlight-signal-companion/` in the controller worktree.
+- Live graphical validation remains pending because the Mac is locked and GLFW cannot find a primary monitor. No screenshots were fabricated. When a display is available, validate the ECHO screen, title screen, inventory icon, first-person hold, third-person hold, dropped item, minimum-size layout, ultrawide crop, and vanilla title fallback.
+- Approved generated source concepts are staged outside git at `/private/tmp/afterlight-title-source.png`, `/private/tmp/afterlight-echo-device-reference.png`, `/private/tmp/afterlight-gate-state-concept.png`, and `/private/tmp/afterlight-far-relay-concept.png`. Final shipped companion title and ECHO assets already live in the companion repository.
+- Gate SDD workspace and Task 1 brief exist at `.superpowers/sdd/2026-08-11-afterlight-gate-expedition/`. Do not begin Gate implementation until the companion release commit passes independent review, but a public `v0.1.0` tag may remain deferred until the graphical gate is real.
+- Live VPS remains untouched during this rollout. Do not restart or update it while players may be online. Final deployment requires a verified backup, zero-player maintenance window, release artifact verification, and the public-delivery Task 6 procedure.
 
 ## Pending RC3 Login And Multiplayer Update
 

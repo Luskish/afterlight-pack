@@ -30,6 +30,7 @@ For continuing this project in Codex, a fresh Claude session, or any capable age
 - Modrinth friend artifact: `dist/gauntlet/3f6838ccdf27328d588aff09d8ec02d769206436/friends-only/AFTERLIGHT-0.9.0-rc.2.mrpack`, SHA-256 `b8c3161579d822c8c7815e5bb3b060afa686be154199ed3e44fcc90dbe9f176a`.
 - Manual acceptance: all seven rows in `docs/releases/1.0.0-acceptance.md` remain honestly unrun. Do not publish `1.0.0` until each row records a real `PASS` with evidence.
 - Immediate next action: use the published RC2 for Shane's real Prism, quest, multiplayer, gameplay, and VPS acceptance matrix. Any failure produces a new release candidate. Only seven real passes permit the version-only `1.0.0` task.
+- VPS maintenance selection: warnings begin daily at 4:45 AM Eastern and the verified-backup restart begins around 5:00 AM even when players are online. Pregen remains deferred, and no deliberate Chunky command or world-border change has run.
 - Recovery if interrupted: stay on `dev`, run `git status`, read `docs/releases/0.9.0-rc.2.md`, inspect the exact CI and release state, and resume the first unfinished checkbox in the active plan.
 
 ### Friend Installation

@@ -1,11 +1,10 @@
 [Unit]
-Description=Check AFTERLIGHT for idle-safe maintenance every two hours
+Description=Warn at 4:45 AM and restart AFTERLIGHT around 5:00 AM Eastern
 
 [Timer]
-OnCalendar=*-*-* 01,03,05,07,09,11,13,15,17,19,21,23:00:00 UTC
-Persistent=true
-RandomizedDelaySec=5m
-AccuracySec=1m
+OnCalendar=*-*-* 04:45:00 America/New_York
+Persistent=false
+AccuracySec=1s
 Unit=afterlight-maintenance.service
 
 [Install]

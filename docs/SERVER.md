@@ -96,7 +96,7 @@ server/afterlight-server.sh backup
 
 Backups also run every 6 hours and are retained for 14 days. Archives live outside the Minecraft data directory at the configured `BACKUP_DIR`. A usable archive must contain a nonempty `world/level.dat` plus the exact `.afterlight-pack-sha` marker.
 
-## Idle-Safe Maintenance
+## Daily Warned Restart
 
 For the dedicated VPS layout, keep the repository at `/opt/afterlight` and run the stack as the `afterlight` account. Install the supplied systemd units instead of a blind cron restart:
 
@@ -109,20 +109,24 @@ sudo systemctl enable --now afterlight-maintenance.timer
 systemctl list-timers afterlight-maintenance.timer
 ```
 
-The timer checks every two hours. It restarts only after all of these conditions pass:
+The timer starts a warning sequence every day at 4:45 AM Eastern and begins the restart around 5:00 AM Eastern. It announces the restart at 15 minutes, 5 minutes, 1 minute, and immediately before shutdown. The restart proceeds even when players are online after the complete warning sequence.
 
 - Minecraft is running and healthy.
-- Container uptime is at least 20 hours (`AFTERLIGHT_MIN_UPTIME_SECONDS=72000`).
-- RCON reports zero players.
+- RCON accepts every player warning and returns a parseable player count.
 - A new verified backup succeeds.
-- The same container remains healthy and still has zero players immediately before shutdown.
+- The exact same container remains healthy throughout the countdown and after backup.
 
-An RCON failure, unparseable player count, changed container, failed backup, or failed health check stops the maintenance attempt without stopping a running server. A successful attempt uses the lifecycle wrapper for backup, stop, start, and final status. Review timer state and logs with:
+An RCON failure, unparseable player count, changed container, failed backup, or failed health check stops the maintenance attempt without stopping a running server. Missed runs do not catch up after a host reboot because the JVM already restarted with the host. A successful attempt uses the lifecycle wrapper for backup, stop, start, and final status. Review the parsed Eastern schedule, timer state, and logs with:
 
 ```bash
+systemd-analyze calendar '*-*-* 04:45:00 America/New_York'
 systemctl status afterlight-maintenance.timer --no-pager
 journalctl -u afterlight-maintenance.service -n 100 --no-pager
 ```
+
+The default direct invocation, `server/afterlight-maintenance.sh idle`, retains the previous 20-hour and zero-player safety gates for an operator-requested idle restart. Production systemd invokes only `scheduled` mode.
+
+Pregen remains deferred. Chunky is installed, but no deliberate pregen command or world-border change has run.
 
 ## Update
 

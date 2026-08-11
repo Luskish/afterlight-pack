@@ -39,9 +39,11 @@ server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809
 
 `update` creates and verifies an on-demand backup before recreating Minecraft at the new exact repository revision. A failed health check leaves both services stopped and prints the exact rollback command. Rollback performs a preflight check for `world/level.dat` and the recorded revision before stopping, renames the current data tree to a timestamped rescue sibling, starts the restored world from the archive's immutable Packwiz revision, and never deletes the selected archive or either world tree.
 
-## Idle-Safe Maintenance
+## Daily Warned Restart
 
-The supplied systemd timer checks every two hours, but restarts only when Minecraft is healthy, its uptime is at least 20 hours (`AFTERLIGHT_MIN_UPTIME_SECONDS=72000`), and RCON reports zero players. It creates a verified backup and checks the same container, health, and player count again immediately before stopping. Any failed or unparseable check leaves the server running.
+The supplied systemd timer starts warnings every day at 4:45 AM Eastern and begins the restart around 5:00 AM Eastern. Players receive warnings at 15 minutes, 5 minutes, 1 minute, and immediately before shutdown. The restart proceeds even when players are online after the full warning sequence.
+
+Before shutdown, the service requires working RCON, the same healthy container throughout the countdown, and a new verified backup. Any warning, identity, health, or backup failure leaves the server running. Missed timer events do not catch up after host boot.
 
 The unit files target the dedicated VPS layout with the repository at `/opt/afterlight` and the operator account named `afterlight`:
 
@@ -49,11 +51,14 @@ The unit files target the dedicated VPS layout with the repository at `/opt/afte
 sudo install -m 0644 server/systemd/afterlight-maintenance.service /etc/systemd/system/
 sudo install -m 0644 server/systemd/afterlight-maintenance.timer /etc/systemd/system/
 sudo systemd-analyze verify /etc/systemd/system/afterlight-maintenance.service /etc/systemd/system/afterlight-maintenance.timer
+systemd-analyze calendar '*-*-* 04:45:00 America/New_York'
 sudo systemctl daemon-reload
 sudo systemctl enable --now afterlight-maintenance.timer
 systemctl list-timers afterlight-maintenance.timer
 ```
 
 Inspect the most recent check with `journalctl -u afterlight-maintenance.service -n 100 --no-pager`.
+
+Pregen remains deferred. Chunky is installed, but no deliberate pregen command or world-border change has run.
 
 See `docs/SERVER.md` for firewall setup, recovery details, and troubleshooting.

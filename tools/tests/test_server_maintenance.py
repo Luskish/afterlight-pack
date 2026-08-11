@@ -515,13 +515,16 @@ class ServerMaintenanceTests(unittest.TestCase):
                 self.assertFalse(self.docker_log.exists())
                 self.assertIn("Usage:", result.stderr)
 
-    def test_systemd_timer_runs_hardened_idle_checks_every_two_hours(self) -> None:
+    def test_systemd_timer_runs_warned_restart_daily_at_five_eastern(
+        self,
+    ) -> None:
         self.assertTrue(SERVICE.is_file(), "maintenance service is missing")
         self.assertTrue(TIMER.is_file(), "maintenance timer is missing")
         service = SERVICE.read_text(encoding="utf-8")
         timer = TIMER.read_text(encoding="utf-8")
 
         for expected in (
+            "Description=AFTERLIGHT daily warned server restart",
             "ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh",
             "User=afterlight",
             "SupplementaryGroups=docker",
@@ -529,18 +532,23 @@ class ServerMaintenanceTests(unittest.TestCase):
             "RuntimeDirectory=afterlight",
             "NoNewPrivileges=true",
             "ProtectSystem=strict",
-            "AFTERLIGHT_MIN_UPTIME_SECONDS=72000",
+            "ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled",
             "TimeoutStartSec=infinity",
         ):
             self.assertIn(expected, service)
         self.assertNotIn("ConditionPathIsExecutable", service)
         self.assertNotIn("TimeoutStartSec=20min", service)
+        self.assertNotIn("AFTERLIGHT_MIN_UPTIME_SECONDS", service)
         for expected in (
-            "Persistent=true",
-            "RandomizedDelaySec=5m",
-            "01,03,05,07,09,11,13,15,17,19,21,23:00:00 UTC",
+            "Description=Warn at 4:45 AM and restart AFTERLIGHT around 5:00 AM Eastern",
+            "OnCalendar=*-*-* 04:45:00 America/New_York",
+            "Persistent=false",
+            "AccuracySec=1s",
+            "Unit=afterlight-maintenance.service",
         ):
             self.assertIn(expected, timer)
+        self.assertNotIn("RandomizedDelaySec", timer)
+        self.assertNotIn("01,03,05,07,09,11,13,15,17,19,21,23", timer)
 
         verifier = (ROOT / "tools" / "verify-pack.sh").read_text(encoding="utf-8")
         self.assertIn("server/afterlight-maintenance.sh", verifier)
@@ -549,13 +557,16 @@ class ServerMaintenanceTests(unittest.TestCase):
             (
                 (ROOT / "docs" / "SERVER.md").read_text(encoding="utf-8"),
                 (ROOT / "server" / "README.md").read_text(encoding="utf-8"),
+                (ROOT / "docs" / "HANDOFF.md").read_text(encoding="utf-8"),
             )
         )
         for expected in (
             "systemctl enable --now afterlight-maintenance.timer",
-            "AFTERLIGHT_MIN_UPTIME_SECONDS=72000",
-            "zero players",
+            "5:00 AM Eastern",
+            "15 minutes",
+            "even when players are online",
             "verified backup",
+            "Pregen remains deferred",
         ):
             self.assertIn(expected, docs)
 

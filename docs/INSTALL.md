@@ -21,13 +21,13 @@ The Prism archive bundles exact Packwiz bootstrap `v0.0.3` and main installer `v
 
 ## CurseForge App
 
-Shane shares `AFTERLIGHT-0.9.0-rc.2-curseforge.zip` directly through a private channel. This archive embeds third-party mod JARs, is friends-only, and must never be re-uploaded or attached to a public release.
+Shane shares `AFTERLIGHT-0.9.0-rc.3-curseforge.zip` directly through a private channel. This archive embeds third-party mod JARs, is friends-only, and must never be re-uploaded or attached to a public release.
 
 Follow the [official CurseForge shared-profile import flow](https://support.curseforge.com/support/solutions/articles/9000197912):
 
 1. Open Minecraft in the CurseForge App and choose Import.
 2. Under Import Profile `.zip`, choose Choose `.zip` file.
-3. Select `AFTERLIGHT-0.9.0-rc.2-curseforge.zip`.
+3. Select `AFTERLIGHT-0.9.0-rc.3-curseforge.zip`.
 4. If CurseForge warns that the manually shared pack contains files not hosted on CurseForge, verify that the ZIP came directly from Shane and compare its SHA-256 with Shane's release handoff.
 5. After verifying the source and checksum, acknowledge the warning and choose All Files. Choosing CurseForge Files Only omits required pack files.
 6. Let CurseForge create the new profile, assign Java 21 and 8 to 10 GiB RAM, then launch it.
@@ -36,7 +36,7 @@ CurseForge imports do not auto-update. When Shane shares a newer AFTERLIGHT ZIP,
 
 ## Other Friends-Only Archive
 
-`AFTERLIGHT-0.9.0-rc.2.mrpack` is a manual fallback for compatible launchers. It is friends-only in this project because the current export embeds third-party mod JARs. It does not replace the recommended auto-updating Prism ZIP.
+`AFTERLIGHT-0.9.0-rc.3.mrpack` is a manual fallback for compatible launchers. It is friends-only in this project because the current export embeds third-party mod JARs. It does not replace the recommended auto-updating Prism ZIP.
 
 ## Joining the Server
 

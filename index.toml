@@ -17,6 +17,10 @@ file = "config/create_enchantment_industry-server.toml"
 hash = "74d6bf333342576057cb0da6252a0aa836191090ec30d75d5e100de2b1fb6f68"
 
 [[files]]
+file = "config/fml.toml"
+hash = "9462c2542c859e66dc400581e4140fa88cf41855dc08793d9674328972ce577d"
+
+[[files]]
 file = "config/ftbchunks-world.snbt"
 hash = "a669cd3cb9adb44278e099a922fbf262ab76bd6c943104b9d880b55699e37f37"
 
@@ -542,7 +546,7 @@ hash = "9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "3f84912d970184bc77a72f0f7b08d2f49699fd728de31bda1199d09ff688f43e"
+hash = "eb2eda3ec567eeafd6dae0e556e5acff2e547573e76a69f8e917f60f5b1a3262"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -703,6 +707,11 @@ hash = "dc42384932c78a1ee818af8d8535b51ebd836c6d1f13f3171d9bd83985565f04"
 metafile = true
 
 [[files]]
+file = "mods/controlling.pw.toml"
+hash = "65c8086d2ec3d39acc7bd36c7a0306ccc43b602b38fa07d13291bc478ef7dfff"
+metafile = true
+
+[[files]]
 file = "mods/copycats.pw.toml"
 hash = "e002fab16a9b9ef0a35844030339612a38d3c58b0b93e97a34eb43ddc9108be7"
 metafile = true
@@ -850,6 +859,11 @@ metafile = true
 [[files]]
 file = "mods/ftb-teams-forge.pw.toml"
 hash = "e717bb275a54a5caadaa7cf82bc34df3589f49402074adf93c31eaac43860313"
+metafile = true
+
+[[files]]
+file = "mods/ftb-ultimine-forge.pw.toml"
+hash = "3529bc9c3a7b54933869be1d1d84a948d091c3d6064bbb6b17874d7c153b4dca"
 metafile = true
 
 [[files]]
@@ -1028,6 +1042,11 @@ hash = "9b32e1374a3d85ccdd4803c8932f72fbeb6357e69d895980e3f24e1974a07ca6"
 metafile = true
 
 [[files]]
+file = "mods/lootr.pw.toml"
+hash = "2d8016aab6d4b3410b7a35003aa9d778dad45379c89dc9490cd6c3f3bcec9f6f"
+metafile = true
+
+[[files]]
 file = "mods/malum.pw.toml"
 hash = "0213b6ecb4784b9f57bf3d66444c61ce357b365c8bef2d10363d0c7f20b86e58"
 metafile = true
@@ -1203,6 +1222,11 @@ hash = "674aaf0dc67f808f0054cfc7bbe041d6725fcbbe97644a85ffbd946a22d35666"
 metafile = true
 
 [[files]]
+file = "mods/searchables.pw.toml"
+hash = "ce9ddada6ffd55a512149cc474c6a453281a997a5fdf1b7b4a2cc73f875e704a"
+metafile = true
+
+[[files]]
 file = "mods/servercore.pw.toml"
 hash = "33454564d216f62d011ac78fc0aa2a49977ac1161f10f4accb1d33a9934969df"
 metafile = true
@@ -1300,16 +1324,6 @@ metafile = true
 [[files]]
 file = "mods/uranus.pw.toml"
 hash = "c16ee91eeb20999c83deedbf93ce3787bb9bfefad56abd242d90a94dc0534ca0"
-metafile = true
-
-[[files]]
-file = "mods/veinminer-client.pw.toml"
-hash = "15f45effca82617edec83f72cdda0852746a354c2158cc2277ae3abbc72dcd24"
-metafile = true
-
-[[files]]
-file = "mods/veinminer.pw.toml"
-hash = "03a9564d7cdb16578f46c6f58dcc261968bb440c243ad90229d8ce58aaccc0d3"
 metafile = true
 
 [[files]]

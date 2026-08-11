@@ -720,6 +720,46 @@ class StrictLogParserNegativeTests(unittest.TestCase):
             unrelated,
         )
 
+    def test_vanilla_pack_union_index_is_portable_and_narrow(self) -> None:
+        hygiene = hygiene_module()
+        template = (
+            "Assets URL 'union:<INSTALL>/libraries/net/minecraft/server/"
+            "server.jar%23{index}!/assets/.mcassetsroot' uses unexpected schema"
+        )
+
+        def record(
+            index: str,
+            *,
+            logger: str = "net.minecraft.server.packs.VanillaPackResourcesBuilder/",
+        ):
+            return hygiene.LogRecord(
+                "08Aug2026 12:00:00.000",
+                "main",
+                "WARN",
+                logger,
+                template.format(index=index),
+                (),
+                "",
+            )
+
+        first = hygiene.canonical_record_fingerprint(record("274"))
+        second = hygiene.canonical_record_fingerprint(record("273"))
+        self.assertEqual(first, second)
+        self.assertNotEqual(
+            first,
+            hygiene.canonical_record_fingerprint(record("273", logger="fixture/")),
+        )
+        self.assertNotEqual(
+            first,
+            hygiene.canonical_record_fingerprint(
+                replace(
+                    record("273"),
+                    message="Assets URL 'union:<INSTALL>/server.jar#273!/assets/"
+                    ".mcassetsroot' uses unexpected schema"
+                )
+            ),
+        )
+
     def test_supplementaries_way_sign_worker_threads_are_portable_and_narrow(
         self,
     ) -> None:
@@ -1294,8 +1334,8 @@ class MixinCorpusNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         evidence = hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
         self.assertEqual(evidence["archive_scopes"], 305)
-        self.assertEqual(evidence["mixin_configs"], 261)
-        self.assertEqual(evidence["common_mixins"], 2286)
+        self.assertEqual(evidence["mixin_configs"], 265)
+        self.assertEqual(evidence["common_mixins"], 2320)
         self.assertEqual(evidence["server_mixins"], 5)
         self.assertEqual(evidence["annotation_clientlevel_mixins"], 3)
         self.assertEqual(len(evidence["pseudo_clientlevel_candidates"]), 3)
@@ -2054,7 +2094,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 305)
+        self.assertEqual(len(indexed), 307)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -3063,7 +3103,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "a52a2bd35abdf4241efe6be43a83e56e16dc8d0030f116be3674e67dd44242c2",
+                "c91159d0342af3fe365923de0224c834041c248a958f8742717bbcf92ec1258a",
                 237,
             ),
         )
@@ -3172,7 +3212,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
 
     def test_zero_and_mutated_quest_digests_are_rejected(self) -> None:
         digest, _ = self.hygiene.quest_audit_expectation(ROOT)
-        for replacement in ("0" * 64, "1" + digest[1:]):
+        changed_prefix = "0" if digest[0] != "0" else "1"
+        for replacement in ("0" * 64, changed_prefix + digest[1:]):
             with self.subTest(replacement=replacement):
                 self.assert_pair_rejected(
                     self.latest.replace(digest, replacement, 1),
@@ -3955,7 +3996,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "7ce66ae56eeb28aebdf1494d2541aa1e05edd05b300ec4b92537a296b61cc258",
+            "bac4037040ac2b758e7eb605ae1e02fae816b78ea99a9310f6798cae2994dc4b",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

@@ -78,9 +78,9 @@ Ascendancy (fallen civilization) · Cascade (the catastrophe) · Undercurrent (t
 | **Dangerous world** | L_Ender's Cataclysm, Bosses of Mass Destruction, Mowzie's Mobs, Apotheosis/Apothic family, Better Combat, **Alex's Mobs (unofficial 1.21.1 port)**, **Ice and Fire: Community Edition** (both user-approved) |
 | **Worldgen/exploration** | Terralith, Tectonic, Nullscape, Incendium, YUNG's suite, When Dungeons Arise, IDAS, Structory (+Towers), Dungeons and Taverns, custom Ascendancy ruins (own datapack); dimensions: Twilight Forest, Undergarden, Eternal Starlight, Deeper & Darker, Aether (+Deep Aether) |
 | **Endgame+** | Draconic Evolution 1.21.1 beta (post-story gated) |
-| **Storage/QoL** | Sophisticated Backpacks/Storage, Functional Storage, Tom's Simple Storage, JEI, Jade, JourneyMap, Quark, Waystones, Corpse, VeinMiner Hotkey, Curios, AppleSkin, Mouse Tweaks, Inventory Sorter, Nature's Compass, Advanced Loot Info |
+| **Storage/QoL** | Sophisticated Backpacks/Storage, Functional Storage, Tom's Simple Storage, JEI, Jade, JourneyMap, Quark, Waystones, Corpse, FTB Ultimine, Controlling, Searchables, Lootr, Curios, AppleSkin, Mouse Tweaks, Inventory Sorter, Nature's Compass, Advanced Loot Info |
 | **Food** | Farmer's Delight + curated addons, Kaleidoscope Cookery |
-| **Multiplayer/server** | FTB Teams/Chunks/Essentials/Ranks, Simple Voice Chat, LuckPerms, ServerCore, PacketFixer, spark, Chunky |
+| **Multiplayer/server** | FTB Teams/Chunks/Essentials/Ranks, Simple Voice Chat, ServerCore, PacketFixer, spark, Chunky |
 | **Story delivery** | FTB Quests + FTB XMod Compat, Immersive Messages API, Modonomicon, Music Triggers (candidate: only with properly licensed audio) |
 | **Scripting/integration** | KubeJS 7 (NeoForge), LootJS, KubeJS Create / Mekanism-family addons, AlmostUnified, ProbeJS (dev), Global Packs (datapack loading) |
 | **Performance** | Sodium (official NeoForge) + Iris, Lithium (official NeoForge), ModernFix, FerriteCore, EntityCulling, Clumps, GPU Memory Leak Fix, Ixeris, AsyncParticles, Better Block Entities, Crash Assistant |

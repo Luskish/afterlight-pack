@@ -113,8 +113,13 @@ class ClientInventoryTests(unittest.TestCase):
             REPOSITORY_ROOT / "mods"
         )
 
-        self.assertEqual(len(client_required), 152)
-        self.assertEqual(len(server_only), 15)
+        smartbrainlib = "SmartBrainLib-neoforge-1.21.1-1.16.11.jar"
+        luckperms = "LuckPerms-NeoForge-5.4.140.jar"
+        self.assertIn(smartbrainlib, client_required)
+        self.assertNotIn(smartbrainlib, server_only)
+        self.assertNotIn(luckperms, server_only)
+        self.assertEqual(len(client_required), 153)
+        self.assertEqual(len(server_only), 13)
 
 
 class ClientHarnessContractTests(unittest.TestCase):

@@ -11,6 +11,12 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from tools.release_artifacts import build_prism_archive, inspect_prism_archive
+from tools.tests.release_fixtures import (
+    rewrite_checksums,
+    rewrite_metadata,
+    write_empty_zip,
+    write_public_release,
+)
 
 
 REQUIRED_PRISM_TESTS = {
@@ -451,11 +457,73 @@ class ReleasePolicyTests(unittest.TestCase):
     def _regular_entry(self, name, data=b"safe fixture\n"):
         return name, data, (stat.S_IFREG | 0o644) << 16
 
+    def _modrinth_manifest_entry(
+        self,
+        *,
+        minecraft=MINECRAFT_VERSION,
+        neoforge=NEOFORGE_VERSION,
+        loader="neoforge",
+        version=RELEASE_VERSION,
+    ):
+        dependencies = {"minecraft": minecraft, loader: neoforge}
+        manifest = {
+            "formatVersion": 1,
+            "game": "minecraft",
+            "versionId": version,
+            "name": "AFTERLIGHT",
+            "files": [],
+            "dependencies": dependencies,
+        }
+        return self._regular_entry(
+            "modrinth.index.json",
+            (json.dumps(manifest, sort_keys=True) + "\n").encode("utf-8"),
+        )
+
+    def _curseforge_manifest_entry(
+        self,
+        *,
+        minecraft=MINECRAFT_VERSION,
+        neoforge=NEOFORGE_VERSION,
+        loader="neoforge",
+        version=RELEASE_VERSION,
+    ):
+        manifest = {
+            "minecraft": {
+                "version": minecraft,
+                "modLoaders": [
+                    {"id": f"{loader}-{neoforge}", "primary": True}
+                ],
+            },
+            "manifestType": "minecraftModpack",
+            "manifestVersion": 1,
+            "name": "AFTERLIGHT",
+            "version": version,
+            "author": "Shane + ECHO",
+            "projectID": 0,
+            "files": [],
+            "overrides": "overrides",
+        }
+        return self._regular_entry(
+            "manifest.json",
+            (json.dumps(manifest, sort_keys=True) + "\n").encode("utf-8"),
+        )
+
     def _inspect_public_launcher(self, archive_path):
         return self._run_tool(
-            "inspect-public-launcher",
+            "inspect-modrinth",
             "--archive",
             archive_path,
+            "--version",
+            RELEASE_VERSION,
+        )
+
+    def _inspect_curseforge(self, archive_path):
+        return self._run_tool(
+            "inspect-curseforge",
+            "--archive",
+            archive_path,
+            "--version",
+            RELEASE_VERSION,
         )
 
     def _write_release_inputs(self, directory, prism_bytes=b"p"):
@@ -504,6 +572,7 @@ class ReleasePolicyTests(unittest.TestCase):
         legitimate_archive = self._write_archive(
             "legitimate-mod-names.zip",
             [
+                self._modrinth_manifest_entry(),
                 self._regular_entry("overrides/mods/secretroomsmod.jar"),
                 self._regular_entry("overrides/mods/tokenizer.jar"),
                 self._regular_entry("overrides/mods/credentialed.jar"),
@@ -532,6 +601,242 @@ class ReleasePolicyTests(unittest.TestCase):
                 result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("secret-bearing path", result.stderr)
+
+    def test_archive_content_rejects_nonempty_credentials_under_neutral_paths(self):
+        fixtures = (
+            ("overrides/config/service.toml", b'api_key = "sk-live-fixture"\n'),
+            ("overrides/config/client.json", b'{"token":"token-fixture-value"}\n'),
+            ("overrides/config/login.cfg", b"password: hunter2-fixture\n"),
+            ("overrides/config/runtime.ini", b"secret = actual-fixture-secret\n"),
+            ("overrides/server.properties", b"rcon.password=fixture-rcon-value\n"),
+        )
+        for member_name, content in fixtures:
+            with self.subTest(member_name=member_name):
+                archive_path = self._write_archive(
+                    "neutral-path-credential.zip",
+                    [
+                        self._modrinth_manifest_entry(),
+                        self._regular_entry(member_name, content),
+                    ],
+                )
+                result = self._inspect_public_launcher(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("credential assignment", result.stderr)
+
+    def test_archive_content_allows_words_and_empty_or_template_credentials(self):
+        archive_path = self._write_archive(
+            "credential-false-positives.zip",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/config/readme.txt",
+                    b"Password recovery tokens are ordinary documentation words.\n",
+                ),
+                self._regular_entry(
+                    "overrides/config/templates.toml",
+                    b'password = ""\napi_key = "${API_KEY}"\nsecret = "CHANGEME"\n',
+                ),
+                self._regular_entry(
+                    "overrides/config/defaults.json",
+                    b'{"token":"<TOKEN>","rcon_password":null}\n',
+                ),
+            ],
+        )
+
+        result = self._inspect_public_launcher(archive_path)
+
+        self._assert_tool_succeeds(result)
+
+    def test_format_specific_launchers_require_expected_manifests(self):
+        modrinth_archive = self._write_archive(
+            "valid.mrpack",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry("overrides/config/example.cfg"),
+            ],
+        )
+        curseforge_archive = self._write_archive(
+            "valid-curseforge.zip",
+            [
+                self._curseforge_manifest_entry(),
+                self._regular_entry("overrides/config/example.cfg"),
+            ],
+        )
+
+        for result, expected_format in (
+            (self._inspect_public_launcher(modrinth_archive), "modrinth"),
+            (self._inspect_curseforge(curseforge_archive), "curseforge"),
+        ):
+            with self.subTest(expected_format=expected_format):
+                self._assert_tool_succeeds(result)
+                summary = json.loads(result.stdout)
+                self.assertEqual(summary["format"], expected_format)
+                self.assertEqual(summary["minecraft"], MINECRAFT_VERSION)
+                self.assertEqual(summary["neoforge"], NEOFORGE_VERSION)
+
+    def test_format_specific_launchers_reject_empty_malformed_and_wrong_identity(self):
+        empty_archive = self._write_archive("empty.zip", [])
+        malformed_modrinth = self._write_archive(
+            "malformed.mrpack",
+            [self._regular_entry("modrinth.index.json", b"{not-json\n")],
+        )
+        malformed_curseforge = self._write_archive(
+            "malformed-curseforge.zip",
+            [self._regular_entry("manifest.json", b"{not-json\n")],
+        )
+        cases = (
+            (self._inspect_public_launcher, empty_archive, "manifest"),
+            (self._inspect_curseforge, empty_archive, "manifest"),
+            (self._inspect_public_launcher, malformed_modrinth, "valid UTF-8 JSON"),
+            (self._inspect_curseforge, malformed_curseforge, "valid UTF-8 JSON"),
+        )
+        for inspector, archive_path, expected_error in cases:
+            with self.subTest(archive_path=archive_path, expected_error=expected_error):
+                result = inspector(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+        identity_cases = (
+            (
+                self._inspect_public_launcher,
+                self._modrinth_manifest_entry(loader="forge"),
+                "NeoForge",
+            ),
+            (
+                self._inspect_public_launcher,
+                self._modrinth_manifest_entry(minecraft="1.20.1"),
+                "Minecraft",
+            ),
+            (
+                self._inspect_curseforge,
+                self._curseforge_manifest_entry(loader="forge"),
+                "NeoForge",
+            ),
+            (
+                self._inspect_curseforge,
+                self._curseforge_manifest_entry(neoforge="21.1.200"),
+                "NeoForge",
+            ),
+        )
+        for inspector, manifest_entry, expected_error in identity_cases:
+            with self.subTest(expected_error=expected_error, manifest=manifest_entry[0]):
+                archive_path = self._write_archive(
+                    "wrong-launcher-identity.zip",
+                    [manifest_entry],
+                )
+                result = inspector(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_final_public_release_verifier_accepts_exact_real_launcher_inventory(self):
+        public = self.root / "verified-public"
+        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+
+        result = self._run_tool(
+            "verify-public-release",
+            "--dist-dir",
+            public,
+            "--version",
+            RELEASE_VERSION,
+            "--git-sha",
+            RELEASE_GIT_SHA,
+        )
+
+        self._assert_tool_succeeds(result)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["version"], RELEASE_VERSION)
+        self.assertEqual(summary["git_sha"], RELEASE_GIT_SHA)
+        self.assertEqual(
+            summary["formats"],
+            {
+                "AFTERLIGHT-curseforge.zip": "curseforge",
+                "AFTERLIGHT-prism-instance.zip": "prism",
+                "AFTERLIGHT.mrpack": "modrinth",
+            },
+        )
+
+    def test_final_public_release_verifier_rejects_metadata_and_inventory_attacks(self):
+        public = self.root / "attacked-public"
+        cases = {
+            "malformed-json": "valid UTF-8 JSON",
+            "wrong-format": "format must be 3",
+            "wrong-version": "version does not match",
+            "wrong-sha": "SHA does not match",
+            "extra": "inventory",
+        }
+        for case, expected_error in cases.items():
+            with self.subTest(case=case):
+                if public.exists():
+                    for child in public.iterdir():
+                        if child.is_dir() and not child.is_symlink():
+                            child.rmdir()
+                        else:
+                            child.unlink()
+                    public.rmdir()
+                write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                metadata_path = public / "release-metadata.json"
+                if case == "malformed-json":
+                    metadata_path.write_text("{not-json\n", encoding="utf-8")
+                elif case != "extra":
+                    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                    if case == "wrong-format":
+                        metadata["format"] = 2
+                    elif case == "wrong-version":
+                        metadata["version"] = "9.9.9"
+                    else:
+                        metadata["git_sha"] = "f" * 40
+                    metadata_path.write_text(
+                        json.dumps(metadata, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                else:
+                    (public / "extra.txt").write_text("extra\n", encoding="utf-8")
+                if case != "extra":
+                    rewrite_checksums(public)
+
+                result = self._run_tool(
+                    "verify-public-release",
+                    "--dist-dir",
+                    public,
+                    "--version",
+                    RELEASE_VERSION,
+                    "--git-sha",
+                    RELEASE_GIT_SHA,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_final_public_release_verifier_reinspects_self_consistent_replacements(self):
+        public = self.root / "replaced-public"
+        artifacts = {
+            "AFTERLIGHT-curseforge.zip": "CurseForge manifest",
+            "AFTERLIGHT-prism-instance.zip": "Prism archive",
+            "AFTERLIGHT.mrpack": "Modrinth manifest",
+        }
+        for artifact_name, expected_error in artifacts.items():
+            with self.subTest(artifact_name=artifact_name):
+                if public.exists():
+                    for child in public.iterdir():
+                        child.unlink()
+                    public.rmdir()
+                write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                write_empty_zip(public / artifact_name)
+                rewrite_metadata(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                rewrite_checksums(public)
+
+                result = self._run_tool(
+                    "verify-public-release",
+                    "--dist-dir",
+                    public,
+                    "--version",
+                    RELEASE_VERSION,
+                    "--git-sha",
+                    RELEASE_GIT_SHA,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
 
     def test_public_launcher_archive_rejects_malformed_zip(self):
         malformed_archive = self.root / "malformed-launcher.zip"
@@ -1244,6 +1549,47 @@ class ReleasePolicyTests(unittest.TestCase):
                 result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("duplicate archive entry", result.stderr)
+
+    def test_archive_scan_rejects_windows_unsafe_path_components(self):
+        unsafe_names = (
+            "overrides/NUL",
+            "overrides/CON.txt",
+            "overrides/config:stream.txt",
+            "overrides/trailing-dot.",
+            "overrides/trailing-space ",
+            "overrides/control-\x01.txt",
+        )
+        for unsafe_name in unsafe_names:
+            with self.subTest(unsafe_name=unsafe_name):
+                archive_path = self._write_archive(
+                    "windows-unsafe.zip",
+                    [
+                        self._modrinth_manifest_entry(),
+                        self._regular_entry(unsafe_name),
+                    ],
+                )
+                result = self._inspect_public_launcher(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Windows-unsafe archive entry", result.stderr)
+
+    def test_archive_scan_rejects_windows_normalized_collisions(self):
+        aliases = (
+            ("overrides/Config.txt", "overrides/config.txt"),
+            ("overrides/dir/Item.cfg", "OVERRIDES/DIR/item.cfg"),
+        )
+        for first_name, second_name in aliases:
+            with self.subTest(first_name=first_name, second_name=second_name):
+                archive_path = self._write_archive(
+                    "windows-collision.zip",
+                    [
+                        self._modrinth_manifest_entry(),
+                        self._regular_entry(first_name),
+                        self._regular_entry(second_name),
+                    ],
+                )
+                result = self._inspect_public_launcher(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Windows-normalized archive collision", result.stderr)
 
     def test_release_build_rejects_symlink_output_without_touching_target(self):
         target_directory = self.root / "symlink-target"

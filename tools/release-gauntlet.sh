@@ -166,6 +166,10 @@ EOF
   cp "$FIRST/AFTERLIGHT.mrpack" "$STAGING/public/"
   cp "$FIRST/release-metadata.json" "$STAGING/public/"
   cp "$FIRST/SHA256SUMS" "$STAGING/public/"
+  run python3 tools/release_artifacts.py verify-public-release \
+    --dist-dir "$STAGING/public" \
+    --version "$PACK_VERSION" \
+    --git-sha "$GAUNTLET_SHA"
   FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   {
     printf 'AFTERLIGHT release gauntlet\n'

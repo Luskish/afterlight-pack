@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import stat
@@ -10,10 +9,14 @@ import textwrap
 import unittest
 from pathlib import Path
 
+from tools.tests.release_fixtures import rewrite_checksums, write_public_release
+
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLICATION_SCRIPT = ROOT / "tools" / "publish-release.sh"
+RELEASE_TOOL = ROOT / "tools" / "release_artifacts.py"
 SHA = "0123456789abcdef0123456789abcdef01234567"
+TAG_OBJECT = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 VERSION = "0.9.0-rc.2"
 
 
@@ -29,6 +32,9 @@ class ReleasePublicationTests(unittest.TestCase):
             destination = self.root / "tools" / "publish-release.sh"
             destination.write_bytes(PUBLICATION_SCRIPT.read_bytes())
             destination.chmod(destination.stat().st_mode | stat.S_IXUSR)
+        (self.root / "tools" / "release_artifacts.py").write_bytes(
+            RELEASE_TOOL.read_bytes()
+        )
 
         self._write_pack(VERSION)
         self._write_release_note(VERSION)
@@ -44,6 +50,15 @@ class ReleasePublicationTests(unittest.TestCase):
                 "FAKE_GH_LOG": str(self.gh_log),
                 "FAKE_GIT_LOG": str(self.git_log),
                 "FAKE_RELEASE_STATE": str(self.release_state),
+                "FAKE_REPLACEMENT_PATH": str(
+                    self.root
+                    / "dist"
+                    / "gauntlet"
+                    / SHA
+                    / "public"
+                    / "AFTERLIGHT.mrpack"
+                ),
+                "FAKE_LOCAL_TAG_OBJECT": TAG_OBJECT,
                 "FAKE_SHA": SHA,
             }
         )
@@ -75,37 +90,7 @@ class ReleasePublicationTests(unittest.TestCase):
     def _write_artifacts(self, version, git_sha):
         accepted = self.root / "dist" / "gauntlet" / SHA
         public = accepted / "public"
-        public.mkdir(parents=True)
-        prism = public / "AFTERLIGHT-prism-instance.zip"
-        prism.write_bytes(b"prism fixture\n")
-        mrpack = public / "AFTERLIGHT.mrpack"
-        mrpack.write_bytes(b"mrpack\n")
-        curseforge = public / "AFTERLIGHT-curseforge.zip"
-        curseforge.write_bytes(b"curseforge\n")
-        metadata = {
-            "format": 3,
-            "version": version,
-            "git_sha": git_sha,
-            "public_artifacts": {
-                path.name: {
-                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                    "size": path.stat().st_size,
-                }
-                for path in (curseforge, prism, mrpack)
-            },
-        }
-        metadata_path = public / "release-metadata.json"
-        metadata_path.write_text(
-            json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8"
-        )
-        checksum_lines = []
-        for path in sorted((curseforge, prism, mrpack, metadata_path)):
-            checksum_lines.append(
-                f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
-            )
-        (public / "SHA256SUMS").write_text(
-            "".join(checksum_lines), encoding="utf-8"
-        )
+        write_public_release(public, version, git_sha)
         (accepted / "gauntlet.txt").write_text(
             f"AFTERLIGHT release gauntlet\nSHA: {git_sha}\n",
             encoding="utf-8",
@@ -121,8 +106,19 @@ class ReleasePublicationTests(unittest.TestCase):
             case "${1:-} ${2:-}" in
               "branch --show-current") printf 'dev\n' ;;
               "show "*) cat pack.toml ;;
-              "rev-parse refs/tags/"*) printf '%s\n' "${FAKE_TAG_SHA:-$FAKE_SHA}" ;;
-              "ls-remote origin") printf '%s\t%s\n' "${FAKE_TAG_SHA:-$FAKE_SHA}" "${3:-}" ;;
+              "cat-file -t") printf '%s\n' "${FAKE_TAG_TYPE:-tag}" ;;
+              "rev-parse refs/tags/"*)
+                case "${2:-}" in
+                  *'^{}') printf '%s\n' "${FAKE_LOCAL_PEELED_SHA:-$FAKE_SHA}" ;;
+                  *) printf '%s\n' "$FAKE_LOCAL_TAG_OBJECT" ;;
+                esac
+                ;;
+              "ls-remote origin")
+                case "${3:-}" in
+                  *'^{}') printf '%s\t%s\n' "${FAKE_REMOTE_PEELED_SHA:-$FAKE_SHA}" "${3:-}" ;;
+                  *) printf '%s\t%s\n' "${FAKE_REMOTE_TAG_OBJECT:-$FAKE_LOCAL_TAG_OBJECT}" "${3:-}" ;;
+                esac
+                ;;
               *) printf 'unexpected fake git command: %s\n' "$*" >&2; exit 91 ;;
             esac
             """,
@@ -134,7 +130,12 @@ class ReleasePublicationTests(unittest.TestCase):
             set -u
             printf '%s\n' "$*" >> "$FAKE_GH_LOG"
             if [ "${1:-} ${2:-}" = "release view" ]; then
-              if [ ! -e "$FAKE_RELEASE_STATE" ]; then exit 1; fi
+              if [ ! -e "$FAKE_RELEASE_STATE" ]; then
+                if [ "${FAKE_REPLACE_AFTER_VIEW:-0}" = 1 ]; then
+                  printf 'post-validation replacement\n' > "$FAKE_REPLACEMENT_PATH"
+                fi
+                exit 1
+              fi
               if [[ " $* " == *" --json assets "* ]]; then
                 if [ -n "${FAKE_ASSETS:-}" ]; then
                   printf '%s\n' "$FAKE_ASSETS"
@@ -234,7 +235,9 @@ class ReleasePublicationTests(unittest.TestCase):
                         encoding="utf-8",
                     )
                 result = self._run(
-                    environment={"FAKE_TAG_SHA": "f" * 40} if case == "tag" else None
+                    environment={"FAKE_LOCAL_PEELED_SHA": "f" * 40}
+                    if case == "tag"
+                    else None
                 )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(
@@ -257,6 +260,7 @@ class ReleasePublicationTests(unittest.TestCase):
                 metadata_path.write_text(
                     json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8"
                 )
+                rewrite_checksums(metadata_path.parent)
 
     def test_rejects_automated_not_run_but_allows_manual_not_run(self):
         self._write_release_note(VERSION, automated="- Gauntlet: NOT RUN")
@@ -346,6 +350,47 @@ class ReleasePublicationTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("checksums are malformed", result.stderr)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_revalidates_immediately_before_release_creation(self):
+        result = self._run(environment={"FAKE_REPLACE_AFTER_VIEW": "1"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_publication_verification_streams_artifact_hashing(self):
+        site_directory = self.root / "python-site"
+        site_directory.mkdir()
+        (site_directory / "sitecustomize.py").write_text(
+            "import pathlib\n"
+            "def forbidden_read_bytes(self):\n"
+            "    raise RuntimeError('Path.read_bytes is forbidden for release hashing')\n"
+            "pathlib.Path.read_bytes = forbidden_read_bytes\n",
+            encoding="utf-8",
+        )
+
+        result = self._run(environment={"PYTHONPATH": str(site_directory)})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_rejects_lightweight_local_tag(self):
+        result = self._run(environment={"FAKE_TAG_TYPE": "commit"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("annotated tag", result.stderr)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_rejects_replaced_remote_tag_object_with_same_peeled_commit(self):
+        result = self._run(environment={"FAKE_REMOTE_TAG_OBJECT": "b" * 40})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("tag object IDs", result.stderr)
         self.assertFalse(
             any(call.startswith("release create ") for call in self._gh_calls())
         )

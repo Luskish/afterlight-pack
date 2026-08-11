@@ -45,12 +45,99 @@ PUBLIC_ARTIFACT_NAMES = tuple(
 )
 RELEASE_METADATA_NAME = "release-metadata.json"
 CHECKSUMS_NAME = "SHA256SUMS"
+PUBLIC_RELEASE_NAMES = tuple(
+    sorted((*PUBLIC_ARTIFACT_NAMES, RELEASE_METADATA_NAME, CHECKSUMS_NAME))
+)
+CHECKSUM_TARGET_NAMES = tuple(
+    sorted((*PUBLIC_ARTIFACT_NAMES, RELEASE_METADATA_NAME))
+)
+RELEASE_METADATA_KEYS = frozenset(
+    {
+        "format",
+        "version",
+        "git_sha",
+        "minecraft",
+        "neoforge",
+        "pack_url",
+        "packwiz",
+        "public_artifacts",
+    }
+)
 U2014_BYTES = b"\xe2\x80\x94"
 STREAM_CHUNK_SIZE = 1024 * 1024
 STREAM_OVERLAP_SIZE = 256
 PRIVATE_KEY_HEADER = re.compile(
     rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
 )
+CREDENTIAL_ASSIGNMENT = re.compile(
+    rb"(?:^|[\r\n,{])[\t ]*"
+    rb"(?:(?:export|const|let|var)[\t ]+)?"
+    rb"[\"']?(?:api[._-]?key|token|password|secret|rcon[._-]?password)"
+    rb"[\"']?[\t ]*[:=][\t ]*"
+    rb"(?P<value>\"[^\"\r\n]*\"|'[^'\r\n]*'|[^,\s#;}\r\n]+)",
+    re.IGNORECASE,
+)
+TEMPLATE_CREDENTIAL_VALUES = frozenset(
+    {
+        b"0",
+        b"change-me",
+        b"change_me",
+        b"changeme",
+        b"example",
+        b"false",
+        b"none",
+        b"null",
+        b"placeholder",
+        b"replace-me",
+        b"replace_me",
+        b"sample",
+        b"template",
+        b"true",
+        b"unset",
+    }
+)
+TEMPLATE_CREDENTIAL_PATTERN = re.compile(
+    rb"(?:\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$[A-Za-z_][A-Za-z0-9_]*|"
+    rb"<[A-Za-z_][A-Za-z0-9_.-]*>|\{\{[^{}]+\}\}|__[^_]+__|"
+    rb"your[._-][A-Za-z0-9_.-]+[._-]here)",
+    re.IGNORECASE,
+)
+TEXT_CONFIG_SUFFIXES = frozenset(
+    {
+        ".bat",
+        ".cfg",
+        ".conf",
+        ".env",
+        ".ini",
+        ".js",
+        ".json",
+        ".mcmeta",
+        ".properties",
+        ".ps1",
+        ".sh",
+        ".snbt",
+        ".toml",
+        ".ts",
+        ".txt",
+        ".xml",
+        ".yaml",
+        ".yml",
+    }
+)
+WINDOWS_FORBIDDEN_CHARACTERS = frozenset('<>:"|?*')
+WINDOWS_RESERVED_BASENAMES = frozenset(
+    {
+        "aux",
+        "con",
+        "nul",
+        "prn",
+        *(f"com{number}" for number in range(1, 10)),
+        *(f"lpt{number}" for number in range(1, 10)),
+    }
+)
+CURSEFORGE_MANIFEST_NAME = "manifest.json"
+MODRINTH_MANIFEST_NAME = "modrinth.index.json"
+EXPECTED_PACK_NAME = "AFTERLIGHT"
 SECRET_PATH_COMPONENTS = frozenset(
     {"secret", "token", "credential", "credentials", ".env", "rcon_password"}
 )
@@ -96,7 +183,7 @@ def _mmc_pack(minecraft_version, neoforge_version):
     return (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
-def _validate_archive_name(name, allow_directory=False):
+def _validate_archive_name(name, allow_directory=False, windows_safe=True):
     if not name:
         raise ValueError("archive entry name is empty")
     if "\\" in name:
@@ -120,7 +207,35 @@ def _validate_archive_name(name, allow_directory=False):
         raise ValueError(f"archive entry is not canonical: {name!r}")
     if PurePosixPath(normalized_name).as_posix() != normalized_name:
         raise ValueError(f"archive entry is not canonical: {name!r}")
+    if windows_safe:
+        for part in parts:
+            if part.endswith((".", " ")):
+                raise ValueError(f"Windows-unsafe archive entry: {name!r}")
+            if any(
+                ord(character) < 32
+                or ord(character) == 127
+                or character in WINDOWS_FORBIDDEN_CHARACTERS
+                for character in part
+            ):
+                raise ValueError(f"Windows-unsafe archive entry: {name!r}")
+            windows_basename = (
+                unicodedata.normalize("NFC", part)
+                .rstrip(" .")
+                .split(".", 1)[0]
+                .rstrip(" ")
+                .casefold()
+            )
+            if windows_basename in WINDOWS_RESERVED_BASENAMES:
+                raise ValueError(f"Windows-unsafe archive entry: {name!r}")
     return normalized_name
+
+
+def _windows_collision_key(name):
+    normalized_name = name[:-1] if name.endswith("/") else name
+    return "/".join(
+        unicodedata.normalize("NFC", part).rstrip(" .").casefold()
+        for part in normalized_name.split("/")
+    )
 
 
 def _is_secret_bearing_path(name):
@@ -147,6 +262,29 @@ def _scan_binary_stream(stream, label, reject_u2014=False):
         if PRIVATE_KEY_HEADER.search(combined):
             raise ValueError(f"private-key header found in {label}")
         overlap = combined[-STREAM_OVERLAP_SIZE:]
+
+
+def _is_text_config_member(name):
+    normalized_name = name[:-1] if name.endswith("/") else name
+    return PurePosixPath(normalized_name).suffix.casefold() in TEXT_CONFIG_SUFFIXES
+
+
+def _is_template_credential_value(raw_value):
+    value = raw_value.strip()
+    if len(value) >= 2 and value[:1] == value[-1:] and value[:1] in {b'"', b"'"}:
+        value = value[1:-1].strip()
+    if not value:
+        return True
+    normalized_value = value.lower()
+    return normalized_value in TEMPLATE_CREDENTIAL_VALUES or bool(
+        TEMPLATE_CREDENTIAL_PATTERN.fullmatch(value)
+    )
+
+
+def _scan_credential_assignments(data, label):
+    for match in CREDENTIAL_ASSIGNMENT.finditer(data):
+        if not _is_template_credential_value(match.group("value")):
+            raise ValueError(f"credential assignment found in {label}")
 
 
 def _local_file_header_flags(archive, info):
@@ -179,9 +317,12 @@ def _inspect_zip_safety(archive, allow_directories):
             info.filename,
             allow_directory=allow_directories,
         )
-        collision_key = unicodedata.normalize("NFC", normalized_name).casefold()
+        collision_key = _windows_collision_key(normalized_name)
         if collision_key in seen_names:
-            raise ValueError(f"duplicate archive entry: {info.filename!r}")
+            raise ValueError(
+                "duplicate archive entry after Windows-normalized archive collision: "
+                f"{info.filename!r}"
+            )
         seen_names.add(collision_key)
         names.append(info.filename)
 
@@ -204,13 +345,24 @@ def _inspect_zip_safety(archive, allow_directories):
             continue
         try:
             with archive.open(info, "r") as member:
-                _scan_binary_stream(member, f"archive entry {info.filename!r}")
+                label = f"archive entry {info.filename!r}"
+                if _is_text_config_member(info.filename):
+                    member_bytes = member.read()
+                    _scan_binary_stream_bytes(member_bytes, label)
+                    _scan_credential_assignments(member_bytes, label)
+                else:
+                    _scan_binary_stream(member, label)
         except (EOFError, NotImplementedError, RuntimeError) as error:
             raise ValueError(
                 f"cannot safely read archive entry {info.filename!r}: {error}"
             ) from error
 
     return infos, names
+
+
+def _scan_binary_stream_bytes(data, label):
+    if PRIVATE_KEY_HEADER.search(data):
+        raise ValueError(f"private-key header found in {label}")
 
 
 def _normalized_zip_info(name):
@@ -395,27 +547,114 @@ def inspect_prism_archive(
     return {
         "archive": str(archive_path),
         "bootstrap_sha256": actual_bootstrap_sha256,
+        "classification": "public",
         "installer_sha256": actual_installer_sha256,
         "installer_size": actual_installer_size,
         "entries": names,
         "entry_count": len(names),
+        "format": "prism",
         "jar_entries": jar_entries,
+        "minecraft": PRISM_MINECRAFT_VERSION,
+        "neoforge": PRISM_NEOFORGE_VERSION,
         "pack_url": pack_url,
     }
 
 
-def inspect_public_launcher_archive(archive_path):
-    archive_path = Path(archive_path)
-    with zipfile.ZipFile(archive_path) as archive:
-        _, names = _inspect_zip_safety(archive, allow_directories=True)
+def _read_launcher_manifest(archive, names, manifest_name, label):
+    if manifest_name not in names:
+        raise ValueError(f"{label} manifest is missing: {manifest_name}")
+    try:
+        manifest = json.loads(archive.read(manifest_name))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} manifest is not valid UTF-8 JSON") from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{label} manifest must be a JSON object")
+    return manifest
 
-    embedded_jar_count = sum(name.casefold().endswith(".jar") for name in names)
+
+def _launcher_summary(archive_path, names, format_name):
     return {
         "archive": str(archive_path),
         "classification": "public",
-        "embedded_jar_count": embedded_jar_count,
+        "embedded_jar_count": sum(
+            name.casefold().endswith(".jar") for name in names
+        ),
         "entry_count": len(names),
+        "format": format_name,
+        "minecraft": PRISM_MINECRAFT_VERSION,
+        "neoforge": PRISM_NEOFORGE_VERSION,
     }
+
+
+def inspect_modrinth_archive(archive_path, version):
+    archive_path = Path(archive_path)
+    with zipfile.ZipFile(archive_path) as archive:
+        _, names = _inspect_zip_safety(archive, allow_directories=True)
+        manifest = _read_launcher_manifest(
+            archive,
+            names,
+            MODRINTH_MANIFEST_NAME,
+            "Modrinth",
+        )
+
+    if manifest.get("formatVersion") != 1:
+        raise ValueError("Modrinth manifest formatVersion must be 1")
+    if manifest.get("game") != "minecraft":
+        raise ValueError("Modrinth manifest game must be minecraft")
+    if manifest.get("name") != EXPECTED_PACK_NAME:
+        raise ValueError("Modrinth manifest pack name does not match AFTERLIGHT")
+    if manifest.get("versionId") != version:
+        raise ValueError("Modrinth manifest pack version does not match")
+    if not isinstance(manifest.get("files"), list):
+        raise ValueError("Modrinth manifest files must be a list")
+    dependencies = manifest.get("dependencies")
+    if not isinstance(dependencies, dict):
+        raise ValueError("Modrinth manifest dependencies are invalid")
+    if dependencies.get("minecraft") != PRISM_MINECRAFT_VERSION:
+        raise ValueError("Modrinth Minecraft version does not match")
+    if set(dependencies) != {"minecraft", "neoforge"}:
+        raise ValueError("Modrinth manifest must declare only NeoForge")
+    if dependencies.get("neoforge") != PRISM_NEOFORGE_VERSION:
+        raise ValueError("Modrinth NeoForge version does not match")
+
+    return _launcher_summary(archive_path, names, "modrinth")
+
+
+def inspect_curseforge_archive(archive_path, version):
+    archive_path = Path(archive_path)
+    with zipfile.ZipFile(archive_path) as archive:
+        _, names = _inspect_zip_safety(archive, allow_directories=True)
+        manifest = _read_launcher_manifest(
+            archive,
+            names,
+            CURSEFORGE_MANIFEST_NAME,
+            "CurseForge",
+        )
+
+    if manifest.get("manifestType") != "minecraftModpack":
+        raise ValueError("CurseForge manifest type must be minecraftModpack")
+    if manifest.get("manifestVersion") != 1:
+        raise ValueError("CurseForge manifest version must be 1")
+    if manifest.get("name") != EXPECTED_PACK_NAME:
+        raise ValueError("CurseForge manifest pack name does not match AFTERLIGHT")
+    if manifest.get("version") != version:
+        raise ValueError("CurseForge manifest pack version does not match")
+    if manifest.get("overrides") != "overrides":
+        raise ValueError("CurseForge manifest overrides directory does not match")
+    if not isinstance(manifest.get("files"), list):
+        raise ValueError("CurseForge manifest files must be a list")
+    minecraft = manifest.get("minecraft")
+    if not isinstance(minecraft, dict):
+        raise ValueError("CurseForge Minecraft identity is invalid")
+    if minecraft.get("version") != PRISM_MINECRAFT_VERSION:
+        raise ValueError("CurseForge Minecraft version does not match")
+    expected_loaders = [
+        {"id": f"neoforge-{PRISM_NEOFORGE_VERSION}", "primary": True}
+    ]
+    if minecraft.get("modLoaders") != expected_loaders:
+        raise ValueError("CurseForge NeoForge identity does not match")
+
+    return _launcher_summary(archive_path, names, "curseforge")
 
 
 def _tracked_paths(root_path):
@@ -444,7 +683,7 @@ def _tracked_paths(root_path):
         except UnicodeDecodeError as error:
             raise ValueError(f"tracked path is not valid UTF-8: {raw_path!r}") from error
         try:
-            _validate_archive_name(relative_path)
+            _validate_archive_name(relative_path, windows_safe=False)
         except ValueError as error:
             raise ValueError(f"invalid tracked path {relative_path!r}: {error}") from error
         tracked_paths.append((raw_path, relative_path))
@@ -674,6 +913,8 @@ def _classified_release_names(dist_path):
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("release metadata is not valid UTF-8 JSON") from error
+    if not isinstance(metadata, dict):
+        raise ValueError("release metadata must be a JSON object")
 
     version = metadata.get("version")
     if not isinstance(version, str) or not version:
@@ -793,6 +1034,114 @@ def write_release_checksums(dist_dir):
     return checksums_path
 
 
+def _load_release_metadata(dist_path):
+    metadata_path = dist_path / RELEASE_METADATA_NAME
+    _require_regular_file(metadata_path, "release metadata")
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("release metadata is not valid UTF-8 JSON") from error
+    if not isinstance(metadata, dict):
+        raise ValueError("release metadata must be a JSON object")
+    return metadata
+
+
+def _verify_release_checksums(dist_path):
+    checksums_path = dist_path / CHECKSUMS_NAME
+    _require_regular_file(checksums_path, "release checksums")
+    try:
+        checksum_text = checksums_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("release checksums are malformed") from error
+    lines = checksum_text.splitlines(keepends=True)
+    if len(lines) != len(CHECKSUM_TARGET_NAMES):
+        raise ValueError("release checksums are malformed")
+
+    for line, expected_name in zip(lines, CHECKSUM_TARGET_NAMES):
+        match = re.fullmatch(r"([0-9a-f]{64})  ([^/\s]+)\n", line)
+        if match is None or match.group(2) != expected_name:
+            raise ValueError("release checksums are malformed")
+        actual_sha256 = _sha256_file(dist_path / expected_name)
+        if match.group(1) != actual_sha256:
+            raise ValueError(
+                f"release checksum does not match: {expected_name}"
+            )
+
+
+def verify_public_release(dist_dir, version, git_sha):
+    if not isinstance(version, str) or not version:
+        raise ValueError("release version is missing")
+    if not re.fullmatch(r"[0-9a-f]{40}", git_sha):
+        raise ValueError("release SHA must be exactly 40 lowercase hexadecimal characters")
+
+    dist_path = Path(dist_dir)
+    try:
+        dist_status = dist_path.lstat()
+    except OSError as error:
+        raise ValueError(
+            f"public release directory is unreadable: {dist_path}"
+        ) from error
+    if not stat.S_ISDIR(dist_status.st_mode):
+        raise ValueError(f"public release path is not a directory: {dist_path}")
+
+    entries = list(os.scandir(dist_path))
+    actual_names = tuple(sorted(entry.name for entry in entries))
+    if actual_names != PUBLIC_RELEASE_NAMES:
+        raise ValueError("public release inventory is incomplete or contains extra entries")
+    for name in PUBLIC_RELEASE_NAMES:
+        _require_regular_file(dist_path / name, f"public release entry {name}")
+
+    metadata = _load_release_metadata(dist_path)
+    if set(metadata) != RELEASE_METADATA_KEYS:
+        raise ValueError("release metadata top-level fields are invalid")
+    if metadata.get("format") != 3:
+        raise ValueError("release metadata format must be 3")
+    if metadata.get("version") != version:
+        raise ValueError("release metadata version does not match")
+    if metadata.get("git_sha") != git_sha:
+        raise ValueError("release metadata SHA does not match")
+    if metadata.get("minecraft") != PRISM_MINECRAFT_VERSION:
+        raise ValueError("release metadata Minecraft version does not match")
+    if metadata.get("neoforge") != PRISM_NEOFORGE_VERSION:
+        raise ValueError("release metadata NeoForge version does not match")
+    pack_url = metadata.get("pack_url")
+    if not isinstance(pack_url, str) or not pack_url:
+        raise ValueError("release metadata Packwiz URL is invalid")
+
+    _classified_release_names(dist_path)
+    _verify_release_checksums(dist_path)
+
+    packwiz = metadata["packwiz"]
+    bootstrap = packwiz["bootstrap"]
+    installer = packwiz["installer"]
+    prism = inspect_prism_archive(
+        dist_path / PRISM_ARTIFACT_NAME,
+        pack_url,
+        bootstrap["sha256"],
+        installer["sha256"],
+        installer["size"],
+    )
+    curseforge = inspect_curseforge_archive(
+        dist_path / CURSEFORGE_ARTIFACT_NAME,
+        version,
+    )
+    modrinth = inspect_modrinth_archive(
+        dist_path / MRPACK_ARTIFACT_NAME,
+        version,
+    )
+
+    return {
+        "dist_dir": str(dist_path),
+        "formats": {
+            CURSEFORGE_ARTIFACT_NAME: curseforge["format"],
+            PRISM_ARTIFACT_NAME: prism["format"],
+            MRPACK_ARTIFACT_NAME: modrinth["format"],
+        },
+        "git_sha": git_sha,
+        "version": version,
+    }
+
+
 def _parser():
     parser = argparse.ArgumentParser(description="Build and inspect AFTERLIGHT artifacts")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -812,8 +1161,13 @@ def _parser():
     inspect_parser.add_argument("--installer-sha256", required=True)
     inspect_parser.add_argument("--installer-size", required=True, type=int)
 
-    public_launcher_parser = subparsers.add_parser("inspect-public-launcher")
-    public_launcher_parser.add_argument("--archive", required=True)
+    modrinth_parser = subparsers.add_parser("inspect-modrinth")
+    modrinth_parser.add_argument("--archive", required=True)
+    modrinth_parser.add_argument("--version", required=True)
+
+    curseforge_parser = subparsers.add_parser("inspect-curseforge")
+    curseforge_parser.add_argument("--archive", required=True)
+    curseforge_parser.add_argument("--version", required=True)
 
     repository_parser = subparsers.add_parser("scan-repository")
     repository_parser.add_argument("--root", default=".")
@@ -834,6 +1188,11 @@ def _parser():
 
     checksums_parser = subparsers.add_parser("write-checksums")
     checksums_parser.add_argument("--dist-dir", required=True)
+
+    verifier_parser = subparsers.add_parser("verify-public-release")
+    verifier_parser.add_argument("--dist-dir", required=True)
+    verifier_parser.add_argument("--version", required=True)
+    verifier_parser.add_argument("--git-sha", required=True)
     return parser
 
 
@@ -862,8 +1221,13 @@ def main(argv=None):
         print(json.dumps(summary, sort_keys=True))
         return 0
 
-    if args.command == "inspect-public-launcher":
-        summary = inspect_public_launcher_archive(args.archive)
+    if args.command == "inspect-modrinth":
+        summary = inspect_modrinth_archive(args.archive, args.version)
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "inspect-curseforge":
+        summary = inspect_curseforge_archive(args.archive, args.version)
         print(json.dumps(summary, sort_keys=True))
         return 0
 
@@ -888,6 +1252,11 @@ def main(argv=None):
             args.installer_sha256,
         )
         print(json.dumps({"output": str(output_path)}, sort_keys=True))
+        return 0
+
+    if args.command == "verify-public-release":
+        summary = verify_public_release(args.dist_dir, args.version, args.git_sha)
+        print(json.dumps(summary, sort_keys=True))
         return 0
 
     output_path = write_release_checksums(args.dist_dir)

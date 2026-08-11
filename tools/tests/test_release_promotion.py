@@ -8,9 +8,17 @@ import textwrap
 import unittest
 from pathlib import Path
 
+from tools.tests.release_fixtures import (
+    rewrite_checksums,
+    rewrite_metadata,
+    write_empty_zip,
+    write_public_release,
+)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 PROMOTION_SCRIPT = ROOT / "tools" / "promote-release.sh"
+RELEASE_TOOL = ROOT / "tools" / "release_artifacts.py"
 SHA = "0123456789abcdef0123456789abcdef01234567"
 VERSION = "0.9.0-rc.1"
 
@@ -29,6 +37,9 @@ class ReleasePromotionTests(unittest.TestCase):
             destination = self.root / "tools" / "promote-release.sh"
             destination.write_bytes(PROMOTION_SCRIPT.read_bytes())
             destination.chmod(destination.stat().st_mode | stat.S_IXUSR)
+        (self.root / "tools" / "release_artifacts.py").write_bytes(
+            RELEASE_TOOL.read_bytes()
+        )
 
         (self.root / "pack.toml").write_text(
             f'version = "{VERSION}"\n', encoding="utf-8"
@@ -36,23 +47,7 @@ class ReleasePromotionTests(unittest.TestCase):
         (self.root / "index.toml").write_text("index fixture\n", encoding="utf-8")
         accepted = self.root / "dist" / "gauntlet" / SHA
         public = accepted / "public"
-        public.mkdir(parents=True)
-        (public / "AFTERLIGHT-prism-instance.zip").write_bytes(b"prism\n")
-        (public / "AFTERLIGHT.mrpack").write_bytes(b"mrpack\n")
-        (public / "AFTERLIGHT-curseforge.zip").write_bytes(b"curseforge\n")
-        (public / "release-metadata.json").write_bytes(b"metadata\n")
-        (public / "SHA256SUMS").write_text(
-            "".join(
-                f"{self._sha256(public / artifact_name)}  {artifact_name}\n"
-                for artifact_name in (
-                    "AFTERLIGHT-curseforge.zip",
-                    "AFTERLIGHT-prism-instance.zip",
-                    "AFTERLIGHT.mrpack",
-                    "release-metadata.json",
-                )
-            ),
-            encoding="utf-8",
-        )
+        write_public_release(public, VERSION, SHA)
         (accepted / "gauntlet.txt").write_text(
             f"AFTERLIGHT release gauntlet\nSHA: {SHA}\n", encoding="utf-8"
         )
@@ -262,6 +257,33 @@ class ReleasePromotionTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("checksums are malformed", result.stderr)
         self.assertNotIn("push origin dev", self._git_calls())
+
+    def test_rejects_malformed_metadata_before_push_or_tag(self) -> None:
+        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        (public / "release-metadata.json").write_text(
+            "{not-json\n", encoding="utf-8"
+        )
+        rewrite_checksums(public)
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("valid UTF-8 JSON", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(any(call.startswith("tag -a ") for call in self._git_calls()))
+
+    def test_rejects_self_consistent_post_gauntlet_archive_replacement(self) -> None:
+        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        write_empty_zip(public / "AFTERLIGHT.mrpack")
+        rewrite_metadata(public, VERSION, SHA)
+        rewrite_checksums(public)
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Modrinth manifest", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(any(call.startswith("tag -a ") for call in self._git_calls()))
 
     def test_success_requires_exact_push_runs_pages_parity_and_then_tags(self) -> None:
         result = self._run()

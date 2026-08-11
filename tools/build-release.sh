@@ -109,8 +109,12 @@ DIST_DIR="$STAGING_DIR" ./tools/export.sh >/dev/null
 
 OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh
 
-python3 tools/release_artifacts.py inspect-public-launcher --archive "$MRPACK"
-python3 tools/release_artifacts.py inspect-public-launcher --archive "$CURSEFORGE_ZIP"
+python3 tools/release_artifacts.py inspect-modrinth \
+  --archive "$MRPACK" \
+  --version "$VERSION"
+python3 tools/release_artifacts.py inspect-curseforge \
+  --archive "$CURSEFORGE_ZIP" \
+  --version "$VERSION"
 mv "$MRPACK" "$STAGING_DIR/$PUBLIC_MRPACK_NAME"
 mv "$CURSEFORGE_ZIP" "$STAGING_DIR/$PUBLIC_CURSEFORGE_NAME"
 

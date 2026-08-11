@@ -4,6 +4,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +25,8 @@ REQUIRED_GAUNTLET_TESTS = {
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 GAUNTLET_SOURCE = REPOSITORY_ROOT / "tools" / "release-gauntlet.sh"
+RELEASE_TOOL_SOURCE = REPOSITORY_ROOT / "tools" / "release_artifacts.py"
+RELEASE_FIXTURE_SOURCE = REPOSITORY_ROOT / "tools" / "tests" / "release_fixtures.py"
 SHA = "0123456789abcdef0123456789abcdef01234567"
 
 
@@ -50,6 +53,8 @@ class ReleaseGauntletTests(unittest.TestCase):
         (self.root / "tools").mkdir()
         shutil.copy2(GAUNTLET_SOURCE, self.root / "tools" / "release-gauntlet.sh")
         (self.root / "tools" / "release-gauntlet.sh").chmod(0o755)
+        shutil.copy2(RELEASE_TOOL_SOURCE, self.root / "tools" / "release_artifacts.py")
+        shutil.copy2(RELEASE_FIXTURE_SOURCE, self.root / "tools" / "release_fixtures.py")
         self._write(
             self.root / "pack.toml",
             "version = \"0.9.0-rc.1\"\n\n[versions]\nminecraft = \"1.21.1\"\nneoforge = \"21.1.248\"\n",
@@ -70,7 +75,7 @@ class ReleaseGauntletTests(unittest.TestCase):
         )
         self._write(
             self.root / "tools" / "build-release.sh",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\nprintf '%s\\n' \"$prism\" > \"$DIST_DIR/AFTERLIGHT-prism-instance.zip\"\nprintf 'mrpack\\n' > \"$DIST_DIR/AFTERLIGHT.mrpack\"\nprintf 'curseforge\\n' > \"$DIST_DIR/AFTERLIGHT-curseforge.zip\"\nprintf '{\\\"format\\\":3,\\\"git_sha\\\":\\\"%s\\\"}\\n' \"$GIT_SHA\" > \"$DIST_DIR/release-metadata.json\"\n(cd \"$DIST_DIR\" && shasum -a 256 AFTERLIGHT-curseforge.zip AFTERLIGHT-prism-instance.zip AFTERLIGHT.mrpack release-metadata.json > SHA256SUMS)\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
+            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\n\"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\" \"$prism\"\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
             executable=True,
         )
         self._write(
@@ -86,7 +91,11 @@ class ReleaseGauntletTests(unittest.TestCase):
             "#!/usr/bin/env bash\nset -eu\nprintf 'git' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"$1\" = -C ] && [ \"$3 $4\" = 'worktree remove' ]; then [ \"${GAUNTLET_WORKTREE_REMOVE_FAIL:-0}\" = 1 ] && exit 1; rm -rf \"$6\"; exit 0; fi\ncase \"$1 ${2:-}\" in\n  'status --porcelain'*) if [ \"${GAUNTLET_DIRTY:-0}\" = 1 ] || { [ \"${GAUNTLET_TRACK_ENV:-0}\" = 1 ] && [ -e server/.env.gauntlet ]; }; then printf ' M server/.env.gauntlet\\n'; fi;;\n  'rev-parse HEAD') printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'rev-parse --verify') [ \"${GAUNTLET_NONCOMMIT:-0}\" = 1 ] && exit 1; printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'worktree add') destination=$4; mkdir -p \"$destination\"; if [ \"${GAUNTLET_WORKTREE_ADD_FAIL:-0}\" = 1 ]; then printf 'partial\\n' > \"$destination/partial.txt\"; exit 1; fi; cp -R \"$GAUNTLET_REPOSITORY/.\" \"$destination\";;\n  'ls-files '*) printf 'tools/sample.sh\\n';;\n  'diff --exit-code') exit \"${GAUNTLET_DIFF_EXIT:-0}\";;\nesac\nexit 0\n",
             executable=True,
         )
-        self._write_fake_command("python3", "python3")
+        self._write(
+            self.fake_bin / "python3",
+            "#!/usr/bin/env bash\nprintf 'python3' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"${1:-}\" = tools/release_artifacts.py ]; then exec \"$GAUNTLET_REAL_PYTHON\" \"$@\"; fi\nexit 0\n",
+            executable=True,
+        )
         self._write_fake_command("docker", "docker")
         self._write_fake_command("shellcheck", "shellcheck")
         self._write_fake_command("packwiz", "packwiz")
@@ -104,6 +113,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self._write(
             self.fake_bin / "cmp",
             "#!/usr/bin/env bash\nprintf 'cmp %s %s\\n' \"$1\" \"$2\" >> \"$GAUNTLET_LOG\"\n/usr/bin/cmp \"$@\"\n",
+            executable=True,
+        )
+        self._write(
+            self.fake_bin / "cp",
+            "#!/usr/bin/env bash\n/bin/cp \"$@\"\nif [ \"$#\" -eq 2 ] && [ \"${GAUNTLET_REPLACE_STAGED_MRPACK:-0}\" = 1 ] && [ \"${1##*/}\" = AFTERLIGHT.mrpack ]; then\n  destination=$2\n  if [ -d \"$destination\" ]; then destination=\"${destination%/}/AFTERLIGHT.mrpack\"; fi\n  case \"$destination\" in *.staging.*/public/AFTERLIGHT.mrpack) printf 'replaced after gauntlet\\n' > \"$destination\";; esac\nfi\n",
             executable=True,
         )
 
@@ -128,6 +142,7 @@ class ReleaseGauntletTests(unittest.TestCase):
                 "PATH": f"{self.fake_bin}:{environment['PATH']}",
                 "GAUNTLET_LOG": str(self.log_path),
                 "GAUNTLET_REPOSITORY": str(self.root),
+                "GAUNTLET_REAL_PYTHON": sys.executable,
                 "GAUNTLET_SHA": SHA,
                 "GAUNTLET_BUILD_COUNT_FILE": str(self.root / "build-count"),
                 "TMPDIR": str(self.worktree_root),
@@ -152,10 +167,18 @@ class ReleaseGauntletTests(unittest.TestCase):
 
     def _normalized_log_lines(self):
         worktree_pattern = r"[^ ]*/afterlight-gauntlet\.[^/ ]+"
-        return [
-            re.sub(worktree_pattern, "<WORKTREE>", line.replace(str(self.root), "<REPO>"))
-            for line in self._log_lines()
-        ]
+        staging_pattern = r"<REPO>/dist/gauntlet/\.[0-9a-f]{40}\.staging\.[^/ ]+"
+        normalized_lines = []
+        for line in self._log_lines():
+            normalized = re.sub(
+                worktree_pattern,
+                "<WORKTREE>",
+                line.replace(str(self.root), "<REPO>"),
+            )
+            normalized_lines.append(
+                re.sub(staging_pattern, "<STAGING>", normalized)
+            )
+        return normalized_lines
 
     def test_rejects_dirty_tree_noncommit_and_nonhead_sha(self):
         for sha, environment in (
@@ -204,6 +227,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             "git diff --exit-code",
             "git status --porcelain --untracked-files=all",
             "go version -m <REPO>/fake-bin/packwiz",
+            f"python3 tools/release_artifacts.py verify-public-release --dist-dir <STAGING>/public --version 0.9.0-rc.1 --git-sha {SHA}",
             "git -C <REPO> worktree remove --force <WORKTREE>",
         ])
 
@@ -252,7 +276,9 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertFalse((output / "friends-only").exists())
         transcript = (output / "gauntlet.txt").read_text(encoding="utf-8")
         expected_hashes = {
-            "Prism": hashlib.sha256(b"identical\n").hexdigest(),
+            "Prism": hashlib.sha256(
+                (output / "public" / "AFTERLIGHT-prism-instance.zip").read_bytes()
+            ).hexdigest(),
             "Pack": hashlib.sha256((self.root / "pack.toml").read_bytes()).hexdigest(),
             "Index": hashlib.sha256((self.root / "index.toml").read_bytes()).hexdigest(),
         }
@@ -266,6 +292,13 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertIn("NeoForge version: 21.1.248", transcript)
         for name, sha256 in expected_hashes.items():
             self.assertIn(f"{name} SHA-256: {sha256}", transcript)
+
+    def test_rejects_archive_replacement_after_gauntlet_staging(self):
+        result = self._run(GAUNTLET_REPLACE_STAGED_MRPACK="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("GAUNTLET: ACCEPTED", result.stdout)
+        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
 
     def test_rejects_noncanonical_build_inventory(self):
         cases = (

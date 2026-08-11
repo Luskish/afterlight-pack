@@ -33,6 +33,7 @@ Pack repository changes:
 AGENTS.md                                      public artifact policy and current guardrails
 mods/afterlight-signal.pw.toml                 immutable v0.2.0 URL and SHA-512
 config/afterlight/echo_route.json              versioned route policy
+config/afterlight/pack_version.txt             launcher-neutral title identity
 config/ftbquests/quests/                       recovery and Far Relay quest data
 tools/afterlight_quests/echo_route.py           deterministic route builder and validator
 tools/build-echo-route.py                      route generation entry point
@@ -158,6 +159,7 @@ git commit -m "feat(release): publish canonical launcher assets" \
 **Files:**
 - Create: `mods/afterlight-signal.pw.toml`
 - Create: `config/afterlight/echo_route.json`
+- Create: `config/afterlight/pack_version.txt`
 - Create: `tools/afterlight_quests/echo_route.py`
 - Create: `tools/build-echo-route.py`
 - Modify: `tools/afterlight_quests/catalog.py`
@@ -202,6 +204,8 @@ Tests require repeatable true, cooldown 5 seconds, permission level 0, silent co
 
 Route tests require schema 1, 16-digit uppercase IDs, no duplicates, all IDs present in managed quest data, terminal quest `31C9557D2F51238F`, and deterministic output.
 
+Pack identity tests require `config/afterlight/pack_version.txt` to contain exactly one trimmed UTF-8 line equal to the current `pack.toml` `version` value. Blank, extra-line, or mismatched identity fails verification.
+
 - [ ] **Step 3: Run tests and verify RED**
 
 Run:
@@ -225,6 +229,8 @@ Description: If your continuity node is lost, authorize a replacement here. The 
 
 `echo_route.py` consumes the compiler-managed catalog, produces ordered Story quest IDs, preserves explicit branch priority, excludes the recovery quest from normal recommendation, and includes postgame as a final optional segment.
 
+Write the current `pack.toml` version to `config/afterlight/pack_version.txt`. This file is the launcher-neutral runtime source for the custom title's `PACK VERSION` field and must remain Packwiz-managed for both Prism and CurseForge installs.
+
 - [ ] **Step 5: Regenerate, refresh, and run focused checks**
 
 Run:
@@ -238,7 +244,7 @@ python3 -m unittest tools.tests.test_afterlight_quests -v
 python3 -m unittest tools.tests.test_rc_hygiene_reliability -v
 ```
 
-Expected: quest counts increase by one chapter, one quest, one task, and one reward; route validation passes; Packwiz index includes the descriptor and route config.
+Expected: quest counts increase by one chapter, one quest, one task, and one reward; route validation passes; Packwiz index includes the descriptor, route config, and exact pack-version file.
 
 - [ ] **Step 6: Run pack and server gates**
 
@@ -417,6 +423,7 @@ Open a PR to `main`, require Netlify and repository checks, review the deployed 
 **Files:**
 - Modify: `pack.toml`
 - Modify: `index.toml`
+- Modify: `config/afterlight/pack_version.txt`
 - Create: `docs/releases/1.0.0-rc.1.md`
 - Modify: `docs/HANDOFF.md`
 - Modify: `README.md`
@@ -428,7 +435,7 @@ Open a PR to `main`, require Netlify and repository checks, review the deployed 
 
 - [ ] **Step 1: Write candidate notes and bump identity**
 
-Set `pack.toml` version to `1.0.0-rc.1`. Release notes describe physical ECHO, recovery, guided UI, Signal Reliquary title, physical Gate, Far Relay, public portal, launcher update behavior, additive-world safety, and manual checks still required before final 1.0.0.
+Set `pack.toml` version and the single line in `config/afterlight/pack_version.txt` to `1.0.0-rc.1`. Release notes describe physical ECHO, recovery, guided UI, Signal Reliquary title, physical Gate, Far Relay, public portal, launcher update behavior, additive-world safety, and manual checks still required before final 1.0.0.
 
 - [ ] **Step 2: Refresh once and run focused tests**
 

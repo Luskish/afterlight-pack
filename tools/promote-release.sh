@@ -10,6 +10,9 @@ CI_POLL_SECONDS=${AFTERLIGHT_CI_POLL_SECONDS:-5}
 PAGES_POLL_ATTEMPTS=${AFTERLIGHT_PAGES_POLL_ATTEMPTS:-60}
 PAGES_POLL_SECONDS=${AFTERLIGHT_PAGES_POLL_SECONDS:-5}
 CI_RUN_URL=""
+EXPECTED_ACCEPTED_ROOT=$'gauntlet.txt\npublic'
+EXPECTED_PUBLIC=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nSHA256SUMS\nrelease-metadata.json'
+EXPECTED_CHECKSUM_TARGETS=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nrelease-metadata.json'
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -32,6 +35,30 @@ require_nonnegative_integer() {
     fail "$label must be a nonnegative integer"
     return 1
   fi
+}
+
+validate_public_checksums() {
+  local directory=$1
+  local checksum_targets
+  if ! checksum_targets=$(awk '
+    length($0) > 66 && substr($0, 65, 2) == "  " {
+      digest = substr($0, 1, 64)
+      name = substr($0, 67)
+      if (digest ~ /^[0-9a-f]+$/ && name !~ /\// && name !~ /[[:space:]]/) {
+        print name
+        next
+      }
+    }
+    { exit 1 }
+  ' "$directory/SHA256SUMS"); then
+    fail "Accepted gauntlet checksums are malformed"
+    return 1
+  fi
+  if [[ "$checksum_targets" != "$EXPECTED_CHECKSUM_TARGETS" ]]; then
+    fail "Accepted gauntlet checksums do not cover the exact artifact inventory"
+    return 1
+  fi
+  (cd "$directory" && shasum -a 256 -c SHA256SUMS)
 }
 
 return_to_dev() {
@@ -156,21 +183,29 @@ VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pack.toml", "rb")
 TAG="v$VERSION"
 ACCEPTED_ROOT="dist/gauntlet/$SHA"
 PUBLIC_ROOT="$ACCEPTED_ROOT/public"
-PRIVATE_ROOT="$ACCEPTED_ROOT/friends-only"
-EXPECTED_PUBLIC=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
-EXPECTED_PRIVATE=$(printf '%s\n' "AFTERLIGHT-$VERSION-curseforge.zip" "AFTERLIGHT-$VERSION.mrpack" | LC_ALL=C sort)
-ACTUAL_PUBLIC=$(find "$PUBLIC_ROOT" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
-ACTUAL_PRIVATE=$(find "$PRIVATE_ROOT" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
-if [[ "$ACTUAL_PUBLIC" != "$EXPECTED_PUBLIC" || "$ACTUAL_PRIVATE" != "$EXPECTED_PRIVATE" ]]; then
+ACTUAL_ACCEPTED_ROOT=$(find "$ACCEPTED_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
+ACTUAL_PUBLIC=$(find "$PUBLIC_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
+if [[ "$ACTUAL_ACCEPTED_ROOT" != "$EXPECTED_ACCEPTED_ROOT" || "$ACTUAL_PUBLIC" != "$EXPECTED_PUBLIC" ]]; then
   fail "Accepted gauntlet artifact inventory is incomplete or contains extra files"
   exit 2
 fi
+for artifact in \
+  "$PUBLIC_ROOT/AFTERLIGHT-curseforge.zip" \
+  "$PUBLIC_ROOT/AFTERLIGHT-prism-instance.zip" \
+  "$PUBLIC_ROOT/AFTERLIGHT.mrpack" \
+  "$PUBLIC_ROOT/SHA256SUMS" \
+  "$PUBLIC_ROOT/release-metadata.json"; do
+  if [[ ! -f "$artifact" || -L "$artifact" ]]; then
+    fail "Accepted gauntlet artifact is not a regular file: $artifact"
+    exit 2
+  fi
+done
 if [[ ! -f "$ACCEPTED_ROOT/gauntlet.txt" || -L "$ACCEPTED_ROOT/gauntlet.txt" ]] ||
   ! grep -Fqx "SHA: $SHA" "$ACCEPTED_ROOT/gauntlet.txt"; then
   fail "Accepted gauntlet transcript does not bind the promotion SHA"
   exit 2
 fi
-(cd "$PUBLIC_ROOT" && shasum -a 256 -c SHA256SUMS)
+validate_public_checksums "$PUBLIC_ROOT"
 
 if [[ -n "$(git tag --list "$TAG")" ]]; then
   fail "Local tag already exists: $TAG"

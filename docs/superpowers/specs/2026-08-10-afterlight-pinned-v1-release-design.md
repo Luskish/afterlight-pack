@@ -2,7 +2,7 @@
 
 Date: 2026-08-10
 
-Status: approved by Shane. This design extends the accepted friend-release design without reopening completed story, Gate, quest, or server architecture.
+Status: approved by Shane. This design extends the accepted friend-release design without reopening completed story, Gate, quest, or server architecture. Public artifact policy updated by Shane's explicit authorization on 2026-08-11.
 
 ## Decision
 
@@ -10,7 +10,7 @@ AFTERLIGHT remains on Minecraft 1.21.1, NeoForge 21.1.248, and Java 21. The publ
 
 The next candidate is `0.9.0-rc.2`. It fixes the remaining mutable client-installer lookup, keeps the streamlined friend-server package, and carries one practical manual acceptance matrix. Simple Voice Chat remains installed for compatibility, but voice chat is not a release gate because the group will use Discord.
 
-Version `1.0.0` is published only after the required `rc.2` manual checks pass. Optional polish, exhaustive natural-progression playthroughs, AutoModpack, public distribution of friends-only archives, and enterprise host controls remain outside this release.
+Version `1.0.0` is published only after the required `rc.2` manual checks pass. Optional polish, exhaustive natural-progression playthroughs, AutoModpack, and enterprise host controls remain outside this release. Shane authorized public distribution of the current CurseForge ZIP and `.mrpack` on 2026-08-11, superseding the earlier friends-only boundary.
 
 ## Pinned Prism Client
 
@@ -37,22 +37,17 @@ Release metadata records both installer versions, sizes, and SHA-256 values in a
 
 ## Versioned Release Pipeline
 
-Release tooling derives the pack version from `pack.toml` instead of hardcoding `0.9.0-rc.1`. Public output remains exactly:
+Release tooling derives the pack version from `pack.toml` instead of hardcoding `0.9.0-rc.1`. Export tooling may use versioned temporary names, but release output is canonical and exactly:
 
 ```text
 AFTERLIGHT-prism-instance.zip
-release-metadata.json
+AFTERLIGHT-curseforge.zip
+AFTERLIGHT.mrpack
 SHA256SUMS
+release-metadata.json
 ```
 
-Friends-only output uses the derived version:
-
-```text
-AFTERLIGHT-<version>.mrpack
-AFTERLIGHT-<version>-curseforge.zip
-```
-
-The pipeline rejects a version mismatch between `pack.toml`, metadata, filenames, release notes, tag, and requested release version.
+Metadata format 3 binds the version, exact commit, and SHA-256 plus positive size for all three launcher archives. The pipeline rejects a version mismatch between `pack.toml`, metadata, release notes, tag, and requested release version. It also rejects friends-only directories, versioned public archive names, missing checksums, extra files, links, unsafe archive paths, secrets, malformed archives, and private launcher classifications.
 
 For `rc.2`, the pack version and generated Packwiz index move together. The exact candidate runs focused tests, the complete Python suite, static and runtime quest validation, `verify-pack.sh`, a fresh headless server boot, Compose rendering, ShellCheck, two release builds, deterministic archive comparison, a clean client install from the released Prism bytes, clean-worktree checks, exact `dev` and `main` CI, and Pages parity before publication.
 
@@ -93,7 +88,8 @@ The final release response lists these prerequisites and commands directly and p
 - Plans 05 and 06 story, quest, Gate, postgame, and recipe identities remain unchanged.
 - The friend-server Compose and operator command remain the supported host lane.
 - `v0.9.0-rc.1` remains available as rollback evidence and is never moved or rewritten.
-- `rc.2` and `v1.0.0` public releases contain only the three public-safe top-level assets.
-- The `.mrpack` and CurseForge ZIP remain friends-only and are never attached publicly.
+- Every new public release contains exactly the five canonical top-level assets.
+- The `.mrpack` and CurseForge ZIP are attached publicly under Shane's 2026-08-11 authorization.
+- Published releases and tags remain immutable. Failures fix forward through a new candidate.
 - Simple Voice Chat stays optional and unclaimed.
 - A failed automated or manual gate fixes forward through a new candidate. Neither `main` nor a published tag is force-pushed.

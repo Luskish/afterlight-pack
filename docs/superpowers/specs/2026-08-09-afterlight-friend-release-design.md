@@ -2,7 +2,9 @@
 
 **Date:** 2026-08-09
 
-**Status:** Approved by Shane's instruction to streamline Plan 07 and defer nonessential backend hardening.
+**Status:** Approved by Shane's instruction to streamline Plan 07 and defer nonessential backend hardening. Public artifact policy updated by Shane's explicit authorization on 2026-08-11.
+
+The 2026-08-11 authorization permits public distribution of the current CurseForge ZIP and `.mrpack`. It supersedes every friends-only statement in this design while retaining archive inspection, no-secret, exact-inventory, checksum, and immutable-release requirements.
 
 ## Purpose
 
@@ -58,8 +60,9 @@ The recommended artifact is `AFTERLIGHT-prism-instance.zip`.
 - It pins Packwiz bootstrap `v0.0.3` and verifies SHA-256 `a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c` before packaging.
 - Repeated builds from the same repository state must be byte-identical.
 - The archive must contain no mod JAR except the approved Packwiz bootstrap.
-- The Prism archive is the only public-safe client artifact.
-- The `.mrpack` and CurseForge ZIP embed third-party mod JARs, remain friends-only, and are never uploaded as public CI artifacts.
+- The Prism archive, `.mrpack`, and CurseForge ZIP are authorized public client artifacts.
+- Public publication uses the canonical names `AFTERLIGHT-prism-instance.zip`, `AFTERLIGHT.mrpack`, and `AFTERLIGHT-curseforge.zip`.
+- The release rejects malformed archives, unsafe paths, links, secrets, private keys, and any file outside the exact five-file public inventory.
 
 ## Dedicated Server
 
@@ -148,11 +151,11 @@ Firewall setup remains an operator command because changing remote-host firewall
 - Docker Compose canonical render for normal and backup services
 - Bash syntax and ShellCheck for server operations
 - Prism artifact build and archive inspection
-- `.mrpack` and friends-only CurseForge export generation
+- `.mrpack` and CurseForge export generation
 - Secret, JAR, and U+2014 scans
 - Final clean-tree check
 
-CI uploads only the public-safe Prism archive, checksums, and release metadata. It may build the `.mrpack` and CurseForge ZIP for validation, but it never uploads either friends-only archive.
+Release publication attaches the Prism archive, `.mrpack`, CurseForge ZIP, checksums, and release metadata. CI and local gates must preserve that exact inventory without links or extra files.
 
 ## Practical Release Gauntlet
 
@@ -164,11 +167,11 @@ The release candidate requires one clean detached-SHA gauntlet:
 4. Render both Compose profiles.
 5. Build the Prism archive twice and prove byte equality.
 6. Export `.mrpack` and CurseForge ZIP.
-7. Inspect every artifact for secrets and disallowed JARs.
+7. Inspect every artifact for secrets, unsafe paths, links, malformed ZIP structure, and disallowed JARs.
 8. Push exact SHA to `dev` and require green CI.
 9. Fast-forward exact SHA to `main` and require green CI.
 10. Verify GitHub Pages `pack.toml` and `index.toml` byte parity.
-11. Create the `v0.9.0-rc.1` prerelease with only the Prism archive, checksums, and release metadata.
+11. Create the immutable prerelease with exactly the three canonical launcher archives, checksums, and release metadata.
 
 ## Manual Acceptance
 

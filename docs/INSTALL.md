@@ -1,14 +1,16 @@
 # Playing AFTERLIGHT
 
-AFTERLIGHT supports Prism Launcher and the CurseForge App. Prism is the recommended path because its instance checks the stable Packwiz channel before every launch. CurseForge is supported through a friends-only ZIP and requires a fresh import for each pack update.
+AFTERLIGHT supports Prism Launcher, the CurseForge App, and compatible `.mrpack` launchers. Prism is the recommended path because its instance checks the stable Packwiz channel before every launch. Shane explicitly authorized public distribution of the current CurseForge ZIP and `.mrpack` on 2026-08-11, superseding earlier friends-only instructions.
 
 ## Prism Launcher, Recommended
 
-The public release contains exactly these three files:
+The public release contains exactly these five files:
 
 - `AFTERLIGHT-prism-instance.zip`: the auto-updating Prism instance.
-- `release-metadata.json`: the pack, Git commit, loader, Packwiz URL, both installer identities, and Prism checksum facts.
-- `SHA256SUMS`: sorted checksums for the Prism ZIP and metadata file.
+- `AFTERLIGHT-curseforge.zip`: the public CurseForge import archive.
+- `AFTERLIGHT.mrpack`: the public manual launcher fallback.
+- `SHA256SUMS`: sorted checksums for all three launcher archives and metadata.
+- `release-metadata.json`: the pack, Git commit, loader, Packwiz URL, installer identities, and all three launcher checksum facts.
 
 1. Install [Prism Launcher](https://prismlauncher.org/download/) and sign in with your Microsoft account.
 2. Install Java 21. In Prism, open Settings, choose Java, then use Auto-detect or Download Java.
@@ -21,22 +23,22 @@ The Prism archive bundles exact Packwiz bootstrap `v0.0.3` and main installer `v
 
 ## CurseForge App
 
-Shane shares `AFTERLIGHT-0.9.0-rc.3-curseforge.zip` directly through a private channel. This archive embeds third-party mod JARs, is friends-only, and must never be re-uploaded or attached to a public release.
+Download `AFTERLIGHT-curseforge.zip` from the same AFTERLIGHT GitHub release as the checksum and metadata files. Public distribution is explicitly authorized, but source and checksum verification remain required because this archive can embed third-party mod JARs.
 
 Follow the [official CurseForge shared-profile import flow](https://support.curseforge.com/support/solutions/articles/9000197912):
 
 1. Open Minecraft in the CurseForge App and choose Import.
 2. Under Import Profile `.zip`, choose Choose `.zip` file.
-3. Select `AFTERLIGHT-0.9.0-rc.3-curseforge.zip`.
-4. If CurseForge warns that the manually shared pack contains files not hosted on CurseForge, verify that the ZIP came directly from Shane and compare its SHA-256 with Shane's release handoff.
+3. Select `AFTERLIGHT-curseforge.zip`.
+4. If CurseForge warns that the pack contains files not hosted on CurseForge, verify that the ZIP came from the official AFTERLIGHT release and compare its SHA-256 with `SHA256SUMS`.
 5. After verifying the source and checksum, acknowledge the warning and choose All Files. Choosing CurseForge Files Only omits required pack files.
 6. Let CurseForge create the new profile, assign Java 21 and 8 to 10 GiB RAM, then launch it.
 
-CurseForge imports do not auto-update. When Shane shares a newer AFTERLIGHT ZIP, import that replacement as a new profile. Keep the old profile until the new one reaches the title screen and joins the server.
+CurseForge imports do not auto-update. For a newer AFTERLIGHT release, download and import its canonical replacement ZIP as a new profile. Keep the old profile until the new one reaches the title screen and joins the server.
 
-## Other Friends-Only Archive
+## Other Public Archive
 
-`AFTERLIGHT-0.9.0-rc.3.mrpack` is a manual fallback for compatible launchers. It is friends-only in this project because the current export embeds third-party mod JARs. It does not replace the recommended auto-updating Prism ZIP.
+`AFTERLIGHT.mrpack` is a public manual fallback for compatible launchers. Verify it against `SHA256SUMS` before import. It does not replace the recommended auto-updating Prism ZIP.
 
 ## Joining the Server
 
@@ -48,5 +50,5 @@ Get the server address from Shane. The group uses Discord for voice. Simple Voic
 - **Java selection:** Select a Java 21 runtime and use the launcher's Java test. Do not launch AFTERLIGHT with Java 17 or an older runtime.
 - **Memory:** Assign 8192 to 10240 MiB. If the computer has less than 12 GiB total RAM, ask Shane before allocating more.
 - **Packwiz download errors:** Check the internet connection, retry once, then send Shane the complete error text and failed URL. Do not bypass Packwiz or add mod JARs manually.
-- **CurseForge invalid file:** Confirm the file ends in `.zip`, came directly from Shane, and is the CurseForge archive rather than the Prism ZIP or `.mrpack`.
+- **CurseForge invalid file:** Confirm the file is named `AFTERLIGHT-curseforge.zip`, came from the official AFTERLIGHT release, and matches `SHA256SUMS`.
 - **Crash Assistant:** Use Copy to clipboard and send Shane the complete text. Send text instead of a screenshot so the report remains searchable.

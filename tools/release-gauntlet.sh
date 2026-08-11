@@ -4,6 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+EXPECTED_PUBLIC_INVENTORY=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nSHA256SUMS\nrelease-metadata.json'
+EXPECTED_CHECKSUM_TARGETS=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nrelease-metadata.json'
+CHECKSUMS_NAME=SHA256SUMS
 
 fail() {
   echo "FAIL: $*" >&2
@@ -27,6 +30,50 @@ run_build() {
   printf '\n$ DIST_DIR=%s GIT_SHA=%s ./tools/build-release.sh\n' "$output_directory" "$GAUNTLET_SHA"
   printf '\n$ DIST_DIR=%s GIT_SHA=%s ./tools/build-release.sh\n' "$output_directory" "$GAUNTLET_SHA" >> "$TRANSCRIPT"
   DIST_DIR="$output_directory" GIT_SHA="$GAUNTLET_SHA" ./tools/build-release.sh 2>&1 | tee -a "$TRANSCRIPT"
+}
+
+validate_public_release_directory() {
+  local directory=$1
+  local actual_inventory checksum_targets entry
+  local entries=()
+
+  if [ ! -d "$directory" ] || [ -L "$directory" ]; then
+    fail "public release directory is missing or unsafe: $directory"
+  fi
+  shopt -s dotglob nullglob
+  entries=("$directory"/*)
+  shopt -u dotglob nullglob
+  actual_inventory=$(
+    for entry in "${entries[@]}"; do
+      basename "$entry"
+    done | LC_ALL=C sort
+  )
+  if [ "$actual_inventory" != "$EXPECTED_PUBLIC_INVENTORY" ]; then
+    fail "public release inventory is incomplete or contains extra entries"
+  fi
+  for entry in "${entries[@]}"; do
+    if [ ! -f "$entry" ] || [ -L "$entry" ]; then
+      fail "public release entry is not a regular file: $entry"
+    fi
+  done
+  if ! checksum_targets=$(awk '
+    length($0) > 66 && substr($0, 65, 2) == "  " {
+      digest = substr($0, 1, 64)
+      name = substr($0, 67)
+      if (digest ~ /^[0-9a-f]+$/ && name !~ /\// && name !~ /[[:space:]]/) {
+        print name
+        next
+      }
+    }
+    { exit 1 }
+  ' "$directory/$CHECKSUMS_NAME"); then
+    fail "public release checksums are malformed"
+  fi
+  if [ "$checksum_targets" != "$EXPECTED_CHECKSUM_TARGETS" ]; then
+    fail "public release checksums do not cover the exact artifact inventory"
+  fi
+  (cd "$directory" && shasum -a 256 -c "$CHECKSUMS_NAME") ||
+    fail "public release checksum verification failed"
 }
 
 require_clean_tree() {
@@ -73,6 +120,8 @@ EOF
 
   run_build "$FIRST"
   run_build "$SECOND"
+  validate_public_release_directory "$FIRST"
+  validate_public_release_directory "$SECOND"
   run cmp "$FIRST/AFTERLIGHT-prism-instance.zip" "$SECOND/AFTERLIGHT-prism-instance.zip"
   run ./tools/client-install-test.sh "$FIRST/AFTERLIGHT-prism-instance.zip"
   run git diff --exit-code
@@ -111,12 +160,12 @@ EOF
   mkdir -p "$OUTPUT_PARENT"
   STAGING=$(mktemp -d "$OUTPUT_PARENT/.${GAUNTLET_SHA}.staging.XXXXXX")
   trap 'rm -rf "$STAGING"' EXIT
-  mkdir -p "$STAGING/public" "$STAGING/friends-only"
+  mkdir -p "$STAGING/public"
+  cp "$FIRST/AFTERLIGHT-curseforge.zip" "$STAGING/public/"
   cp "$FIRST/AFTERLIGHT-prism-instance.zip" "$STAGING/public/"
+  cp "$FIRST/AFTERLIGHT.mrpack" "$STAGING/public/"
   cp "$FIRST/release-metadata.json" "$STAGING/public/"
   cp "$FIRST/SHA256SUMS" "$STAGING/public/"
-  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}.mrpack" "$STAGING/friends-only/"
-  cp "$FIRST/AFTERLIGHT-${PACK_VERSION}-curseforge.zip" "$STAGING/friends-only/"
   FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   {
     printf 'AFTERLIGHT release gauntlet\n'

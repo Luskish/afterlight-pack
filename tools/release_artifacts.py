@@ -32,6 +32,17 @@ DEFLATE_LEVEL = 9
 UTF8_FLAG = 0x800
 ENCRYPTED_FLAG = 0x1
 PRISM_ARTIFACT_NAME = "AFTERLIGHT-prism-instance.zip"
+CURSEFORGE_ARTIFACT_NAME = "AFTERLIGHT-curseforge.zip"
+MRPACK_ARTIFACT_NAME = "AFTERLIGHT.mrpack"
+PUBLIC_ARTIFACT_NAMES = tuple(
+    sorted(
+        (
+            CURSEFORGE_ARTIFACT_NAME,
+            PRISM_ARTIFACT_NAME,
+            MRPACK_ARTIFACT_NAME,
+        )
+    )
+)
 RELEASE_METADATA_NAME = "release-metadata.json"
 CHECKSUMS_NAME = "SHA256SUMS"
 U2014_BYTES = b"\xe2\x80\x94"
@@ -393,7 +404,7 @@ def inspect_prism_archive(
     }
 
 
-def inspect_friends_archive(archive_path):
+def inspect_public_launcher_archive(archive_path):
     archive_path = Path(archive_path)
     with zipfile.ZipFile(archive_path) as archive:
         _, names = _inspect_zip_safety(archive, allow_directories=True)
@@ -401,7 +412,7 @@ def inspect_friends_archive(archive_path):
     embedded_jar_count = sum(name.casefold().endswith(".jar") for name in names)
     return {
         "archive": str(archive_path),
-        "classification": "friends-only",
+        "classification": "public",
         "embedded_jar_count": embedded_jar_count,
         "entry_count": len(names),
     }
@@ -555,6 +566,8 @@ def _require_regular_file(path, label, positive_size=True):
     path = Path(path)
     try:
         file_status = path.lstat()
+    except FileNotFoundError as error:
+        raise ValueError(f"{label} is missing: {path}") from error
     except OSError as error:
         raise ValueError(f"{label} is unreadable: {path}") from error
     if not stat.S_ISREG(file_status.st_mode):
@@ -593,15 +606,6 @@ def _atomic_write_bytes(path, data):
         temporary_path.unlink(missing_ok=True)
 
 
-def _private_artifact_names(version):
-    return sorted(
-        (
-            f"AFTERLIGHT-{version}-curseforge.zip",
-            f"AFTERLIGHT-{version}.mrpack",
-        )
-    )
-
-
 def write_release_metadata(
     dist_dir,
     version,
@@ -620,14 +624,17 @@ def write_release_metadata(
         raise ValueError("GIT_SHA must be exactly 40 lowercase hexadecimal characters")
 
     dist_path = Path(dist_dir)
-    prism_path = dist_path / PRISM_ARTIFACT_NAME
-    prism_status = _require_regular_file(prism_path, "Prism artifact")
-    private_artifacts = _private_artifact_names(version)
-    for artifact_name in private_artifacts:
-        _require_regular_file(
-            dist_path / artifact_name,
-            f"friends-only artifact {artifact_name}",
+    artifact_records = {}
+    for artifact_name in PUBLIC_ARTIFACT_NAMES:
+        artifact_path = dist_path / artifact_name
+        artifact_status = _require_regular_file(
+            artifact_path,
+            f"public artifact {artifact_name}",
         )
+        artifact_records[artifact_name] = {
+            "sha256": _sha256_file(artifact_path),
+            "size": artifact_status.st_size,
+        }
 
     installer_records = {}
     for label, installer_version_value, size, sha256 in (
@@ -643,20 +650,14 @@ def write_release_metadata(
         }
 
     metadata = {
-        "format": 2,
+        "format": 3,
         "version": version,
         "git_sha": git_sha,
         "minecraft": minecraft,
         "neoforge": neoforge,
         "pack_url": pack_url,
         "packwiz": installer_records,
-        "public_artifacts": {
-            PRISM_ARTIFACT_NAME: {
-                "sha256": _sha256_file(prism_path),
-                "size": prism_status.st_size,
-            }
-        },
-        "private_artifacts": private_artifacts,
+        "public_artifacts": artifact_records,
     }
     metadata_path = dist_path / RELEASE_METADATA_NAME
     _atomic_write_bytes(
@@ -678,17 +679,15 @@ def _classified_release_names(dist_path):
     if not isinstance(version, str) or not version:
         raise ValueError("release metadata version is missing")
     public_artifacts = metadata.get("public_artifacts")
-    if not isinstance(public_artifacts, dict) or set(public_artifacts) != {
-        PRISM_ARTIFACT_NAME
-    }:
+    if not isinstance(public_artifacts, dict) or set(public_artifacts) != set(
+        PUBLIC_ARTIFACT_NAMES
+    ):
         raise ValueError("release metadata public artifact classification is invalid")
-    private_artifacts = metadata.get("private_artifacts")
-    expected_private_artifacts = _private_artifact_names(version)
-    if private_artifacts != expected_private_artifacts:
-        raise ValueError("release metadata private artifact classification is invalid")
+    if "private_artifacts" in metadata:
+        raise ValueError("release metadata public artifact classification is invalid")
 
-    if metadata.get("format") != 2:
-        raise ValueError("release metadata format must be 2")
+    if metadata.get("format") != 3:
+        raise ValueError("release metadata format must be 3")
     packwiz = metadata.get("packwiz")
     if not isinstance(packwiz, dict) or set(packwiz) != {"bootstrap", "installer"}:
         raise ValueError("release metadata Packwiz classification is invalid")
@@ -705,37 +704,53 @@ def _classified_release_names(dist_path):
         _validate_positive_size(record["size"], f"release metadata Packwiz {label}")
         _validate_sha256(record["sha256"], f"release metadata Packwiz {label}")
 
-    prism_record = public_artifacts[PRISM_ARTIFACT_NAME]
-    if not isinstance(prism_record, dict):
-        raise ValueError("release metadata Prism record is invalid")
-    recorded_sha256 = prism_record.get("sha256")
-    if not isinstance(recorded_sha256, str) or not re.fullmatch(
-        r"[0-9a-f]{64}",
-        recorded_sha256,
-    ):
-        raise ValueError("release metadata Prism SHA-256 is invalid")
-    recorded_size = prism_record.get("size")
-    if type(recorded_size) is not int or recorded_size <= 0:
-        raise ValueError("release metadata Prism size must be a positive integer")
+    artifact_labels = {
+        CURSEFORGE_ARTIFACT_NAME: "CurseForge",
+        PRISM_ARTIFACT_NAME: "Prism",
+        MRPACK_ARTIFACT_NAME: "mrpack",
+    }
+    for artifact_name in PUBLIC_ARTIFACT_NAMES:
+        artifact_label = artifact_labels[artifact_name]
+        artifact_record = public_artifacts[artifact_name]
+        if not isinstance(artifact_record, dict) or set(artifact_record) != {
+            "sha256",
+            "size",
+        }:
+            raise ValueError(f"release metadata {artifact_label} record is invalid")
+        recorded_sha256 = artifact_record["sha256"]
+        if not isinstance(recorded_sha256, str) or not re.fullmatch(
+            r"[0-9a-f]{64}",
+            recorded_sha256,
+        ):
+            raise ValueError(
+                f"release metadata {artifact_label} SHA-256 is invalid"
+            )
+        recorded_size = artifact_record["size"]
+        if type(recorded_size) is not int or recorded_size <= 0:
+            raise ValueError(
+                f"release metadata {artifact_label} size must be a positive integer"
+            )
 
-    prism_path = dist_path / PRISM_ARTIFACT_NAME
-    prism_status = _require_regular_file(prism_path, "Prism artifact")
-    if prism_status.st_size != recorded_size:
-        raise ValueError(
-            "release metadata Prism size mismatch: "
-            f"expected {recorded_size}, got {prism_status.st_size}"
+        artifact_path = dist_path / artifact_name
+        artifact_status = _require_regular_file(
+            artifact_path,
+            f"public artifact {artifact_name}",
         )
-    actual_sha256 = _sha256_file(prism_path)
-    if actual_sha256 != recorded_sha256:
-        raise ValueError(
-            "release metadata Prism SHA-256 mismatch: "
-            f"expected {recorded_sha256}, got {actual_sha256}"
-        )
+        if artifact_status.st_size != recorded_size:
+            raise ValueError(
+                f"release metadata {artifact_label} size mismatch: "
+                f"expected {recorded_size}, got {artifact_status.st_size}"
+            )
+        actual_sha256 = _sha256_file(artifact_path)
+        if actual_sha256 != recorded_sha256:
+            raise ValueError(
+                f"release metadata {artifact_label} SHA-256 mismatch: "
+                f"expected {recorded_sha256}, got {actual_sha256}"
+            )
 
     return {
-        PRISM_ARTIFACT_NAME,
+        *PUBLIC_ARTIFACT_NAMES,
         RELEASE_METADATA_NAME,
-        *expected_private_artifacts,
     }
 
 
@@ -755,12 +770,18 @@ def _validate_release_inventory(dist_path):
     missing_names = sorted(classified_names - actual_names)
     if missing_names:
         raise ValueError(f"classified release output is missing: {missing_names[0]!r}")
+    if CHECKSUMS_NAME in actual_names:
+        _require_regular_file(
+            dist_path / CHECKSUMS_NAME,
+            "release checksums",
+            positive_size=False,
+        )
 
 
 def write_release_checksums(dist_dir):
     dist_path = Path(dist_dir)
     _validate_release_inventory(dist_path)
-    artifact_names = sorted((PRISM_ARTIFACT_NAME, RELEASE_METADATA_NAME))
+    artifact_names = sorted((*PUBLIC_ARTIFACT_NAMES, RELEASE_METADATA_NAME))
     lines = []
     for artifact_name in artifact_names:
         artifact_path = dist_path / artifact_name
@@ -791,8 +812,8 @@ def _parser():
     inspect_parser.add_argument("--installer-sha256", required=True)
     inspect_parser.add_argument("--installer-size", required=True, type=int)
 
-    friends_parser = subparsers.add_parser("inspect-friends")
-    friends_parser.add_argument("--archive", required=True)
+    public_launcher_parser = subparsers.add_parser("inspect-public-launcher")
+    public_launcher_parser.add_argument("--archive", required=True)
 
     repository_parser = subparsers.add_parser("scan-repository")
     repository_parser.add_argument("--root", default=".")
@@ -841,8 +862,8 @@ def main(argv=None):
         print(json.dumps(summary, sort_keys=True))
         return 0
 
-    if args.command == "inspect-friends":
-        summary = inspect_friends_archive(args.archive)
+    if args.command == "inspect-public-launcher":
+        summary = inspect_public_launcher_archive(args.archive)
         print(json.dumps(summary, sort_keys=True))
         return 0
 

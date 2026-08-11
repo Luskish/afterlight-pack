@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and classify the complete AFTERLIGHT friend release.
+# Build and classify the complete AFTERLIGHT public release.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/versions.env
@@ -34,6 +34,8 @@ METADATA_NAME=release-metadata.json
 CHECKSUMS_NAME=SHA256SUMS
 MRPACK_NAME="AFTERLIGHT-${VERSION}.mrpack"
 CURSEFORGE_NAME="AFTERLIGHT-${VERSION}-curseforge.zip"
+PUBLIC_MRPACK_NAME=AFTERLIGHT.mrpack
+PUBLIC_CURSEFORGE_NAME=AFTERLIGHT-curseforge.zip
 
 validate_release_entries() {
   local directory=$1
@@ -46,7 +48,7 @@ validate_release_entries() {
     for entry in "${entries[@]}"; do
       entry_name=${entry##*/}
       case "$entry_name" in
-        "$PRISM_NAME"|"$METADATA_NAME"|"$CHECKSUMS_NAME"|"$MRPACK_NAME"|"$CURSEFORGE_NAME")
+        "$PRISM_NAME"|"$PUBLIC_MRPACK_NAME"|"$PUBLIC_CURSEFORGE_NAME"|"$METADATA_NAME"|"$CHECKSUMS_NAME")
           ;;
         *)
           echo "FAIL: unclassified release output entry: $entry" >&2
@@ -103,12 +105,14 @@ PRISM_ZIP="$STAGING_DIR/$PRISM_NAME"
 MRPACK="$STAGING_DIR/$MRPACK_NAME"
 CURSEFORGE_ZIP="$STAGING_DIR/$CURSEFORGE_NAME"
 
-DIST_DIR="$STAGING_DIR" ./tools/export.sh
+DIST_DIR="$STAGING_DIR" ./tools/export.sh >/dev/null
 
 OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh
 
-python3 tools/release_artifacts.py inspect-friends --archive "$MRPACK"
-python3 tools/release_artifacts.py inspect-friends --archive "$CURSEFORGE_ZIP"
+python3 tools/release_artifacts.py inspect-public-launcher --archive "$MRPACK"
+python3 tools/release_artifacts.py inspect-public-launcher --archive "$CURSEFORGE_ZIP"
+mv "$MRPACK" "$STAGING_DIR/$PUBLIC_MRPACK_NAME"
+mv "$CURSEFORGE_ZIP" "$STAGING_DIR/$PUBLIC_CURSEFORGE_NAME"
 
 python3 tools/release_artifacts.py write-metadata \
   --dist-dir "$STAGING_DIR" \
@@ -161,8 +165,8 @@ fi
 
 echo "PUBLIC:"
 printf '  %s\n' \
+  "$DIST_DIR/$PUBLIC_CURSEFORGE_NAME" \
   "$DIST_DIR/$PRISM_NAME" \
+  "$DIST_DIR/$PUBLIC_MRPACK_NAME" \
   "$DIST_DIR/$METADATA_NAME" \
   "$DIST_DIR/$CHECKSUMS_NAME"
-echo "FRIENDS-ONLY:"
-printf '  %s\n' "$DIST_DIR/$MRPACK_NAME" "$DIST_DIR/$CURSEFORGE_NAME"

@@ -3,9 +3,35 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+EXPECTED_ACCEPTED_ROOT=$'gauntlet.txt\npublic'
+EXPECTED_PUBLIC=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nSHA256SUMS\nrelease-metadata.json'
+EXPECTED_CHECKSUM_TARGETS=$'AFTERLIGHT-curseforge.zip\nAFTERLIGHT-prism-instance.zip\nAFTERLIGHT.mrpack\nrelease-metadata.json'
+
 fail() {
   echo "FAIL: $*" >&2
   exit 2
+}
+
+validate_public_checksums() {
+  local directory=$1
+  local checksum_targets
+  if ! checksum_targets=$(awk '
+    length($0) > 66 && substr($0, 65, 2) == "  " {
+      digest = substr($0, 1, 64)
+      name = substr($0, 67)
+      if (digest ~ /^[0-9a-f]+$/ && name !~ /\// && name !~ /[[:space:]]/) {
+        print name
+        next
+      }
+    }
+    { exit 1 }
+  ' "$directory/SHA256SUMS"); then
+    fail "accepted public checksums are malformed"
+  fi
+  [ "$checksum_targets" = "$EXPECTED_CHECKSUM_TARGETS" ] ||
+    fail "accepted public checksums do not cover the exact artifact inventory"
+  (cd "$directory" && shasum -a 256 -c SHA256SUMS) ||
+    fail "accepted public checksum verification failed"
 }
 
 if [ "$#" -eq 4 ] && [ "$3" = "--prerelease" ] && [ "$4" = "--confirm" ]; then
@@ -39,10 +65,7 @@ TAG="v$VERSION"
 RELEASE_DOC="docs/releases/$VERSION.md"
 ACCEPTED_ROOT="dist/gauntlet/$SHA"
 PUBLIC_ROOT="$ACCEPTED_ROOT/public"
-PRIVATE_ROOT="$ACCEPTED_ROOT/friends-only"
 METADATA="$PUBLIC_ROOT/release-metadata.json"
-EXPECTED_PUBLIC=$'AFTERLIGHT-prism-instance.zip\nSHA256SUMS\nrelease-metadata.json'
-EXPECTED_PRIVATE=$(printf '%s\n' "AFTERLIGHT-$VERSION-curseforge.zip" "AFTERLIGHT-$VERSION.mrpack" | LC_ALL=C sort)
 
 if [ ! -f "$RELEASE_DOC" ] || [ -L "$RELEASE_DOC" ]; then
   fail "release notes are missing: $RELEASE_DOC"
@@ -58,47 +81,68 @@ fi
 if [ ! -d "$PUBLIC_ROOT" ] || [ -L "$PUBLIC_ROOT" ]; then
   fail "accepted public directory is missing"
 fi
-if [ ! -d "$PRIVATE_ROOT" ] || [ -L "$PRIVATE_ROOT" ]; then
-  fail "accepted friends-only directory is missing"
-fi
+ACTUAL_ACCEPTED_ROOT=$(find "$ACCEPTED_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; | LC_ALL=C sort)
 ACTUAL_PUBLIC=$(find "$PUBLIC_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; | LC_ALL=C sort)
-ACTUAL_PRIVATE=$(find "$PRIVATE_ROOT" -mindepth 1 -maxdepth 1 -exec basename {} \; | LC_ALL=C sort)
+[ "$ACTUAL_ACCEPTED_ROOT" = "$EXPECTED_ACCEPTED_ROOT" ] || fail "accepted release root inventory changed"
 [ "$ACTUAL_PUBLIC" = "$EXPECTED_PUBLIC" ] || fail "accepted public artifact inventory changed"
-[ "$ACTUAL_PRIVATE" = "$EXPECTED_PRIVATE" ] || fail "accepted friends-only artifact inventory changed"
 for artifact in \
+  "$PUBLIC_ROOT/AFTERLIGHT-curseforge.zip" \
   "$PUBLIC_ROOT/AFTERLIGHT-prism-instance.zip" \
+  "$PUBLIC_ROOT/AFTERLIGHT.mrpack" \
   "$PUBLIC_ROOT/release-metadata.json" \
-  "$PUBLIC_ROOT/SHA256SUMS" \
-  "$PRIVATE_ROOT/AFTERLIGHT-$VERSION.mrpack" \
-  "$PRIVATE_ROOT/AFTERLIGHT-$VERSION-curseforge.zip"; do
+  "$PUBLIC_ROOT/SHA256SUMS"; do
   if [ ! -f "$artifact" ] || [ -L "$artifact" ]; then
     fail "release artifact is not a regular file: $artifact"
   fi
 done
 
 python3 - "$METADATA" "$VERSION" "$SHA" <<'PY'
+import hashlib
 import json
+import re
+import stat
 import sys
 from pathlib import Path
 
 metadata = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 version = sys.argv[2]
 git_sha = sys.argv[3]
-if metadata.get("format") != 2:
+if metadata.get("format") != 3:
     raise SystemExit("FAIL: release metadata format does not match")
 if metadata.get("version") != version:
     raise SystemExit("FAIL: release metadata version does not match")
 if metadata.get("git_sha") != git_sha:
     raise SystemExit("FAIL: release metadata SHA does not match")
-expected_private = sorted(
-    (f"AFTERLIGHT-{version}-curseforge.zip", f"AFTERLIGHT-{version}.mrpack")
-)
-if metadata.get("private_artifacts") != expected_private:
-    raise SystemExit("FAIL: release metadata private artifacts do not match")
-if set(metadata.get("public_artifacts", {})) != {"AFTERLIGHT-prism-instance.zip"}:
+if "private_artifacts" in metadata:
+    raise SystemExit("FAIL: release metadata classifies public launchers as private")
+expected_public = {
+    "AFTERLIGHT-curseforge.zip",
+    "AFTERLIGHT-prism-instance.zip",
+    "AFTERLIGHT.mrpack",
+}
+public_artifacts = metadata.get("public_artifacts")
+if not isinstance(public_artifacts, dict) or set(public_artifacts) != expected_public:
     raise SystemExit("FAIL: release metadata public artifacts do not match")
+for artifact_name in sorted(expected_public):
+    record = public_artifacts[artifact_name]
+    if not isinstance(record, dict) or set(record) != {"sha256", "size"}:
+        raise SystemExit(f"FAIL: release metadata record is malformed: {artifact_name}")
+    if not isinstance(record["sha256"], str) or not re.fullmatch(
+        r"[0-9a-f]{64}", record["sha256"]
+    ):
+        raise SystemExit(f"FAIL: release metadata SHA-256 is malformed: {artifact_name}")
+    if type(record["size"]) is not int or record["size"] <= 0:
+        raise SystemExit(f"FAIL: release metadata size is malformed: {artifact_name}")
+    artifact_path = Path(sys.argv[1]).parent / artifact_name
+    artifact_status = artifact_path.lstat()
+    if not stat.S_ISREG(artifact_status.st_mode):
+        raise SystemExit(f"FAIL: release metadata artifact is not regular: {artifact_name}")
+    if artifact_status.st_size != record["size"]:
+        raise SystemExit(f"FAIL: release metadata size does not match: {artifact_name}")
+    if hashlib.sha256(artifact_path.read_bytes()).hexdigest() != record["sha256"]:
+        raise SystemExit(f"FAIL: release metadata SHA-256 does not match: {artifact_name}")
 PY
-(cd "$PUBLIC_ROOT" && shasum -a 256 -c SHA256SUMS)
+validate_public_checksums "$PUBLIC_ROOT"
 
 LOCAL_TAG_SHA=$(git rev-parse "refs/tags/$TAG^{}")
 [ "$LOCAL_TAG_SHA" = "$SHA" ] || fail "local tag does not resolve to accepted SHA"
@@ -115,7 +159,9 @@ fi
 CREATE_ARGUMENTS+=(
   --title "AFTERLIGHT $VERSION"
   --notes-file "$RELEASE_DOC"
+  "$PUBLIC_ROOT/AFTERLIGHT-curseforge.zip"
   "$PUBLIC_ROOT/AFTERLIGHT-prism-instance.zip"
+  "$PUBLIC_ROOT/AFTERLIGHT.mrpack"
   "$PUBLIC_ROOT/release-metadata.json"
   "$PUBLIC_ROOT/SHA256SUMS"
 )

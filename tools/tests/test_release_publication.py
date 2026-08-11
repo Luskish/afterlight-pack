@@ -75,26 +75,23 @@ class ReleasePublicationTests(unittest.TestCase):
     def _write_artifacts(self, version, git_sha):
         accepted = self.root / "dist" / "gauntlet" / SHA
         public = accepted / "public"
-        private = accepted / "friends-only"
         public.mkdir(parents=True)
-        private.mkdir()
         prism = public / "AFTERLIGHT-prism-instance.zip"
         prism.write_bytes(b"prism fixture\n")
+        mrpack = public / "AFTERLIGHT.mrpack"
+        mrpack.write_bytes(b"mrpack\n")
+        curseforge = public / "AFTERLIGHT-curseforge.zip"
+        curseforge.write_bytes(b"curseforge\n")
         metadata = {
-            "format": 2,
+            "format": 3,
             "version": version,
             "git_sha": git_sha,
-            "private_artifacts": sorted(
-                (
-                    f"AFTERLIGHT-{version}-curseforge.zip",
-                    f"AFTERLIGHT-{version}.mrpack",
-                )
-            ),
             "public_artifacts": {
-                prism.name: {
-                    "sha256": hashlib.sha256(prism.read_bytes()).hexdigest(),
-                    "size": prism.stat().st_size,
+                path.name: {
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "size": path.stat().st_size,
                 }
+                for path in (curseforge, prism, mrpack)
             },
         }
         metadata_path = public / "release-metadata.json"
@@ -102,16 +99,16 @@ class ReleasePublicationTests(unittest.TestCase):
             json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8"
         )
         checksum_lines = []
-        for path in sorted((prism, metadata_path)):
+        for path in sorted((curseforge, prism, mrpack, metadata_path)):
             checksum_lines.append(
                 f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
             )
         (public / "SHA256SUMS").write_text(
             "".join(checksum_lines), encoding="utf-8"
         )
-        (private / f"AFTERLIGHT-{version}.mrpack").write_bytes(b"mrpack\n")
-        (private / f"AFTERLIGHT-{version}-curseforge.zip").write_bytes(
-            b"curseforge\n"
+        (accepted / "gauntlet.txt").write_text(
+            f"AFTERLIGHT release gauntlet\nSHA: {git_sha}\n",
+            encoding="utf-8",
         )
 
     def _install_fakes(self):
@@ -142,7 +139,7 @@ class ReleasePublicationTests(unittest.TestCase):
                 if [ -n "${FAKE_ASSETS:-}" ]; then
                   printf '%s\n' "$FAKE_ASSETS"
                 else
-                  printf '%s\n' AFTERLIGHT-prism-instance.zip SHA256SUMS release-metadata.json
+                  printf '%s\n' AFTERLIGHT-curseforge.zip AFTERLIGHT-prism-instance.zip AFTERLIGHT.mrpack SHA256SUMS release-metadata.json
                 fi
               fi
               exit 0
@@ -190,7 +187,7 @@ class ReleasePublicationTests(unittest.TestCase):
             r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|",
         )
 
-    def test_success_creates_prerelease_with_only_public_assets(self):
+    def test_success_attaches_exact_public_inventory(self):
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -199,10 +196,11 @@ class ReleasePublicationTests(unittest.TestCase):
         )
         self.assertIn("v0.9.0-rc.2 --verify-tag --prerelease", create_call)
         self.assertIn("AFTERLIGHT-prism-instance.zip", create_call)
+        self.assertIn("AFTERLIGHT-curseforge.zip", create_call)
+        self.assertIn("AFTERLIGHT.mrpack", create_call)
         self.assertIn("release-metadata.json", create_call)
         self.assertIn("SHA256SUMS", create_call)
-        self.assertNotIn("mrpack", create_call)
-        self.assertNotIn("curseforge", create_call)
+        self.assertNotIn(f"AFTERLIGHT-{VERSION}", create_call)
 
     def test_rejects_pack_metadata_note_and_tag_identity_mismatches(self):
         cases = ("pack", "metadata-version", "metadata-sha", "note", "tag")
@@ -270,22 +268,28 @@ class ReleasePublicationTests(unittest.TestCase):
             any(call.startswith("release create ") for call in self._gh_calls())
         )
 
-    def test_rejects_public_or_private_inventory_changes(self):
+    def test_rejects_public_inventory_changes(self):
         public = self.root / "dist" / "gauntlet" / SHA / "public"
-        private = self.root / "dist" / "gauntlet" / SHA / "friends-only"
         cases = (
             public / "extra.txt",
-            private / "extra.txt",
+            public / "friends-only",
+            public / f"AFTERLIGHT-{VERSION}.mrpack",
         )
         for extra_path in cases:
             with self.subTest(extra_path=extra_path):
-                extra_path.write_text("extra\n", encoding="utf-8")
+                if extra_path.name == "friends-only":
+                    extra_path.mkdir()
+                else:
+                    extra_path.write_text("extra\n", encoding="utf-8")
                 result = self._run()
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(
                     any(call.startswith("release create ") for call in self._gh_calls())
                 )
-                extra_path.unlink()
+                if extra_path.is_dir():
+                    extra_path.rmdir()
+                else:
+                    extra_path.unlink()
                 self.gh_log.unlink(missing_ok=True)
 
         outside = self.root / "outside.txt"
@@ -293,6 +297,85 @@ class ReleasePublicationTests(unittest.TestCase):
         extra_link = public / "linked-extra.txt"
         extra_link.symlink_to(outside)
         result = self._run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_rejects_linked_artifact_and_missing_checksum(self):
+        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        mrpack = public / "AFTERLIGHT.mrpack"
+        outside = self.root / "outside.mrpack"
+        outside.write_bytes(mrpack.read_bytes())
+        mrpack.unlink()
+        mrpack.symlink_to(outside)
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+        mrpack.unlink()
+        mrpack.write_bytes(outside.read_bytes())
+        self.gh_log.unlink(missing_ok=True)
+        checksums = public / "SHA256SUMS"
+        checksum_lines = checksums.read_text(encoding="utf-8").splitlines()
+        checksums.write_text("\n".join(checksum_lines[1:]) + "\n", encoding="utf-8")
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_rejects_noncanonical_checksum_format(self):
+        checksum_path = (
+            self.root / "dist" / "gauntlet" / SHA / "public" / "SHA256SUMS"
+        )
+        checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
+        checksum_path.write_text(
+            "\n".join(line.replace("  ", "\t", 1) for line in checksum_lines)
+            + "\n",
+            encoding="utf-8",
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("checksums are malformed", result.stderr)
+        self.assertFalse(
+            any(call.startswith("release create ") for call in self._gh_calls())
+        )
+
+    def test_rejects_private_launcher_metadata_classification(self):
+        metadata_path = (
+            self.root
+            / "dist"
+            / "gauntlet"
+            / SHA
+            / "public"
+            / "release-metadata.json"
+        )
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["private_artifacts"] = [
+            "AFTERLIGHT-curseforge.zip",
+            "AFTERLIGHT.mrpack",
+        ]
+        metadata["public_artifacts"] = {
+            "AFTERLIGHT-prism-instance.zip": metadata["public_artifacts"][
+                "AFTERLIGHT-prism-instance.zip"
+            ]
+        }
+        metadata_path.write_text(
+            json.dumps(metadata, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        result = self._run()
+
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(
             any(call.startswith("release create ") for call in self._gh_calls())

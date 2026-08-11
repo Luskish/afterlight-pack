@@ -24,10 +24,10 @@ REQUIRED_PRISM_TESTS = {
 }
 
 REQUIRED_RELEASE_POLICY_TESTS = {
-    "test_friends_archive_allows_mod_jars_but_rejects_secrets",
-    "test_public_file_set_contains_only_prism_metadata_and_checksums",
+    "test_public_launcher_archive_allows_mod_jars_but_rejects_secrets",
+    "test_public_file_set_is_exactly_the_canonical_inventory",
     "test_metadata_binds_version_commit_pack_url_size_and_sha256",
-    "test_checksums_are_sorted_and_cover_only_public_files",
+    "test_checksums_are_sorted_and_cover_every_public_artifact",
     "test_repository_scan_rejects_tracked_jar_secret_and_u2014",
     "test_archive_scan_rejects_absolute_parent_duplicate_and_symlink_entries",
 }
@@ -56,14 +56,13 @@ INSTALLER_SHA256 = (
     "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
 )
 PUBLIC_RELEASE_FILES = {
+    "AFTERLIGHT-curseforge.zip",
     "AFTERLIGHT-prism-instance.zip",
+    "AFTERLIGHT.mrpack",
     "release-metadata.json",
     "SHA256SUMS",
 }
-PRIVATE_RELEASE_FILES = {
-    "AFTERLIGHT-0.9.0-rc.1-curseforge.zip",
-    "AFTERLIGHT-0.9.0-rc.1.mrpack",
-}
+PUBLIC_ARTIFACT_FILES = PUBLIC_RELEASE_FILES - {"release-metadata.json", "SHA256SUMS"}
 REVIEWED_SKILL_SYMLINKS = {
     ".claude/skills/ftb-quests": "../../.agents/skills/ftb-quests",
     ".claude/skills/kubejs-modding": "../../.agents/skills/kubejs-modding",
@@ -452,9 +451,9 @@ class ReleasePolicyTests(unittest.TestCase):
     def _regular_entry(self, name, data=b"safe fixture\n"):
         return name, data, (stat.S_IFREG | 0o644) << 16
 
-    def _inspect_friends(self, archive_path):
+    def _inspect_public_launcher(self, archive_path):
         return self._run_tool(
-            "inspect-friends",
+            "inspect-public-launcher",
             "--archive",
             archive_path,
         )
@@ -462,15 +461,14 @@ class ReleasePolicyTests(unittest.TestCase):
     def _write_release_inputs(self, directory, prism_bytes=b"p"):
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "AFTERLIGHT-prism-instance.zip").write_bytes(prism_bytes)
-        (directory / "AFTERLIGHT-0.9.0-rc.1.mrpack").write_bytes(b"private mrpack\n")
-        (directory / "AFTERLIGHT-0.9.0-rc.1-curseforge.zip").write_bytes(
-            b"private curseforge\n"
+        (directory / "AFTERLIGHT.mrpack").write_bytes(b"public mrpack\n")
+        (directory / "AFTERLIGHT-curseforge.zip").write_bytes(
+            b"public curseforge\n"
         )
 
     def _write_metadata_fixture(self, directory):
-        prism_bytes = (directory / "AFTERLIGHT-prism-instance.zip").read_bytes()
         metadata = {
-            "format": 2,
+            "format": 3,
             "version": RELEASE_VERSION,
             "git_sha": RELEASE_GIT_SHA,
             "minecraft": MINECRAFT_VERSION,
@@ -489,18 +487,20 @@ class ReleasePolicyTests(unittest.TestCase):
                 },
             },
             "public_artifacts": {
-                "AFTERLIGHT-prism-instance.zip": {
-                    "sha256": hashlib.sha256(prism_bytes).hexdigest(),
-                    "size": len(prism_bytes),
+                artifact_name: {
+                    "sha256": hashlib.sha256(
+                        (directory / artifact_name).read_bytes()
+                    ).hexdigest(),
+                    "size": (directory / artifact_name).stat().st_size,
                 }
+                for artifact_name in sorted(PUBLIC_ARTIFACT_FILES)
             },
-            "private_artifacts": sorted(PRIVATE_RELEASE_FILES),
         }
         metadata_bytes = (json.dumps(metadata, sort_keys=True) + "\n").encode("utf-8")
         (directory / "release-metadata.json").write_bytes(metadata_bytes)
         return metadata_bytes
 
-    def test_friends_archive_allows_mod_jars_but_rejects_secrets(self):
+    def test_public_launcher_archive_allows_mod_jars_but_rejects_secrets(self):
         legitimate_archive = self._write_archive(
             "legitimate-mod-names.zip",
             [
@@ -509,10 +509,10 @@ class ReleasePolicyTests(unittest.TestCase):
                 self._regular_entry("overrides/mods/credentialed.jar"),
             ],
         )
-        result = self._inspect_friends(legitimate_archive)
+        result = self._inspect_public_launcher(legitimate_archive)
         self._assert_tool_succeeds(result)
         summary = json.loads(result.stdout)
-        self.assertEqual(summary["classification"], "friends-only")
+        self.assertEqual(summary["classification"], "public")
         self.assertEqual(summary["embedded_jar_count"], 3)
 
         secret_paths = (
@@ -529,11 +529,20 @@ class ReleasePolicyTests(unittest.TestCase):
                     "secret-path.zip",
                     [self._regular_entry(secret_path)],
                 )
-                result = self._inspect_friends(archive_path)
+                result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("secret-bearing path", result.stderr)
 
-    def test_public_file_set_contains_only_prism_metadata_and_checksums(self):
+    def test_public_launcher_archive_rejects_malformed_zip(self):
+        malformed_archive = self.root / "malformed-launcher.zip"
+        malformed_archive.write_bytes(b"not a ZIP archive\n")
+
+        result = self._inspect_public_launcher(malformed_archive)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not a zip file", result.stderr.lower())
+
+    def test_public_file_set_is_exactly_the_canonical_inventory(self):
         dist_directory = self.root / "public-file-set"
         self._write_release_inputs(dist_directory)
         self._write_metadata_fixture(dist_directory)
@@ -547,8 +556,14 @@ class ReleasePolicyTests(unittest.TestCase):
                 encoding="utf-8"
             ).splitlines()
         }
-        self.assertEqual(covered_files | {"SHA256SUMS"}, PUBLIC_RELEASE_FILES)
-        self.assertTrue(PRIVATE_RELEASE_FILES.isdisjoint(covered_files))
+        self.assertEqual(
+            {path.name for path in dist_directory.iterdir()},
+            PUBLIC_RELEASE_FILES,
+        )
+        self.assertEqual(
+            covered_files,
+            PUBLIC_RELEASE_FILES - {"SHA256SUMS"},
+        )
 
     def test_metadata_binds_version_commit_pack_url_size_and_sha256(self):
         dist_directory = self.root / "metadata"
@@ -584,7 +599,7 @@ class ReleasePolicyTests(unittest.TestCase):
         self._assert_tool_succeeds(result)
 
         expected = {
-            "format": 2,
+            "format": 3,
             "version": RELEASE_VERSION,
             "git_sha": RELEASE_GIT_SHA,
             "minecraft": MINECRAFT_VERSION,
@@ -603,12 +618,14 @@ class ReleasePolicyTests(unittest.TestCase):
                 },
             },
             "public_artifacts": {
-                "AFTERLIGHT-prism-instance.zip": {
-                    "sha256": hashlib.sha256(b"p").hexdigest(),
-                    "size": 1,
+                artifact_name: {
+                    "sha256": hashlib.sha256(
+                        (dist_directory / artifact_name).read_bytes()
+                    ).hexdigest(),
+                    "size": (dist_directory / artifact_name).stat().st_size,
                 }
+                for artifact_name in sorted(PUBLIC_ARTIFACT_FILES)
             },
-            "private_artifacts": sorted(PRIVATE_RELEASE_FILES),
         }
         metadata_path = dist_directory / "release-metadata.json"
         self.assertEqual(json.loads(metadata_path.read_bytes()), expected)
@@ -659,7 +676,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertIn("40 lowercase hexadecimal", result.stderr)
                 self.assertFalse((dist_directory / "release-metadata.json").exists())
 
-    def test_checksums_are_sorted_and_cover_only_public_files(self):
+    def test_checksums_are_sorted_and_cover_every_public_artifact(self):
         dist_directory = self.root / "checksums"
         prism_bytes = b"prism fixture\n"
         self._write_release_inputs(dist_directory, prism_bytes=prism_bytes)
@@ -668,17 +685,99 @@ class ReleasePolicyTests(unittest.TestCase):
         result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
         self._assert_tool_succeeds(result)
 
-        expected = (
-            f"{hashlib.sha256(prism_bytes).hexdigest()}  "
-            "AFTERLIGHT-prism-instance.zip\n"
-            f"{hashlib.sha256(metadata_bytes).hexdigest()}  "
-            "release-metadata.json\n"
+        expected = "".join(
+            f"{hashlib.sha256((dist_directory / artifact_name).read_bytes()).hexdigest()}  "
+            f"{artifact_name}\n"
+            for artifact_name in sorted(
+                PUBLIC_RELEASE_FILES - {"SHA256SUMS"}
+            )
         )
         checksum_path = dist_directory / "SHA256SUMS"
         self.assertEqual(checksum_path.read_text(encoding="utf-8"), expected)
         self.assertNotIn("SHA256SUMS", expected)
-        for private_file in PRIVATE_RELEASE_FILES:
-            self.assertNotIn(private_file, expected)
+
+    def test_checksums_reject_noncanonical_inventory_entries(self):
+        cases = (
+            ("friends-only", "directory"),
+            (f"AFTERLIGHT-{RELEASE_VERSION}.mrpack", "file"),
+            (f"AFTERLIGHT-{RELEASE_VERSION}-curseforge.zip", "file"),
+            ("stale-public-build.zip", "file"),
+        )
+        for entry_name, entry_kind in cases:
+            with self.subTest(entry_name=entry_name):
+                dist_directory = self.root / f"noncanonical-{entry_name}"
+                self._write_release_inputs(dist_directory)
+                self._write_metadata_fixture(dist_directory)
+                entry_path = dist_directory / entry_name
+                if entry_kind == "directory":
+                    entry_path.mkdir()
+                else:
+                    entry_path.write_bytes(b"noncanonical\n")
+
+                result = self._run_tool(
+                    "write-checksums",
+                    "--dist-dir",
+                    dist_directory,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("release output", result.stderr)
+                self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+    def test_checksums_reject_links_and_missing_public_artifacts(self):
+        dist_directory = self.root / "linked-artifact"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+        target = self.root / "outside.mrpack"
+        target.write_bytes((dist_directory / "AFTERLIGHT.mrpack").read_bytes())
+        (dist_directory / "AFTERLIGHT.mrpack").unlink()
+        (dist_directory / "AFTERLIGHT.mrpack").symlink_to(target)
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not a regular file", result.stderr)
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+        dist_directory = self.root / "missing-artifact"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+        (dist_directory / "AFTERLIGHT-curseforge.zip").unlink()
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "public artifact AFTERLIGHT-curseforge.zip is missing",
+            result.stderr,
+        )
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
+
+    def test_checksums_reject_private_launcher_classification(self):
+        dist_directory = self.root / "private-classification"
+        self._write_release_inputs(dist_directory)
+        self._write_metadata_fixture(dist_directory)
+        metadata_path = dist_directory / "release-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["private_artifacts"] = [
+            "AFTERLIGHT-curseforge.zip",
+            "AFTERLIGHT.mrpack",
+        ]
+        metadata["public_artifacts"] = {
+            "AFTERLIGHT-prism-instance.zip": metadata["public_artifacts"][
+                "AFTERLIGHT-prism-instance.zip"
+            ]
+        }
+        metadata_path.write_text(
+            json.dumps(metadata, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        result = self._run_tool("write-checksums", "--dist-dir", dist_directory)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("public artifact classification", result.stderr)
+        self.assertFalse((dist_directory / "SHA256SUMS").exists())
 
     def test_checksums_reject_unclassified_release_output(self):
         dist_directory = self.root / "unclassified-output"
@@ -1033,7 +1132,7 @@ class ReleasePolicyTests(unittest.TestCase):
 
         for expected_error, archive_path in fixtures:
             with self.subTest(expected_error=expected_error):
-                result = self._inspect_friends(archive_path)
+                result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
 
@@ -1053,7 +1152,7 @@ class ReleasePolicyTests(unittest.TestCase):
             )
         encrypted_archive.write_bytes(raw_archive)
 
-        result = self._inspect_friends(encrypted_archive)
+        result = self._inspect_public_launcher(encrypted_archive)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("encrypted archive entry", result.stderr)
 
@@ -1066,7 +1165,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 )
             ],
         )
-        result = self._inspect_friends(private_key_archive)
+        result = self._inspect_public_launcher(private_key_archive)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("private-key header", result.stderr)
 
@@ -1085,7 +1184,7 @@ class ReleasePolicyTests(unittest.TestCase):
         )
         archive_path.write_bytes(raw_archive)
 
-        result = self._inspect_friends(archive_path)
+        result = self._inspect_public_launcher(archive_path)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("encrypted archive entry", result.stderr)
 
@@ -1104,7 +1203,7 @@ class ReleasePolicyTests(unittest.TestCase):
         )
         archive_path.write_bytes(raw_archive)
 
-        result = self._inspect_friends(archive_path)
+        result = self._inspect_public_launcher(archive_path)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("encrypted archive entry", result.stderr)
 
@@ -1123,7 +1222,7 @@ class ReleasePolicyTests(unittest.TestCase):
         )
         archive_path.write_bytes(raw_archive)
 
-        result = self._inspect_friends(archive_path)
+        result = self._inspect_public_launcher(archive_path)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("local and central ZIP flags differ", result.stderr)
 
@@ -1142,7 +1241,7 @@ class ReleasePolicyTests(unittest.TestCase):
                         self._regular_entry(second_name),
                     ],
                 )
-                result = self._inspect_friends(archive_path)
+                result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("duplicate archive entry", result.stderr)
 
@@ -1273,7 +1372,7 @@ class ReleaseWorkflowPolicyTests(unittest.TestCase):
             return self.workflow[start:]
         return self.workflow[start:next_step]
 
-    def test_private_release_build_runs_only_on_trusted_events(self):
+    def test_public_release_build_runs_only_on_trusted_events(self):
         build_step = self._step_block("Build release")
         self.assertIn(
             "if: github.event_name == 'push' || "

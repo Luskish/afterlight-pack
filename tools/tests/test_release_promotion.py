@@ -36,21 +36,22 @@ class ReleasePromotionTests(unittest.TestCase):
         (self.root / "index.toml").write_text("index fixture\n", encoding="utf-8")
         accepted = self.root / "dist" / "gauntlet" / SHA
         public = accepted / "public"
-        private = accepted / "friends-only"
         public.mkdir(parents=True)
-        private.mkdir()
         (public / "AFTERLIGHT-prism-instance.zip").write_bytes(b"prism\n")
+        (public / "AFTERLIGHT.mrpack").write_bytes(b"mrpack\n")
+        (public / "AFTERLIGHT-curseforge.zip").write_bytes(b"curseforge\n")
         (public / "release-metadata.json").write_bytes(b"metadata\n")
-        prism_hash = self._sha256(public / "AFTERLIGHT-prism-instance.zip")
-        metadata_hash = self._sha256(public / "release-metadata.json")
         (public / "SHA256SUMS").write_text(
-            f"{prism_hash}  AFTERLIGHT-prism-instance.zip\n"
-            f"{metadata_hash}  release-metadata.json\n",
+            "".join(
+                f"{self._sha256(public / artifact_name)}  {artifact_name}\n"
+                for artifact_name in (
+                    "AFTERLIGHT-curseforge.zip",
+                    "AFTERLIGHT-prism-instance.zip",
+                    "AFTERLIGHT.mrpack",
+                    "release-metadata.json",
+                )
+            ),
             encoding="utf-8",
-        )
-        (private / f"AFTERLIGHT-{VERSION}.mrpack").write_bytes(b"mrpack\n")
-        (private / f"AFTERLIGHT-{VERSION}-curseforge.zip").write_bytes(
-            b"curseforge\n"
         )
         (accepted / "gauntlet.txt").write_text(
             f"AFTERLIGHT release gauntlet\nSHA: {SHA}\n", encoding="utf-8"
@@ -206,6 +207,60 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("positive integer", result.stderr)
+        self.assertNotIn("push origin dev", self._git_calls())
+
+    def test_rejects_noncanonical_public_inventory_before_push(self) -> None:
+        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        cases = (
+            public / "extra.txt",
+            public / "friends-only",
+            public / f"AFTERLIGHT-{VERSION}.mrpack",
+        )
+        for path in cases:
+            with self.subTest(path=path):
+                if path.name == "friends-only":
+                    path.mkdir()
+                else:
+                    path.write_text("noncanonical\n", encoding="utf-8")
+
+                result = self._run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("inventory", result.stderr)
+                self.assertNotIn("push origin dev", self._git_calls())
+                if path.is_dir():
+                    path.rmdir()
+                else:
+                    path.unlink()
+                self.git_log.unlink(missing_ok=True)
+
+    def test_rejects_missing_checksum_before_push(self) -> None:
+        checksum_path = (
+            self.root / "dist" / "gauntlet" / SHA / "public" / "SHA256SUMS"
+        )
+        checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
+        checksum_path.write_text("\n".join(checksum_lines[1:]) + "\n", encoding="utf-8")
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("push origin dev", self._git_calls())
+
+    def test_rejects_noncanonical_checksum_format_before_push(self) -> None:
+        checksum_path = (
+            self.root / "dist" / "gauntlet" / SHA / "public" / "SHA256SUMS"
+        )
+        checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
+        checksum_path.write_text(
+            "\n".join(line.replace("  ", "\t", 1) for line in checksum_lines)
+            + "\n",
+            encoding="utf-8",
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("checksums are malformed", result.stderr)
         self.assertNotIn("push origin dev", self._git_calls())
 
     def test_success_requires_exact_push_runs_pages_parity_and_then_tags(self) -> None:

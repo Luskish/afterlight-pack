@@ -41,7 +41,10 @@ Never state that something works without having run the check in the same sessio
 ## Branch and release model
 
 - `dev` is the working branch. `main` is the stable channel that friends' launchers auto-update from (GitHub Pages serves it). Merge dev to main only on green CI. Never delete dev. Never force-push either branch.
-- The `.mrpack` is the public-safe artifact. The CurseForge zip embeds third-party jars: friends-only, never uploaded publicly, never attached to CI artifacts.
+- Shane explicitly authorized public distribution of the current `.mrpack` and CurseForge ZIP on 2026-08-11. This authorization supersedes every earlier friends-only classification for those launcher archives.
+- A public release contains exactly `AFTERLIGHT-prism-instance.zip`, `AFTERLIGHT-curseforge.zip`, `AFTERLIGHT.mrpack`, `SHA256SUMS`, and `release-metadata.json` in one flat inventory. No additional file, directory, or link is allowed.
+- Every launcher archive is inspected before release. Reject malformed archives, unsafe paths, links, secrets, private keys, and unclassified files. Checksums and metadata must bind all three launcher archives.
+- Published releases and tags are immutable. Fix forward with a new candidate, never replace an asset or move a published tag.
 
 ## Scope discipline
 

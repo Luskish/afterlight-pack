@@ -16,7 +16,7 @@ REQUIRED_GAUNTLET_TESTS = {
     "test_compares_two_prism_archives_byte_for_byte",
     "test_client_install_failure_stops_before_acceptance",
     "test_failure_stops_before_copying_accepted_artifacts",
-    "test_success_copies_public_and_private_outputs_with_transcript",
+    "test_success_copies_exact_public_inventory_with_transcript",
     "test_cleanup_removes_only_the_temporary_worktree",
     "test_failed_worktree_add_cleans_only_its_owned_temporary_path",
 }
@@ -70,7 +70,7 @@ class ReleaseGauntletTests(unittest.TestCase):
         )
         self._write(
             self.root / "tools" / "build-release.sh",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\nprintf '%s\\n' \"$prism\" > \"$DIST_DIR/AFTERLIGHT-prism-instance.zip\"\nprintf '{\\\"sha\\\":\\\"%s\\\"}\\n' \"$GIT_SHA\" > \"$DIST_DIR/release-metadata.json\"\nprintf 'checksum\\n' > \"$DIST_DIR/SHA256SUMS\"\nprintf 'mrpack\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"\nprintf 'curseforge\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1-curseforge.zip\"\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
+            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nprism=identical\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then prism=different; fi\nprintf '%s\\n' \"$prism\" > \"$DIST_DIR/AFTERLIGHT-prism-instance.zip\"\nprintf 'mrpack\\n' > \"$DIST_DIR/AFTERLIGHT.mrpack\"\nprintf 'curseforge\\n' > \"$DIST_DIR/AFTERLIGHT-curseforge.zip\"\nprintf '{\\\"format\\\":3,\\\"git_sha\\\":\\\"%s\\\"}\\n' \"$GIT_SHA\" > \"$DIST_DIR/release-metadata.json\"\n(cd \"$DIST_DIR\" && shasum -a 256 AFTERLIGHT-curseforge.zip AFTERLIGHT-prism-instance.zip AFTERLIGHT.mrpack release-metadata.json > SHA256SUMS)\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
             executable=True,
         )
         self._write(
@@ -234,19 +234,22 @@ class ReleaseGauntletTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_success_copies_public_and_private_outputs_with_transcript(self):
+    def test_success_copies_exact_public_inventory_with_transcript(self):
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stderr)
         output = self.root / "dist" / "gauntlet" / SHA
         self.assertEqual(
             {path.name for path in (output / "public").iterdir()},
-            {"AFTERLIGHT-prism-instance.zip", "release-metadata.json", "SHA256SUMS"},
+            {
+                "AFTERLIGHT-curseforge.zip",
+                "AFTERLIGHT-prism-instance.zip",
+                "AFTERLIGHT.mrpack",
+                "release-metadata.json",
+                "SHA256SUMS",
+            },
         )
-        self.assertEqual(
-            {path.name for path in (output / "friends-only").iterdir()},
-            {"AFTERLIGHT-0.9.0-rc.1.mrpack", "AFTERLIGHT-0.9.0-rc.1-curseforge.zip"},
-        )
+        self.assertFalse((output / "friends-only").exists())
         transcript = (output / "gauntlet.txt").read_text(encoding="utf-8")
         expected_hashes = {
             "Prism": hashlib.sha256(b"identical\n").hexdigest(),
@@ -263,6 +266,31 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertIn("NeoForge version: 21.1.248", transcript)
         for name, sha256 in expected_hashes.items():
             self.assertIn(f"{name} SHA-256: {sha256}", transcript)
+
+    def test_rejects_noncanonical_build_inventory(self):
+        cases = (
+            {"GAUNTLET_EXTRA_FILE": "1"},
+            {"GAUNTLET_FRIENDS_DIRECTORY": "1"},
+            {"GAUNTLET_VERSIONED_NAME": "1"},
+            {"GAUNTLET_MISSING_CHECKSUMS": "1"},
+        )
+        output = self.root / "dist" / "gauntlet" / SHA
+        for environment in cases:
+            with self.subTest(environment=environment):
+                shutil.rmtree(output, ignore_errors=True)
+                self.log_path.unlink(missing_ok=True)
+
+                result = self._run(**environment)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(output.exists())
+
+    def test_rejects_noncanonical_checksum_format(self):
+        result = self._run(GAUNTLET_MALFORMED_CHECKSUMS="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("public release checksums are malformed", result.stderr)
+        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
 
     def test_rejects_java_17_even_when_version_contains_21(self):
         result = self._run(GAUNTLET_JAVA_VERSION='openjdk version "17.0.21"')

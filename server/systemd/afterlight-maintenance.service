@@ -1,5 +1,5 @@
 [Unit]
-Description=AFTERLIGHT idle-safe server maintenance
+Description=AFTERLIGHT daily warned server restart
 Requires=docker.service
 After=docker.service network-online.target
 ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh
@@ -10,8 +10,7 @@ User=afterlight
 Group=afterlight
 SupplementaryGroups=docker
 WorkingDirectory=/opt/afterlight
-Environment=AFTERLIGHT_MIN_UPTIME_SECONDS=72000
-ExecStart=/opt/afterlight/server/afterlight-maintenance.sh
+ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled
 RuntimeDirectory=afterlight
 RuntimeDirectoryMode=0750
 UMask=0077

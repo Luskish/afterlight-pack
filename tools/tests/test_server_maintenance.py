@@ -25,6 +25,7 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.fake_bin.mkdir()
         self.runtime_dir.mkdir()
         self.docker_log = self.temp_path / "docker.log"
+        self.event_log = self.temp_path / "events.log"
         self.operator_log = self.temp_path / "operator.log"
         self.backup_path = self.temp_path / "backups" / "verified.tar.zst"
         self.backup_path.parent.mkdir()
@@ -40,6 +41,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                 "FAKE_BACKUP_PATH": str(self.backup_path),
                 "FAKE_DOCKER_LOG": str(self.docker_log),
                 "FAKE_DOCKER_STATE_DIR": str(self.temp_path),
+                "FAKE_EVENT_LOG": str(self.event_log),
                 "FAKE_OPERATOR_LOG": str(self.operator_log),
                 "FAKE_RCON_OUTPUT": (
                     "There are 0 of a max of 12 players online: "
@@ -73,6 +75,19 @@ class ServerMaintenanceTests(unittest.TestCase):
             """,
         )
         self._write_executable(
+            self.fake_bin / "sleep",
+            """
+            #!/usr/bin/env bash
+            set -u
+            [ "$#" -eq 1 ] || exit 90
+            case "$1" in
+              600|240|60) ;;
+              *) exit 91 ;;
+            esac
+            printf 'sleep:%s\n' "$1" >> "$FAKE_EVENT_LOG"
+            """,
+        )
+        self._write_executable(
             self.fake_bin / "docker",
             r"""
             #!/usr/bin/env bash
@@ -92,12 +107,15 @@ class ServerMaintenanceTests(unittest.TestCase):
                   esac
                 done
                 if [ "$*" = "ps -q minecraft" ]; then
+                  if [ "${FAKE_SERVER_STOPPED:-0}" -eq 1 ]; then
+                    exit 0
+                  fi
                   count_file="$FAKE_DOCKER_STATE_DIR/compose-ps-count"
                   count=0
                   [ ! -f "$count_file" ] || count=$(cat "$count_file")
                   count=$((count + 1))
                   printf '%s\n' "$count" > "$count_file"
-                  if [ "$count" -gt 1 ] && [ -n "${FAKE_CONTAINER_ID_AFTER_BACKUP:-}" ]; then
+                  if [ "$count" -ge "${FAKE_CONTAINER_ID_CHANGE_AT:-2}" ] && [ -n "${FAKE_CONTAINER_ID_AFTER_BACKUP:-}" ]; then
                     printf '%s\n' "$FAKE_CONTAINER_ID_AFTER_BACKUP"
                   else
                     printf '%s\n' "${FAKE_CONTAINER_ID:-test-container}"
@@ -113,7 +131,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                     [ ! -f "$count_file" ] || count=$(cat "$count_file")
                     count=$((count + 1))
                     printf '%s\n' "$count" > "$count_file"
-                    if [ "$count" -gt 1 ] && [ -n "${FAKE_CONTAINER_STATE_AFTER_BACKUP:-}" ]; then
+                    if [ "$count" -ge "${FAKE_CONTAINER_STATE_CHANGE_AT:-2}" ] && [ -n "${FAKE_CONTAINER_STATE_AFTER_BACKUP:-}" ]; then
                       printf '%s\n' "$FAKE_CONTAINER_STATE_AFTER_BACKUP"
                     else
                       printf '%s\n' "${FAKE_CONTAINER_STATE:-running|healthy}"
@@ -126,7 +144,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                     [ ! -f "$count_file" ] || count=$(cat "$count_file")
                     count=$((count + 1))
                     printf '%s\n' "$count" > "$count_file"
-                    if [ "$count" -gt 1 ] && [ -n "${FAKE_STARTED_AT_AFTER_BACKUP:-}" ]; then
+                    if [ "$count" -ge "${FAKE_STARTED_AT_CHANGE_AT:-2}" ] && [ -n "${FAKE_STARTED_AT_AFTER_BACKUP:-}" ]; then
                       printf '%s\n' "$FAKE_STARTED_AT_AFTER_BACKUP"
                     else
                       printf '%s\n' "${FAKE_STARTED_AT:-2020-01-01T00:00:00Z}"
@@ -136,18 +154,38 @@ class ServerMaintenanceTests(unittest.TestCase):
                 esac
                 ;;
               exec)
-                count_file="$FAKE_DOCKER_STATE_DIR/rcon-count"
-                count=0
-                [ ! -f "$count_file" ] || count=$(cat "$count_file")
-                count=$((count + 1))
-                printf '%s\n' "$count" > "$count_file"
-                if [ "$count" -gt 1 ] && [ -n "${FAKE_RCON_OUTPUT_AFTER_BACKUP:-}" ]; then
-                  printf '%s\n' "$FAKE_RCON_OUTPUT_AFTER_BACKUP"
-                else
-                  printf '%s\n' "$FAKE_RCON_OUTPUT"
-                fi
-                exit "${FAKE_RCON_EXIT:-0}"
-                ;;
+                case "${4:-}" in
+                  list)
+                    count_file="$FAKE_DOCKER_STATE_DIR/rcon-list-count"
+                    count=0
+                    [ ! -f "$count_file" ] || count=$(cat "$count_file")
+                    count=$((count + 1))
+                    printf '%s\n' "$count" > "$count_file"
+                    if [ "$count" -gt 1 ] && [ -n "${FAKE_RCON_OUTPUT_AFTER_BACKUP:-}" ]; then
+                      printf '%s\n' "$FAKE_RCON_OUTPUT_AFTER_BACKUP"
+                    else
+                      printf '%s\n' "$FAKE_RCON_OUTPUT"
+                    fi
+                    exit "${FAKE_RCON_EXIT:-0}"
+                    ;;
+                  say)
+                    count_file="$FAKE_DOCKER_STATE_DIR/rcon-say-count"
+                    count=0
+                    [ ! -f "$count_file" ] || count=$(cat "$count_file")
+                    count=$((count + 1))
+                    printf '%s\n' "$count" > "$count_file"
+                    printf 'rcon-say:%s\n' "${5:-}" >> "$FAKE_EVENT_LOG"
+                    if [ "$count" -eq "${FAKE_RCON_SAY_FAIL_AT:-0}" ]; then
+                      exit 72
+                    fi
+                    printf 'Rcon command successful\n'
+                    exit 0
+                    ;;
+                  *)
+                    printf 'unexpected fake RCON command: %s\n' "$*" >&2
+                    exit 90
+                    ;;
+                esac
             esac
             printf 'unexpected fake Docker command: %s\n' "$*" >&2
             exit 90
@@ -160,6 +198,7 @@ class ServerMaintenanceTests(unittest.TestCase):
             set -u
             command_name=${1:-}
             printf '%s\n' "$command_name" >> "$FAKE_OPERATOR_LOG"
+            printf 'operator:%s\n' "$command_name" >> "$FAKE_EVENT_LOG"
             if [ "$command_name" = "backup" ]; then
               [ "${FAKE_BACKUP_EXIT:-0}" -eq 0 ] || exit "$FAKE_BACKUP_EXIT"
               printf 'verified\n' > "$FAKE_BACKUP_PATH"
@@ -169,10 +208,10 @@ class ServerMaintenanceTests(unittest.TestCase):
             """,
         )
 
-    def _run(self) -> subprocess.CompletedProcess[str]:
+    def _run(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         self.assertTrue(MAINTENANCE.is_file(), "maintenance script is missing")
         return subprocess.run(
-            [str(MAINTENANCE)],
+            [str(MAINTENANCE), *arguments],
             cwd=ROOT,
             env=self.environment,
             text=True,
@@ -184,6 +223,76 @@ class ServerMaintenanceTests(unittest.TestCase):
         if not self.operator_log.exists():
             return []
         return self.operator_log.read_text(encoding="utf-8").splitlines()
+
+    def _events(self) -> list[str]:
+        if not self.event_log.exists():
+            return []
+        return self.event_log.read_text(encoding="utf-8").splitlines()
+
+    def _countdown_events(self) -> list[str]:
+        return [
+            "rcon-say:AFTERLIGHT restarts daily at 5:00 AM Eastern. "
+            "Restart in 15 minutes.",
+            "sleep:600",
+            "rcon-say:AFTERLIGHT restart in 5 minutes. "
+            "Please reach a safe stopping point.",
+            "sleep:240",
+            "rcon-say:AFTERLIGHT restart in 1 minute. "
+            "Please disconnect safely.",
+            "sleep:60",
+        ]
+
+    def _final_warning_event(self) -> str:
+        return (
+            "rcon-say:AFTERLIGHT is restarting now. "
+            "World backup verified."
+        )
+
+    def _reset_fake_state(self) -> None:
+        for path in (
+            self.docker_log,
+            self.event_log,
+            self.operator_log,
+            self.backup_path,
+            self.temp_path / "compose-ps-count",
+            self.temp_path / "health-count",
+            self.temp_path / "started-at-count",
+            self.temp_path / "rcon-list-count",
+            self.temp_path / "rcon-say-count",
+        ):
+            path.unlink(missing_ok=True)
+
+    def _assert_scheduled_warning_failure(self, failure_index: int) -> None:
+        self.environment["FAKE_RCON_SAY_FAIL_AT"] = str(failure_index)
+
+        result = self._run("scheduled")
+
+        self.assertNotEqual(result.returncode, 0)
+        expected_calls = [] if failure_index < 4 else ["backup"]
+        self.assertEqual(self._operator_calls(), expected_calls)
+        self.assertIn("RCON restart warning failed", result.stderr)
+
+    def _assert_scheduled_drift_failure(
+        self,
+        *,
+        changed_value_variable: str,
+        changed_value: str,
+        change_at_variable: str,
+        expected_error: str,
+    ) -> None:
+        self.environment[changed_value_variable] = changed_value
+        for checkpoint in range(2, 6):
+            with self.subTest(checkpoint=checkpoint):
+                self._reset_fake_state()
+                self.environment[change_at_variable] = str(checkpoint)
+
+                result = self._run("scheduled")
+
+                self.assertNotEqual(result.returncode, 0)
+                expected_calls = ["backup"] if checkpoint == 5 else []
+                self.assertEqual(self._operator_calls(), expected_calls)
+                self.assertNotIn(self._final_warning_event(), self._events())
+                self.assertIn(expected_error, result.stderr)
 
     def test_idle_healthy_server_restarts_after_verified_backup(self) -> None:
         result = self._run()
@@ -322,13 +431,137 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.assertEqual(self._operator_calls(), [])
         self.assertIn("contradicts listed names", result.stderr)
 
-    def test_systemd_timer_runs_hardened_idle_checks_every_two_hours(self) -> None:
+    def test_explicit_idle_mode_preserves_idle_restart_behavior(self) -> None:
+        result = self._run("idle")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self._operator_calls(), ["backup", "stop", "start", "status"]
+        )
+        self.assertIn("Maintenance restart: OK", result.stdout)
+
+    def test_scheduled_mode_restarts_with_online_players(self) -> None:
+        self.environment["FAKE_RCON_OUTPUT"] = (
+            "There are 2 of a max of 12 players online: FriendOne, FriendTwo"
+        )
+
+        result = self._run("scheduled")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self._operator_calls(), ["backup", "stop", "start", "status"]
+        )
+        self.assertIn("Scheduled restart: 2 players online", result.stdout)
+        self.assertIn("Scheduled restart: OK", result.stdout)
+
+    def test_scheduled_mode_orders_warnings_waits_backup_and_restart(self) -> None:
+        result = self._run("scheduled")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self._events(),
+            self._countdown_events()
+            + [
+                "operator:backup",
+                self._final_warning_event(),
+                "operator:stop",
+                "operator:start",
+                "operator:status",
+            ],
+        )
+
+    def test_scheduled_first_warning_failure_stops_before_backup(self) -> None:
+        self._assert_scheduled_warning_failure(1)
+
+    def test_scheduled_second_warning_failure_stops_before_backup(self) -> None:
+        self._assert_scheduled_warning_failure(2)
+
+    def test_scheduled_third_warning_failure_stops_before_backup(self) -> None:
+        self._assert_scheduled_warning_failure(3)
+
+    def test_scheduled_final_warning_failure_stops_after_backup_before_shutdown(
+        self,
+    ) -> None:
+        self._assert_scheduled_warning_failure(4)
+
+    def test_scheduled_container_replacement_fails_at_every_checkpoint(
+        self,
+    ) -> None:
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_CONTAINER_ID_AFTER_BACKUP",
+            changed_value="replacement",
+            change_at_variable="FAKE_CONTAINER_ID_CHANGE_AT",
+            expected_error="container changed during maintenance",
+        )
+
+    def test_scheduled_start_time_drift_fails_at_every_checkpoint(
+        self,
+    ) -> None:
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_STARTED_AT_AFTER_BACKUP",
+            changed_value="2020-01-02T00:00:00Z",
+            change_at_variable="FAKE_STARTED_AT_CHANGE_AT",
+            expected_error="start time changed during maintenance",
+        )
+
+    def test_scheduled_health_drift_fails_at_every_checkpoint(self) -> None:
+        self._assert_scheduled_drift_failure(
+            changed_value_variable="FAKE_CONTAINER_STATE_AFTER_BACKUP",
+            changed_value="running|unhealthy",
+            change_at_variable="FAKE_CONTAINER_STATE_CHANGE_AT",
+            expected_error="became unhealthy during maintenance",
+        )
+
+    def test_scheduled_backup_failure_never_stops_server(self) -> None:
+        self.environment["FAKE_BACKUP_EXIT"] = "7"
+
+        result = self._run("scheduled")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self._operator_calls(), ["backup"])
+        self.assertEqual(
+            self._events(), self._countdown_events() + ["operator:backup"]
+        )
+        self.assertIn("server was not stopped", result.stderr)
+
+    def test_scheduled_intentionally_stopped_server_skips(self) -> None:
+        self.environment["FAKE_SERVER_STOPPED"] = "1"
+
+        result = self._run("scheduled")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._operator_calls(), [])
+        self.assertIn("intentionally stopped", result.stdout)
+
+    def test_scheduled_rcon_query_failure_stops_before_warning(self) -> None:
+        self.environment["FAKE_RCON_EXIT"] = "1"
+
+        result = self._run("scheduled")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self._events(), [])
+        self.assertEqual(self._operator_calls(), [])
+        self.assertIn("RCON player query failed", result.stderr)
+
+    def test_unknown_mode_and_extra_arguments_fail_before_docker(self) -> None:
+        for arguments in (("unknown",), ("scheduled", "extra")):
+            with self.subTest(arguments=arguments):
+                result = self._run(*arguments)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.docker_log.exists())
+                self.assertIn("Usage:", result.stderr)
+
+    def test_systemd_timer_runs_warned_restart_daily_at_five_eastern(
+        self,
+    ) -> None:
         self.assertTrue(SERVICE.is_file(), "maintenance service is missing")
         self.assertTrue(TIMER.is_file(), "maintenance timer is missing")
         service = SERVICE.read_text(encoding="utf-8")
         timer = TIMER.read_text(encoding="utf-8")
 
         for expected in (
+            "Description=AFTERLIGHT daily warned server restart",
             "ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh",
             "User=afterlight",
             "SupplementaryGroups=docker",
@@ -336,18 +569,23 @@ class ServerMaintenanceTests(unittest.TestCase):
             "RuntimeDirectory=afterlight",
             "NoNewPrivileges=true",
             "ProtectSystem=strict",
-            "AFTERLIGHT_MIN_UPTIME_SECONDS=72000",
+            "ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled",
             "TimeoutStartSec=infinity",
         ):
             self.assertIn(expected, service)
         self.assertNotIn("ConditionPathIsExecutable", service)
         self.assertNotIn("TimeoutStartSec=20min", service)
+        self.assertNotIn("AFTERLIGHT_MIN_UPTIME_SECONDS", service)
         for expected in (
-            "Persistent=true",
-            "RandomizedDelaySec=5m",
-            "01,03,05,07,09,11,13,15,17,19,21,23:00:00 UTC",
+            "Description=Warn at 4:45 AM and restart AFTERLIGHT around 5:00 AM Eastern",
+            "OnCalendar=*-*-* 04:45:00 America/New_York",
+            "Persistent=false",
+            "AccuracySec=1s",
+            "Unit=afterlight-maintenance.service",
         ):
             self.assertIn(expected, timer)
+        self.assertNotIn("RandomizedDelaySec", timer)
+        self.assertNotIn("01,03,05,07,09,11,13,15,17,19,21,23", timer)
 
         verifier = (ROOT / "tools" / "verify-pack.sh").read_text(encoding="utf-8")
         self.assertIn("server/afterlight-maintenance.sh", verifier)
@@ -356,13 +594,16 @@ class ServerMaintenanceTests(unittest.TestCase):
             (
                 (ROOT / "docs" / "SERVER.md").read_text(encoding="utf-8"),
                 (ROOT / "server" / "README.md").read_text(encoding="utf-8"),
+                (ROOT / "docs" / "HANDOFF.md").read_text(encoding="utf-8"),
             )
         )
         for expected in (
             "systemctl enable --now afterlight-maintenance.timer",
-            "AFTERLIGHT_MIN_UPTIME_SECONDS=72000",
-            "zero players",
+            "5:00 AM Eastern",
+            "15 minutes",
+            "even when players are online",
             "verified backup",
+            "Pregen remains deferred",
         ):
             self.assertIn(expected, docs)
 

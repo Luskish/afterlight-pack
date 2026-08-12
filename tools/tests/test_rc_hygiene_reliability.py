@@ -1673,7 +1673,7 @@ class SignalRuntimeIdentityTests(unittest.TestCase):
     def test_current_signal_runtime_files_are_indexed_and_deterministic(self) -> None:
         hygiene = hygiene_module()
         result = hygiene.verify_signal_runtime_identity(ROOT)
-        self.assertEqual(result["version"], "0.9.0-rc.3")
+        self.assertEqual(result["version"], "1.0.0-rc.1")
         self.assertEqual(result["route_segments"], 21)
         self.assertEqual(result["route_quests"], 169)
         self.assertEqual(result["terminal_quest"], "31C9557D2F51238F")
@@ -4057,7 +4057,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "9831d94a6256784c2b906cb292841fcab828bc174dcc97b1b4c95d0fa5d14960",
+            "e96e859682a924554fda65ad90755adeb1425cebd74798182e53ea4140b9ada3",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

@@ -2,8 +2,9 @@
 
 This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex while preparing `1.0.0-rc.1`.
 
-## Guardrails
+## Hard rules the prompts assume (also in AGENTS.md)
 
+- Public release policy approved on 2026-08-11 requires exactly `AFTERLIGHT-prism-instance.zip`, `AFTERLIGHT-curseforge.zip`, `AFTERLIGHT.mrpack`, `SHA256SUMS`, and `release-metadata.json`.
 - Read the repository `AGENTS.md` before acting.
 - Never use em dashes in replies, docs, quest text, comments, or commits.
 - Check and invoke every applicable project skill before work.
@@ -103,6 +104,10 @@ Verify all five public assets through unauthenticated downloads and confirm that
 6. Preserve the whitelist and memory settings.
 7. Verify the server reaches `Done`, Signal loads, the quest counts match, the Far Relay dimension registers, TCP `25565` listens, and the marker equals the accepted SHA.
 8. If any check fails, use the documented rollback command to restore the previous marker and verified backup.
+
+## If returning to Claude instead of Codex
+
+Use the same skills-first, fail-closed workflow. Require exact command evidence, do not accept a summary as verification, and continue from the first incomplete item in this file.
 
 ## Interruption Prompt
 

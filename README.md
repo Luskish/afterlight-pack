@@ -29,6 +29,7 @@ Release `1.0.0-rc.1` integrates the AFTERLIGHT Signal companion:
 - `config/`, `defaultconfigs/`, and `kubejs/`: shipped pack configuration and integration layer.
 - `config/ftbquests/`: the quest book source.
 - `server/`: Docker Compose operations, backups, updates, rollback, and scheduled maintenance.
+- `docs/SERVER.md`: VPS setup, backup, deployment, rollback, restore, and maintenance procedures.
 - `tools/`: deterministic builders, validators, release tooling, and test harnesses.
 - `docs/`: design, release, installation, and server operations records.
 

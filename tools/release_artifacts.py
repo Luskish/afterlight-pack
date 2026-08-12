@@ -76,27 +76,22 @@ MAX_ARCHIVE_TOTAL_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024
 MAX_ARCHIVE_COMPRESSION_RATIO = 200
 MAX_MANIFEST_SIZE = 1024 * 1024
 MAX_TEXT_LINE_SIZE = 1024 * 1024
-CREDENTIAL_SCAN_OVERLAP_SIZE = 64 * 1024
 MAX_UNSIGNED_32 = 4294967295
 PRIVATE_KEY_HEADER = re.compile(
     rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
 )
-CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?:[\r\n,{])[\t ]*"
-    r"(?:(?:export|const|let|var)[\t ]+)?"
-    r"[\"']?"
+CREDENTIAL_KEY = re.compile(
     r"(?:(?:[A-Za-z0-9]+[._-])+)?"
     r"(?:api[._-]?key|rcon[._-]?password|"
     r"(?:access|auth|private|refresh)[._-]?token|"
     r"(?:client|consumer|signing|webhook)[._-]?secret|"
-    r"(?:database|db)[._-]?password|token|password|secret)"
-    r"[\"']?[\t \r\n]*[:=][\t \r\n]*"
-    r"(?P<value>\"(?:\\.|[^\"\\\r\n])*\"|"
-    r"'(?:\\.|[^'\\\r\n])*'|"
-    r"\$\{[^{}\r\n]*\}|[^,\s#;}\r\n]+)"
-    r"(?=$|[,\s#;}])",
+    r"(?:database|db)[._-]?password|token|password|secret)",
     re.IGNORECASE,
 )
+CREDENTIAL_DECLARATIONS = frozenset({"const", "export", "let", "var"})
+CREDENTIAL_BOUNDARIES = frozenset("\r\n,{")
+CREDENTIAL_HORIZONTAL_WHITESPACE = frozenset("\t ")
+CREDENTIAL_ASSIGNMENT_WHITESPACE = frozenset("\t \r\n")
 TEMPLATE_CREDENTIAL_VALUES = frozenset(
     {
         "0",
@@ -311,19 +306,269 @@ def _is_template_credential_value(raw_value):
     return _is_template_credential_value(environment_reference.group("operand"))
 
 
-def _contains_live_credential(data, final):
-    scan_data = data if final else data + "\x00"
-    for match in CREDENTIAL_ASSIGNMENT.finditer(scan_data):
-        if not _is_template_credential_value(match.group("value")):
-            return True
-    return False
+def _is_credential_key_character(character):
+    return character.isascii() and (
+        character.isalnum() or character in "._-"
+    )
+
+
+def _is_credential_value_delimiter(character):
+    return character.isspace() or character in ",#;}"
+
+
+class _CredentialAssignmentScanner:
+    SEEK = "seek"
+    LEADING = "leading"
+    TOKEN = "token"
+    AFTER_DECLARATION = "after_declaration"
+    AFTER_KEY = "after_key"
+    AFTER_SEPARATOR = "after_separator"
+    DOLLAR_VALUE = "dollar_value"
+    BRACED_VALUE = "braced_value"
+    QUOTED_VALUE = "quoted_value"
+    COMPLETE_VALUE = "complete_value"
+    UNQUOTED_VALUE = "unquoted_value"
+
+    def __init__(self):
+        self.live_credential_found = False
+        self.state = self.LEADING
+        self.token_characters = []
+        self.token_quoted = False
+        self.value_characters = []
+        self.value_quote = None
+        self.value_escaped = False
+
+    def feed(self, data):
+        if self.live_credential_found:
+            return
+        for character in data:
+            self._consume(character)
+            if self.live_credential_found:
+                return
+
+    def finish(self):
+        if self.state in {
+            self.DOLLAR_VALUE,
+            self.BRACED_VALUE,
+            self.QUOTED_VALUE,
+            self.COMPLETE_VALUE,
+            self.UNQUOTED_VALUE,
+        }:
+            self._resolve_value()
+        return self.live_credential_found
+
+    def _consume(self, character):
+        if self.state == self.SEEK:
+            if character in CREDENTIAL_BOUNDARIES:
+                self.state = self.LEADING
+            return
+
+        if self.state == self.LEADING:
+            if character in CREDENTIAL_HORIZONTAL_WHITESPACE:
+                return
+            if character in CREDENTIAL_BOUNDARIES:
+                return
+            if character in {'"', "'"}:
+                self._start_token(quoted=True)
+                return
+            if _is_credential_key_character(character):
+                self._start_token(quoted=False)
+                self._append_token(character)
+                return
+            self._reset_for_character(character)
+            return
+
+        if self.state == self.TOKEN:
+            self._consume_token(character)
+            return
+
+        if self.state == self.AFTER_DECLARATION:
+            if character in CREDENTIAL_HORIZONTAL_WHITESPACE:
+                return
+            if character in {'"', "'"}:
+                self._start_token(quoted=True)
+                return
+            if _is_credential_key_character(character):
+                self._start_token(quoted=False)
+                self._append_token(character)
+                return
+            self._reset_for_character(character)
+            return
+
+        if self.state == self.AFTER_KEY:
+            if character in CREDENTIAL_ASSIGNMENT_WHITESPACE:
+                return
+            if character in ":=":
+                self.state = self.AFTER_SEPARATOR
+                return
+            self._reset_for_character(character)
+            return
+
+        if self.state == self.AFTER_SEPARATOR:
+            if character in CREDENTIAL_ASSIGNMENT_WHITESPACE:
+                return
+            if _is_credential_value_delimiter(character):
+                self._reset_for_character(character)
+                return
+            if character in {'"', "'"}:
+                self._start_value(self.QUOTED_VALUE, character)
+                self.value_quote = character
+                return
+            if character == "$":
+                self._start_value(self.DOLLAR_VALUE, character)
+                return
+            self._start_value(self.UNQUOTED_VALUE, character)
+            return
+
+        if self.state == self.DOLLAR_VALUE:
+            if character == "{":
+                self._append_value(character)
+                self.state = self.BRACED_VALUE
+                return
+            if _is_credential_value_delimiter(character):
+                self._resolve_value()
+                self._reset_for_character(character)
+                return
+            self._append_value(character)
+            self.state = self.UNQUOTED_VALUE
+            return
+
+        if self.state == self.BRACED_VALUE:
+            if character == "}":
+                self._append_value(character)
+                self.state = self.COMPLETE_VALUE
+                return
+            if character in "{\r\n":
+                self._resolve_value()
+                self._reset_for_character(character)
+                return
+            self._append_value(character)
+            return
+
+        if self.state == self.QUOTED_VALUE:
+            if self.value_escaped:
+                if character in "\r\n":
+                    self._resolve_value()
+                    self._reset_for_character(character)
+                    return
+                self._append_value(character)
+                self.value_escaped = False
+                return
+            if character == "\\":
+                self._append_value(character)
+                self.value_escaped = True
+                return
+            if character == self.value_quote:
+                self._append_value(character)
+                self.state = self.COMPLETE_VALUE
+                return
+            if character in "\r\n":
+                self._resolve_value()
+                self._reset_for_character(character)
+                return
+            self._append_value(character)
+            return
+
+        if self.state == self.COMPLETE_VALUE:
+            if _is_credential_value_delimiter(character):
+                self._resolve_value()
+                self._reset_for_character(character)
+                return
+            self._append_value(character)
+            self.state = self.UNQUOTED_VALUE
+            return
+
+        if self.state == self.UNQUOTED_VALUE:
+            if _is_credential_value_delimiter(character):
+                self._resolve_value()
+                self._reset_for_character(character)
+                return
+            self._append_value(character)
+
+    def _consume_token(self, character):
+        if _is_credential_key_character(character):
+            self._append_token(character)
+            return
+
+        token = "".join(self.token_characters)
+        token_is_key = CREDENTIAL_KEY.fullmatch(token) is not None
+        token_is_declaration = (
+            not self.token_quoted
+            and token.casefold() in CREDENTIAL_DECLARATIONS
+        )
+        self.token_characters = []
+
+        if character in {'"', "'"}:
+            if token_is_key:
+                self.state = self.AFTER_KEY
+            else:
+                self._reset_for_character(character)
+            return
+        if character in CREDENTIAL_HORIZONTAL_WHITESPACE:
+            if token_is_declaration:
+                self.state = self.AFTER_DECLARATION
+            elif token_is_key:
+                self.state = self.AFTER_KEY
+            else:
+                self._reset_for_character(character)
+            return
+        if character in "\r\n":
+            if token_is_key:
+                self.state = self.AFTER_KEY
+            else:
+                self._reset_for_character(character)
+            return
+        if character in ":=" and token_is_key:
+            self.state = self.AFTER_SEPARATOR
+            return
+        self._reset_for_character(character)
+
+    def _start_token(self, quoted):
+        self.state = self.TOKEN
+        self.token_characters = []
+        self.token_quoted = quoted
+
+    def _append_token(self, character):
+        if len(self.token_characters) >= MAX_TEXT_LINE_SIZE:
+            self.token_characters = []
+            self.state = self.SEEK
+            return
+        self.token_characters.append(character)
+
+    def _start_value(self, state, character):
+        self.state = state
+        self.value_characters = [character]
+        self.value_quote = None
+        self.value_escaped = False
+
+    def _append_value(self, character):
+        if len(self.value_characters) >= MAX_TEXT_LINE_SIZE:
+            self.value_characters = []
+            self.state = self.SEEK
+            return
+        self.value_characters.append(character)
+
+    def _resolve_value(self):
+        raw_value = "".join(self.value_characters)
+        if raw_value and not _is_template_credential_value(raw_value):
+            self.live_credential_found = True
+        self.value_characters = []
+
+    def _reset_for_character(self, character):
+        self.token_characters = []
+        self.value_characters = []
+        self.value_quote = None
+        self.value_escaped = False
+        if character in CREDENTIAL_BOUNDARIES:
+            self.state = self.LEADING
+        else:
+            self.state = self.SEEK
 
 
 def _scan_archive_member_stream(stream, label, max_bytes):
-    decoder = codecs.getincrementaldecoder("utf-8")("strict")
+    decoder = codecs.getincrementaldecoder("utf-8-sig")("strict")
     binary_overlap = b""
-    credential_buffer = "\n"
-    credential_found = False
+    credential_scanner = _CredentialAssignmentScanner()
     text_valid = True
     text_line_too_long = False
     current_line_size = 0
@@ -346,8 +591,7 @@ def _scan_archive_member_stream(stream, label, max_bytes):
             continue
         if b"\x00" in chunk:
             text_valid = False
-            credential_found = False
-            credential_buffer = ""
+            credential_scanner = None
             continue
 
         line_parts = chunk.split(b"\n")
@@ -362,32 +606,24 @@ def _scan_archive_member_stream(stream, label, max_bytes):
             current_line_size = len(line_parts[-1])
 
         try:
-            credential_buffer += decoder.decode(chunk, final=False)
+            decoded_chunk = decoder.decode(chunk, final=False)
         except UnicodeDecodeError:
             text_valid = False
-            credential_found = False
-            credential_buffer = ""
+            credential_scanner = None
             continue
-        credential_found |= _contains_live_credential(
-            credential_buffer,
-            final=False,
-        )
-        credential_buffer = credential_buffer[-CREDENTIAL_SCAN_OVERLAP_SIZE:]
+        credential_scanner.feed(decoded_chunk)
 
     if text_valid:
         try:
-            credential_buffer += decoder.decode(b"", final=True)
+            decoded_tail = decoder.decode(b"", final=True)
         except UnicodeDecodeError:
             text_valid = False
     if text_valid:
+        credential_scanner.feed(decoded_tail)
         text_line_too_long |= current_line_size > MAX_TEXT_LINE_SIZE
         if text_line_too_long:
             raise ValueError(f"text line exceeds the byte limit in {label}")
-        credential_found |= _contains_live_credential(
-            credential_buffer,
-            final=True,
-        )
-        if credential_found:
+        if credential_scanner.finish():
             raise ValueError(f"credential assignment found in {label}")
     return total_bytes
 

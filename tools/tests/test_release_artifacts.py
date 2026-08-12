@@ -795,6 +795,13 @@ class ReleasePolicyTests(unittest.TestCase):
                     secret_value,
                 )
 
+    def test_archive_content_rejects_utf8_bom_before_first_line_credential(self):
+        self._assert_archive_credential_rejected(
+            "overrides/docs/setup.md",
+            b'\xef\xbb\xbfclient_secret = "bom-live-fixture"\n',
+            "bom-live-fixture",
+        )
+
     def test_archive_content_rejects_environment_references_with_literal_defaults(self):
         fixtures = (
             b'client_secret = "${CLIENT_SECRET:-fallback-live-fixture}"\n',
@@ -851,6 +858,21 @@ class ReleasePolicyTests(unittest.TestCase):
             "overrides/neutral/chunked.data",
             content,
             "chunk-live-fixture",
+        )
+
+    def test_archive_content_retains_credential_key_across_more_than_64_kib_whitespace(self):
+        chunk_size = 1024 * 1024
+        key = b'"service.client_secret"'
+        whitespace = b"\n" * (64 * 1024 + 1)
+        prefix = self._deterministic_text_padding(
+            chunk_size - len(key) - len(whitespace)
+        )
+        content = prefix + key + whitespace + b':\n"span-live-fixture"\n'
+
+        self._assert_archive_credential_rejected(
+            "overrides/neutral/long-span.data",
+            content,
+            "span-live-fixture",
         )
 
     def test_archive_content_distinguishes_utf8_text_from_binary_bytes(self):

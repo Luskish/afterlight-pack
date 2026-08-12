@@ -722,9 +722,9 @@ class JarOverrideFixtureTests(unittest.TestCase):
             evidence["mixin_config_sha256"],
             "02dd86d2bd0ed6bef4841b1ae4ac8579edeb33fe0134f2060191b49102c4878d",
         )
-        self.assertEqual(evidence["enabled_metadata"], 157)
-        self.assertEqual(evidence["top_level_artifacts"], 157)
-        self.assertEqual(evidence["archive_scopes"], 305)
+        self.assertEqual(evidence["enabled_metadata"], 158)
+        self.assertEqual(evidence["top_level_artifacts"], 158)
+        self.assertEqual(evidence["archive_scopes"], 306)
         self.assertEqual(evidence["mixin_configs"], 265)
         self.assertEqual(evidence["common_mixins"], 2320)
         self.assertEqual(evidence["annotation_clientlevel_mixins"], 3)

@@ -109,7 +109,7 @@ FIRST_SUMMARY=$(python3 tools/client_install_support.py \
 FIRST_MODSET_SHA256=$(printf '%s' "$FIRST_SUMMARY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["modset_sha256"])')
 FIRST_CLIENT_COUNT=$(printf '%s' "$FIRST_SUMMARY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["client_mod_count"])')
 FIRST_SERVER_COUNT=$(printf '%s' "$FIRST_SUMMARY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["server_only_count"])')
-[ "$FIRST_CLIENT_COUNT" = 155 ] || fail "client install count changed: $FIRST_CLIENT_COUNT"
+[ "$FIRST_CLIENT_COUNT" = 156 ] || fail "client install count changed: $FIRST_CLIENT_COUNT"
 [ "$FIRST_SERVER_COUNT" = 13 ] || fail "server-only exclusion count changed: $FIRST_SERVER_COUNT"
 
 run_installer

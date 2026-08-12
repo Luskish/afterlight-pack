@@ -6,7 +6,7 @@
 	icon: { id: "immersiveengineering:ingot_steel" }
 	id: "45491A24F6B8C192"
 	images: [ ]
-	order_index: 3
+	order_index: 4
 	quest_links: [ ]
 	quests: [
 		{

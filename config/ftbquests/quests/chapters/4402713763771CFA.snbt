@@ -6,7 +6,7 @@
 	icon: { id: "kubejs:gate_blueprint" }
 	id: "4402713763771CFA"
 	images: [ ]
-	order_index: 15
+	order_index: 16
 	quest_links: [ ]
 	quests: [
 		{

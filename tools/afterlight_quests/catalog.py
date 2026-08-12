@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 
 from .builder import (
     ChapterSpec,
@@ -44,6 +45,51 @@ CERTIFICATION_FINALES = (
     "7C9EA276C2D84333",
 )
 INFRASTRUCTURE_FINALE = "6524EE78235F0942"
+
+
+def _echo_protocols() -> ChapterSpec:
+    quest_slug = "story/echo-protocols/recover-echo"
+    return ChapterSpec(
+        slug="story/echo-protocols",
+        title="ECHO Protocols",
+        group=STORY,
+        icon="afterlight:echo",
+        order_index=0,
+        quests=(
+            QuestSpec(
+                slug=quest_slug,
+                title="Recover ECHO",
+                subtitle="Continuity requires a reachable interface.",
+                description=(
+                    "If your continuity node is lost, authorize a replacement here. The previous signal will be superseded. Nothing else will be duplicated.",
+                ),
+                x=0.0,
+                y=0.0,
+                tasks=(
+                    TaskSpec(
+                        f"{quest_slug}/task",
+                        "checkmark",
+                        explicit_id="6C40000000000003",
+                    ),
+                ),
+                rewards=(
+                    RewardSpec(
+                        slug=f"{quest_slug}/reward/recover",
+                        reward_type="command",
+                        data={
+                            "command": "echo recover",
+                            "silent": True,
+                        },
+                        explicit_id="6C40000000000004",
+                    ),
+                ),
+                can_repeat=True,
+                repeat_cooldown=5,
+                explicit_id="6C40000000000002",
+            ),
+        ),
+        explicit_id="6C40000000000001",
+    )
 
 
 def _item_reward(quest_slug: str, item_id: str, count: int, name: str) -> RewardSpec:
@@ -1198,7 +1244,10 @@ def _chapter_nineteen() -> ChapterSpec:
         _task_quest(seconds, "Eleven Seconds", "Match the old window without repeating the old assumptions.", (
             "Open the Gate for eleven controlled seconds, then close it before interpreting any response.",
             "Observation precedes conversation. This rule has acquired evidence.",
-        ), "checkmark", {}, (anchor,), 7.0, 0.0),
+        ), "advancement", {
+            "advancement": "afterlight:gate_opened",
+            "criterion": "",
+        }, (anchor,), 7.0, 0.0),
         QuestSpec(
             slug=finale,
             title="Gate of Return",
@@ -1365,6 +1414,7 @@ def _postgame_beyond_afterlight() -> ChapterSpec:
     kinetic = f"{chapter_slug}/kinetic-blessing"
     lattice = f"{chapter_slug}/lattice-blessing"
     industrial = f"{chapter_slug}/industrial-blessing"
+    far_relay = f"{chapter_slug}/far-relay"
 
     def item_task(
         quest_slug: str,
@@ -1390,6 +1440,47 @@ def _postgame_beyond_afterlight() -> ChapterSpec:
         )
 
     quests = (
+        QuestSpec(
+            slug=far_relay,
+            title="The Far Relay",
+            subtitle="The inbound signal has a location now.",
+            description=(
+                "Cross the physical Gate and reach the receiving relay. Familiar architecture remains evidence, not trust.",
+            ),
+            x=0.0,
+            y=-3.0,
+            dependencies=("31C9557D2F51238F",),
+            progression_mode="linear",
+            tasks=(
+                TaskSpec(
+                    f"{far_relay}/task",
+                    "advancement",
+                    {
+                        "advancement": "afterlight:far_relay_arrival",
+                        "criterion": "",
+                    },
+                    explicit_id="6C40000000000102",
+                ),
+            ),
+            rewards=(
+                RewardSpec(
+                    slug=f"{far_relay}/reward/chits",
+                    reward_type="item",
+                    data={
+                        "item": {"count": 16, "id": "kubejs:requisition_chit"},
+                        "count": 16,
+                    },
+                    explicit_id="6C40000000000103",
+                ),
+                RewardSpec(
+                    slug=f"{far_relay}/reward/xp",
+                    reward_type="xp",
+                    data={"xp": 500},
+                    explicit_id="6C40000000000104",
+                ),
+            ),
+            explicit_id="6C40000000000101",
+        ),
         QuestSpec(
             slug=beyond,
             title="Beyond the Seal",
@@ -2376,6 +2467,7 @@ def _atlas_chapters() -> tuple[ChapterSpec, ...]:
 
 
 def build_catalog() -> list[ChapterSpec]:
+    echo_protocols = _echo_protocols()
     chapter_six = _chapter_six()
     chapter_seven = _chapter_seven(chapter_six.quests[-1].slug)
     chapter_eight = _chapter_eight(chapter_seven.quests[-1].slug)
@@ -2414,7 +2506,7 @@ def build_catalog() -> list[ChapterSpec]:
     undercurrent = _undercurrent_chapters()
     deep_vault = _deep_vault_chapters()
     atlas = _atlas_chapters()
-    return [
+    story = [
         chapter_six,
         chapter_seven,
         chapter_eight,
@@ -2431,6 +2523,13 @@ def build_catalog() -> list[ChapterSpec]:
         chapter_nineteen,
         chapter_twenty,
         postgame,
+    ]
+    story = [
+        replace(chapter, order_index=chapter.order_index + 1)
+        for chapter in story
+    ]
+    return [
+        *story,
         logistics,
         ore_loop,
         autocrafting,
@@ -2443,4 +2542,5 @@ def build_catalog() -> list[ChapterSpec]:
         *undercurrent,
         *deep_vault,
         *atlas,
+        echo_protocols,
     ]

@@ -6,7 +6,7 @@
 	icon: { id: "create:andesite_alloy" }
 	id: "4C01977EF77930A6"
 	images: [ ]
-	order_index: 1
+	order_index: 2
 	quest_links: [ ]
 	quests: [
 		{

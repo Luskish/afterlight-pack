@@ -197,7 +197,7 @@ def valid_boot_log(nonce: str) -> str:
             "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
             f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}",
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -238,7 +238,7 @@ def valid_gate_boot_log(nonce: str, *, gate_first: bool = True) -> str:
             'Done (12.345s)! For help, type "help"',
             *audits,
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -1333,7 +1333,7 @@ class MixinCorpusNegativeTests(unittest.TestCase):
     def test_real_corpus_processes_every_mixin_scope(self) -> None:
         hygiene = hygiene_module()
         evidence = hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
-        self.assertEqual(evidence["archive_scopes"], 305)
+        self.assertEqual(evidence["archive_scopes"], 306)
         self.assertEqual(evidence["mixin_configs"], 265)
         self.assertEqual(evidence["common_mixins"], 2320)
         self.assertEqual(evidence["server_mixins"], 5)
@@ -1646,6 +1646,46 @@ class BootOracleNegativeTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(hygiene.VerificationError, "count mismatch"):
             hygiene.validate_known_residual_warnings(valid_log + jdt_line + "\n")
+
+
+class SignalRuntimeIdentityTests(unittest.TestCase):
+    def test_pack_version_payload_requires_one_exact_utf8_line(self) -> None:
+        hygiene = hygiene_module()
+        self.assertEqual(
+            hygiene.validate_pack_version_payload(b"1.0.0-rc.1\n", "1.0.0-rc.1"),
+            "1.0.0-rc.1",
+        )
+        invalid = (
+            b"",
+            b"\n",
+            b"1.0.0-rc.1",
+            b"1.0.0-rc.1\n\n",
+            b"1.0.0-rc.1\nextra\n",
+            b"0.9.0-rc.3\n",
+            b"\xff\n",
+        )
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(
+                hygiene.VerificationError
+            ):
+                hygiene.validate_pack_version_payload(payload, "1.0.0-rc.1")
+
+    def test_current_signal_runtime_files_are_indexed_and_deterministic(self) -> None:
+        hygiene = hygiene_module()
+        result = hygiene.verify_signal_runtime_identity(ROOT)
+        self.assertEqual(result["version"], "0.9.0-rc.3")
+        self.assertEqual(result["route_segments"], 21)
+        self.assertEqual(result["route_quests"], 169)
+        self.assertEqual(result["terminal_quest"], "31C9557D2F51238F")
+        self.assertEqual(result["signal_side"], "both")
+        self.assertEqual(
+            result["signal_url"],
+            "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/afterlight-signal-0.2.0%2B1.21.1.jar",
+        )
+        self.assertEqual(
+            result["signal_sha512"],
+            "902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f",
+        )
 
 
 class ManifestAndProvenanceNegativeTests(unittest.TestCase):
@@ -1975,6 +2015,27 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                     expected_digest=expected["digest"],
                 )
 
+    def test_signal_release_updates_reviewed_server_artifact_seal(self) -> None:
+        hygiene = hygiene_module()
+        self.assertEqual(158, hygiene.REVIEWED_SERVER_ARTIFACT_COUNT)
+        self.assertEqual(
+            "edd124473b7646a0b91c0f3d6ae664ef2f021cfb062da6ce4510ed0e9399f225",
+            hygiene.REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256,
+        )
+        self.assertEqual(
+            hygiene.REVIEWED_SERVER_ARTIFACT_COUNT,
+            hygiene.SABLE_ENABLED_METADATA_COUNT,
+        )
+        self.assertEqual(
+            hygiene.REVIEWED_SERVER_ARTIFACT_COUNT,
+            hygiene.SABLE_TOP_LEVEL_ARTIFACT_COUNT,
+        )
+        self.assertEqual(306, hygiene.SABLE_ARCHIVE_SCOPE_COUNT)
+        self.assertEqual(
+            "bbfc73bfee29c88c97f11de9906f0f41356d2518b82d13468c298f149985912c",
+            hygiene.REVIEWED_MIXIN_CORPUS_SHA256,
+        )
+
     def test_duplicate_ae2_metadata_is_removed(self) -> None:
         self.assertTrue((ROOT / "mods" / "ae2.pw.toml").is_file())
         self.assertFalse((ROOT / "mods" / "applied-energistics-2.pw.toml").exists())
@@ -2094,7 +2155,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 307)
+        self.assertEqual(len(indexed), 311)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -3103,8 +3164,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "c91159d0342af3fe365923de0224c834041c248a958f8742717bbcf92ec1258a",
-                237,
+                "2ed6a0fe7e98176645599ccc3eed2b1b17f37d77a0aee4b1196ff404b201996b",
+                238,
             ),
         )
 
@@ -3240,7 +3301,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "DedicatedServer/]: Done (",
             "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
             "[AFTERLIGHT GATE RECIPE AUDIT] OK ",
-            "FTB Quests/]: Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "FTB Quests/]: Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
             "MinecraftServer/]: Stopping server",
             "MinecraftServer/]: Saving players",
             "MinecraftServer/]: Saving worlds",
@@ -3266,7 +3327,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             ("DedicatedServer/]: Done (", "[AFTERLIGHT QUEST ITEM AUDIT] OK "),
             (
                 "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
-                "FTB Quests/]: Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+                "FTB Quests/]: Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
             ),
             ("MinecraftServer/]: Saving players", "MinecraftServer/]: Saving worlds"),
         )
@@ -3996,7 +4057,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "bac4037040ac2b758e7eb605ae1e02fae816b78ea99a9310f6798cae2994dc4b",
+            "9831d94a6256784c2b906cb292841fcab828bc174dcc97b1b4c95d0fa5d14960",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
@@ -5150,7 +5211,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
-            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
         )
         try:
             projection = self.hygiene.validate_boot_markers(current, "fresh", 0, ROOT)
@@ -5158,7 +5219,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             self.fail(str(error))
         self.assertIn("FTB Quests load", {label for label, _record in projection})
         stale = current.replace(
-            "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
         )
         with self.assertRaisesRegex(
@@ -5632,12 +5693,12 @@ class QuestIdentityStabilityTests(unittest.TestCase):
                 (
                     "chapter order",
                     "chapters/245BADE04399406C.snbt",
-                    lambda text: text.replace("order_index: 19", "order_index: -1", 1),
+                    lambda text: text.replace("order_index: 20", "order_index: -1", 1),
                 ),
                 (
                     "duplicate chapter order",
                     "chapters/5538973B3F8B1C72.snbt",
-                    lambda text: text.replace("order_index: 5", "order_index: 4", 1),
+                    lambda text: text.replace("order_index: 6", "order_index: 5", 1),
                 ),
                 (
                     "quest order",

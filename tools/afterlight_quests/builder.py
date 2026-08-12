@@ -149,10 +149,11 @@ class TaskSpec:
     task_type: str
     data: Mapping[str, Any] = field(default_factory=dict)
     title: str = ""
+    explicit_id: str | None = None
 
     @property
     def id(self) -> str:
-        return stable_id("task", self.slug)
+        return ftb_safe_id(self.explicit_id) if self.explicit_id else stable_id("task", self.slug)
 
 
 @dataclass
@@ -160,10 +161,11 @@ class RewardSpec:
     slug: str
     reward_type: str
     data: Mapping[str, Any] = field(default_factory=dict)
+    explicit_id: str | None = None
 
     @property
     def id(self) -> str:
-        return stable_id("reward", self.slug)
+        return ftb_safe_id(self.explicit_id) if self.explicit_id else stable_id("reward", self.slug)
 
 
 @dataclass
@@ -184,6 +186,7 @@ class QuestSpec:
     optional: bool | None = None
     can_repeat: bool | None = None
     repeat_cooldown: int | None = None
+    explicit_id: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -201,7 +204,7 @@ class QuestSpec:
 
     @property
     def id(self) -> str:
-        return stable_id("quest", self.slug)
+        return ftb_safe_id(self.explicit_id) if self.explicit_id else stable_id("quest", self.slug)
 
     @property
     def dependency_ids(self) -> tuple[str, ...]:
@@ -222,10 +225,11 @@ class ChapterSpec:
     order_index: int
     quests: tuple[QuestSpec, ...]
     default_quest_shape: str = ""
+    explicit_id: str | None = None
 
     @property
     def id(self) -> str:
-        return stable_id("chapter", self.slug)
+        return ftb_safe_id(self.explicit_id) if self.explicit_id else stable_id("chapter", self.slug)
 
 
 def ftb_safe_id(identifier: str) -> str:

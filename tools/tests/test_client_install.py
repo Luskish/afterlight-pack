@@ -119,6 +119,7 @@ class ClientInventoryTests(unittest.TestCase):
         searchables = "Searchables-neoforge-1.21.1-1.0.2.jar"
         ftb_ultimine = "ftb-ultimine-neoforge-2101.1.15.jar"
         lootr = "lootr-neoforge-1.21.1-1.11.38.123.jar"
+        afterlight_signal = "afterlight-signal-0.2.0+1.21.1.jar"
         veinminer = "veinminer-neoforge-2.11.2+1.21.1.jar"
         veinminer_hotkey = "veinminer-client-neoforge-2.11.2+1.21.1.jar"
         self.assertIn(smartbrainlib, client_required)
@@ -128,9 +129,10 @@ class ClientInventoryTests(unittest.TestCase):
         self.assertIn(searchables, client_required)
         self.assertIn(ftb_ultimine, client_required)
         self.assertIn(lootr, client_required)
+        self.assertIn(afterlight_signal, client_required)
         self.assertNotIn(veinminer, client_required)
         self.assertNotIn(veinminer_hotkey, client_required)
-        self.assertEqual(len(client_required), 155)
+        self.assertEqual(len(client_required), 156)
         self.assertEqual(len(server_only), 13)
 
 
@@ -154,7 +156,7 @@ class ClientHarnessContractTests(unittest.TestCase):
         self.assertIn("need a working Java 21 runtime", self.source)
         self.assertIn("FIRST_MODSET_SHA256", self.source)
         self.assertIn("SECOND_MODSET_SHA256", self.source)
-        self.assertIn('[ "$FIRST_CLIENT_COUNT" = 155 ]', self.source)
+        self.assertIn('[ "$FIRST_CLIENT_COUNT" = 156 ]', self.source)
         self.assertIn("CLIENT INSTALL: OK", self.source)
 
     def test_harness_avoids_ambiguous_and_or_guards(self):

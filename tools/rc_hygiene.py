@@ -156,19 +156,19 @@ SABLE_MIXIN_CLASSES = {
         "f5cecf91372f08ef0b5b9bc36f609b6f2df726dc3612731d9e0a5a56460b647c",
     ),
 }
-SABLE_ENABLED_METADATA_COUNT = 157
-SABLE_TOP_LEVEL_ARTIFACT_COUNT = 157
-SABLE_ARCHIVE_SCOPE_COUNT = 305
+SABLE_ENABLED_METADATA_COUNT = 158
+SABLE_TOP_LEVEL_ARTIFACT_COUNT = 158
+SABLE_ARCHIVE_SCOPE_COUNT = 306
 SABLE_MIXIN_CONFIG_COUNT = 265
 SABLE_COMMON_MIXIN_COUNT = 2320
 SABLE_SERVER_MIXIN_COUNT = 5
 SABLE_ANNOTATION_CLIENTLEVEL_MIXIN_COUNT = 3
-REVIEWED_SERVER_ARTIFACT_COUNT = 157
+REVIEWED_SERVER_ARTIFACT_COUNT = 158
 REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256 = (
-    "846d3636995f2d00016f5d6c48be759fc4f182aebb9d78c61e1b11abffc381d2"
+    "edd124473b7646a0b91c0f3d6ae664ef2f021cfb062da6ce4510ed0e9399f225"
 )
 REVIEWED_MIXIN_CORPUS_SHA256 = (
-    "89b497a7f29cce05f3b53d8fbaa538d2999744c8814f2091da3e5410966362de"
+    "bbfc73bfee29c88c97f11de9906f0f41356d2518b82d13468c298f149985912c"
 )
 REVIEWED_CLIENT_TARGET_COUNT = 31
 REVIEWED_CLIENT_TARGET_INVENTORY_SHA256 = (
@@ -899,6 +899,126 @@ def verify_manifest(root: Path | str) -> dict[str, object]:
         "file_hash_format": file_hash_format,
         "indexed_hashes": indexed_hashes,
         "indexed_entries": indexed_entries,
+    }
+
+
+def validate_pack_version_payload(payload: bytes, expected_version: str) -> str:
+    try:
+        value = payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise VerificationError("pack runtime version is not valid UTF-8") from error
+    if value != f"{expected_version}\n":
+        raise VerificationError(
+            "pack runtime version must be one exact line matching pack.toml"
+        )
+    return expected_version
+
+
+def verify_signal_runtime_identity(
+    root: Path | str,
+    manifest: dict[str, object] | None = None,
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    manifest = verify_manifest(root_path) if manifest is None else manifest
+    indexed_entries = manifest.get("indexed_entries")
+    if not isinstance(indexed_entries, dict):
+        raise VerificationError("manifest has no indexed entry inventory")
+
+    pack = _read_toml(
+        _verified_regular_file(
+            root_path, PurePosixPath("pack.toml"), "pack manifest"
+        )
+    )
+    version = pack.get("version")
+    if not isinstance(version, str) or not version:
+        raise VerificationError("pack version is missing")
+
+    required_entries = {
+        "config/afterlight/pack_version.txt": False,
+        "config/afterlight/echo_route.json": False,
+        "mods/afterlight-signal.pw.toml": True,
+    }
+    for relative, metafile in required_entries.items():
+        entry = indexed_entries.get(relative)
+        if not isinstance(entry, dict) or entry.get("metafile") is not metafile:
+            raise VerificationError(
+                f"Signal runtime file has wrong or missing index entry: {relative}"
+            )
+
+    version_path = _verified_regular_file(
+        root_path,
+        PurePosixPath("config/afterlight/pack_version.txt"),
+        "pack runtime version",
+    )
+    validate_pack_version_payload(version_path.read_bytes(), version)
+
+    route_path = _verified_regular_file(
+        root_path,
+        PurePosixPath("config/afterlight/echo_route.json"),
+        "ECHO route",
+    )
+    quest_root = root_path / "config" / "ftbquests" / "quests"
+    try:
+        from afterlight_quests.echo_route import (
+            build_echo_route,
+            render_echo_route,
+            validate_echo_route,
+        )
+    except ModuleNotFoundError:
+        from tools.afterlight_quests.echo_route import (
+            build_echo_route,
+            render_echo_route,
+            validate_echo_route,
+        )
+    try:
+        route = json.loads(route_path.read_text(encoding="utf-8"))
+        errors = validate_echo_route(route, quest_root)
+        expected_route = render_echo_route(build_echo_route(quest_root))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise VerificationError(f"cannot validate deterministic ECHO route: {error}") from error
+    if errors:
+        raise VerificationError("invalid ECHO route: " + "; ".join(errors))
+    if route_path.read_text(encoding="utf-8") != expected_route:
+        raise VerificationError("ECHO route differs from deterministic builder output")
+
+    descriptor_path = _verified_regular_file(
+        root_path,
+        PurePosixPath("mods/afterlight-signal.pw.toml"),
+        "AFTERLIGHT Signal descriptor",
+    )
+    descriptor = _read_toml(descriptor_path)
+    if descriptor.get("name") != "AFTERLIGHT Signal":
+        raise VerificationError("AFTERLIGHT Signal descriptor name changed")
+    if descriptor.get("filename") != "afterlight-signal-0.2.0+1.21.1.jar":
+        raise VerificationError("AFTERLIGHT Signal descriptor filename changed")
+    if descriptor.get("side") != "both":
+        raise VerificationError("AFTERLIGHT Signal descriptor side must be both")
+    download = descriptor.get("download")
+    if not isinstance(download, dict):
+        raise VerificationError("AFTERLIGHT Signal descriptor has no download table")
+    signal_url = (
+        "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/"
+        "afterlight-signal-0.2.0%2B1.21.1.jar"
+    )
+    if download.get("url") != signal_url:
+        raise VerificationError("AFTERLIGHT Signal descriptor URL changed")
+    if download.get("hash-format") != "sha512":
+        raise VerificationError("AFTERLIGHT Signal descriptor must use SHA-512")
+    signal_sha512 = download.get("hash")
+    if not isinstance(signal_sha512, str) or not re.fullmatch(
+        r"[0-9a-f]{128}", signal_sha512
+    ):
+        raise VerificationError("AFTERLIGHT Signal descriptor SHA-512 is malformed")
+
+    segments = route["segments"]
+    return {
+        "version": version,
+        "route_segments": len(segments),
+        "route_quests": sum(len(segment["quests"]) for segment in segments),
+        "terminal_quest": route["terminal_quest"],
+        "signal_side": descriptor["side"],
+        "signal_url": signal_url,
+        "signal_sha512": signal_sha512,
     }
 
 
@@ -3794,7 +3914,7 @@ SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "bac4037040ac2b758e7eb605ae1e02fae816b78ea99a9310f6798cae2994dc4b"
+    "9831d94a6256784c2b906cb292841fcab828bc174dcc97b1b4c95d0fa5d14960"
 )
 SEAL_RENDERED_CODE_RELATIVES = frozenset(
     {
@@ -6474,7 +6594,7 @@ def validate_boot_markers(
     gate_message = (
         f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
-    ftb_message = "Loaded 6 chapter groups, 46 chapters, 313 quests, 6 reward tables"
+    ftb_message = "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables"
 
     def exact_single(
         record: LogRecord,
@@ -6702,10 +6822,12 @@ def build_filter_archive() -> bytes:
 def _cli_verify_manifest(args: argparse.Namespace) -> None:
     result = verify_manifest(Path(args.root))
     verify_better_strongholds_contract(Path(args.root))
+    signal = verify_signal_runtime_identity(Path(args.root), result)
     print(
         "MANIFEST: OK "
         f"pack={result['pack_hash']} index={result['index_hash']} "
-        f"files={len(result['indexed_hashes'])}"
+        f"files={len(result['indexed_hashes'])} "
+        f"signal-route={signal['route_quests']}"
     )
 
 

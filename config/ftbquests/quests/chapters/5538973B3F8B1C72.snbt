@@ -6,7 +6,7 @@
 	icon: { id: "ae2:crafting_monitor" }
 	id: "5538973B3F8B1C72"
 	images: [ ]
-	order_index: 5
+	order_index: 6
 	quest_links: [ ]
 	quests: [
 		{

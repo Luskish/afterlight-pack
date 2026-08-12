@@ -6,7 +6,7 @@
 	icon: { id: "kubejs:ascendancy_seal" }
 	id: "245BADE04399406C"
 	images: [ ]
-	order_index: 19
+	order_index: 20
 	quest_links: [ ]
 	quests: [
 		{

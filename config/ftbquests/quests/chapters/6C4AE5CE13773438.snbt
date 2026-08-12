@@ -6,7 +6,7 @@
 	icon: { id: "kubejs:gate_of_return_core" }
 	id: "6C4AE5CE13773438"
 	images: [ ]
-	order_index: 18
+	order_index: 19
 	quest_links: [ ]
 	quests: [
 		{
@@ -110,7 +110,9 @@
 			tasks: [
 				{
 					id: "645F98B8FAD4A1E5"
-					type: "checkmark"
+					type: "advancement"
+					advancement: "afterlight:gate_opened"
+					criterion: ""
 				}
 			]
 			rewards: [

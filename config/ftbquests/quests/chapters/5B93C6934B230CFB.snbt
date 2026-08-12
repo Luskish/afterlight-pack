@@ -6,7 +6,7 @@
 	icon: { id: "minecraft:redstone" }
 	id: "5B93C6934B230CFB"
 	images: [ ]
-	order_index: 0
+	order_index: 1
 	quest_links: [ ]
 	quests: [
 		{

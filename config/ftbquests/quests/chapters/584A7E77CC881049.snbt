@@ -6,7 +6,7 @@
 	icon: { id: "pneumaticcraft:printed_circuit_board" }
 	id: "584A7E77CC881049"
 	images: [ ]
-	order_index: 7
+	order_index: 8
 	quest_links: [ ]
 	quests: [
 		{

@@ -6,7 +6,7 @@
 	icon: { id: "cataclysm:mechanical_fusion_anvil" }
 	id: "40BA93EAD765D4D0"
 	images: [ ]
-	order_index: 12
+	order_index: 13
 	quest_links: [ ]
 	quests: [
 		{

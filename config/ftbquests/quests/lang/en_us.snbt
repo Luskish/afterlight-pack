@@ -1920,4 +1920,15 @@
 	task.48CA55FFEC0E520A.title: "Submit 64 Atomic Alloys."
 	task.03CABFBA9933EB0E.title: "Submit 64 Heavy Engineering blocks."
 	task.289A3672715F5EA0.title: "Submit one Chaotic Core."
+	chapter.6C40000000000001.title: "ECHO Protocols"
+	quest.6C40000000000002.title: "Recover ECHO"
+	quest.6C40000000000002.quest_subtitle: "Continuity requires a reachable interface."
+	quest.6C40000000000002.quest_desc: [
+		"If your continuity node is lost, authorize a replacement here. The previous signal will be superseded. Nothing else will be duplicated."
+	]
+	quest.6C40000000000101.title: "The Far Relay"
+	quest.6C40000000000101.quest_subtitle: "The inbound signal has a location now."
+	quest.6C40000000000101.quest_desc: [
+		"Cross the physical Gate and reach the receiving relay. Familiar architecture remains evidence, not trust."
+	]
 }

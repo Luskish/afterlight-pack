@@ -1,0 +1,341 @@
+{
+  "schema": 1,
+  "terminal_quest": "31C9557D2F51238F",
+  "segments": [
+    {
+      "id": "cold_boot",
+      "after": [],
+      "quests": [
+        "13EDA73D499B3803",
+        "7C8F354295683FD1",
+        "5212B235023439B9",
+        "2B27B2D887F61D7F",
+        "1F1C7A7B6649CDF4",
+        "43B0A7E3442397D3",
+        "43115F61A3212A8C",
+        "6828B9A1C4BACDF3",
+        "038F61D9ECA32B48",
+        "248FD34379A1F831",
+        "6BAD52BAD435FBAD"
+      ]
+    },
+    {
+      "id": "scavenger_s_creed",
+      "after": [
+        "cold_boot"
+      ],
+      "quests": [
+        "45021BE218C5DFBD",
+        "238CE991EC7F6506",
+        "0576C37E9FA4116C",
+        "46AB5C8E8BB7721F",
+        "41BA8291D4F7DB22"
+      ]
+    },
+    {
+      "id": "the_scarlands",
+      "after": [
+        "scavenger_s_creed"
+      ],
+      "quests": [
+        "718424A08FE06E9A",
+        "09C6E5E62A73BA93",
+        "72240DF3C6A8E957",
+        "72A8169F313D0624",
+        "5413406A90BD2714"
+      ]
+    },
+    {
+      "id": "foothold",
+      "after": [
+        "the_scarlands"
+      ],
+      "quests": [
+        "79145D1842E317AA",
+        "20169EC099FABBA0",
+        "78E07ADD5BCD1F19",
+        "27F6D0AB957BBB8C",
+        "1AC07872BABAC949",
+        "752409F46D854A92",
+        "588A5FE66765D86D"
+      ]
+    },
+    {
+      "id": "the_engine_room",
+      "after": [
+        "foothold"
+      ],
+      "quests": [
+        "43860D6CFEF31BB9",
+        "2D231B51E916504C",
+        "33252BE859F3761C",
+        "39CDF7B349EA6E50",
+        "1876B3999E5E28F1",
+        "5A407B47132C07C6"
+      ]
+    },
+    {
+      "id": "the_lattice",
+      "after": [
+        "the_engine_room"
+      ],
+      "quests": [
+        "0CEB581902A9D016",
+        "12E193439548BD1A",
+        "17DBC2533FE3DC3D",
+        "62C5B40CEEBFF926",
+        "24BF26A27CA5F0FB",
+        "51023D5F87D20649",
+        "6B764B4C9BE0A735",
+        "1791C1F457CC31C6",
+        "684B4B018288482A",
+        "15746440BEE5E5A7"
+      ]
+    },
+    {
+      "id": "lines_of_motion",
+      "after": [
+        "the_lattice"
+      ],
+      "quests": [
+        "4B0048F311BDF3D9",
+        "0E0B7A51EBA0479C",
+        "54B5107AC6501C0C",
+        "3EE519FDA95C5462",
+        "40100D03C6B635A9",
+        "0E0A85D7FB4E9A7E",
+        "43E0C5463F3FF8E1",
+        "1A36799BE3F63ADF",
+        "7199A16DB5D83154"
+      ]
+    },
+    {
+      "id": "pressure_language",
+      "after": [
+        "lines_of_motion"
+      ],
+      "quests": [
+        "4D41BE537DD35854",
+        "2BD4830EE305402B",
+        "222E4484F8B79FFC",
+        "46498F948F091463",
+        "5C4E3C4A5AD4EFA6",
+        "6BF38621204B70B0",
+        "64CFABA3EB6E9B4D",
+        "53C65BE4DB17F1B9",
+        "591C65D0AC3AABA7"
+      ]
+    },
+    {
+      "id": "the_grid",
+      "after": [
+        "pressure_language"
+      ],
+      "quests": [
+        "0D1D4842B326D878",
+        "068564885949C7CB",
+        "2C2EF25F89BFE5E5",
+        "4E76FFCCB1836525",
+        "0EB523691407A912",
+        "4AEF6244C3588A9F",
+        "73E90DB4726301B0",
+        "11239054873E1CD7",
+        "6B876A865DE7A77A"
+      ]
+    },
+    {
+      "id": "thresholds",
+      "after": [
+        "the_grid"
+      ],
+      "quests": [
+        "3F12A84AF92F28B8",
+        "564A301931FD5B1C",
+        "0D4C50AC8346E16D",
+        "0B77E5639E9D31E4",
+        "081DFC95CFFAD85C",
+        "5F748ABC48F2A139",
+        "350919A8B89A2E84",
+        "4F4FF6396A3E4E57",
+        "3C72E0ADC8E785D0",
+        "45A86A6AA4AD7824"
+      ]
+    },
+    {
+      "id": "convergence",
+      "after": [
+        "thresholds"
+      ],
+      "quests": [
+        "27AEE834BFD148F2",
+        "742BEB99DFA479FD",
+        "4F8F8B4545572260",
+        "3F5F3AB86AF7D719",
+        "0FA1B57455BEE680",
+        "21ED60C828D8519B",
+        "1551D0E76B9801FB",
+        "28F212A9C22AEEAA",
+        "537BF340B7765AB8",
+        "036D1C6E20B78461"
+      ]
+    },
+    {
+      "id": "frontier_machines",
+      "after": [
+        "convergence"
+      ],
+      "quests": [
+        "6A0FBE1789BEFD37",
+        "1722A64B05E8F748",
+        "53D1A5F68323B089",
+        "2D3E39C0E15785D1",
+        "6E83735A4CE6877B",
+        "035F257B1640AD1D",
+        "761A07B7BE2502DE",
+        "4B68E6373A038832",
+        "5D88D33506B63870",
+        "10EDD2BED35BE9E3"
+      ]
+    },
+    {
+      "id": "the_war_below",
+      "after": [
+        "frontier_machines"
+      ],
+      "quests": [
+        "10EEBFB30F143EC4",
+        "48D1106DDC9D0D99",
+        "482B645F95CC1449",
+        "267BA957E6C1AF30",
+        "37CF3CD515859095",
+        "44BD93D936125186",
+        "56AAEF2C6A9BD0A8",
+        "1004CDB0D6831EEF",
+        "087DC45AFD4CCAF1",
+        "752C3E53CA89C92D"
+      ]
+    },
+    {
+      "id": "quantum_weather",
+      "after": [
+        "the_war_below"
+      ],
+      "quests": [
+        "19D5F09EADF78A32",
+        "3DC6929C3FE6C5A9",
+        "70D13539A75B7155",
+        "26595C38412E0EB1",
+        "22DDADBA060FC424",
+        "4777D3E308D1D0FA",
+        "279459F43198BC50",
+        "3C61013D8F8A10C5",
+        "21A99D99B372916F"
+      ]
+    },
+    {
+      "id": "the_long_sky",
+      "after": [
+        "quantum_weather"
+      ],
+      "quests": [
+        "557DC7BACD462EFE",
+        "6770D80A33AA7CC7",
+        "18A7CD636003AFE5",
+        "06029069587D765F",
+        "71DD8E9040C4CBA3",
+        "23C08FB037E35BDE",
+        "79B4A2CBDDE45176",
+        "793ED9746DE25AD2",
+        "7DEA80315CFDE8AA",
+        "3497EFDF016FAFD7"
+      ]
+    },
+    {
+      "id": "architect",
+      "after": [
+        "the_long_sky"
+      ],
+      "quests": [
+        "71B2919DF12C6845",
+        "54A6AF60824B79F1",
+        "508AB7065AFAC232",
+        "0CE6F6160F721A8A",
+        "18EABED18B5B2ECF",
+        "2D6ACF1CCBC7B4F2",
+        "597DA51D265858DD",
+        "72446D404001B38D"
+      ]
+    },
+    {
+      "id": "five_impossible_parts",
+      "after": [
+        "architect"
+      ],
+      "quests": [
+        "0055C66103106D86",
+        "52FE1624DCCE878F",
+        "50775CE87FAA4EB7",
+        "7F064705A3CAB2E6",
+        "39C1F24EABBB34A3",
+        "144473B8267DBC28"
+      ]
+    },
+    {
+      "id": "the_cascade_truth",
+      "after": [
+        "five_impossible_parts"
+      ],
+      "quests": [
+        "5468299A2A931991",
+        "7EA7B2C8F11BB7A3",
+        "0EEFDD9E6CFB69E6",
+        "29D7871AFBE3A54A",
+        "701505FDCCA53DFA",
+        "462B11BD8C58BF6F"
+      ]
+    },
+    {
+      "id": "gate_of_return",
+      "after": [
+        "the_cascade_truth"
+      ],
+      "quests": [
+        "36D0902A2921C44E",
+        "66AD5C821947DF8E",
+        "1A68D1245CD980BD",
+        "6F3663F4C6D20255",
+        "53B9BC5F498953D5",
+        "31C9557D2F51238F"
+      ]
+    },
+    {
+      "id": "afterlight",
+      "after": [
+        "gate_of_return"
+      ],
+      "quests": [
+        "51649E106286AA63",
+        "1B523415541BD700",
+        "7EE7B9B28787F8CC",
+        "7E6A0AC031F7F484",
+        "7ECCF0521DFCBED5",
+        "4DD9F3D1913499F3"
+      ]
+    },
+    {
+      "id": "beyond_afterlight",
+      "after": [
+        "afterlight"
+      ],
+      "quests": [
+        "6C40000000000101",
+        "480D3EAD1B1EA51B",
+        "3549F08263C17499",
+        "58CB670EA52B1BCE",
+        "077BB9C525F29F6D",
+        "6E81867AC3F34C6B",
+        "14FAB67A6CE71A00"
+      ]
+    }
+  ]
+}

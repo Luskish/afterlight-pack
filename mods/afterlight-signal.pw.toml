@@ -1,0 +1,8 @@
+name = "AFTERLIGHT Signal"
+filename = "afterlight-signal-0.2.0+1.21.1.jar"
+side = "both"
+
+[download]
+url = "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/afterlight-signal-0.2.0%2B1.21.1.jar"
+hash-format = "sha512"
+hash = "902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f"

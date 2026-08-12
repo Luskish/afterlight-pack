@@ -6,9 +6,37 @@
 	icon: { id: "draconicevolution:chaotic_core" }
 	id: "3FF4AF7B0C73F058"
 	images: [ ]
-	order_index: 20
+	order_index: 21
 	quest_links: [ ]
 	quests: [
+		{
+			id: "6C40000000000101"
+			dependencies: ["31C9557D2F51238F"]
+			progression_mode: "linear"
+			x: 0.0d
+			y: -3.0d
+			tasks: [
+				{
+					id: "6C40000000000102"
+					type: "advancement"
+					advancement: "afterlight:far_relay_arrival"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "6C40000000000103"
+					type: "item"
+					item: { count: 16, id: "kubejs:requisition_chit" }
+					count: 16
+				}
+				{
+					id: "6C40000000000104"
+					type: "xp"
+					xp: 500
+				}
+			]
+		}
 		{
 			id: "480D3EAD1B1EA51B"
 			dependencies: ["7E6A0AC031F7F484"]

@@ -6,7 +6,7 @@
 	icon: { id: "kubejs:gate_kinetic_frame" }
 	id: "7E9B015A32C6D980"
 	images: [ ]
-	order_index: 16
+	order_index: 17
 	quest_links: [ ]
 	quests: [
 		{

@@ -6,7 +6,7 @@
 	icon: { id: "mekanism:pellet_antimatter" }
 	id: "2FD06A1068D554E9"
 	images: [ ]
-	order_index: 13
+	order_index: 14
 	quest_links: [ ]
 	quests: [
 		{

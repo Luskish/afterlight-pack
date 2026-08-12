@@ -6,7 +6,7 @@
 	icon: { id: "create:schedule" }
 	id: "738C49C0D9F98BBC"
 	images: [ ]
-	order_index: 6
+	order_index: 7
 	quest_links: [ ]
 	quests: [
 		{

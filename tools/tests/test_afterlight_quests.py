@@ -394,7 +394,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
         self.assertEqual(
             (counts.chapters, counts.quests, counts.tasks, counts.rewards),
-            (46, 313, 334, 436),
+            (47, 315, 336, 439),
         )
         self.assertEqual(len(reward_tables), 6)
         for item_id, _display_name in self.GATE_ITEMS.values():
@@ -406,7 +406,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         (
             "7E9B015A32C6D980",
             "story/17-five-impossible-parts",
-            16,
+            17,
             "kubejs:gate_kinetic_frame",
             (
                 "0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7",
@@ -416,7 +416,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         (
             "6671EBE257F914CB",
             "story/18-cascade-truth",
-            17,
+            18,
             "minecraft:echo_shard",
             (
                 "5468299A2A931991", "7EA7B2C8F11BB7A3", "0EEFDD9E6CFB69E6",
@@ -426,7 +426,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         (
             "6C4AE5CE13773438",
             "story/19-gate-of-return",
-            18,
+            19,
             "kubejs:gate_of_return_core",
             (
                 "36D0902A2921C44E", "66AD5C821947DF8E", "1A68D1245CD980BD",
@@ -436,7 +436,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         (
             "245BADE04399406C",
             "story/20-afterlight",
-            19,
+            20,
             "kubejs:ascendancy_seal",
             (
                 "51649E106286AA63", "7ECCF0521DFCBED5", "1B523415541BD700",
@@ -581,7 +581,12 @@ class Plan06ActIVContractTests(unittest.TestCase):
         "66AD5C821947DF8E": ("6E494144394F75AF", "forge_energy", None, "1000000000L"),
         "1A68D1245CD980BD": ("568026383F54186C", "item", "kubejs:gate_of_return_core", "1L"),
         "6F3663F4C6D20255": ("1FDF7F09F581B25C", "checkmark", None, None),
-        "53B9BC5F498953D5": ("645F98B8FAD4A1E5", "checkmark", None, None),
+        "53B9BC5F498953D5": (
+            "645F98B8FAD4A1E5",
+            "advancement",
+            "afterlight:gate_opened",
+            None,
+        ),
         "31C9557D2F51238F": ("7828C31B03045AC0", "checkmark", None, None),
         "51649E106286AA63": ("415BBA206B34805E", "checkmark", None, None),
         "7ECCF0521DFCBED5": ("2B8333FDEE6B6D90", "checkmark", None, None),
@@ -836,6 +841,13 @@ class Plan06ActIVContractTests(unittest.TestCase):
             elif task_type == "forge_energy":
                 self.assertEqual(task["value"], count)
                 self.assertEqual(task["max_input"], "1000000L")
+            elif task_type == "advancement":
+                self.assertEqual(task["advancement"], item_id)
+                self.assertEqual(task["criterion"], "")
+                self.assertEqual(
+                    set(task),
+                    {"id", "type", "advancement", "criterion"},
+                )
             else:
                 self.assertEqual(set(task), {"id", "type"})
 
@@ -854,7 +866,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         all_quests = [quest for chapter in self.chapters.values() for quest in chapter["quests"]]
         all_tasks = [task for quest in all_quests for task in quest["tasks"]]
         all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
-        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (46, 313, 334, 436))
+        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (47, 315, 336, 439))
         self.assertEqual(
             (
                 len(act_iv),
@@ -952,6 +964,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
     CHAPTER_ID = "3FF4AF7B0C73F058"
     CHAPTER_SLUG = "story/postgame-beyond-afterlight"
     QUESTS = (
+        ("6C40000000000101", "far-relay", "The Far Relay"),
         ("480D3EAD1B1EA51B", "beyond-the-seal", "Beyond the Seal"),
         ("3549F08263C17499", "three-entries", "Three Entries"),
         ("58CB670EA52B1BCE", "chaotic-proof", "Chaotic Proof"),
@@ -960,6 +973,9 @@ class Plan06PostgameContractTests(unittest.TestCase):
         ("14FAB67A6CE71A00", "industrial-blessing", "Industrial Blessing"),
     )
     TASKS = {
+        "6C40000000000101": (
+            ("6C40000000000102", "afterlight:far_relay_arrival", None, None),
+        ),
         "480D3EAD1B1EA51B": (
             ("1CCF9FFC57852557", "kubejs:ascendancy_seal", "1L", False),
         ),
@@ -988,6 +1004,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         ),
     }
     DEPENDENCIES = {
+        "6C40000000000101": ("31C9557D2F51238F",),
         "480D3EAD1B1EA51B": ("7E6A0AC031F7F484",),
         "3549F08263C17499": ("480D3EAD1B1EA51B",),
         "58CB670EA52B1BCE": ("3549F08263C17499",),
@@ -996,6 +1013,10 @@ class Plan06PostgameContractTests(unittest.TestCase):
         "14FAB67A6CE71A00": ("58CB670EA52B1BCE",),
     }
     REWARDS = {
+        "6C40000000000101": (
+            ("6C40000000000103", "item", "kubejs:requisition_chit", 16),
+            ("6C40000000000104", "xp", 500),
+        ),
         "480D3EAD1B1EA51B": (
             ("57178803C8835935", "item", "kubejs:requisition_chit", 4),
         ),
@@ -1081,7 +1102,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         self.assertEqual(chapter.slug, self.CHAPTER_SLUG)
         self.assertEqual(chapter.title, "Beyond Afterlight")
         self.assertEqual(chapter.group.resolved_id, "4525BB3160467FCB")
-        self.assertEqual(chapter.order_index, 20)
+        self.assertEqual(chapter.order_index, 21)
         self.assertEqual(chapter.icon, "draconicevolution:chaotic_core")
         self.assertEqual(
             tuple((quest.id, quest.slug, quest.title) for quest in chapter.quests),
@@ -1104,7 +1125,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         chapter = self.postgame_chapter()
         self.assertEqual(chapter["filename"], self.CHAPTER_ID)
         self.assertEqual(chapter["group"], "4525BB3160467FCB")
-        self.assertEqual(int(chapter["order_index"]), 20)
+        self.assertEqual(int(chapter["order_index"]), 21)
         self.assertEqual(chapter["icon"], {"id": "draconicevolution:chaotic_core"})
         self.assertEqual(
             tuple(quest["id"] for quest in chapter["quests"]),
@@ -1123,6 +1144,15 @@ class Plan06PostgameContractTests(unittest.TestCase):
             for task, expected in zip(quest["tasks"], expected_tasks):
                 task_id, item_id, count, consumes = expected
                 self.assertEqual(task["id"], task_id)
+                if quest_id == "6C40000000000101":
+                    self.assertEqual(task["type"], "advancement")
+                    self.assertEqual(task["advancement"], item_id)
+                    self.assertEqual(task["criterion"], "")
+                    self.assertEqual(
+                        set(task),
+                        {"id", "type", "advancement", "criterion"},
+                    )
+                    continue
                 self.assertEqual(task["type"], "item")
                 self.assertEqual(task["item"]["id"], item_id)
                 self.assertEqual(task["count"], count)
@@ -1144,7 +1174,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
         self.assertEqual(
             (len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)),
-            (46, 313, 334, 436),
+            (47, 315, 336, 439),
         )
         self.assertEqual(
             (
@@ -1152,7 +1182,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
                 sum(len(quest["tasks"]) for quest in chapter["quests"]),
                 sum(len(quest["rewards"]) for quest in chapter["quests"]),
             ),
-            (6, 14, 9),
+            (7, 15, 11),
         )
         self.assertEqual(len(tuple((self.quest_root / "reward_tables").glob("*.snbt"))), 6)
 
@@ -2740,7 +2770,7 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertTrue(
             all(chapter.group.resolved_id == "4525BB3160467FCB" for chapter in catalog)
         )
-        self.assertEqual([chapter.order_index for chapter in catalog], [5, 6, 7, 8, 9, 10])
+        self.assertEqual([chapter.order_index for chapter in catalog], [6, 7, 8, 9, 10, 11])
         self.assertEqual(catalog[0].quests[0].dependency_ids, ("5A407B47132C07C6",))
         for previous, current in zip(catalog, catalog[1:]):
             self.assertEqual(
@@ -2881,7 +2911,7 @@ class QuestCompilerTests(unittest.TestCase):
             [[quest.title for quest in chapter.quests] for chapter in catalog],
             expected_quests,
         )
-        self.assertEqual([chapter.order_index for chapter in catalog], [11, 12, 13, 14, 15])
+        self.assertEqual([chapter.order_index for chapter in catalog], [12, 13, 14, 15, 16])
         self.assertEqual(catalog[0].quests[0].dependency_ids, ("036D1C6E20B78461",))
         for previous, current in zip(catalog[:-1], catalog[1:-1]):
             self.assertEqual(current.quests[0].dependency_ids, (previous.quests[-1].id,))
@@ -3076,7 +3106,8 @@ class QuestCompilerTests(unittest.TestCase):
             chapter for chapter in full_catalog
             if (
                 chapter.group.resolved_id == "4525BB3160467FCB"
-                and chapter.order_index <= 15
+                and chapter.order_index <= 16
+                and chapter.id != "6C40000000000001"
             )
             or chapter.group.resolved_id == "4A20F33642175B95"
         ]
@@ -3388,7 +3419,7 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
             ),
-            (37, 257, 277, 341),
+            (38, 259, 279, 344),
         )
 
     def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:
@@ -4284,6 +4315,242 @@ class QuestCompilerTests(unittest.TestCase):
             ROOT / "server-test" / "mods",
         )
         self.assertEqual(errors, [])
+
+
+class SignalReliquaryQuestContractTests(unittest.TestCase):
+    RECOVERY_CHAPTER = "6C40000000000001"
+    RECOVERY_QUEST = "6C40000000000002"
+    RECOVERY_TASK = "6C40000000000003"
+    RECOVERY_REWARD = "6C40000000000004"
+    FAR_RELAY_QUEST = "6C40000000000101"
+    FAR_RELAY_TASK = "6C40000000000102"
+    FAR_RELAY_CHITS = "6C40000000000103"
+    FAR_RELAY_XP = "6C40000000000104"
+    STORY_CHAPTERS = (
+        "6C40000000000001",
+        "5B93C6934B230CFB",
+        "4C01977EF77930A6",
+        "770DAD173D9C234B",
+        "45491A24F6B8C192",
+        "52EF477C2D995F40",
+        "5538973B3F8B1C72",
+        "738C49C0D9F98BBC",
+        "584A7E77CC881049",
+        "257F2005E2D76B80",
+        "37C54E49759AFDDF",
+        "11CA083771CCB5BE",
+        "2D7CB8E643BDC03B",
+        "40BA93EAD765D4D0",
+        "2FD06A1068D554E9",
+        "582DF217557144DA",
+        "4402713763771CFA",
+        "7E9B015A32C6D980",
+        "6671EBE257F914CB",
+        "6C4AE5CE13773438",
+        "245BADE04399406C",
+        "3FF4AF7B0C73F058",
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.catalog = cls.quests.build_catalog()
+        cls.chapters_by_id = {chapter.id: chapter for chapter in cls.catalog}
+        cls.quests_by_id = {
+            quest.id: quest
+            for chapter in cls.catalog
+            for quest in chapter.quests
+        }
+
+    def test_reserved_signal_ids_do_not_collide(self) -> None:
+        expected = {
+            self.RECOVERY_CHAPTER,
+            self.RECOVERY_QUEST,
+            self.RECOVERY_TASK,
+            self.RECOVERY_REWARD,
+            self.FAR_RELAY_QUEST,
+            self.FAR_RELAY_TASK,
+            self.FAR_RELAY_CHITS,
+            self.FAR_RELAY_XP,
+        }
+        actual = {chapter.id for chapter in self.catalog} | {
+            identifier
+            for chapter in self.catalog
+            for quest in chapter.quests
+            for identifier in (
+                quest.id,
+                *(task.id for task in quest.tasks),
+                *(reward.id for reward in quest.rewards),
+            )
+        }
+        self.assertTrue(expected.issubset(actual))
+        self.assertEqual(
+            len(actual),
+            sum(
+                1
+                + sum(
+                    1 + len(quest.tasks) + len(quest.rewards)
+                    for quest in chapter.quests
+                )
+                for chapter in self.catalog
+            ),
+        )
+
+    def test_explicit_ids_are_supported_by_every_compiler_spec(self) -> None:
+        for spec in (
+            self.quests.TaskSpec,
+            self.quests.RewardSpec,
+            self.quests.QuestSpec,
+            self.quests.ChapterSpec,
+        ):
+            with self.subTest(spec=spec.__name__):
+                self.assertIn("explicit_id", {field.name for field in fields(spec)})
+
+    def test_recover_echo_is_an_exact_repeatable_command_contract(self) -> None:
+        chapter = self.chapters_by_id[self.RECOVERY_CHAPTER]
+        self.assertEqual(chapter.title, "ECHO Protocols")
+        self.assertEqual(chapter.group.resolved_id, "4525BB3160467FCB")
+        self.assertEqual(chapter.icon, "afterlight:echo")
+        self.assertEqual(chapter.order_index, 0)
+        self.assertEqual(len(chapter.quests), 1)
+
+        quest = chapter.quests[0]
+        self.assertEqual(quest.id, self.RECOVERY_QUEST)
+        self.assertEqual(quest.title, "Recover ECHO")
+        self.assertEqual(quest.subtitle, "Continuity requires a reachable interface.")
+        self.assertEqual(quest.dependencies, ())
+        self.assertTrue(quest.can_repeat)
+        self.assertEqual(quest.repeat_cooldown, 5)
+        self.assertEqual(len(quest.tasks), 1)
+        self.assertEqual(
+            (quest.tasks[0].id, quest.tasks[0].task_type, quest.tasks[0].data),
+            (self.RECOVERY_TASK, "checkmark", {}),
+        )
+        self.assertEqual(len(quest.rewards), 1)
+        self.assertEqual(
+            (quest.rewards[0].id, quest.rewards[0].reward_type, quest.rewards[0].data),
+            (
+                self.RECOVERY_REWARD,
+                "command",
+                {"command": "echo recover", "silent": True},
+            ),
+        )
+
+    def test_story_chapter_order_matches_ftb_canonical_save_form(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        story = []
+        chapter_root = ROOT / "config" / "ftbquests" / "quests" / "chapters"
+        for path in sorted(chapter_root.glob("*.snbt")):
+            chapter = _parse_snbt(path.read_text(encoding="utf-8"))
+            if chapter.get("group") == "4525BB3160467FCB":
+                story.append((int(chapter["order_index"]), chapter["id"]))
+
+        self.assertEqual(
+            sorted(story),
+            list(enumerate(self.STORY_CHAPTERS)),
+        )
+
+    def test_gate_and_far_relay_use_physical_advancements(self) -> None:
+        gate = self.quests_by_id["53B9BC5F498953D5"]
+        self.assertEqual(len(gate.tasks), 1)
+        self.assertEqual(gate.tasks[0].id, "645F98B8FAD4A1E5")
+        self.assertEqual(gate.tasks[0].task_type, "advancement")
+        self.assertEqual(
+            gate.tasks[0].data,
+            {"advancement": "afterlight:gate_opened", "criterion": ""},
+        )
+
+        far_relay = self.quests_by_id[self.FAR_RELAY_QUEST]
+        self.assertEqual(far_relay.title, "The Far Relay")
+        self.assertEqual(far_relay.dependencies, ("31C9557D2F51238F",))
+        self.assertEqual(len(far_relay.tasks), 1)
+        self.assertEqual(
+            (far_relay.tasks[0].id, far_relay.tasks[0].task_type, far_relay.tasks[0].data),
+            (
+                self.FAR_RELAY_TASK,
+                "advancement",
+                {"advancement": "afterlight:far_relay_arrival", "criterion": ""},
+            ),
+        )
+        self.assertEqual(
+            tuple((reward.id, reward.reward_type, reward.data) for reward in far_relay.rewards),
+            (
+                (
+                    self.FAR_RELAY_CHITS,
+                    "item",
+                    {
+                        "item": {"count": 16, "id": "kubejs:requisition_chit"},
+                        "count": 16,
+                    },
+                ),
+                (self.FAR_RELAY_XP, "xp", {"xp": 500}),
+            ),
+        )
+        ascendancy = self.quests_by_id["7E6A0AC031F7F484"]
+        self.assertNotIn(self.FAR_RELAY_QUEST, ascendancy.dependency_ids)
+
+    def test_echo_route_is_deterministic_complete_and_recovery_safe(self) -> None:
+        route_module = importlib.import_module("afterlight_quests.echo_route")
+        quest_root = ROOT / "config" / "ftbquests" / "quests"
+        first = route_module.build_echo_route(quest_root)
+        second = route_module.build_echo_route(quest_root)
+        self.assertEqual(first, second)
+        self.assertEqual(route_module.validate_echo_route(first, quest_root), [])
+        self.assertEqual(first["schema"], 1)
+        self.assertEqual(first["terminal_quest"], "31C9557D2F51238F")
+
+        route_ids = [
+            quest_id
+            for segment in first["segments"]
+            for quest_id in segment["quests"]
+        ]
+        self.assertEqual(len(route_ids), len(set(route_ids)))
+        self.assertTrue(
+            all(re.fullmatch(r"[0-9A-F]{16}", quest_id) for quest_id in route_ids)
+        )
+        self.assertNotIn(self.RECOVERY_QUEST, route_ids)
+        self.assertIn("31C9557D2F51238F", route_ids)
+        self.assertIn(self.FAR_RELAY_QUEST, route_ids)
+        self.assertIn("1B523415541BD700", route_ids)
+        self.assertIn("7ECCF0521DFCBED5", route_ids)
+        self.assertIn("4DD9F3D1913499F3", route_ids)
+        self.assertEqual(len(route_ids), 169)
+        afterlight_segment = next(
+            segment for segment in first["segments"] if segment["id"] == "afterlight"
+        )
+        self.assertEqual(
+            afterlight_segment["quests"],
+            [
+                "51649E106286AA63",
+                "1B523415541BD700",
+                "7EE7B9B28787F8CC",
+                "7E6A0AC031F7F484",
+                "7ECCF0521DFCBED5",
+                "4DD9F3D1913499F3",
+            ],
+        )
+        self.assertEqual(first["segments"][0]["id"], "cold_boot")
+        self.assertEqual(first["segments"][-1]["id"], "beyond_afterlight")
+        self.assertEqual(first["segments"][0]["after"], [])
+        for previous, current in zip(first["segments"], first["segments"][1:]):
+            self.assertEqual(current["after"], [previous["id"]])
+
+        rendered = route_module.render_echo_route(first)
+        self.assertEqual(rendered, route_module.render_echo_route(second))
+        self.assertEqual(
+            (ROOT / "config" / "afterlight" / "echo_route.json").read_text(
+                encoding="utf-8"
+            ),
+            rendered,
+        )
+
+    def test_pack_version_runtime_identity_is_exact(self) -> None:
+        pack = (ROOT / "pack.toml").read_text(encoding="utf-8")
+        version = re.search(r'^version = "([^"]+)"$', pack, re.MULTILINE)
+        self.assertIsNotNone(version)
+        payload = (ROOT / "config" / "afterlight" / "pack_version.txt").read_bytes()
+        self.assertEqual(payload, f"{version.group(1)}\n".encode("utf-8"))
 
 
 if __name__ == "__main__":

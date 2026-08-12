@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import base64
+import binascii
 import codecs
 import hashlib
 import json
@@ -11,6 +13,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unicodedata
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -75,10 +78,17 @@ MAX_ARCHIVE_MEMBER_SIZE = 256 * 1024 * 1024
 MAX_ARCHIVE_TOTAL_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024
 MAX_ARCHIVE_COMPRESSION_RATIO = 200
 MAX_MANIFEST_SIZE = 1024 * 1024
+MAX_PACKWIZ_METADATA_SIZE = 16 * 1024 * 1024
 MAX_TEXT_LINE_SIZE = 1024 * 1024
+MAX_CREDENTIAL_CONTAINER_DEPTH = 1024
+MAX_CREDENTIAL_CONTEXT_SIZE = 512
+MAX_JWT_HEADER_SIZE = 16 * 1024
 MAX_UNSIGNED_32 = 4294967295
 PRIVATE_KEY_HEADER = re.compile(
     rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
+)
+JWT_URLSAFE_BYTES = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 )
 CREDENTIAL_KEY = re.compile(
     r"(?:(?:[A-Za-z0-9]+[._-])+)?"
@@ -88,18 +98,50 @@ CREDENTIAL_KEY = re.compile(
     r"(?:database|db)[._-]?password|token|password|secret)",
     re.IGNORECASE,
 )
-CREDENTIAL_DECLARATIONS = frozenset({"const", "export", "let", "var"})
-CREDENTIAL_BOUNDARIES = frozenset("\r\n,{")
+CREDENTIAL_DECLARATIONS = frozenset(
+    {
+        "const",
+        "export",
+        "final",
+        "internal",
+        "lateinit",
+        "let",
+        "private",
+        "protected",
+        "public",
+        "readonly",
+        "static",
+        "string",
+        "val",
+        "var",
+    }
+)
+CREDENTIAL_BOUNDARIES = frozenset("\x00\r\n,{([;:)}]<>+=*/%!?&|^~$@")
 CREDENTIAL_HORIZONTAL_WHITESPACE = frozenset("\t ")
 CREDENTIAL_ASSIGNMENT_WHITESPACE = frozenset("\t \r\n")
+PARAMETER_LIST_PREFIX = re.compile(
+    r"(?:^|[^A-Za-z0-9_$])(?:"
+    r"(?:async\s+)?def\s+[A-Za-z_][A-Za-z0-9_]*"
+    r"(?:\s*\[[^\]\r\n]{1,256}\])?|"
+    r"function(?:\s*\*)?(?:\s+[A-Za-z_$][A-Za-z0-9_$]*)?"
+    r"(?:\s*<[^>\r\n]{1,256}>)?|"
+    r"fun(?:\s*<[^>\r\n]{1,256}>)?\s+[A-Za-z_][A-Za-z0-9_]*|"
+    r"fn\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*<[^>\r\n]{1,256}>)?"
+    r")\s*$"
+)
 TEMPLATE_CREDENTIAL_VALUES = frozenset(
     {
         "0",
+        "-",
+        "-example-signing-secret",
+        "-placeholder",
+        "?required",
         "change-me",
         "change_me",
         "changeme",
         "example",
         "false",
+        "file:",
         "none",
         "null",
         "placeholder",
@@ -107,6 +149,7 @@ TEMPLATE_CREDENTIAL_VALUES = frozenset(
         "replace_me",
         "sample",
         "template",
+        "token",
         "true",
         "unset",
     }
@@ -128,6 +171,21 @@ BRACED_ENVIRONMENT_REFERENCE = re.compile(
     r"(?:(?P<operator>:\?|\?|:-|-|:=|=|:\+|\+)(?P<operand>.*))?\}",
     re.DOTALL,
 )
+CODE_CREDENTIAL_REFERENCE = re.compile(
+    r"(?:System\.getenv\([\"'][A-Za-z_][A-Za-z0-9_]*[\"']\)|"
+    r"(?:self|this|super|process|os|config|settings|environment|env|"
+    r"secrets|credentials)"
+    r"(?:\.[A-Za-z_][A-Za-z0-9_]*)+"
+    r"(?:(?:\([^\"'\r\n]*\))|(?:\[[^\]\r\n]+\]))*|"
+    r"[\"']{2}(?:\.[A-Za-z_][A-Za-z0-9_]*)+"
+    r"(?:(?:\([^\"'\r\n]*\))|(?:\[[^\]\r\n]+\]))+|"
+    r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+"
+    r"(?:(?:\([^\"'\r\n]*\))|(?:\[[^\]\r\n]+\]))+|"
+    r"[A-Za-z_][A-Za-z0-9_]*(?:_value|_reference|_ref)|"
+    r"(?:kwargs|params|options|arguments)\[[^\]\r\n]+\]|"
+    r"(?:get|load|read|resolve|fetch)_[A-Za-z_][A-Za-z0-9_]*"
+    r"\([^\"'\r\n]*\))"
+)
 WINDOWS_FORBIDDEN_CHARACTERS = frozenset('<>:"|?*')
 WINDOWS_RESERVED_BASENAMES = frozenset(
     {
@@ -148,6 +206,7 @@ WINDOWS_RESERVED_BASENAMES = frozenset(
 CURSEFORGE_MANIFEST_NAME = "manifest.json"
 CURSEFORGE_MODLIST_NAME = "modlist.html"
 MODRINTH_MANIFEST_NAME = "modrinth.index.json"
+MODRINTH_MANIFEST_LOCK_PATH = "tools/modrinth-manifest-lock.json"
 JSON_MANIFEST_NAMES = frozenset(
     {CURSEFORGE_MANIFEST_NAME, MODRINTH_MANIFEST_NAME, "mmc-pack.json"}
 )
@@ -286,9 +345,14 @@ def _scan_binary_stream(stream, label, reject_u2014=False, max_bytes=None):
     return total_bytes
 
 
-def _is_template_credential_value(raw_value):
+def _is_template_credential_value(raw_value, *, allow_code_reference=True):
     value = raw_value.strip()
-    if len(value) >= 2 and value[:1] == value[-1:] and value[:1] in {'"', "'"}:
+    quoted = (
+        len(value) >= 2
+        and value[:1] == value[-1:]
+        and value[:1] in {'"', "'"}
+    )
+    if quoted:
         value = value[1:-1].strip()
     if not value:
         return True
@@ -298,13 +362,18 @@ def _is_template_credential_value(raw_value):
         return True
     if SIMPLE_ENVIRONMENT_REFERENCE.fullmatch(value):
         return True
+    if allow_code_reference and not quoted and CODE_CREDENTIAL_REFERENCE.fullmatch(value):
+        return True
     environment_reference = BRACED_ENVIRONMENT_REFERENCE.fullmatch(value)
     if environment_reference is None:
         return False
     operator = environment_reference.group("operator")
     if operator is None or operator in {"?", ":?"}:
         return True
-    return _is_template_credential_value(environment_reference.group("operand"))
+    return _is_template_credential_value(
+        environment_reference.group("operand"),
+        allow_code_reference=False,
+    )
 
 
 def _is_credential_key_character(character):
@@ -317,12 +386,109 @@ def _is_credential_value_delimiter(character):
     return character.isspace() or character in ",#;}"
 
 
+def _is_credential_boundary(character):
+    return character in CREDENTIAL_BOUNDARIES or character == "\ufffd"
+
+
+class _JwtShapeScanner:
+    def __init__(self):
+        self.state = "seek"
+        self.header = bytearray()
+        self.segment_size = 0
+        self.previous_urlsafe = False
+        self.found = False
+
+    def feed(self, data):
+        if self.found:
+            return
+        for byte in data:
+            previous_urlsafe = self.previous_urlsafe
+            self._consume(byte, previous_urlsafe)
+            self.previous_urlsafe = byte in JWT_URLSAFE_BYTES
+            if self.found:
+                return
+
+    def finish(self):
+        if self.state == "third" and self.segment_size >= 8:
+            self.found = True
+        return self.found
+
+    def _restart(self, byte, previous_urlsafe):
+        self.header = bytearray()
+        self.segment_size = 0
+        if byte in JWT_URLSAFE_BYTES and not previous_urlsafe:
+            self.state = "header"
+            self.header.append(byte)
+        else:
+            self.state = "seek"
+
+    def _header_is_jwt(self):
+        if len(self.header) >= 8 and self.header.startswith(b"eyJ"):
+            return True
+        try:
+            padding = b"=" * (-len(self.header) % 4)
+            decoded = base64.b64decode(
+                bytes(self.header) + padding,
+                altchars=b"-_",
+                validate=True,
+            )
+            value = json.loads(decoded.decode("utf-8"))
+        except (binascii.Error, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+            return False
+        return (
+            isinstance(value, dict)
+            and isinstance(value.get("alg"), str)
+            and bool(value["alg"])
+        )
+
+    def _consume(self, byte, previous_urlsafe):
+        if self.state == "seek":
+            self._restart(byte, previous_urlsafe)
+            return
+        if self.state == "header":
+            if byte in JWT_URLSAFE_BYTES:
+                if len(self.header) >= MAX_JWT_HEADER_SIZE:
+                    self.state = "header_overflow"
+                    self.header = bytearray()
+                else:
+                    self.header.append(byte)
+                return
+            if byte == ord(".") and self._header_is_jwt():
+                self.state = "second"
+                self.segment_size = 0
+                return
+            self._restart(byte, previous_urlsafe)
+            return
+        if self.state == "header_overflow":
+            if byte not in JWT_URLSAFE_BYTES:
+                self._restart(byte, previous_urlsafe)
+            return
+        if self.state == "second":
+            if byte in JWT_URLSAFE_BYTES:
+                self.segment_size += 1
+                return
+            if byte == ord(".") and self.segment_size >= 8:
+                self.state = "third"
+                self.segment_size = 0
+                return
+            self._restart(byte, previous_urlsafe)
+            return
+        if byte in JWT_URLSAFE_BYTES:
+            self.segment_size += 1
+            return
+        if self.segment_size >= 8:
+            self.found = True
+            return
+        self._restart(byte, previous_urlsafe)
+
+
 class _CredentialAssignmentScanner:
     SEEK = "seek"
     LEADING = "leading"
     TOKEN = "token"
     AFTER_DECLARATION = "after_declaration"
     AFTER_KEY = "after_key"
+    AFTER_ANNOTATION = "after_annotation"
     AFTER_SEPARATOR = "after_separator"
     DOLLAR_VALUE = "dollar_value"
     BRACED_VALUE = "braced_value"
@@ -330,24 +496,66 @@ class _CredentialAssignmentScanner:
     COMPLETE_VALUE = "complete_value"
     UNQUOTED_VALUE = "unquoted_value"
 
-    def __init__(self):
+    def __init__(self, template_value_predicate=None):
         self.live_credential_found = False
+        self.template_value_predicate = (
+            template_value_predicate or _is_template_credential_value
+        )
         self.state = self.LEADING
+        self.leading_boundary = None
+        self.container_stack = []
+        self.container_recent_characters = []
+        self.container_quote = None
+        self.container_quote_mode = None
+        self.container_quote_run = 0
+        self.container_quote_escaped = False
+        self.container_line_comment = False
+        self.container_block_comment = False
+        self.container_block_comment_star = False
+        self.container_pending_slash = False
         self.token_characters = []
+        self.token_boundary = None
+        self.token_parameter_context = False
         self.token_quoted = False
+        self.token_escape_state = None
+        self.token_escape_characters = []
         self.value_characters = []
         self.value_quote = None
         self.value_escaped = False
+        self.value_line_comment = False
+        self.value_block_comment = False
+        self.value_block_comment_star = False
+        self.value_pending_slash = False
+        self.annotation_brackets = []
+        self.annotation_quote = None
+        self.annotation_escaped = False
+        self.annotation_characters = []
+        self.annotation_has_nonwhitespace = False
+        self.annotation_boundary = None
+        self.annotation_parameter_context = False
+        self.annotation_line_comment = False
+        self.annotation_block_comment = False
+        self.annotation_block_comment_star = False
+        self.annotation_pending_slash = False
 
     def feed(self, data):
         if self.live_credential_found:
             return
         for character in data:
             self._consume(character)
+            self._update_container_context(character)
             if self.live_credential_found:
                 return
 
     def finish(self):
+        if self.state == self.AFTER_ANNOTATION:
+            if self.annotation_pending_slash:
+                self._append_annotation("/")
+                self.annotation_pending_slash = False
+            self._resolve_annotation_value()
+        if self.state == self.AFTER_SEPARATOR and self.value_pending_slash:
+            self.value_characters = ["/"]
+            self._resolve_value()
         if self.state in {
             self.DOLLAR_VALUE,
             self.BRACED_VALUE,
@@ -360,14 +568,19 @@ class _CredentialAssignmentScanner:
 
     def _consume(self, character):
         if self.state == self.SEEK:
-            if character in CREDENTIAL_BOUNDARIES:
+            if _is_credential_boundary(character):
                 self.state = self.LEADING
+                self.leading_boundary = character
             return
 
         if self.state == self.LEADING:
             if character in CREDENTIAL_HORIZONTAL_WHITESPACE:
                 return
-            if character in CREDENTIAL_BOUNDARIES:
+            if _is_credential_boundary(character):
+                self.leading_boundary = character
+                return
+            if character == "-":
+                self.state = self.AFTER_DECLARATION
                 return
             if character in {'"', "'"}:
                 self._start_token(quoted=True)
@@ -397,7 +610,11 @@ class _CredentialAssignmentScanner:
             return
 
         if self.state == self.AFTER_KEY:
-            if character in CREDENTIAL_ASSIGNMENT_WHITESPACE:
+            if (
+                character in CREDENTIAL_ASSIGNMENT_WHITESPACE
+                or character == "\ufffd"
+                or character in "])}"
+            ):
                 return
             if character in ":=":
                 self.state = self.AFTER_SEPARATOR
@@ -405,8 +622,45 @@ class _CredentialAssignmentScanner:
             self._reset_for_character(character)
             return
 
+        if self.state == self.AFTER_ANNOTATION:
+            self._consume_annotation(character)
+            return
+
         if self.state == self.AFTER_SEPARATOR:
+            if self.value_line_comment:
+                if character in "\r\n":
+                    self.value_line_comment = False
+                return
+            if self.value_block_comment:
+                if self.value_block_comment_star and character == "/":
+                    self.value_block_comment = False
+                    self.value_block_comment_star = False
+                    return
+                self.value_block_comment_star = character == "*"
+                return
+            if self.value_pending_slash:
+                self.value_pending_slash = False
+                if character == "/":
+                    self.value_line_comment = True
+                    return
+                if character == "*":
+                    self.value_block_comment = True
+                    self.value_block_comment_star = False
+                    return
+                self._start_value(self.UNQUOTED_VALUE, "/")
+                if _is_credential_value_delimiter(character):
+                    self._resolve_value()
+                    self._reset_for_character(character)
+                else:
+                    self._append_value(character)
+                return
             if character in CREDENTIAL_ASSIGNMENT_WHITESPACE:
+                return
+            if character == "#":
+                self.value_line_comment = True
+                return
+            if character == "/":
+                self.value_pending_slash = True
                 return
             if _is_credential_value_delimiter(character):
                 self._reset_for_character(character)
@@ -487,6 +741,37 @@ class _CredentialAssignmentScanner:
             self._append_value(character)
 
     def _consume_token(self, character):
+        if self.token_escape_state == "unicode":
+            if character not in "0123456789abcdefABCDEF":
+                self._reset_for_character(character)
+                return
+            self.token_escape_characters.append(character)
+            if len(self.token_escape_characters) == 4:
+                decoded_character = chr(
+                    int("".join(self.token_escape_characters), 16)
+                )
+                self.token_escape_state = None
+                self.token_escape_characters = []
+                if not _is_credential_key_character(decoded_character):
+                    self._reset_for_character(decoded_character)
+                    return
+                self._append_token(decoded_character)
+            return
+        if self.token_escape_state == "backslash":
+            self.token_escape_state = None
+            if character == "u":
+                self.token_escape_state = "unicode"
+                self.token_escape_characters = []
+                return
+            if _is_credential_key_character(character):
+                self._append_token(character)
+                return
+            self._reset_for_character(character)
+            return
+        if character == "\\":
+            self.token_escape_state = "backslash"
+            self.token_escape_characters = []
+            return
         if _is_credential_key_character(character):
             self._append_token(character)
             return
@@ -502,6 +787,8 @@ class _CredentialAssignmentScanner:
         if character in {'"', "'"}:
             if token_is_key:
                 self.state = self.AFTER_KEY
+            elif not self.token_quoted and token.endswith("."):
+                self._start_token(quoted=True)
             else:
                 self._reset_for_character(character)
             return
@@ -509,7 +796,10 @@ class _CredentialAssignmentScanner:
             if token_is_declaration:
                 self.state = self.AFTER_DECLARATION
             elif token_is_key:
-                self.state = self.AFTER_KEY
+                if "." in token:
+                    self.state = self.AFTER_SEPARATOR
+                else:
+                    self.state = self.AFTER_KEY
             else:
                 self._reset_for_character(character)
             return
@@ -519,15 +809,140 @@ class _CredentialAssignmentScanner:
             else:
                 self._reset_for_character(character)
             return
+        if character == "\ufffd" and token_is_key:
+            self.state = self.AFTER_KEY
+            return
         if character in ":=" and token_is_key:
+            if character == ":" and not self.token_quoted:
+                self.state = self.AFTER_ANNOTATION
+                self.annotation_brackets = []
+                self.annotation_quote = None
+                self.annotation_escaped = False
+                self.annotation_characters = []
+                self.annotation_has_nonwhitespace = False
+                self.annotation_boundary = self.token_boundary
+                self.annotation_parameter_context = self.token_parameter_context
+                self.annotation_line_comment = False
+                self.annotation_block_comment = False
+                self.annotation_block_comment_star = False
+                self.annotation_pending_slash = False
+                return
             self.state = self.AFTER_SEPARATOR
             return
         self._reset_for_character(character)
+
+    def _consume_annotation(self, character):
+        if self.annotation_line_comment:
+            if character in "\r\n":
+                self.annotation_line_comment = False
+                self._append_annotation(character)
+            return
+
+        if self.annotation_block_comment:
+            if self.annotation_block_comment_star and character == "/":
+                self.annotation_block_comment = False
+                self.annotation_block_comment_star = False
+                return
+            self.annotation_block_comment_star = character == "*"
+            return
+
+        if self.annotation_pending_slash:
+            self.annotation_pending_slash = False
+            if character == "/":
+                self.annotation_line_comment = True
+                return
+            if character == "*":
+                self.annotation_block_comment = True
+                self.annotation_block_comment_star = False
+                return
+            self._append_annotation("/")
+
+        if self.annotation_quote is not None:
+            self._append_annotation(character)
+            if character in "\r\n":
+                self._resolve_annotation_value()
+                self._reset_for_character(character)
+                return
+            if self.annotation_escaped:
+                self.annotation_escaped = False
+                return
+            if character == "\\":
+                self.annotation_escaped = True
+                return
+            if character == self.annotation_quote:
+                self.annotation_quote = None
+                return
+            return
+
+        if character in {'"', "'"}:
+            self._append_annotation(character)
+            self.annotation_quote = character
+            return
+        if character in "[({":
+            self._append_annotation(character)
+            self.annotation_brackets.append({"[": "]", "(": ")", "{": "}"}[character])
+            return
+        if self.annotation_brackets:
+            self._append_annotation(character)
+            if character == self.annotation_brackets[-1]:
+                self.annotation_brackets.pop()
+            return
+        if self.annotation_parameter_context and character == "#":
+            self.annotation_line_comment = True
+            return
+        if self.annotation_parameter_context and character == "/":
+            self.annotation_pending_slash = True
+            return
+        if character == "=" and self.annotation_parameter_context:
+            self.annotation_characters = []
+            self.annotation_has_nonwhitespace = False
+            self.state = self.AFTER_SEPARATOR
+            return
+        if character in ",);}" or character in "\r\n":
+            if (
+                character in "\r\n"
+                and self.annotation_parameter_context
+                and self.annotation_has_nonwhitespace
+            ):
+                self._append_annotation(character)
+                return
+            if character in "\r\n" and not self.annotation_has_nonwhitespace:
+                self.state = self.AFTER_SEPARATOR
+                self.annotation_characters = []
+                self.annotation_has_nonwhitespace = False
+                return
+            self._resolve_annotation_value()
+            self._reset_for_character(character)
+            return
+        self._append_annotation(character)
+
+    def _append_annotation(self, character):
+        if len(self.annotation_characters) >= MAX_TEXT_LINE_SIZE:
+            self.live_credential_found = True
+            return
+        self.annotation_characters.append(character)
+        if not character.isspace():
+            self.annotation_has_nonwhitespace = True
+
+    def _resolve_annotation_value(self):
+        if not self.annotation_parameter_context:
+            raw_value = "".join(self.annotation_characters)
+            if raw_value and not _is_template_credential_value(
+                raw_value,
+                allow_code_reference=False,
+            ):
+                self.live_credential_found = True
+        self.annotation_characters = []
+        self.annotation_has_nonwhitespace = False
 
     def _start_token(self, quoted):
         self.state = self.TOKEN
         self.token_characters = []
         self.token_quoted = quoted
+        self.token_boundary = self.leading_boundary
+        self.token_parameter_context = self._in_parameter_context()
+        self.token_escape_state = None
+        self.token_escape_characters = []
 
     def _append_token(self, character):
         if len(self.token_characters) >= MAX_TEXT_LINE_SIZE:
@@ -541,60 +956,230 @@ class _CredentialAssignmentScanner:
         self.value_characters = [character]
         self.value_quote = None
         self.value_escaped = False
+        self.value_line_comment = False
+        self.value_block_comment = False
+        self.value_block_comment_star = False
+        self.value_pending_slash = False
 
     def _append_value(self, character):
         if len(self.value_characters) >= MAX_TEXT_LINE_SIZE:
-            self.value_characters = []
-            self.state = self.SEEK
+            self.live_credential_found = True
             return
         self.value_characters.append(character)
 
     def _resolve_value(self):
         raw_value = "".join(self.value_characters)
-        if raw_value and not _is_template_credential_value(raw_value):
+        if raw_value and not self.template_value_predicate(raw_value):
             self.live_credential_found = True
         self.value_characters = []
 
     def _reset_for_character(self, character):
         self.token_characters = []
+        self.token_boundary = None
+        self.token_parameter_context = False
+        self.token_escape_state = None
+        self.token_escape_characters = []
         self.value_characters = []
         self.value_quote = None
         self.value_escaped = False
-        if character in CREDENTIAL_BOUNDARIES:
+        self.value_line_comment = False
+        self.value_block_comment = False
+        self.value_block_comment_star = False
+        self.value_pending_slash = False
+        self.annotation_brackets = []
+        self.annotation_quote = None
+        self.annotation_escaped = False
+        self.annotation_characters = []
+        self.annotation_has_nonwhitespace = False
+        self.annotation_boundary = None
+        self.annotation_parameter_context = False
+        self.annotation_line_comment = False
+        self.annotation_block_comment = False
+        self.annotation_block_comment_star = False
+        self.annotation_pending_slash = False
+        if _is_credential_boundary(character):
             self.state = self.LEADING
+            self.leading_boundary = character
         else:
             self.state = self.SEEK
+            self.leading_boundary = None
+
+    def _in_parameter_context(self):
+        if (
+            self.container_quote is not None
+            or self.container_line_comment
+            or self.container_block_comment
+            or self.container_pending_slash
+            or not self.container_stack
+        ):
+            return False
+        opener, parameter_context = self.container_stack[-1]
+        return opener == "(" and parameter_context
+
+    def _append_container_recent(self, character):
+        self.container_recent_characters.append(character)
+        if len(self.container_recent_characters) > MAX_CREDENTIAL_CONTEXT_SIZE:
+            del self.container_recent_characters[
+                : len(self.container_recent_characters) - MAX_CREDENTIAL_CONTEXT_SIZE
+            ]
+
+    def _start_container_quote(self, character):
+        self.container_quote = character
+        self.container_quote_mode = "opening"
+        self.container_quote_run = 1
+        self.container_quote_escaped = False
+        self._append_container_recent(" ")
+
+    def _clear_container_quote(self):
+        self.container_quote = None
+        self.container_quote_mode = None
+        self.container_quote_run = 0
+        self.container_quote_escaped = False
+        self._append_container_recent(" ")
+
+    def _consume_container_quote(self, character):
+        if self.container_quote_mode == "opening":
+            if character == self.container_quote:
+                self.container_quote_run += 1
+                if self.container_quote_run == 3:
+                    self.container_quote_mode = "triple"
+                    self.container_quote_run = 0
+                return True
+            if self.container_quote_run == 2:
+                self._clear_container_quote()
+                return False
+            self.container_quote_mode = "single"
+
+        if self.container_quote_mode == "triple":
+            if character == self.container_quote:
+                self.container_quote_run += 1
+                if self.container_quote_run == 3:
+                    self._clear_container_quote()
+                return True
+            self.container_quote_run = 0
+            return True
+
+        if self.container_quote_escaped:
+            self.container_quote_escaped = False
+            return True
+        if character == "\\":
+            self.container_quote_escaped = True
+            return True
+        if character == self.container_quote:
+            self._clear_container_quote()
+        return True
+
+    def _update_container_context(self, character):
+        if self.container_line_comment:
+            if character in "\r\n":
+                self.container_line_comment = False
+                self._append_container_recent(character)
+            return
+
+        if self.container_block_comment:
+            if self.container_block_comment_star and character == "/":
+                self.container_block_comment = False
+                self.container_block_comment_star = False
+                self._append_container_recent(" ")
+                return
+            self.container_block_comment_star = character == "*"
+            return
+
+        if self.container_quote is not None:
+            if self._consume_container_quote(character):
+                return
+
+        if self.container_pending_slash:
+            self.container_pending_slash = False
+            if character == "/":
+                self.container_line_comment = True
+                self._append_container_recent(" ")
+                return
+            if character == "*":
+                self.container_block_comment = True
+                self.container_block_comment_star = False
+                self._append_container_recent(" ")
+                return
+            self._append_container_recent("/")
+
+        if character == "/":
+            self.container_pending_slash = True
+            return
+        if character == "#":
+            self.container_line_comment = True
+            self._append_container_recent(" ")
+            return
+        if character in {'"', "'", "`"}:
+            self._start_container_quote(character)
+            return
+        if character in "([{":
+            if len(self.container_stack) >= MAX_CREDENTIAL_CONTAINER_DEPTH:
+                self.live_credential_found = True
+                return
+            parameter_context = (
+                character == "("
+                and PARAMETER_LIST_PREFIX.search(
+                    "".join(self.container_recent_characters)
+                )
+                is not None
+            )
+            self.container_stack.append((character, parameter_context))
+            self._append_container_recent(character)
+            return
+        expected_opener = {")": "(", "]": "[", "}": "{"}.get(character)
+        if expected_opener is not None:
+            if (
+                self.container_stack
+                and self.container_stack[-1][0] == expected_opener
+            ):
+                self.container_stack.pop()
+            else:
+                self.container_stack.clear()
+        self._append_container_recent(character)
 
 
-def _scan_archive_member_stream(stream, label, max_bytes):
-    decoder = codecs.getincrementaldecoder("utf-8-sig")("strict")
+def _scan_archive_member_stream(
+    stream,
+    label,
+    max_bytes=None,
+    *,
+    reject_u2014=False,
+    template_value_predicate=None,
+):
+    strict_decoder = codecs.getincrementaldecoder("utf-8-sig")("strict")
+    scanner_decoder = codecs.getincrementaldecoder("utf-8-sig")("replace")
     binary_overlap = b""
-    credential_scanner = _CredentialAssignmentScanner()
+    jwt_scanner = _JwtShapeScanner()
+    credential_scanner = _CredentialAssignmentScanner(template_value_predicate)
     text_valid = True
     text_line_too_long = False
     current_line_size = 0
     total_bytes = 0
     while True:
-        read_size = min(STREAM_CHUNK_SIZE, max_bytes - total_bytes + 1)
+        read_size = STREAM_CHUNK_SIZE
+        if max_bytes is not None:
+            read_size = min(read_size, max_bytes - total_bytes + 1)
         chunk = stream.read(read_size)
         if not chunk:
             break
         total_bytes += len(chunk)
-        if total_bytes > max_bytes:
+        if max_bytes is not None and total_bytes > max_bytes:
             raise ValueError(f"stream exceeds the byte limit for {label}")
 
         combined = binary_overlap + chunk
+        if reject_u2014 and U2014_BYTES in combined:
+            raise ValueError(f"U+2014 found in {label}")
         if PRIVATE_KEY_HEADER.search(combined):
             raise ValueError(f"private-key header found in {label}")
+        jwt_scanner.feed(chunk)
+        if jwt_scanner.found:
+            raise ValueError(f"JWT-shaped token found in {label}")
         binary_overlap = combined[-STREAM_OVERLAP_SIZE:]
+
+        credential_scanner.feed(scanner_decoder.decode(chunk, final=False))
 
         if not text_valid:
             continue
-        if b"\x00" in chunk:
-            text_valid = False
-            credential_scanner = None
-            continue
-
         line_parts = chunk.split(b"\n")
         if len(line_parts) == 1:
             current_line_size += len(chunk)
@@ -607,25 +1192,25 @@ def _scan_archive_member_stream(stream, label, max_bytes):
             current_line_size = len(line_parts[-1])
 
         try:
-            decoded_chunk = decoder.decode(chunk, final=False)
+            strict_decoder.decode(chunk, final=False)
         except UnicodeDecodeError:
             text_valid = False
-            credential_scanner = None
             continue
-        credential_scanner.feed(decoded_chunk)
 
+    credential_scanner.feed(scanner_decoder.decode(b"", final=True))
+    if jwt_scanner.finish():
+        raise ValueError(f"JWT-shaped token found in {label}")
+    if credential_scanner.finish():
+        raise ValueError(f"credential assignment found in {label}")
     if text_valid:
         try:
-            decoded_tail = decoder.decode(b"", final=True)
+            strict_decoder.decode(b"", final=True)
         except UnicodeDecodeError:
             text_valid = False
     if text_valid:
-        credential_scanner.feed(decoded_tail)
         text_line_too_long |= current_line_size > MAX_TEXT_LINE_SIZE
         if text_line_too_long:
             raise ValueError(f"text line exceeds the byte limit in {label}")
-        if credential_scanner.finish():
-            raise ValueError(f"credential assignment found in {label}")
     return total_bytes
 
 
@@ -642,9 +1227,9 @@ def _read_bounded_zip_member(archive, name, label, size_limit):
     return data
 
 
-def _hash_zip_member(archive, name, label):
+def _hash_zip_member(archive, name, label, hash_name="sha256"):
     info = archive.getinfo(name)
-    digest = hashlib.sha256()
+    digest = hashlib.new(hash_name)
     total_bytes = 0
     with archive.open(info, "r") as member:
         while chunk := member.read(STREAM_CHUNK_SIZE):
@@ -1257,10 +1842,17 @@ def _validate_curseforge_files(files):
         seen_files.add(file_key)
 
 
-def inspect_modrinth_archive(archive_path, version):
+def inspect_modrinth_archive(
+    archive_path,
+    version,
+    pack_root=None,
+    git_sha=None,
+):
+    if (pack_root is None) != (git_sha is None):
+        raise ValueError("Modrinth Packwiz inspection requires pack root and git SHA")
     archive_path = Path(archive_path)
     with zipfile.ZipFile(archive_path) as archive:
-        _, names = _inspect_zip_safety(archive, allow_directories=True)
+        _, names = _inspect_zip_safety(archive, allow_directories=False)
         manifest = _read_launcher_manifest(
             archive,
             names,
@@ -1287,10 +1879,29 @@ def inspect_modrinth_archive(archive_path, version):
     if dependencies.get("neoforge") != PRISM_NEOFORGE_VERSION:
         raise ValueError("Modrinth NeoForge version does not match")
 
-    return _launcher_summary(archive_path, names, "modrinth")
+    summary = _launcher_summary(archive_path, names, "modrinth")
+    if pack_root is not None:
+        with zipfile.ZipFile(archive_path) as archive:
+            summary.update(
+                _verify_modrinth_packwiz_completeness(
+                    archive,
+                    manifest,
+                    pack_root,
+                    version,
+                    git_sha,
+                )
+            )
+    return summary
 
 
-def inspect_curseforge_archive(archive_path, version):
+def inspect_curseforge_archive(
+    archive_path,
+    version,
+    pack_root=None,
+    git_sha=None,
+):
+    if (pack_root is None) != (git_sha is None):
+        raise ValueError("CurseForge Packwiz inspection requires pack root and git SHA")
     archive_path = Path(archive_path)
     with zipfile.ZipFile(archive_path) as archive:
         _, names = _inspect_zip_safety(archive, allow_directories=True)
@@ -1323,7 +1934,19 @@ def inspect_curseforge_archive(archive_path, version):
     if minecraft.get("modLoaders") != expected_loaders:
         raise ValueError("CurseForge NeoForge identity does not match")
 
-    return _launcher_summary(archive_path, names, "curseforge")
+    summary = _launcher_summary(archive_path, names, "curseforge")
+    if pack_root is not None:
+        with zipfile.ZipFile(archive_path) as archive:
+            summary.update(
+                _verify_curseforge_packwiz_completeness(
+                    archive,
+                    manifest,
+                    pack_root,
+                    version,
+                    git_sha,
+                )
+            )
+    return summary
 
 
 def _tracked_paths(root_path):
@@ -1332,6 +1955,7 @@ def _tracked_paths(root_path):
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=_git_object_environment(),
     )
     if result.returncode != 0:
         error = result.stderr.decode("utf-8", errors="replace").strip()
@@ -1365,6 +1989,7 @@ def _tracked_index_entries(root_path, tracked_paths):
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=_git_object_environment(),
     )
     if result.returncode != 0:
         error = result.stderr.decode("utf-8", errors="replace").strip()
@@ -1399,6 +2024,832 @@ def _tracked_index_entries(root_path, tracked_paths):
     ]
 
 
+def _tracked_commit_entries(root_path, git_sha):
+    if not re.fullmatch(r"[0-9a-f]{40}", git_sha):
+        raise ValueError("Packwiz commit SHA must be exactly 40 lowercase hexadecimal characters")
+    commit_result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root_path),
+            "rev-parse",
+            "--verify",
+            f"{git_sha}^{{commit}}",
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=_git_object_environment(),
+    )
+    if commit_result.returncode != 0:
+        error = commit_result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(f"Packwiz commit is unavailable: {error or 'unknown error'}")
+    resolved_commit = commit_result.stdout.decode("ascii", errors="strict").strip()
+    if resolved_commit != git_sha:
+        raise ValueError("Packwiz git SHA does not identify the exact commit")
+
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root_path),
+            "ls-tree",
+            "-rz",
+            "--full-tree",
+            git_sha,
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=_git_object_environment(),
+    )
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(f"git ls-tree failed: {error or 'unknown error'}")
+    if result.stdout and not result.stdout.endswith(b"\0"):
+        raise ValueError("git ls-tree returned a malformed NUL-delimited inventory")
+
+    entries = []
+    seen_paths = set()
+    for record in result.stdout.split(b"\0")[:-1] if result.stdout else []:
+        try:
+            metadata, raw_path = record.split(b"\t", 1)
+            mode, object_type, object_id = metadata.split(b" ")
+        except ValueError as error:
+            raise ValueError("git ls-tree returned a malformed entry") from error
+        if mode not in {b"100644", b"100755", b"120000"} or object_type != b"blob":
+            raise ValueError(f"tracked commit entry is not blob-backed: {raw_path!r}")
+        if not re.fullmatch(rb"(?:[0-9a-f]{40}|[0-9a-f]{64})", object_id):
+            raise ValueError(f"tracked commit object ID is malformed: {raw_path!r}")
+        if raw_path in seen_paths:
+            raise ValueError("git ls-tree returned duplicate tracked paths")
+        seen_paths.add(raw_path)
+        if U2014_BYTES in raw_path:
+            raise ValueError(f"U+2014 found in tracked path: {raw_path!r}")
+        try:
+            relative_path = raw_path.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as error:
+            raise ValueError(f"tracked path is not valid UTF-8: {raw_path!r}") from error
+        try:
+            _validate_archive_name(relative_path, windows_safe=False)
+        except ValueError as error:
+            raise ValueError(f"invalid tracked path {relative_path!r}: {error}") from error
+        entries.append((relative_path, object_id.decode("ascii")))
+    return entries
+
+
+def _resolve_repository_root(root, label):
+    root_path = Path(root)
+    try:
+        root_status = root_path.lstat()
+    except OSError as error:
+        raise ValueError(f"{label} is unreadable: {root_path}") from error
+    if not stat.S_ISDIR(root_status.st_mode):
+        raise ValueError(f"{label} is not a directory: {root_path}")
+    return root_path.resolve(strict=True)
+
+
+def _git_object_environment():
+    environment = os.environ.copy()
+    environment["GIT_NO_REPLACE_OBJECTS"] = "1"
+    return environment
+
+
+def _start_tracked_blob(root_path, relative_path, object_id):
+    process = subprocess.Popen(
+        [
+            "git",
+            "-C",
+            str(root_path),
+            "cat-file",
+            "blob",
+            object_id,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=_git_object_environment(),
+    )
+    if process.stdout is None or process.stderr is None:
+        process.kill()
+        process.wait()
+        raise ValueError(f"cannot read tracked index blob: {relative_path!r}")
+    return process
+
+
+def _read_tracked_blob(root_path, relative_path, object_id, size_limit):
+    process = _start_tracked_blob(root_path, relative_path, object_id)
+    try:
+        data = process.stdout.read(size_limit + 1)
+        if len(data) > size_limit:
+            process.kill()
+            process.wait()
+            raise ValueError(
+                f"tracked Packwiz metadata exceeds the bounded read limit: "
+                f"{relative_path!r}"
+            )
+        error = process.stderr.read(size_limit + 1).decode(
+            "utf-8",
+            errors="replace",
+        ).strip()
+        returncode = process.wait()
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
+    finally:
+        process.stdout.close()
+        process.stderr.close()
+    if returncode != 0:
+        raise ValueError(
+            f"git cat-file failed for tracked path {relative_path!r}: "
+            f"{error or 'unknown error'}"
+        )
+    return data
+
+
+def _hash_tracked_blob(root_path, relative_path, object_id, hash_name):
+    process = _start_tracked_blob(root_path, relative_path, object_id)
+    digest = hashlib.new(hash_name)
+    try:
+        while chunk := process.stdout.read(STREAM_CHUNK_SIZE):
+            digest.update(chunk)
+        error = process.stderr.read(MAX_PACKWIZ_METADATA_SIZE + 1).decode(
+            "utf-8",
+            errors="replace",
+        ).strip()
+        returncode = process.wait()
+    except BaseException:
+        process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stdout.close()
+        process.stderr.close()
+    if returncode != 0:
+        raise ValueError(
+            f"git cat-file failed for tracked path {relative_path!r}: "
+            f"{error or 'unknown error'}"
+        )
+    return digest.hexdigest()
+
+
+def _parse_packwiz_toml(data, label):
+    try:
+        document = tomllib.loads(data.decode("utf-8-sig"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise ValueError(f"{label} is not valid UTF-8 TOML") from error
+    if not isinstance(document, dict):
+        raise ValueError(f"{label} must be a TOML table")
+    return document
+
+
+def _packwiz_hash_name(value, label):
+    if value not in {"sha1", "sha256", "sha512"}:
+        raise ValueError(f"{label} uses an unsupported hash format")
+    return value
+
+
+def _validate_packwiz_hash(value, hash_name, label):
+    digest_size = hashlib.new(hash_name).digest_size * 2
+    if not isinstance(value, str) or not re.fullmatch(
+        rf"[0-9a-f]{{{digest_size}}}",
+        value,
+    ):
+        raise ValueError(f"{label} has an invalid {hash_name.upper()} hash")
+    return value
+
+
+def _tracked_packwiz_inventory(pack_root, version, git_sha):
+    root_path = _resolve_repository_root(pack_root, "Packwiz source root")
+    tracked_blobs = dict(_tracked_commit_entries(root_path, git_sha))
+
+    def tracked_object_id(relative_path):
+        object_id = tracked_blobs.get(relative_path)
+        if object_id is None:
+            raise ValueError(f"tracked Packwiz source is missing: {relative_path!r}")
+        return object_id
+
+    pack_path = "pack.toml"
+    pack = _parse_packwiz_toml(
+        _read_tracked_blob(
+            root_path,
+            pack_path,
+            tracked_object_id(pack_path),
+            MAX_PACKWIZ_METADATA_SIZE,
+        ),
+        "tracked pack.toml",
+    )
+    if pack.get("name") != EXPECTED_PACK_NAME:
+        raise ValueError("tracked Packwiz pack name does not match AFTERLIGHT")
+    if pack.get("version") != version:
+        raise ValueError("tracked Packwiz version does not match the archive")
+    versions = pack.get("versions")
+    if not isinstance(versions, dict):
+        raise ValueError("tracked Packwiz loader identity is invalid")
+    if versions.get("minecraft") != PRISM_MINECRAFT_VERSION:
+        raise ValueError("tracked Packwiz Minecraft version does not match")
+    if versions.get("neoforge") != PRISM_NEOFORGE_VERSION:
+        raise ValueError("tracked Packwiz NeoForge version does not match")
+
+    index_reference = pack.get("index")
+    if not isinstance(index_reference, dict):
+        raise ValueError("tracked Packwiz index reference is invalid")
+    index_path = index_reference.get("file")
+    if not isinstance(index_path, str):
+        raise ValueError("tracked Packwiz index path is invalid")
+    try:
+        index_path = _validate_archive_name(index_path, windows_safe=False)
+    except ValueError as error:
+        raise ValueError("tracked Packwiz index path is invalid") from error
+    index_reference_hash_name = _packwiz_hash_name(
+        index_reference.get("hash-format"),
+        "tracked Packwiz index reference",
+    )
+    index_reference_hash = _validate_packwiz_hash(
+        index_reference.get("hash"),
+        index_reference_hash_name,
+        "tracked Packwiz index reference",
+    )
+    index_bytes = _read_tracked_blob(
+        root_path,
+        index_path,
+        tracked_object_id(index_path),
+        MAX_PACKWIZ_METADATA_SIZE,
+    )
+    if hashlib.new(index_reference_hash_name, index_bytes).hexdigest() != (
+        index_reference_hash
+    ):
+        raise ValueError("tracked Packwiz index hash does not match pack.toml")
+
+    index = _parse_packwiz_toml(index_bytes, "tracked Packwiz index")
+    index_hash_name = _packwiz_hash_name(
+        index.get("hash-format"),
+        "tracked Packwiz index",
+    )
+    file_records = index.get("files")
+    if not isinstance(file_records, list) or not file_records:
+        raise ValueError("tracked Packwiz index files are invalid")
+
+    authored_files = {}
+    all_mods = []
+    client_mods = []
+    seen_index_paths = set()
+    seen_index_collisions = set()
+    seen_mod_filenames = set()
+    seen_curseforge_records = set()
+    seen_modrinth_records = set()
+    signal_mod = None
+    server_mod_count = 0
+    for record in file_records:
+        if not isinstance(record, dict) or not {"file", "hash"}.issubset(record):
+            raise ValueError("tracked Packwiz index file record is invalid")
+        if set(record) - {"file", "hash", "metafile", "preserve"}:
+            raise ValueError("tracked Packwiz index file record is invalid")
+        relative_path = record["file"]
+        if not isinstance(relative_path, str):
+            raise ValueError("tracked Packwiz index file path is invalid")
+        try:
+            relative_path = _validate_archive_name(
+                relative_path,
+                windows_safe=False,
+            )
+        except ValueError as error:
+            raise ValueError("tracked Packwiz index file path is invalid") from error
+        collision_key = _windows_collision_key(relative_path)
+        if relative_path in seen_index_paths or collision_key in seen_index_collisions:
+            raise ValueError(f"tracked Packwiz index path is duplicated: {relative_path!r}")
+        seen_index_paths.add(relative_path)
+        seen_index_collisions.add(collision_key)
+        expected_hash = _validate_packwiz_hash(
+            record["hash"],
+            index_hash_name,
+            f"tracked Packwiz index record {relative_path!r}",
+        )
+        metafile = record.get("metafile", False)
+        if type(metafile) is not bool:
+            raise ValueError("tracked Packwiz metafile flag is invalid")
+        if "preserve" in record and type(record["preserve"]) is not bool:
+            raise ValueError("tracked Packwiz preserve flag is invalid")
+        object_id = tracked_object_id(relative_path)
+
+        if not metafile:
+            actual_hash = _hash_tracked_blob(
+                root_path,
+                relative_path,
+                object_id,
+                index_hash_name,
+            )
+            if actual_hash != expected_hash:
+                raise ValueError(
+                    f"tracked Packwiz source hash mismatch: {relative_path!r}"
+                )
+            authored_files[relative_path] = {
+                "hash": expected_hash,
+                "hash_name": index_hash_name,
+            }
+            continue
+
+        if not relative_path.startswith("mods/") or not relative_path.endswith(
+            ".pw.toml"
+        ):
+            raise ValueError(
+                f"unsupported tracked Packwiz metafile: {relative_path!r}"
+            )
+        metadata_bytes = _read_tracked_blob(
+            root_path,
+            relative_path,
+            object_id,
+            MAX_PACKWIZ_METADATA_SIZE,
+        )
+        if hashlib.new(index_hash_name, metadata_bytes).hexdigest() != expected_hash:
+            raise ValueError(
+                f"tracked Packwiz source hash mismatch: {relative_path!r}"
+            )
+        metadata = _parse_packwiz_toml(
+            metadata_bytes,
+            f"tracked Packwiz mod metadata {relative_path!r}",
+        )
+        side = metadata.get("side")
+        if side not in {"client", "server", "both"}:
+            raise ValueError(
+                f"tracked Packwiz mod side is not deliberate: {relative_path!r}"
+            )
+        name = metadata.get("name")
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"tracked Packwiz mod name is invalid: {relative_path!r}")
+        filename = metadata.get("filename")
+        if (
+            not isinstance(filename, str)
+            or PurePosixPath(filename).name != filename
+            or not filename.casefold().endswith(".jar")
+        ):
+            raise ValueError(
+                f"tracked Packwiz mod filename is invalid: {relative_path!r}"
+            )
+        try:
+            _validate_archive_name(f"mods/{filename}")
+        except ValueError as error:
+            raise ValueError(
+                f"tracked Packwiz mod filename is invalid: {relative_path!r}"
+            ) from error
+        filename_collision = _windows_collision_key(filename)
+        if filename_collision in seen_mod_filenames:
+            raise ValueError(f"tracked Packwiz mod filename is duplicated: {filename!r}")
+        seen_mod_filenames.add(filename_collision)
+
+        download = metadata.get("download")
+        if not isinstance(download, dict):
+            raise ValueError(
+                f"tracked Packwiz mod download is invalid: {relative_path!r}"
+            )
+        mod_hash_name = _packwiz_hash_name(
+            download.get("hash-format"),
+            f"tracked Packwiz mod {relative_path!r}",
+        )
+        mod_hash = _validate_packwiz_hash(
+            download.get("hash"),
+            mod_hash_name,
+            f"tracked Packwiz mod {relative_path!r}",
+        )
+        download_url = download.get("url")
+        if download_url is not None:
+            if not isinstance(download_url, str) or not download_url:
+                raise ValueError(
+                    f"tracked Packwiz mod download URL is invalid: {relative_path!r}"
+                )
+            try:
+                parsed_download = urlsplit(download_url)
+            except ValueError as error:
+                raise ValueError(
+                    f"tracked Packwiz mod download URL is invalid: {relative_path!r}"
+                ) from error
+            if (
+                parsed_download.scheme != "https"
+                or not parsed_download.hostname
+                or parsed_download.username is not None
+                or parsed_download.password is not None
+                or any(character.isspace() for character in download_url)
+            ):
+                raise ValueError(
+                    f"tracked Packwiz mod download URL is invalid: {relative_path!r}"
+                )
+
+        curseforge_record = None
+        update = metadata.get("update", {})
+        if not isinstance(update, dict):
+            raise ValueError(
+                f"tracked Packwiz update metadata is invalid: {relative_path!r}"
+            )
+        curseforge = update.get("curseforge")
+        if curseforge is not None:
+            if not isinstance(curseforge, dict):
+                raise ValueError(
+                    f"tracked CurseForge metadata is invalid: {relative_path!r}"
+                )
+            project_id = curseforge.get("project-id")
+            file_id = curseforge.get("file-id")
+            if (
+                type(project_id) is not int
+                or not 1 <= project_id <= MAX_UNSIGNED_32
+                or type(file_id) is not int
+                or not 1 <= file_id <= MAX_UNSIGNED_32
+            ):
+                raise ValueError(
+                    f"tracked CurseForge metadata is invalid: {relative_path!r}"
+                )
+            curseforge_record = (project_id, file_id)
+            if curseforge_record in seen_curseforge_records:
+                raise ValueError("tracked CurseForge project and file record is duplicated")
+            seen_curseforge_records.add(curseforge_record)
+
+        modrinth_record = None
+        modrinth = update.get("modrinth")
+        if modrinth is not None:
+            if not isinstance(modrinth, dict) or set(modrinth) != {
+                "mod-id",
+                "version",
+            }:
+                raise ValueError(
+                    f"tracked Modrinth metadata is invalid: {relative_path!r}"
+                )
+            mod_id = modrinth.get("mod-id")
+            version_id = modrinth.get("version")
+            if (
+                not isinstance(mod_id, str)
+                or not mod_id
+                or not isinstance(version_id, str)
+                or not version_id
+            ):
+                raise ValueError(
+                    f"tracked Modrinth metadata is invalid: {relative_path!r}"
+                )
+            modrinth_record = (mod_id, version_id)
+            if modrinth_record in seen_modrinth_records:
+                raise ValueError("tracked Modrinth project and version is duplicated")
+            seen_modrinth_records.add(modrinth_record)
+        if curseforge_record is None and download_url is None:
+            raise ValueError(
+                f"tracked Packwiz mod download URL is missing: {relative_path!r}"
+            )
+
+        mod = {
+            "curseforge_record": curseforge_record,
+            "download_url": download_url,
+            "filename": filename,
+            "hash": mod_hash,
+            "hash_name": mod_hash_name,
+            "metadata_path": relative_path,
+            "modrinth_record": modrinth_record,
+            "name": name,
+            "override_path": f"overrides/mods/{filename}",
+            "side": side,
+        }
+        if relative_path == "mods/afterlight-signal.pw.toml":
+            signal_mod = mod
+        all_mods.append(mod)
+        if side == "server":
+            server_mod_count += 1
+        else:
+            client_mods.append(mod)
+
+    if signal_mod is None or signal_mod["side"] == "server":
+        raise ValueError("tracked AFTERLIGHT Signal client metadata is missing")
+    if signal_mod["hash_name"] != "sha512":
+        raise ValueError("AFTERLIGHT Signal metadata must use SHA-512")
+
+    lock_bytes = _read_tracked_blob(
+        root_path,
+        MODRINTH_MANIFEST_LOCK_PATH,
+        tracked_object_id(MODRINTH_MANIFEST_LOCK_PATH),
+        MAX_PACKWIZ_METADATA_SIZE,
+    )
+    try:
+        manifest_lock = json.loads(lock_bytes.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("tracked Modrinth manifest lock is not valid UTF-8 JSON") from error
+    if not isinstance(manifest_lock, dict) or set(manifest_lock) != {
+        "files",
+        "format",
+    }:
+        raise ValueError("tracked Modrinth manifest lock shape is invalid")
+    if type(manifest_lock["format"]) is not int or manifest_lock["format"] != 1:
+        raise ValueError("tracked Modrinth manifest lock format is unsupported")
+    lock_records = manifest_lock["files"]
+    if not isinstance(lock_records, list) or not lock_records:
+        raise ValueError("tracked Modrinth manifest lock files are invalid")
+
+    direct_mods = {
+        mod["metadata_path"]: mod
+        for mod in all_mods
+        if mod["curseforge_record"] is None
+    }
+    seen_lock_metadata_paths = set()
+    seen_lock_archive_paths = set()
+    for record in lock_records:
+        if not isinstance(record, dict) or set(record) != {
+            "downloads",
+            "fileSize",
+            "hashes",
+            "metadata_path",
+            "path",
+        }:
+            raise ValueError("tracked Modrinth manifest lock record shape is invalid")
+        metadata_path = record["metadata_path"]
+        if not isinstance(metadata_path, str) or metadata_path not in direct_mods:
+            raise ValueError(
+                "tracked Modrinth manifest lock metadata path is invalid"
+            )
+        if metadata_path in seen_lock_metadata_paths:
+            raise ValueError(
+                "tracked Modrinth manifest lock metadata path is duplicated"
+            )
+        seen_lock_metadata_paths.add(metadata_path)
+        mod = direct_mods[metadata_path]
+        expected_archive_path = f"mods/{mod['filename']}"
+        if record["path"] != expected_archive_path:
+            raise ValueError(
+                f"tracked Modrinth manifest lock path mismatch: {metadata_path!r}"
+            )
+        archive_collision = _windows_collision_key(expected_archive_path)
+        if archive_collision in seen_lock_archive_paths:
+            raise ValueError("tracked Modrinth manifest lock path is duplicated")
+        seen_lock_archive_paths.add(archive_collision)
+        if record["downloads"] != [mod["download_url"]]:
+            raise ValueError(
+                f"tracked Modrinth manifest lock URL mismatch: {metadata_path!r}"
+            )
+        hashes = record["hashes"]
+        if not isinstance(hashes, dict) or set(hashes) != {"sha1", "sha512"}:
+            raise ValueError(
+                f"tracked Modrinth manifest lock hashes are invalid: {metadata_path!r}"
+            )
+        sha1_hash = hashes["sha1"]
+        sha512_hash = hashes["sha512"]
+        if not isinstance(sha1_hash, str) or not re.fullmatch(
+            r"[0-9a-f]{40}", sha1_hash
+        ):
+            raise ValueError(
+                f"tracked Modrinth manifest lock SHA-1 is invalid: {metadata_path!r}"
+            )
+        if mod["hash_name"] != "sha512" or sha512_hash != mod["hash"]:
+            raise ValueError(
+                f"tracked Modrinth manifest lock SHA-512 mismatch: {metadata_path!r}"
+            )
+        file_size = record["fileSize"]
+        if type(file_size) is not int or not 1 <= file_size <= MAX_UNSIGNED_32:
+            raise ValueError(
+                f"tracked Modrinth manifest lock file size is invalid: {metadata_path!r}"
+            )
+        mod["manifest_sha1"] = sha1_hash
+        mod["manifest_file_size"] = file_size
+
+    missing_lock_records = sorted(set(direct_mods) - seen_lock_metadata_paths)
+    if missing_lock_records:
+        raise ValueError(
+            "tracked Modrinth manifest lock is missing: "
+            f"{missing_lock_records[0]!r}"
+        )
+
+    expected_collisions = {
+        _windows_collision_key(f"overrides/{path}") for path in authored_files
+    }
+    for mod in all_mods:
+        collision_key = _windows_collision_key(mod["override_path"])
+        if collision_key in expected_collisions:
+            raise ValueError(
+                f"tracked Packwiz client path is duplicated: {mod['override_path']!r}"
+            )
+        expected_collisions.add(collision_key)
+
+    return {
+        "all_mods": all_mods,
+        "authored_files": authored_files,
+        "client_mods": client_mods,
+        "root": root_path,
+        "server_mod_count": server_mod_count,
+    }
+
+
+def _expected_modrinth_environment(side):
+    if side == "both":
+        return {"client": "required", "server": "required"}
+    if side == "client":
+        return {"client": "required", "server": "unsupported"}
+    if side == "server":
+        return {"client": "unsupported", "server": "required"}
+    raise ValueError(f"invalid Modrinth side: {side!r}")
+
+
+def _verify_modrinth_packwiz_completeness(
+    archive,
+    manifest,
+    pack_root,
+    version,
+    git_sha,
+):
+    inventory = _tracked_packwiz_inventory(pack_root, version, git_sha)
+    archive_names = {info.filename for info in archive.infolist()}
+    manifest_records = {record["path"]: record for record in manifest["files"]}
+    consumed_records = set()
+    consumed_overrides = set()
+
+    for relative_path, expected in inventory["authored_files"].items():
+        archive_name = f"overrides/{relative_path}"
+        if archive_name not in archive_names:
+            raise ValueError(f"missing authored override: {relative_path!r}")
+        actual_hash, _ = _hash_zip_member(
+            archive,
+            archive_name,
+            f"authored override {relative_path!r}",
+            expected["hash_name"],
+        )
+        if actual_hash != expected["hash"]:
+            raise ValueError(f"authored override hash mismatch: {relative_path!r}")
+        consumed_overrides.add(archive_name)
+
+    for mod in inventory["all_mods"]:
+        record_path = f"mods/{mod['filename']}"
+        record = manifest_records.get(record_path)
+        embedded_path = mod["override_path"]
+        embedded = embedded_path in archive_names
+        expects_record = mod["curseforge_record"] is None
+        if expects_record:
+            if record is None:
+                raise ValueError(f"missing client mod: {mod['name']}")
+            if embedded:
+                raise ValueError(
+                    f"duplicate client mod representation: {mod['name']}"
+                )
+            if record["hashes"]["sha512"] != mod["hash"]:
+                if mod["metadata_path"] == "mods/afterlight-signal.pw.toml":
+                    raise ValueError("AFTERLIGHT Signal SHA-512 mismatch")
+                raise ValueError(
+                    f"Modrinth file SHA-512 mismatch: {mod['metadata_path']!r}"
+                )
+            if record["hashes"]["sha1"] != mod["manifest_sha1"]:
+                raise ValueError(
+                    f"Modrinth file SHA-1 mismatch: {mod['metadata_path']!r}"
+                )
+            if record["fileSize"] != mod["manifest_file_size"]:
+                raise ValueError(
+                    f"Modrinth file size mismatch: {mod['metadata_path']!r}"
+                )
+            if record["downloads"] != [mod["download_url"]]:
+                raise ValueError(
+                    f"Modrinth download URL mismatch: {mod['metadata_path']!r}"
+                )
+            if record["env"] != _expected_modrinth_environment(mod["side"]):
+                raise ValueError(
+                    f"Modrinth environment mismatch: {mod['metadata_path']!r}"
+                )
+            consumed_records.add(record_path)
+            continue
+
+        if record is not None:
+            raise ValueError(f"duplicate client mod representation: {mod['name']}")
+        if not embedded:
+            raise ValueError(f"missing embedded mod: {mod['name']}")
+        actual_hash, _ = _hash_zip_member(
+            archive,
+            embedded_path,
+            f"embedded mod {mod['metadata_path']!r}",
+            mod["hash_name"],
+        )
+        if actual_hash != mod["hash"]:
+            raise ValueError(
+                f"embedded mod hash mismatch: {mod['metadata_path']!r}"
+            )
+        consumed_overrides.add(embedded_path)
+
+    extra_records = sorted(set(manifest_records) - consumed_records)
+    if extra_records:
+        raise ValueError(f"extra Modrinth file record: {extra_records[0]!r}")
+    allowed_names = {MODRINTH_MANIFEST_NAME, *consumed_overrides}
+    extra_names = sorted(archive_names - allowed_names)
+    if extra_names:
+        if extra_names[0].startswith("overrides/"):
+            raise ValueError(f"extra override file: {extra_names[0]!r}")
+        raise ValueError(f"extra Modrinth archive file: {extra_names[0]!r}")
+
+    return {
+        "packwiz_authored_file_count": len(inventory["authored_files"]),
+        "packwiz_client_mod_count": len(inventory["client_mods"]),
+        "packwiz_server_mod_count": inventory["server_mod_count"],
+    }
+
+
+def _verify_curseforge_packwiz_completeness(
+    archive,
+    manifest,
+    pack_root,
+    version,
+    git_sha,
+):
+    inventory = _tracked_packwiz_inventory(pack_root, version, git_sha)
+    directory_names = sorted(
+        info.filename for info in archive.infolist() if info.is_dir()
+    )
+    if directory_names:
+        raise ValueError(
+            f"extra CurseForge directory entry: {directory_names[0]!r}"
+        )
+    archive_names = {
+        info.filename for info in archive.infolist() if not info.is_dir()
+    }
+    manifest_records = {
+        (record["projectID"], record["fileID"]): record
+        for record in manifest["files"]
+    }
+    embedded_mod_names = {
+        name
+        for name in archive_names
+        if name.startswith("overrides/mods/") and name.casefold().endswith(".jar")
+    }
+    consumed_records = set()
+    consumed_overrides = set()
+
+    for relative_path, expected in inventory["authored_files"].items():
+        archive_name = f"overrides/{relative_path}"
+        if archive_name not in archive_names:
+            raise ValueError(f"missing authored override: {relative_path!r}")
+        actual_hash, _ = _hash_zip_member(
+            archive,
+            archive_name,
+            f"authored override {relative_path!r}",
+            expected["hash_name"],
+        )
+        if actual_hash != expected["hash"]:
+            raise ValueError(
+                f"authored override SHA-256 mismatch: {relative_path!r}"
+            )
+        consumed_overrides.add(archive_name)
+
+    for mod in inventory["client_mods"]:
+        curseforge_record = mod["curseforge_record"]
+        has_record = (
+            curseforge_record is not None and curseforge_record in manifest_records
+        )
+        has_embedded_jar = mod["override_path"] in embedded_mod_names
+        if has_record and manifest_records[curseforge_record]["required"] is not True:
+            raise ValueError(
+                f"CurseForge client mod must be required: {mod['metadata_path']!r}"
+            )
+        if has_embedded_jar:
+            actual_hash, _ = _hash_zip_member(
+                archive,
+                mod["override_path"],
+                f"embedded mod {mod['metadata_path']!r}",
+                mod["hash_name"],
+            )
+            if actual_hash != mod["hash"]:
+                if mod["metadata_path"] == "mods/afterlight-signal.pw.toml":
+                    raise ValueError("AFTERLIGHT Signal SHA-512 mismatch")
+                raise ValueError(
+                    f"embedded mod hash mismatch: {mod['metadata_path']!r}"
+                )
+        if mod["metadata_path"] == "mods/afterlight-signal.pw.toml" and not (
+            has_embedded_jar
+        ):
+            raise ValueError("missing client mod: AFTERLIGHT Signal")
+        representation_count = int(has_record) + int(has_embedded_jar)
+        if representation_count == 0:
+            raise ValueError(f"missing client mod: {mod['name']}")
+        if representation_count != 1:
+            raise ValueError(
+                f"duplicate client mod representation: {mod['name']}"
+            )
+        if has_record:
+            consumed_records.add(curseforge_record)
+        if has_embedded_jar:
+            consumed_overrides.add(mod["override_path"])
+
+    extra_records = sorted(set(manifest_records) - consumed_records)
+    if extra_records:
+        raise ValueError("extra CurseForge file record")
+    extra_embedded_mods = sorted(embedded_mod_names - consumed_overrides)
+    if extra_embedded_mods:
+        raise ValueError(f"extra embedded mod: {extra_embedded_mods[0]!r}")
+
+    allowed_names = {
+        CURSEFORGE_MANIFEST_NAME,
+        *consumed_overrides,
+    }
+    if CURSEFORGE_MODLIST_NAME in archive_names:
+        allowed_names.add(CURSEFORGE_MODLIST_NAME)
+    extra_names = sorted(archive_names - allowed_names)
+    if extra_names:
+        if extra_names[0].startswith("overrides/"):
+            raise ValueError(f"extra override file: {extra_names[0]!r}")
+        raise ValueError(f"extra CurseForge archive file: {extra_names[0]!r}")
+
+    return {
+        "packwiz_authored_file_count": len(inventory["authored_files"]),
+        "packwiz_client_mod_count": len(inventory["client_mods"]),
+        "packwiz_server_mod_count": inventory["server_mod_count"],
+    }
+
+
 def _is_runtime_path(parts):
     return any(parts[: len(prefix)] == prefix for prefix in RUNTIME_PATH_PREFIXES)
 
@@ -1421,6 +2872,7 @@ def _scan_tracked_blob(root_path, relative_path, object_id):
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=_git_object_environment(),
     )
     if process.stdout is None or process.stderr is None:
         process.kill()
@@ -1428,7 +2880,7 @@ def _scan_tracked_blob(root_path, relative_path, object_id):
         raise ValueError(f"cannot read tracked index blob: {relative_path!r}")
 
     try:
-        _scan_binary_stream(
+        _scan_archive_member_stream(
             process.stdout,
             f"tracked index blob {relative_path!r}",
             reject_u2014=True,
@@ -1863,6 +3315,7 @@ def verify_public_release(
     installer_size,
     installer_sha256,
     *,
+    pack_root,
     receipt_path=None,
     receipt_sha256=None,
     write_receipt=None,
@@ -1941,10 +3394,14 @@ def verify_public_release(
     curseforge = inspect_curseforge_archive(
         dist_path / CURSEFORGE_ARTIFACT_NAME,
         version,
+        pack_root,
+        git_sha,
     )
     modrinth = inspect_modrinth_archive(
         dist_path / MRPACK_ARTIFACT_NAME,
         version,
+        pack_root,
+        git_sha,
     )
 
     public_files = _public_file_records(dist_path)
@@ -2007,10 +3464,14 @@ def _parser():
     modrinth_parser = subparsers.add_parser("inspect-modrinth")
     modrinth_parser.add_argument("--archive", required=True)
     modrinth_parser.add_argument("--version", required=True)
+    modrinth_parser.add_argument("--pack-root")
+    modrinth_parser.add_argument("--git-sha")
 
     curseforge_parser = subparsers.add_parser("inspect-curseforge")
     curseforge_parser.add_argument("--archive", required=True)
     curseforge_parser.add_argument("--version", required=True)
+    curseforge_parser.add_argument("--pack-root")
+    curseforge_parser.add_argument("--git-sha")
 
     normalize_parser = subparsers.add_parser("normalize-archive")
     normalize_parser.add_argument("--archive", required=True)
@@ -2046,6 +3507,7 @@ def _parser():
     verifier_parser.add_argument("--installer-version", required=True)
     verifier_parser.add_argument("--installer-size", required=True, type=int)
     verifier_parser.add_argument("--installer-sha256", required=True)
+    verifier_parser.add_argument("--pack-root", required=True)
     verifier_parser.add_argument("--receipt")
     verifier_parser.add_argument("--receipt-sha256")
     verifier_parser.add_argument("--write-receipt")
@@ -2082,12 +3544,22 @@ def main(argv=None):
         return 0
 
     if args.command == "inspect-modrinth":
-        summary = inspect_modrinth_archive(args.archive, args.version)
+        summary = inspect_modrinth_archive(
+            args.archive,
+            args.version,
+            args.pack_root,
+            args.git_sha,
+        )
         print(json.dumps(summary, sort_keys=True))
         return 0
 
     if args.command == "inspect-curseforge":
-        summary = inspect_curseforge_archive(args.archive, args.version)
+        summary = inspect_curseforge_archive(
+            args.archive,
+            args.version,
+            args.pack_root,
+            args.git_sha,
+        )
         print(json.dumps(summary, sort_keys=True))
         return 0
 
@@ -2131,6 +3603,7 @@ def main(argv=None):
             args.installer_version,
             args.installer_size,
             args.installer_sha256,
+            pack_root=args.pack_root,
             receipt_path=args.receipt,
             receipt_sha256=args.receipt_sha256,
             write_receipt=args.write_receipt,

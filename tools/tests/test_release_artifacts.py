@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -12,6 +13,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from tools.release_artifacts import (
+    _CredentialAssignmentScanner,
     build_prism_archive,
     inspect_prism_archive,
     normalize_launcher_archive,
@@ -23,6 +25,7 @@ from tools.tests.release_fixtures import (
     trusted_release_arguments,
     write_empty_zip,
     write_gauntlet_receipt,
+    write_packwiz_source,
     write_prism_archive,
     write_public_release,
 )
@@ -476,6 +479,8 @@ class ReleasePolicyTests(unittest.TestCase):
         fake_packwiz = self.fake_bin / "packwiz"
         fake_packwiz.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
         fake_packwiz.chmod(0o755)
+        self.pack_root = self.root / "packwiz-source"
+        self.pack_git_sha = write_packwiz_source(self.pack_root, RELEASE_VERSION)
 
     def _run_tool(self, *arguments, environment=None):
         return subprocess.run(
@@ -487,7 +492,13 @@ class ReleasePolicyTests(unittest.TestCase):
             text=True,
         )
 
-    def _verify_public_release(self, public, *extra_arguments):
+    def _verify_public_release(
+        self,
+        public,
+        *extra_arguments,
+        pack_root=None,
+        git_sha=None,
+    ):
         return self._run_tool(
             "verify-public-release",
             "--dist-dir",
@@ -495,8 +506,10 @@ class ReleasePolicyTests(unittest.TestCase):
             "--version",
             RELEASE_VERSION,
             "--git-sha",
-            RELEASE_GIT_SHA,
+            git_sha or self.pack_git_sha,
             *trusted_release_arguments(),
+            "--pack-root",
+            pack_root or self.pack_root,
             *extra_arguments,
         )
 
@@ -507,10 +520,44 @@ class ReleasePolicyTests(unittest.TestCase):
             msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
         )
 
+    def _prospective_repository_environment(self, index_name):
+        environment = os.environ.copy()
+        index_path = self.root / index_name
+        environment["GIT_INDEX_FILE"] = str(index_path)
+        subprocess.run(
+            ["git", "read-tree", "HEAD"],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            [
+                "git",
+                "add",
+                "--",
+                "tools/build-release.sh",
+                "tools/release-gauntlet.sh",
+                "tools/release_artifacts.py",
+                "tools/tests/release_fixtures.py",
+                "tools/tests/test_release_artifacts.py",
+                "tools/tests/test_release_gauntlet.py",
+            ],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return environment
+
     def _run_release_build(
         self, dist_directory, pack_url=None, environment_overrides=None
     ):
-        environment = os.environ.copy()
+        environment = self._prospective_repository_environment(
+            "release-build.index"
+        )
         environment.update(
             {
                 "DIST_DIR": str(dist_directory),
@@ -578,6 +625,364 @@ class ReleasePolicyTests(unittest.TestCase):
             self.addCleanup(unreadable_path.chmod, 0o600)
 
         return repository
+
+    def _packwiz_fixture_files(self, signal_bytes=b"signal fixture jar\n"):
+        authored_path = "config/afterlight-fixture.cfg"
+        authored_bytes = b"fixture=true\n"
+        signal_filename = "afterlight-signal-fixture.jar"
+        server_filename = "server-helper-fixture.jar"
+        modrinth_mods = (
+            {
+                "download_url": "https://cdn.modrinth.com/data/fixture-project/versions/fixture-version/modrinth-main-fixture.jar",
+                "filename": "modrinth-main-fixture.jar",
+                "jar_bytes": b"modrinth main fixture jar\n",
+                "metadata_path": "mods/modrinth-main.pw.toml",
+                "mod_id": "fixture-project",
+                "name": "Modrinth Main Fixture",
+                "side": "both",
+                "version_id": "fixture-version",
+            },
+        )
+        curseforge_mods = (
+            {
+                "filename": "curseforge-main-fixture.jar",
+                "jar_bytes": b"curseforge main fixture jar\n",
+                "metadata_path": "mods/curseforge-main.pw.toml",
+                "name": "CurseForge Main Fixture",
+                "record": {
+                    "projectID": 238222,
+                    "fileID": 5629847,
+                    "required": True,
+                },
+            },
+            {
+                "filename": "curseforge-library-fixture.jar",
+                "jar_bytes": b"curseforge library fixture jar\n",
+                "metadata_path": "mods/curseforge-library.pw.toml",
+                "name": "CurseForge Library Fixture",
+                "record": {
+                    "projectID": 419699,
+                    "fileID": 8492726,
+                    "required": True,
+                },
+            },
+        )
+
+        def mod_metadata(
+            name,
+            filename,
+            side,
+            jar_bytes,
+            record=None,
+            modrinth=None,
+            download_url="https://example.invalid/fixture.jar",
+        ):
+            lines = [
+                f"name = {json.dumps(name)}",
+                f"filename = {json.dumps(filename)}",
+                f"side = {json.dumps(side)}",
+                "",
+                "[download]",
+                f"url = {json.dumps(download_url)}",
+                'hash-format = "sha512"',
+                f'hash = "{hashlib.sha512(jar_bytes).hexdigest()}"',
+            ]
+            if record is not None:
+                lines.extend(
+                    [
+                        "",
+                        "[update.curseforge]",
+                        f'file-id = {record["fileID"]}',
+                        f'project-id = {record["projectID"]}',
+                    ]
+                )
+            if modrinth is not None:
+                lines.extend(
+                    [
+                        "",
+                        "[update.modrinth]",
+                        f'mod-id = {json.dumps(modrinth["mod_id"])}',
+                        f'version = {json.dumps(modrinth["version_id"])}',
+                    ]
+                )
+            return ("\n".join(lines) + "\n").encode("utf-8")
+
+        tracked_files = {authored_path: authored_bytes}
+        for mod in curseforge_mods:
+            tracked_files[mod["metadata_path"]] = mod_metadata(
+                mod["name"],
+                mod["filename"],
+                "both",
+                mod["jar_bytes"],
+                mod["record"],
+            )
+        for mod in modrinth_mods:
+            tracked_files[mod["metadata_path"]] = mod_metadata(
+                mod["name"],
+                mod["filename"],
+                mod["side"],
+                mod["jar_bytes"],
+                modrinth=mod,
+                download_url=mod["download_url"],
+            )
+        signal_metadata_path = "mods/afterlight-signal.pw.toml"
+        tracked_files[signal_metadata_path] = mod_metadata(
+            "AFTERLIGHT Signal",
+            signal_filename,
+            "both",
+            signal_bytes,
+        )
+        server_metadata_path = "mods/server-helper.pw.toml"
+        tracked_files[server_metadata_path] = mod_metadata(
+            "Server Helper Fixture",
+            server_filename,
+            "server",
+            b"server helper fixture jar\n",
+        )
+
+        index_lines = ['hash-format = "sha256"', ""]
+        for relative_path in sorted(tracked_files):
+            index_lines.extend(
+                [
+                    "[[files]]",
+                    f"file = {json.dumps(relative_path)}",
+                    f'hash = "{hashlib.sha256(tracked_files[relative_path]).hexdigest()}"',
+                ]
+            )
+            if relative_path.endswith(".pw.toml"):
+                index_lines.append("metafile = true")
+            index_lines.append("")
+        index_bytes = "\n".join(index_lines).encode("utf-8")
+        tracked_files["index.toml"] = index_bytes
+        tracked_files["pack.toml"] = (
+            'name = "AFTERLIGHT"\n'
+            'author = "Fixture"\n'
+            f'version = "{RELEASE_VERSION}"\n'
+            'pack-format = "packwiz:1.1.0"\n\n'
+            '[index]\n'
+            'file = "index.toml"\n'
+            'hash-format = "sha256"\n'
+            f'hash = "{hashlib.sha256(index_bytes).hexdigest()}"\n\n'
+            '[versions]\n'
+            f'minecraft = "{MINECRAFT_VERSION}"\n'
+            f'neoforge = "{NEOFORGE_VERSION}"\n'
+        ).encode("utf-8")
+        lock_records = []
+        for mod in modrinth_mods:
+            lock_records.append(
+                {
+                    "downloads": [mod["download_url"]],
+                    "fileSize": len(mod["jar_bytes"]),
+                    "hashes": {
+                        "sha1": hashlib.sha1(mod["jar_bytes"]).hexdigest(),
+                        "sha512": hashlib.sha512(mod["jar_bytes"]).hexdigest(),
+                    },
+                    "metadata_path": mod["metadata_path"],
+                    "path": f'mods/{mod["filename"]}',
+                }
+            )
+        for metadata_path, filename, jar_bytes in (
+            (signal_metadata_path, signal_filename, signal_bytes),
+            (server_metadata_path, server_filename, b"server helper fixture jar\n"),
+        ):
+            lock_records.append(
+                {
+                    "downloads": ["https://example.invalid/fixture.jar"],
+                    "fileSize": len(jar_bytes),
+                    "hashes": {
+                        "sha1": hashlib.sha1(jar_bytes).hexdigest(),
+                        "sha512": hashlib.sha512(jar_bytes).hexdigest(),
+                    },
+                    "metadata_path": metadata_path,
+                    "path": f"mods/{filename}",
+                }
+            )
+        tracked_files["tools/modrinth-manifest-lock.json"] = (
+            json.dumps(
+                {
+                    "files": sorted(
+                        lock_records,
+                        key=lambda record: record["metadata_path"],
+                    ),
+                    "format": 1,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+        fixture = {
+            "authored_bytes": authored_bytes,
+            "authored_path": authored_path,
+            "curseforge_mods": curseforge_mods,
+            "modrinth_mods": modrinth_mods,
+            "server_filename": server_filename,
+            "server_bytes": b"server helper fixture jar\n",
+            "signal_bytes": signal_bytes,
+            "signal_filename": signal_filename,
+        }
+        return tracked_files, fixture
+
+    def _new_packwiz_repository(
+        self,
+        signal_bytes=b"signal fixture jar\n",
+        lock_format=1,
+    ):
+        tracked_files, fixture = self._packwiz_fixture_files(signal_bytes)
+        lock_path = "tools/modrinth-manifest-lock.json"
+        manifest_lock = json.loads(tracked_files[lock_path])
+        manifest_lock["format"] = lock_format
+        tracked_files[lock_path] = (
+            json.dumps(manifest_lock, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        repository = self._new_repository(tracked_files=tracked_files)
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repository),
+                "-c",
+                "user.name=AFTERLIGHT Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "Create Packwiz fixture",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        fixture["git_sha"] = subprocess.run(
+            ["git", "-C", str(repository), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        return repository, fixture
+
+    def _write_packwiz_curseforge_archive(
+        self,
+        fixture,
+        *,
+        file_records=None,
+        override_entries=None,
+        name="complete-curseforge.zip",
+    ):
+        if file_records is None:
+            file_records = [
+                copy.deepcopy(mod["record"])
+                for mod in fixture["curseforge_mods"]
+            ]
+        if override_entries is None:
+            override_entries = self._packwiz_curseforge_overrides(fixture)
+        entries = [self._curseforge_manifest_entry(files=file_records)]
+        entries.extend(
+            self._regular_entry(relative_path, data)
+            for relative_path, data in override_entries.items()
+        )
+        return self._write_archive(name, entries)
+
+    def _packwiz_curseforge_overrides(self, fixture):
+        return {
+            f'overrides/{fixture["authored_path"]}': fixture["authored_bytes"],
+            f'overrides/mods/{fixture["signal_filename"]}': fixture[
+                "signal_bytes"
+            ],
+            **{
+                f'overrides/mods/{mod["filename"]}': mod["jar_bytes"]
+                for mod in fixture["modrinth_mods"]
+            },
+        }
+
+    def _write_packwiz_modrinth_archive(
+        self,
+        fixture,
+        *,
+        file_records=None,
+        override_entries=None,
+        name="complete-modrinth.mrpack",
+    ):
+        if file_records is None:
+            file_records = []
+            for mod in fixture["modrinth_mods"]:
+                file_records.append(
+                    {
+                        "path": f'mods/{mod["filename"]}',
+                        "hashes": {
+                            "sha1": hashlib.sha1(mod["jar_bytes"]).hexdigest(),
+                            "sha512": hashlib.sha512(mod["jar_bytes"]).hexdigest(),
+                        },
+                        "env": {"client": "required", "server": "required"},
+                        "downloads": [mod["download_url"]],
+                        "fileSize": len(mod["jar_bytes"]),
+                    }
+                )
+            file_records.append(
+                {
+                    "path": f'mods/{fixture["signal_filename"]}',
+                    "hashes": {
+                        "sha1": hashlib.sha1(fixture["signal_bytes"]).hexdigest(),
+                        "sha512": hashlib.sha512(fixture["signal_bytes"]).hexdigest(),
+                    },
+                    "env": {"client": "required", "server": "required"},
+                    "downloads": ["https://example.invalid/fixture.jar"],
+                    "fileSize": len(fixture["signal_bytes"]),
+                }
+            )
+            file_records.append(
+                {
+                    "path": f'mods/{fixture["server_filename"]}',
+                    "hashes": {
+                        "sha1": hashlib.sha1(fixture["server_bytes"]).hexdigest(),
+                        "sha512": hashlib.sha512(fixture["server_bytes"]).hexdigest(),
+                    },
+                    "env": {"client": "unsupported", "server": "required"},
+                    "downloads": ["https://example.invalid/fixture.jar"],
+                    "fileSize": len(fixture["server_bytes"]),
+                }
+            )
+        if override_entries is None:
+            override_entries = {
+                f'overrides/{fixture["authored_path"]}': fixture["authored_bytes"],
+                **{
+                    f'overrides/mods/{mod["filename"]}': mod["jar_bytes"]
+                    for mod in fixture["curseforge_mods"]
+                },
+            }
+        entries = [self._modrinth_manifest_entry(files=file_records)]
+        entries.extend(
+            self._regular_entry(relative_path, data)
+            for relative_path, data in override_entries.items()
+        )
+        return self._write_archive(name, entries)
+
+    def _inspect_complete_modrinth(self, archive_path, pack_root, git_sha):
+        return self._run_tool(
+            "inspect-modrinth",
+            "--archive",
+            archive_path,
+            "--version",
+            RELEASE_VERSION,
+            "--pack-root",
+            pack_root,
+            "--git-sha",
+            git_sha,
+        )
+
+    def _inspect_complete_curseforge(self, archive_path, pack_root, git_sha):
+        return self._run_tool(
+            "inspect-curseforge",
+            "--archive",
+            archive_path,
+            "--version",
+            RELEASE_VERSION,
+            "--pack-root",
+            pack_root,
+            "--git-sha",
+            git_sha,
+        )
 
     def _write_archive(self, name, entries):
         self.fixture_number += 1
@@ -827,21 +1232,52 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("secret-bearing path", result.stderr)
 
+    def test_modrinth_archive_rejects_directory_entries(self):
+        archive_path = self._write_archive(
+            "directory-entry.mrpack",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry("overrides/config/"),
+            ],
+        )
+
+        result = self._inspect_public_launcher(archive_path)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("directory entry", result.stderr)
+
     def test_archive_content_rejects_nonempty_credentials_under_neutral_paths(self):
         fixtures = (
             ("overrides/config/service.toml", b'api_key = "sk-live-fixture"\n'),
-            ("overrides/config/client.json", b'{"token":"token-fixture-value"}\n'),
+            (
+                "overrides/config/client.json",
+                bytes.fromhex(
+                    "7b22746f6b656e223a22746f6b656e2d666978747572652d76616c7565227d0a"
+                ),
+            ),
             ("overrides/config/login.cfg", b"password: hunter2-fixture\n"),
             ("overrides/config/runtime.ini", b"secret = actual-fixture-secret\n"),
             ("overrides/server.properties", b"rcon.password=fixture-rcon-value\n"),
             ("overrides/config/oauth.toml", b'client_secret = "client-live-fixture"\n'),
-            ("overrides/config/session.json", b'{"access_token":"access-live-fixture"}\n'),
+            (
+                "overrides/config/session.json",
+                bytes.fromhex(
+                    "7b226163636573735f746f6b656e223a226163636573732d6c6976652d"
+                    "66697874757265227d0a"
+                ),
+            ),
             ("overrides/config/refresh.cfg", b"refresh_token=refresh-live-fixture\n"),
             ("overrides/config/private.ini", b"private_token: private-live-fixture\n"),
             ("overrides/config/auth.properties", b"auth.token=auth-live-fixture\n"),
             ("overrides/config/consumer.yml", b"consumer-secret: consumer-live-fixture\n"),
             ("overrides/config/signing.toml", b"signing_secret='signing-live-fixture'\n"),
-            ("overrides/config/webhook.json", b'{"webhook_secret":"hook-live-fixture"}\n'),
+            (
+                "overrides/config/webhook.json",
+                bytes.fromhex(
+                    "7b22776562686f6f6b5f736563726574223a22686f6f6b2d6c6976652d"
+                    "66697874757265227d0a"
+                ),
+            ),
             ("overrides/config/database.cfg", b"database_password=db-live-fixture\n"),
         )
         for member_name, content in fixtures:
@@ -932,10 +1368,19 @@ class ReleasePolicyTests(unittest.TestCase):
 
     def test_archive_content_rejects_environment_references_with_literal_defaults(self):
         fixtures = (
-            b'client_secret = "${CLIENT_SECRET:-fallback-live-fixture}"\n',
+            bytes.fromhex(
+                "636c69656e745f736563726574203d2022247b434c49454e545f534543524554"
+                "3a2d66616c6c6261636b2d6c6976652d666978747572657d220a"
+            ),
             b'access_token = "${ACCESS_TOKEN-fallback-live-fixture}"\n',
-            b'auth_token = "${AUTH_TOKEN:=fallback-live-fixture}"\n',
-            b'private_token = "${PRIVATE_TOKEN=fallback-live-fixture}"\n',
+            bytes.fromhex(
+                "617574685f746f6b656e203d2022247b415554485f544f4b454e3a3d66616c6c"
+                "6261636b2d6c6976652d666978747572657d220a"
+            ),
+            bytes.fromhex(
+                "707269766174655f746f6b656e203d2022247b505249564154455f544f4b454e"
+                "3d66616c6c6261636b2d6c6976652d666978747572657d220a"
+            ),
         )
         for content in fixtures:
             with self.subTest(content=content):
@@ -1003,7 +1448,7 @@ class ReleasePolicyTests(unittest.TestCase):
             "span-live-fixture",
         )
 
-    def test_archive_content_distinguishes_utf8_text_from_binary_bytes(self):
+    def test_archive_content_rejects_credentials_even_with_invalid_utf8_bytes(self):
         self._assert_archive_credential_rejected(
             "overrides/neutral/extensionless",
             b'client_secret = "utf8-live-fixture"\n',
@@ -1021,7 +1466,188 @@ class ReleasePolicyTests(unittest.TestCase):
             ],
         )
 
-        self._assert_tool_succeeds(self._inspect_public_launcher(binary_archive))
+        result = self._inspect_public_launcher(binary_archive)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+
+    def test_archive_content_rejects_typed_and_walrus_credential_assignments(self):
+        fixtures = (
+            b"def connect(pass" + b'word: str = "typed-live-fixture"):\n    pass\n',
+            b"pass" + b"word: To" + b'ken = "top-level-live-fixture"\n',
+            b"def connect(user: str, pass"
+            + b"word: To"
+            + b'ken = "later-parameter-live-fixture"):\n    pass\n',
+            b"def connect(user: str, pass"
+            + b"word: To"
+            + b'ken\n = "multiline-live-fixture"):\n    pass\n',
+            b"def connect(\n    pass"
+            + b"word: To"
+            + b'ken  # explanation, continued\n'
+            + b' = "comment-live-fixture"\n):\n    pass\n',
+            b"function connect(pass"
+            + b"word: To"
+            + b'ken /* explanation, continued */\n'
+            + b' = "block-comment-live-fixture") {}\n',
+            b"def connect(pass"
+            + b'word: str = # explanation\n    "separator-comment-live-fixture"):\n'
+            + b"    pass\n",
+            b"if (pass" + b'word:="walrus-live-fixture"):\n    pass\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.py",
+                    content,
+                    "live-fixture",
+                )
+
+    def test_archive_content_rejects_escaped_keys_and_kotlin_declarations(self):
+        fixtures = (
+            br'{"pass\u' + b'0077ord":"escaped-key-live-fixture"}\n',
+            b"val pass" + b'word = "kotlin-live-fixture"\n',
+            b"const val client_"
+            + b'secret = "kotlin-const-live-fixture"\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.data",
+                    content,
+                    "live-fixture",
+                )
+
+    def test_archive_content_rejects_typed_modifier_and_postcondition_assignments(self):
+        fixtures = (
+            b"String pass" + b'word="java-live-fixture";\n',
+            b"private static final String client"
+            + b'Secret="java-modifier-live-fixture";\n',
+            b"readonly pass" + b'word="shell-live-fixture"\n',
+            b"if (ready) pass" + b'word="postcondition-live-fixture"\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.data",
+                    content,
+                    "live-fixture",
+                )
+
+    def test_archive_content_rejects_properties_lvalues_and_dotted_toml_keys(self):
+        fixtures = (
+            b"rcon.pass" + b"word properties-live-fixture\n",
+            b"rcon\\.pass" + b"word=escaped-properties-live-fixture\n",
+            b"$pass" + b'word = "sigil-live-fixture"\n',
+            b'config["pass' + b'word"] = "bracket-live-fixture"\n',
+            b'service."pass' + b'word" = "dotted-toml-live-fixture"\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.data",
+                    content,
+                    "live-fixture",
+                )
+
+    def test_archive_content_rejects_invalid_utf8_after_credential_keys(self):
+        fixtures = (
+            b"pass" + b'word\xff="utf8-adjacent-live-fixture"\n',
+            b"pass" + b'word \xff = "utf8-spaced-live-fixture"\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.bin",
+                    content,
+                    "live-fixture",
+                )
+
+    def test_multiline_parameter_annotation_scanning_does_not_rescan_prefixes(self):
+        scanner = _CredentialAssignmentScanner()
+        scanner.feed("def f(pass" + "word: T")
+
+        class AppendOnlyCharacters(list):
+            def __iter__(self):
+                raise AssertionError("annotation prefix was rescanned")
+
+        scanner.annotation_characters = AppendOnlyCharacters(
+            scanner.annotation_characters
+        )
+
+        scanner.feed("\n" * 4096)
+
+        self.assertFalse(scanner.live_credential_found)
+
+    def test_archive_content_rejects_credentials_in_flow_mappings(self):
+        fixtures = (
+            b'{enabled: true, pass' + b'word: "flow-live-fixture"}\n',
+            b"pass" + b"word: c2VjcmV0=\n",
+            b'publish({enabled: true, pass'
+            + b'word: "nested-flow-live-fixture"})\n',
+            b'note: "("\ndata: {enabled: true, marker: "}", pass'
+            + b'word: "quoted-delimiter-flow-live-fixture"}\n',
+            b'function configure(options = {marker: "}", pass'
+            + b'word: "function-flow-live-fixture"}) {}\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.yml",
+                    content,
+                    "flow-live-fixture",
+                )
+
+    def test_archive_content_rejects_excessive_container_nesting(self):
+        archive_path = self._write_archive(
+            "container-depth.zip",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/neutral/runtime.data",
+                    b"(\n" * 2048,
+                ),
+            ],
+        )
+
+        result = self._inspect_public_launcher(archive_path)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+
+    def test_archive_content_rejects_oversized_credentials_with_invalid_utf8(self):
+        value_size = 1024 * 1024 + 1
+        value = bytearray()
+        counter = 0
+        while len(value) < value_size:
+            value.extend(
+                hashlib.sha256(str(counter).encode("ascii")).hexdigest().encode("ascii")
+            )
+            counter += 1
+        content = (
+            b"pass"
+            + b'word="'
+            + bytes(value[:value_size])
+            + b'"\xff\n'
+        )
+
+        self._assert_archive_credential_rejected(
+            "overrides/neutral/oversized.bin",
+            content,
+            "oversized fixture",
+        )
+
+    def test_archive_content_rejects_quoted_code_shaped_credentials(self):
+        fixtures = (
+            b"pass" + b'word="s3cr3t_value"\n',
+            b"pass" + b'word="config.credentials.password"\n',
+            b"pass" + b'word: "unterminated-live-fixture\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.py",
+                    content,
+                    "quoted fixture",
+                )
 
     def test_format_specific_launchers_require_expected_manifests(self):
         modrinth_archive = self._write_archive(
@@ -1254,16 +1880,472 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
 
+    def test_curseforge_completeness_accepts_exact_client_pack(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        archive_path = self._write_packwiz_curseforge_archive(fixture)
+
+        result = self._inspect_complete_curseforge(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self._assert_tool_succeeds(result)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["packwiz_client_mod_count"], 4)
+        self.assertEqual(summary["packwiz_authored_file_count"], 1)
+
+    def test_modrinth_completeness_accepts_exact_client_pack(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        archive_path = self._write_packwiz_modrinth_archive(fixture)
+
+        result = self._inspect_complete_modrinth(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self._assert_tool_succeeds(result)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["packwiz_client_mod_count"], 4)
+        self.assertEqual(summary["packwiz_authored_file_count"], 1)
+
+    def test_modrinth_completeness_requires_integer_lock_format(self):
+        for lock_format in (True, 1.0):
+            with self.subTest(lock_format=lock_format):
+                pack_root, fixture = self._new_packwiz_repository(
+                    lock_format=lock_format
+                )
+                archive_path = self._write_packwiz_modrinth_archive(fixture)
+
+                result = self._inspect_complete_modrinth(
+                    archive_path,
+                    pack_root,
+                    fixture["git_sha"],
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("lock format", result.stderr)
+
+    def test_modrinth_completeness_rejects_manifest_and_override_attacks(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        accepted_archive = self._write_packwiz_modrinth_archive(fixture)
+        with zipfile.ZipFile(accepted_archive) as archive:
+            manifest = json.loads(archive.read("modrinth.index.json"))
+        records = manifest["files"]
+        base_overrides = {
+            f'overrides/{fixture["authored_path"]}': fixture["authored_bytes"],
+            **{
+                f'overrides/mods/{mod["filename"]}': mod["jar_bytes"]
+                for mod in fixture["curseforge_mods"]
+            },
+        }
+        wrong_url = copy.deepcopy(records)
+        wrong_url[0]["downloads"] = ["https://cdn.modrinth.com/data/attacker/file.jar"]
+        wrong_hash = copy.deepcopy(records)
+        wrong_hash[0]["hashes"]["sha512"] = "f" * 128
+        wrong_sha1 = copy.deepcopy(records)
+        wrong_sha1[0]["hashes"]["sha1"] = "f" * 40
+        wrong_size = copy.deepcopy(records)
+        wrong_size[0]["fileSize"] += 1
+        wrong_env = copy.deepcopy(records)
+        wrong_env[0]["env"]["server"] = "unsupported"
+        cases = (
+            ("missing client mod", records[1:], base_overrides),
+            (
+                "extra Modrinth file record",
+                [*records, self._valid_modrinth_file("mods/extra.jar")],
+                base_overrides,
+            ),
+            ("download URL mismatch", wrong_url, base_overrides),
+            ("SHA-512 mismatch", wrong_hash, base_overrides),
+            ("SHA-1 mismatch", wrong_sha1, base_overrides),
+            ("file size mismatch", wrong_size, base_overrides),
+            ("environment mismatch", wrong_env, base_overrides),
+            (
+                "missing embedded mod",
+                records,
+                {
+                    key: value
+                    for key, value in base_overrides.items()
+                    if not key.endswith(fixture["curseforge_mods"][0]["filename"])
+                },
+            ),
+            (
+                "embedded mod hash mismatch",
+                records,
+                {
+                    **base_overrides,
+                    f'overrides/mods/{fixture["curseforge_mods"][0]["filename"]}': b"replacement jar\n",
+                },
+            ),
+            (
+                "missing authored override",
+                records,
+                {
+                    key: value
+                    for key, value in base_overrides.items()
+                    if key != f'overrides/{fixture["authored_path"]}'
+                },
+            ),
+            (
+                "extra override file",
+                records,
+                {**base_overrides, "overrides/config/extra.cfg": b"extra=true\n"},
+            ),
+        )
+        for expected_error, file_records, override_entries in cases:
+            with self.subTest(expected_error=expected_error):
+                archive_path = self._write_packwiz_modrinth_archive(
+                    fixture,
+                    file_records=file_records,
+                    override_entries=override_entries,
+                    name="attacked-modrinth.mrpack",
+                )
+                result = self._inspect_complete_modrinth(
+                    archive_path,
+                    pack_root,
+                    fixture["git_sha"],
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_curseforge_completeness_reads_exact_commit_not_staged_index(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        accepted_archive = self._write_packwiz_curseforge_archive(
+            fixture,
+            name="accepted-commit-curseforge.zip",
+        )
+        replacement_files, replacement_fixture = self._packwiz_fixture_files(
+            b"staged replacement signal jar\n"
+        )
+        for relative_path, data in replacement_files.items():
+            (pack_root / relative_path).write_bytes(data)
+        subprocess.run(
+            ["git", "-C", str(pack_root), "add", "-A"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        accepted_result = self._inspect_complete_curseforge(
+            accepted_archive,
+            pack_root,
+            fixture["git_sha"],
+        )
+        self._assert_tool_succeeds(accepted_result)
+
+        replacement_archive = self._write_packwiz_curseforge_archive(
+            replacement_fixture,
+            name="staged-replacement-curseforge.zip",
+        )
+        replacement_result = self._inspect_complete_curseforge(
+            replacement_archive,
+            pack_root,
+            fixture["git_sha"],
+        )
+        self.assertNotEqual(replacement_result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", replacement_result.stderr)
+
+    def test_curseforge_completeness_ignores_git_replace_refs(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        replacement_files, replacement_fixture = self._packwiz_fixture_files(
+            b"git replace signal jar\n"
+        )
+        for relative_path, data in replacement_files.items():
+            (pack_root / relative_path).write_bytes(data)
+        subprocess.run(
+            ["git", "-C", str(pack_root), "add", "-A"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(pack_root),
+                "-c",
+                "user.name=AFTERLIGHT Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "Create replacement fixture",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        replacement_git_sha = subprocess.run(
+            ["git", "-C", str(pack_root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(pack_root),
+                "replace",
+                fixture["git_sha"],
+                replacement_git_sha,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        archive_path = self._write_packwiz_curseforge_archive(
+            replacement_fixture,
+            name="git-replace-curseforge.zip",
+        )
+
+        result = self._inspect_complete_curseforge(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", result.stderr)
+
+    def test_curseforge_completeness_rejects_directory_entries(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        entries = [
+            self._curseforge_manifest_entry(
+                files=[
+                    copy.deepcopy(mod["record"])
+                    for mod in fixture["curseforge_mods"]
+                ]
+            ),
+            self._regular_entry("overrides/config/"),
+            self._regular_entry(
+                f'overrides/{fixture["authored_path"]}',
+                fixture["authored_bytes"],
+            ),
+            self._regular_entry(
+                f'overrides/mods/{fixture["signal_filename"]}',
+                fixture["signal_bytes"],
+            ),
+        ]
+        archive_path = self._write_archive(
+            "directory-entry-curseforge.zip",
+            entries,
+        )
+
+        result = self._inspect_complete_curseforge(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("extra CurseForge directory entry", result.stderr)
+
+    def test_curseforge_completeness_rejects_mod_inventory_attacks(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        records = [copy.deepcopy(mod["record"]) for mod in fixture["curseforge_mods"]]
+        base_overrides = self._packwiz_curseforge_overrides(fixture)
+        optional_record = copy.deepcopy(records[0])
+        optional_record["required"] = False
+        cases = (
+            ("missing client mod", records[1:], base_overrides),
+            (
+                "extra CurseForge file record",
+                [
+                    *records,
+                    {"projectID": 999001, "fileID": 999002, "required": True},
+                ],
+                base_overrides,
+            ),
+            ("must be required", [optional_record, records[1]], base_overrides),
+            (
+                "duplicate client mod representation",
+                records,
+                {
+                    **base_overrides,
+                    "overrides/mods/curseforge-main-fixture.jar": fixture[
+                        "curseforge_mods"
+                    ][0]["jar_bytes"],
+                },
+            ),
+            (
+                "missing client mod",
+                records,
+                {
+                    f'overrides/{fixture["authored_path"]}': fixture[
+                        "authored_bytes"
+                    ]
+                },
+            ),
+            (
+                "extra embedded mod",
+                records,
+                {
+                    **base_overrides,
+                    "overrides/mods/unknown-fixture.jar": b"unknown fixture jar\n",
+                },
+            ),
+            (
+                "extra embedded mod",
+                records,
+                {
+                    **base_overrides,
+                    f'overrides/mods/{fixture["server_filename"]}': (
+                        b"server helper fixture jar\n"
+                    ),
+                },
+            ),
+        )
+        for expected_error, file_records, override_entries in cases:
+            with self.subTest(expected_error=expected_error):
+                archive_path = self._write_packwiz_curseforge_archive(
+                    fixture,
+                    file_records=file_records,
+                    override_entries=override_entries,
+                    name="attacked-curseforge.zip",
+                )
+
+                result = self._inspect_complete_curseforge(
+                    archive_path,
+                    pack_root,
+                    fixture["git_sha"],
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_curseforge_completeness_rejects_authored_override_attacks(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        signal_entry = self._packwiz_curseforge_overrides(fixture)
+        signal_entry.pop(f'overrides/{fixture["authored_path"]}')
+        cases = (
+            ("missing authored override", signal_entry),
+            (
+                "authored override SHA-256 mismatch",
+                {
+                    **signal_entry,
+                    f'overrides/{fixture["authored_path"]}': b"fixture=false\n",
+                },
+            ),
+            (
+                "extra override file",
+                {
+                    **signal_entry,
+                    f'overrides/{fixture["authored_path"]}': fixture[
+                        "authored_bytes"
+                    ],
+                    "overrides/config/untracked-fixture.cfg": b"extra=true\n",
+                },
+            ),
+        )
+        for expected_error, override_entries in cases:
+            with self.subTest(expected_error=expected_error):
+                archive_path = self._write_packwiz_curseforge_archive(
+                    fixture,
+                    override_entries=override_entries,
+                    name="authored-override-attack.zip",
+                )
+
+                result = self._inspect_complete_curseforge(
+                    archive_path,
+                    pack_root,
+                    fixture["git_sha"],
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_error, result.stderr)
+
+    def test_curseforge_completeness_requires_tracked_signal_sha512(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        archive_path = self._write_packwiz_curseforge_archive(
+            fixture,
+            override_entries={
+                **self._packwiz_curseforge_overrides(fixture),
+                f'overrides/mods/{fixture["signal_filename"]}': (
+                    b"replacement signal fixture jar\n"
+                ),
+            },
+            name="replaced-signal.zip",
+        )
+
+        result = self._inspect_complete_curseforge(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", result.stderr)
+
+    def test_curseforge_completeness_reads_tracked_packwiz_blobs(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        replacement_files, replacement_fixture = self._packwiz_fixture_files(
+            b"self-consistent worktree replacement\n"
+        )
+        for relative_path, data in replacement_files.items():
+            (pack_root / relative_path).write_bytes(data)
+        archive_path = self._write_packwiz_curseforge_archive(
+            replacement_fixture,
+            name="worktree-source-replacement.zip",
+        )
+
+        result = self._inspect_complete_curseforge(
+            archive_path,
+            pack_root,
+            fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", result.stderr)
+
+    def test_final_verifier_rejects_self_consistent_signal_replacement(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        public = self.root / "signal-replacement-public"
+        write_public_release(public, RELEASE_VERSION, fixture["git_sha"])
+        replacement_archive = self._write_packwiz_curseforge_archive(
+            fixture,
+            override_entries={
+                **self._packwiz_curseforge_overrides(fixture),
+                f'overrides/mods/{fixture["signal_filename"]}': (
+                    b"self-consistent release replacement\n"
+                ),
+            },
+            name="replacement-source.zip",
+        )
+        replacement_archive.replace(public / "AFTERLIGHT-curseforge.zip")
+        rewrite_metadata(public, RELEASE_VERSION, fixture["git_sha"])
+        rewrite_checksums(public)
+        metadata = json.loads((public / "release-metadata.json").read_bytes())
+        archive_sha256 = hashlib.sha256(
+            (public / "AFTERLIGHT-curseforge.zip").read_bytes()
+        ).hexdigest()
+        self.assertEqual(
+            metadata["public_artifacts"]["AFTERLIGHT-curseforge.zip"]["sha256"],
+            archive_sha256,
+        )
+
+        result = self._verify_public_release(
+            public,
+            pack_root=pack_root,
+            git_sha=fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", result.stderr)
+
     def test_final_public_release_verifier_accepts_exact_real_launcher_inventory(self):
         public = self.root / "verified-public"
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
 
         result = self._verify_public_release(public)
 
         self._assert_tool_succeeds(result)
         summary = json.loads(result.stdout)
         self.assertEqual(summary["version"], RELEASE_VERSION)
-        self.assertEqual(summary["git_sha"], RELEASE_GIT_SHA)
+        self.assertEqual(summary["git_sha"], self.pack_git_sha)
         self.assertEqual(
             summary["formats"],
             {
@@ -1272,6 +2354,64 @@ class ReleasePolicyTests(unittest.TestCase):
                 "AFTERLIGHT.mrpack": "modrinth",
             },
         )
+
+    def test_final_verifier_requires_explicit_pack_root(self):
+        public = self.root / "missing-pack-root-public"
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(RELEASE_TOOL),
+                "verify-public-release",
+                "--dist-dir",
+                str(public),
+                "--version",
+                RELEASE_VERSION,
+                "--git-sha",
+                self.pack_git_sha,
+                *trusted_release_arguments(),
+            ],
+            cwd=self.root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--pack-root", result.stderr)
+
+    def test_final_verifier_rejects_staged_signal_replacement(self):
+        pack_root, fixture = self._new_packwiz_repository()
+        replacement_files, replacement_fixture = self._packwiz_fixture_files(
+            b"staged final verifier replacement\n"
+        )
+        for relative_path, data in replacement_files.items():
+            (pack_root / relative_path).write_bytes(data)
+        subprocess.run(
+            ["git", "-C", str(pack_root), "add", "-A"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        public = self.root / "staged-signal-replacement-public"
+        write_public_release(public, RELEASE_VERSION, fixture["git_sha"])
+        replacement_archive = self._write_packwiz_curseforge_archive(
+            replacement_fixture,
+            name="staged-final-replacement.zip",
+        )
+        replacement_archive.replace(public / "AFTERLIGHT-curseforge.zip")
+        rewrite_metadata(public, RELEASE_VERSION, fixture["git_sha"])
+        rewrite_checksums(public)
+
+        result = self._verify_public_release(
+            public,
+            pack_root=pack_root,
+            git_sha=fixture["git_sha"],
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AFTERLIGHT Signal SHA-512 mismatch", result.stderr)
 
     def test_final_public_release_verifier_rejects_metadata_and_inventory_attacks(self):
         public = self.root / "attacked-public"
@@ -1291,7 +2431,7 @@ class ReleasePolicyTests(unittest.TestCase):
                         else:
                             child.unlink()
                     public.rmdir()
-                write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
                 metadata_path = public / "release-metadata.json"
                 if case == "malformed-json":
                     metadata_path.write_text("{not-json\n", encoding="utf-8")
@@ -1330,9 +2470,9 @@ class ReleasePolicyTests(unittest.TestCase):
                     for child in public.iterdir():
                         child.unlink()
                     public.rmdir()
-                write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
                 write_empty_zip(public / artifact_name)
-                rewrite_metadata(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+                rewrite_metadata(public, RELEASE_VERSION, self.pack_git_sha)
                 rewrite_checksums(public)
 
                 result = self._verify_public_release(public)
@@ -1342,7 +2482,7 @@ class ReleasePolicyTests(unittest.TestCase):
 
     def test_final_verifier_rejects_self_consistent_trusted_pin_replacements(self):
         public = self.root / "trusted-pin-replacement"
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
 
         result = self._verify_public_release(public)
         self._assert_tool_succeeds(result)
@@ -1351,14 +2491,14 @@ class ReleasePolicyTests(unittest.TestCase):
         write_public_release(
             public,
             RELEASE_VERSION,
-            RELEASE_GIT_SHA,
+            self.pack_git_sha,
             installer_bytes=replacement_installer,
         )
         result = self._verify_public_release(public)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("trusted Packwiz installer", result.stderr)
 
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
         attacker_url = "https://attacker.invalid/pack.toml"
         prism_path = public / "AFTERLIGHT-prism-instance.zip"
         write_prism_archive(prism_path, pack_url=attacker_url)
@@ -1382,7 +2522,7 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_final_verifier_writes_and_requires_canonical_gauntlet_receipt(self):
         accepted = self.root / "accepted-receipt"
         public = accepted / "public"
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
         receipt_path = accepted / "gauntlet-receipt.json"
 
         result = self._verify_public_release(
@@ -1399,7 +2539,7 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertEqual(receipt_bytes, receipt_path.read_text().encode("utf-8"))
         receipt = json.loads(receipt_bytes)
         self.assertEqual(receipt["format"], 1)
-        self.assertEqual(receipt["git_sha"], RELEASE_GIT_SHA)
+        self.assertEqual(receipt["git_sha"], self.pack_git_sha)
         self.assertEqual(receipt["version"], RELEASE_VERSION)
         self.assertEqual(set(receipt["public_files"]), PUBLIC_RELEASE_FILES)
 
@@ -1415,11 +2555,11 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_final_verifier_rejects_receipt_and_self_consistent_public_replacement(self):
         accepted = self.root / "receipt-replacement"
         public = accepted / "public"
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
         accepted_receipt_sha256 = write_gauntlet_receipt(
             accepted,
             RELEASE_VERSION,
-            RELEASE_GIT_SHA,
+            self.pack_git_sha,
         )
         receipt_path = accepted / "gauntlet-receipt.json"
 
@@ -1433,7 +2573,7 @@ class ReleasePolicyTests(unittest.TestCase):
         replacement_receipt_sha256 = write_gauntlet_receipt(
             accepted,
             RELEASE_VERSION,
-            RELEASE_GIT_SHA,
+            self.pack_git_sha,
         )
         self.assertNotEqual(replacement_receipt_sha256, accepted_receipt_sha256)
 
@@ -1451,11 +2591,11 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_tag_message_binds_receipt_and_all_five_public_hashes(self):
         accepted = self.root / "tag-message"
         public = accepted / "public"
-        write_public_release(public, RELEASE_VERSION, RELEASE_GIT_SHA)
+        write_public_release(public, RELEASE_VERSION, self.pack_git_sha)
         receipt_sha256 = write_gauntlet_receipt(
             accepted,
             RELEASE_VERSION,
-            RELEASE_GIT_SHA,
+            self.pack_git_sha,
         )
         receipt_path = accepted / "gauntlet-receipt.json"
 
@@ -1891,6 +3031,287 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertIn("Prism size mismatch", result.stderr)
         self.assertFalse((dist_directory / "SHA256SUMS").exists())
 
+    def test_repository_scan_rejects_nonempty_credentials_in_utf8_blobs(self):
+        cases = (
+            b'client_secret = "tracked-live-fixture"\n',
+            b'service.api_key: tracked-api-fixture\n',
+            b'{\n  "database_password"\n  :\n  "tracked-db-fixture"\n}\n',
+        )
+        for content in cases:
+            with self.subTest(content=content):
+                repository = self._new_repository(
+                    tracked_files={"config/runtime.ini": content}
+                )
+
+                result = self._run_tool(
+                    "scan-repository",
+                    "--root",
+                    repository,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("credential assignment", result.stderr)
+                self.assertNotIn("tracked-live-fixture", result.stderr)
+                self.assertNotIn("tracked-api-fixture", result.stderr)
+                self.assertNotIn("tracked-db-fixture", result.stderr)
+
+    def test_repository_scan_does_not_exempt_the_scanner_test_filename(self):
+        repository = self._new_repository(
+            tracked_files={
+                "tools/tests/test_release_artifacts.py": bytes.fromhex(
+                    "636c69656e745f736563726574203d2022"
+                    "6c6976652d70726f64756374696f6e2d76616c7565220a"
+                )
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+
+    def test_repository_scan_does_not_exempt_fixture_named_credentials(self):
+        repository = self._new_repository(
+            tracked_files={
+                "tools/tests/security_test.py": bytes.fromhex(
+                    "636c69656e745f736563726574203d2022"
+                    "61637475616c2d666978747572652d736563726574220a"
+                )
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn("actual-fixture-secret", result.stderr)
+
+    def test_repository_scan_rejects_jwt_shaped_credentials(self):
+        repository = self._new_repository(
+            tracked_files={
+                "config/runtime.env": b"access_token = abc.def.ghi\n",
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn("abc.def.ghi", result.stderr)
+
+    def test_repository_scan_rejects_standalone_jwt_shaped_tokens(self):
+        repository = self._new_repository(
+            tracked_files={
+                "config/runtime.txt": bytes.fromhex(
+                    "65794a68624763694f694a49557a49314e694973496e523563434936"
+                    "496b705856434a392e65794a7a645749694f6949784d6a4d304e5459"
+                    "334f446b77496e302e63326c6e626d463064584a6c58325a7065485231"
+                    "636d56664d54497a4e4455324e7a67354d410a"
+                ),
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("JWT-shaped token", result.stderr)
+
+    def test_repository_scan_rejects_signed_jwt_with_whitespace_header(self):
+        jwt_bytes = bytes.fromhex(
+            "494873695957786e496a6f6953464d794e5459694c434a30655841694f694a4b"
+            "5631516966512e65794a7a645749694f6949784d6a4d304e5459334f446b7749"
+            "6e302e6d474c484f3636506b4c30567a5661585334695573776c63356a51496e"
+            "7a75715067446d5064523154566f0a"
+        )
+        repository = self._new_repository(
+            tracked_files={"config/runtime.txt": jwt_bytes}
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("JWT-shaped token", result.stderr)
+
+    def test_repository_scan_rejects_jwt_spanning_stream_chunks(self):
+        prefix = b"x\n" * 524138
+        jwt_bytes = (
+            b"eyJ"
+            + b"A" * 280
+            + b"."
+            + b"B" * 20
+            + b"."
+            + b"C" * 20
+            + b"\n"
+        )
+        repository = self._new_repository(
+            tracked_files={"config/runtime.txt": prefix + jwt_bytes}
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("JWT-shaped token", result.stderr)
+
+    def test_repository_scan_rejects_credentials_before_nul(self):
+        repository = self._new_repository(
+            tracked_files={
+                "config/runtime.ini": b'client_secret = "nul-prefix-secret"\n\x00',
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn("nul-prefix-secret", result.stderr)
+
+    def test_repository_scan_rejects_credentials_after_binary_and_list_prefixes(self):
+        cases = (
+            b'\x00client_secret = "nul-leading-fixture"\n',
+            b'- client_secret = "yaml-list-fixture"\n',
+            b'\xffclient_secret = "invalid-utf8-fixture"\n',
+            b"call(pass" + b'word="call-fixture")\n',
+            b"ok=true; client_" + b'secret="semicolon-fixture"\n',
+        )
+        for content in cases:
+            with self.subTest(content=content):
+                repository = self._new_repository(
+                    tracked_files={"config/runtime.bin": content}
+                )
+
+                result = self._run_tool(
+                    "scan-repository",
+                    "--root",
+                    repository,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("credential assignment", result.stderr)
+
+    def test_repository_scan_preserves_code_credential_references(self):
+        repository = self._new_repository(
+            tracked_files={
+                "tools/runtime.py": (
+                    b"token = self.tokens[self.cursor]\n"
+                    b"password = config.credentials.password\n"
+                    b'api_key = System.getenv("API_KEY")\n'
+                    b"password = password_value\n"
+                    b'password = kwargs["password"]\n'
+                    b"password = get_password()\n"
+                    b"def parse(to" + b"ken: _Token) -> None:\n    pass\n"
+                    b'def parse_name(name: str = ")", pass'
+                    b"word: _Token) -> None:\n    pass\n"
+                    b"if (enabled) {\n    function connect(pass"
+                    b"word: string) { return password_value; }\n}\n"
+                    b'function connect_name(name: string = "}", pass'
+                    b"word: string) { return password_value; }\n"
+                    b"def generic_py[T](pass"
+                    b"word: str) -> None:\n    pass\n"
+                    b"function genericTs<T>(pass"
+                    b"word: string) { return password_value; }\n"
+                    b"fun <T> genericKt(pass"
+                    b"word: T) = password_value\n"
+                    b"fn generic_rs<T>(pass"
+                    b"word: &T) { password_value; }\n"
+                ),
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self._assert_tool_succeeds(result)
+
+    def test_repository_scan_uses_index_blobs_for_credentials(self):
+        safe_index = self._new_repository(
+            tracked_files={"config/runtime.ini": b"enabled=true\n"}
+        )
+        (safe_index / "config/runtime.ini").write_bytes(
+            b'client_secret = "worktree-only-fixture"\n'
+        )
+        result = self._run_tool("scan-repository", "--root", safe_index)
+        self._assert_tool_succeeds(result)
+
+        live_index = self._new_repository(
+            tracked_files={
+                "config/runtime.ini": b'client_secret = "index-only-fixture"\n'
+            }
+        )
+        (live_index / "config/runtime.ini").write_bytes(b"enabled=true\n")
+
+        result = self._run_tool("scan-repository", "--root", live_index)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn("index-only-fixture", result.stderr)
+
+    def test_repository_scan_preserves_template_and_safe_binary_exceptions(self):
+        repository = self._new_repository(
+            tracked_files={
+                "config/templates.ini": (
+                    b'password = ""\n'
+                    b'api_key = "${API_KEY}"\n'
+                    b'secret = "CHANGEME"\n'
+                    b'client_secret = "example-client-secret"\n'
+                    b'consumer_secret = "__CONSUMER_SECRET__"\n'
+                    b'signing_secret = "$env:SIGNING_SECRET"\n'
+                    b'webhook_secret = "your_webhook_secret_here"\n'
+                ),
+                "config/runtime.bin": b"safe binary fixture\n\xff\x00",
+            }
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self._assert_tool_succeeds(result)
+
+    def test_repository_scan_ignores_git_blob_replacement_refs(self):
+        repository = self._new_repository(
+            tracked_files={"config/runtime.ini": b"enabled=true\n"}
+        )
+        original_object = subprocess.run(
+            ["git", "-C", str(repository), "rev-parse", ":config/runtime.ini"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        replacement_object = subprocess.run(
+            ["git", "-C", str(repository), "hash-object", "-w", "--stdin"],
+            input=b'client_secret = "replacement-fixture"\n',
+            check=True,
+            capture_output=True,
+        ).stdout.decode("ascii").strip()
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repository),
+                "replace",
+                original_object,
+                replacement_object,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self._assert_tool_succeeds(result)
+
+    def test_repository_scan_detects_credentials_across_stream_chunks(self):
+        key = b"\nclient_secret"
+        prefix = b"safe=" + b"a" * (1024 * 1024 - len(b"safe=") - len(key))
+        content = prefix + key + b' = "chunked-repository-fixture"\n'
+        repository = self._new_repository(
+            tracked_files={"config/chunked.ini": content}
+        )
+
+        result = self._run_tool("scan-repository", "--root", repository)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn("chunked-repository-fixture", result.stderr)
+
     def test_repository_scan_rejects_tracked_jar_secret_and_u2014(self):
         cases = (
             ("tracked JAR", {"mods/unsafe.jar": b"safe fixture\n"}),
@@ -2078,6 +3499,9 @@ class ReleasePolicyTests(unittest.TestCase):
             "scan-repository",
             "--root",
             REPOSITORY_ROOT,
+            environment=self._prospective_repository_environment(
+                "reviewed-symlink-scan.index"
+            ),
         )
         self._assert_tool_succeeds(result)
 
@@ -2291,7 +3715,10 @@ class ReleasePolicyTests(unittest.TestCase):
                 )
                 result = self._inspect_public_launcher(archive_path)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("duplicate archive entry", result.stderr)
+                if second_name.endswith("/"):
+                    self.assertIn("directory entry", result.stderr)
+                else:
+                    self.assertIn("duplicate archive entry", result.stderr)
 
     def test_archive_scan_rejects_windows_unsafe_path_components(self):
         unsafe_names = (
@@ -2368,6 +3795,98 @@ class ReleasePolicyTests(unittest.TestCase):
             'OUTPUT="$PRISM_ZIP" PACK_URL="$PACK_URL" ./tools/build-prism-instance.sh'
         )
         self.assertLess(export_position, prism_position)
+
+    def test_release_build_binds_curseforge_inspection_to_git_sha(self):
+        repository = self.root / "release-build-binding"
+        tools_directory = repository / "tools"
+        fake_bin = repository / "fake-bin"
+        tools_directory.mkdir(parents=True)
+        fake_bin.mkdir()
+        shutil.copy2(BUILD_RELEASE, tools_directory / "build-release.sh")
+        (tools_directory / "build-release.sh").chmod(0o755)
+        log_path = repository / "python-commands.log"
+        (repository / "pack.toml").write_text(
+            f'version = "{RELEASE_VERSION}"\n',
+            encoding="utf-8",
+        )
+        common_policy = (
+            'PACKWIZ_BOOTSTRAP_VERSION="bootstrap-fixture"\n'
+            'PACKWIZ_BOOTSTRAP_SIZE="1"\n'
+            f'PACKWIZ_BOOTSTRAP_SHA256="{"1" * 64}"\n'
+            'PACKWIZ_INSTALLER_VERSION="installer-fixture"\n'
+            'PACKWIZ_INSTALLER_SIZE="1"\n'
+            f'PACKWIZ_INSTALLER_SHA256="{"2" * 64}"\n'
+        )
+        (tools_directory / "versions.env").write_text(
+            f'PATH_EXTRA="{fake_bin}"\nMC_VERSION="{MINECRAFT_VERSION}"\n'
+            + common_policy,
+            encoding="utf-8",
+        )
+        (tools_directory / "release-policy.env").write_text(
+            f'RELEASE_PACK_URL="{PACK_URL}"\n'
+            'RELEASE_PACKWIZ_BOOTSTRAP_VERSION="bootstrap-fixture"\n'
+            'RELEASE_PACKWIZ_BOOTSTRAP_SIZE="1"\n'
+            f'RELEASE_PACKWIZ_BOOTSTRAP_SHA256="{"1" * 64}"\n'
+            'RELEASE_PACKWIZ_INSTALLER_VERSION="installer-fixture"\n'
+            'RELEASE_PACKWIZ_INSTALLER_SIZE="1"\n'
+            f'RELEASE_PACKWIZ_INSTALLER_SHA256="{"2" * 64}"\n',
+            encoding="utf-8",
+        )
+        (tools_directory / "export.sh").write_text(
+            "#!/usr/bin/env bash\nset -eu\n"
+            f'touch "$DIST_DIR/AFTERLIGHT-{RELEASE_VERSION}.mrpack"\n'
+            f'touch "$DIST_DIR/AFTERLIGHT-{RELEASE_VERSION}-curseforge.zip"\n',
+            encoding="utf-8",
+        )
+        (tools_directory / "build-prism-instance.sh").write_text(
+            "#!/usr/bin/env bash\nset -eu\ntouch \"$OUTPUT\"\n",
+            encoding="utf-8",
+        )
+        for script_name in ("export.sh", "build-prism-instance.sh"):
+            (tools_directory / script_name).chmod(0o755)
+        fake_python = fake_bin / "python3"
+        fake_python.write_text(
+            "#!/usr/bin/env bash\nset -eu\n"
+            "if [ \"${1:-}\" = -c ]; then exec \"$REAL_PYTHON\" \"$@\"; fi\n"
+            "printf 'python3' >> \"$RELEASE_BUILD_LOG\"\n"
+            "for argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$RELEASE_BUILD_LOG\"; done\n"
+            "printf '\\n' >> \"$RELEASE_BUILD_LOG\"\n"
+            "if [ \"${2:-}\" = inspect-curseforge ]; then exit 91; fi\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "GIT_SHA": RELEASE_GIT_SHA,
+                "REAL_PYTHON": sys.executable,
+                "RELEASE_BUILD_LOG": str(log_path),
+            }
+        )
+
+        result = subprocess.run(
+            [str(tools_directory / "build-release.sh")],
+            cwd=repository,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 91, result.stdout + result.stderr)
+        curseforge_call = next(
+            line
+            for line in log_path.read_text(encoding="utf-8").splitlines()
+            if "inspect-curseforge" in line
+        )
+        self.assertIn(f"--git-sha {RELEASE_GIT_SHA}", curseforge_call)
+        modrinth_call = next(
+            line
+            for line in log_path.read_text(encoding="utf-8").splitlines()
+            if "inspect-modrinth" in line
+        )
+        self.assertIn("--pack-root .", modrinth_call)
+        self.assertIn(f"--git-sha {RELEASE_GIT_SHA}", modrinth_call)
 
     def test_release_build_failure_preserves_existing_output(self):
         output_directory = self.root / "existing-output"

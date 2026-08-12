@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run the repeatable, local release gates for one exact clean commit.
 set -euo pipefail
+export GIT_NO_REPLACE_OBJECTS=1
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
@@ -186,6 +187,7 @@ EOF
     --installer-version "$RELEASE_PACKWIZ_INSTALLER_VERSION" \
     --installer-size "$RELEASE_PACKWIZ_INSTALLER_SIZE" \
     --installer-sha256 "$RELEASE_PACKWIZ_INSTALLER_SHA256" \
+    --pack-root . \
     --write-receipt "$STAGING/gauntlet-receipt.json"
   RECEIPT_SHA256=$(shasum -a 256 "$STAGING/gauntlet-receipt.json" | awk '{print $1}')
   FINISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')

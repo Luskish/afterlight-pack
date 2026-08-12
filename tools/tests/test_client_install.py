@@ -19,13 +19,16 @@ class ClientInventoryTests(unittest.TestCase):
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         self.root = Path(temporary_directory.name)
-        self.metadata = self.root / "metadata"
+        self.pack_root = self.root / "pack"
+        self.metadata = self.pack_root / "mods"
         self.instance = self.root / "instance"
         self.mods = self.instance / "mods"
-        self.metadata.mkdir()
+        self.metadata.mkdir(parents=True)
         self.mods.mkdir(parents=True)
 
-    def _write_metadata(self, stem, filename, side):
+    def _write_metadata(self, stem, filename, side, jar_bytes=None):
+        if jar_bytes is None:
+            jar_bytes = f"{stem} fixture\n".encode("utf-8")
         source = textwrap.dedent(
             f"""\
             name = "{stem}"
@@ -35,10 +38,44 @@ class ClientInventoryTests(unittest.TestCase):
             [download]
             url = "https://example.invalid/{filename}"
             hash-format = "sha256"
-            hash = "{'0' * 64}"
+            hash = "{hashlib.sha256(jar_bytes).hexdigest()}"
             """
         )
         (self.metadata / f"{stem}.pw.toml").write_text(source, encoding="utf-8")
+
+    def _write_pack_index(self, authored_bytes=b"enabled=true\n"):
+        authored_path = self.pack_root / "config" / "fixture.cfg"
+        authored_path.parent.mkdir(parents=True, exist_ok=True)
+        authored_path.write_bytes(authored_bytes)
+        records = []
+        for path in [authored_path, *sorted(self.metadata.glob("*.pw.toml"))]:
+            relative_path = path.relative_to(self.pack_root).as_posix()
+            lines = [
+                "[[files]]",
+                f'file = "{relative_path}"',
+                f'hash = "{hashlib.sha256(path.read_bytes()).hexdigest()}"',
+            ]
+            if relative_path.endswith(".pw.toml"):
+                lines.append("metafile = true")
+            records.extend([*lines, ""])
+        index_bytes = ('hash-format = "sha256"\n\n' + "\n".join(records)).encode(
+            "utf-8"
+        )
+        (self.pack_root / "index.toml").write_bytes(index_bytes)
+        (self.pack_root / "pack.toml").write_text(
+            textwrap.dedent(
+                f"""\
+                name = "AFTERLIGHT"
+                version = "fixture"
+
+                [index]
+                file = "index.toml"
+                hash-format = "sha256"
+                hash = "{hashlib.sha256(index_bytes).hexdigest()}"
+                """
+            ),
+            encoding="utf-8",
+        )
 
     def test_inventory_classifies_client_both_and_server_sides(self):
         self._write_metadata("client", "client.jar", "client")
@@ -108,6 +145,57 @@ class ClientInventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "server-only mod"):
             validate_client_install(self.instance, self.metadata)
 
+    def test_validate_client_install_binds_every_packwiz_payload_file(self):
+        client_bytes = b"client fixture\n"
+        self._write_metadata("client", "client.jar", "client", client_bytes)
+        self._write_metadata("server", "server.jar", "server")
+        self._write_pack_index()
+        (self.mods / "client.jar").write_bytes(client_bytes)
+        installed_config = self.instance / "config" / "fixture.cfg"
+        installed_config.parent.mkdir(parents=True)
+        installed_config.write_bytes(b"enabled=true\n")
+
+        summary = validate_client_install(
+            self.instance,
+            self.metadata,
+            self.pack_root,
+        )
+
+        payload_lines = []
+        for relative_path in ("config/fixture.cfg", "mods/client.jar"):
+            path = self.instance / relative_path
+            payload_lines.append(
+                f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {relative_path}\n"
+            )
+        expected_payload = hashlib.sha256(
+            "".join(payload_lines).encode("utf-8")
+        ).hexdigest()
+        self.assertEqual(summary["payload_file_count"], 2)
+        self.assertEqual(summary["payload_sha256"], expected_payload)
+
+        installed_config.write_bytes(b"enabled=false\n")
+        with self.assertRaisesRegex(ValueError, "installed payload hash mismatch"):
+            validate_client_install(self.instance, self.metadata, self.pack_root)
+
+        installed_config.unlink()
+        with self.assertRaisesRegex(ValueError, "missing installed payload"):
+            validate_client_install(self.instance, self.metadata, self.pack_root)
+
+    def test_validate_client_install_rejects_unexpected_payload_files(self):
+        client_bytes = b"client fixture\n"
+        self._write_metadata("client", "client.jar", "client", client_bytes)
+        self._write_pack_index()
+        (self.mods / "client.jar").write_bytes(client_bytes)
+        installed_config = self.instance / "config" / "fixture.cfg"
+        installed_config.parent.mkdir(parents=True)
+        installed_config.write_bytes(b"enabled=true\n")
+        unexpected_script = self.instance / "kubejs" / "startup_scripts" / "extra.js"
+        unexpected_script.parent.mkdir(parents=True)
+        unexpected_script.write_bytes(b"unexpected production payload\n")
+
+        with self.assertRaisesRegex(ValueError, "unexpected installed file"):
+            validate_client_install(self.instance, self.metadata, self.pack_root)
+
     def test_current_repository_inventory_is_release_sized(self):
         client_required, server_only = expected_mod_inventory(
             REPOSITORY_ROOT / "mods"
@@ -150,12 +238,28 @@ class ClientHarnessContractTests(unittest.TestCase):
         self.assertNotIn("releases/latest", self.source)
         self.assertEqual(self.source.count("run_installer"), 3)
 
+    def test_harness_has_explicit_production_pages_mode(self):
+        self.assertIn('INSTALL_MODE=${2:-local}', self.source)
+        self.assertIn('EXPECTED_MODSET_SHA256=${3:-}', self.source)
+        self.assertIn('EXPECTED_PAYLOAD_SHA256=${4:-}', self.source)
+        self.assertIn('"$INSTALL_MODE" = production', self.source)
+        self.assertIn('INSTALL_PACK_URL="$PACK_URL"', self.source)
+        self.assertIn('INSTALL_PACK_URL="$LOCAL_PACK_URL"', self.source)
+        self.assertIn('-g "$INSTALL_PACK_URL"', self.source)
+        self.assertIn('"$FIRST_MODSET_SHA256" = "$EXPECTED_MODSET_SHA256"', self.source)
+        self.assertIn('"$SECOND_MODSET_SHA256" = "$EXPECTED_MODSET_SHA256"', self.source)
+        self.assertIn('"$SECOND_PAYLOAD_SHA256" = "$EXPECTED_PAYLOAD_SHA256"', self.source)
+        self.assertIn('--pack-root .', self.source)
+        self.assertIn("usage:", self.source)
+
     def test_harness_owns_cleanup_java_and_idempotence_checks(self):
         self.assertIn("cleanup()", self.source)
         self.assertIn("trap cleanup EXIT", self.source)
         self.assertIn("need a working Java 21 runtime", self.source)
         self.assertIn("FIRST_MODSET_SHA256", self.source)
         self.assertIn("SECOND_MODSET_SHA256", self.source)
+        self.assertIn("FIRST_PAYLOAD_SHA256", self.source)
+        self.assertIn("SECOND_PAYLOAD_SHA256", self.source)
         self.assertIn('[ "$FIRST_CLIENT_COUNT" = 156 ]', self.source)
         self.assertIn("CLIENT INSTALL: OK", self.source)
 

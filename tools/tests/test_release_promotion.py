@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -14,6 +15,7 @@ from tools.tests.release_fixtures import (
     rewrite_checksums,
     rewrite_metadata,
     write_gauntlet_receipt,
+    write_packwiz_source,
     write_empty_zip,
     write_public_release,
     write_release_policy,
@@ -23,8 +25,8 @@ from tools.tests.release_fixtures import (
 ROOT = Path(__file__).resolve().parents[2]
 PROMOTION_SCRIPT = ROOT / "tools" / "promote-release.sh"
 RELEASE_TOOL = ROOT / "tools" / "release_artifacts.py"
-SHA = "0123456789abcdef0123456789abcdef01234567"
 VERSION = "0.9.0-rc.1"
+PRODUCTION_PUSH_URL = "https://github.com/Luskish/afterlight-pack.git"
 
 
 class ReleasePromotionTests(unittest.TestCase):
@@ -46,20 +48,26 @@ class ReleasePromotionTests(unittest.TestCase):
         )
         write_release_policy(self.root / "tools" / "release-policy.env")
 
-        (self.root / "pack.toml").write_text(
-            f'version = "{VERSION}"\n', encoding="utf-8"
-        )
-        (self.root / "index.toml").write_text("index fixture\n", encoding="utf-8")
-        accepted = self.root / "dist" / "gauntlet" / SHA
+        self.real_git = shutil.which("git")
+        self.assertIsNotNone(self.real_git)
+        self.accepted_sha = write_packwiz_source(self.root, VERSION)
+        accepted = self.root / "dist" / "gauntlet" / self.accepted_sha
         public = accepted / "public"
-        write_public_release(public, VERSION, SHA)
+        write_public_release(public, VERSION, self.accepted_sha)
         (accepted / "gauntlet.txt").write_text(
-            f"AFTERLIGHT release gauntlet\nSHA: {SHA}\n", encoding="utf-8"
+            f"AFTERLIGHT release gauntlet\nSHA: {self.accepted_sha}\n",
+            encoding="utf-8",
         )
-        self.receipt_sha256 = write_gauntlet_receipt(accepted, VERSION, SHA)
+        self.receipt_sha256 = write_gauntlet_receipt(
+            accepted,
+            VERSION,
+            self.accepted_sha,
+        )
 
         self.git_log = self.root / "git.log"
         self.gh_log = self.root / "gh.log"
+        self.curl_log = self.root / "curl.log"
+        self.client_log = self.root / "client.log"
         self.branch_file = self.root / "branch"
         self.branch_file.write_text("dev\n", encoding="utf-8")
         self.tag_message_file = self.root / "tag-message.txt"
@@ -72,9 +80,14 @@ class ReleasePromotionTests(unittest.TestCase):
                 "FAKE_BRANCH_FILE": str(self.branch_file),
                 "FAKE_GH_LOG": str(self.gh_log),
                 "FAKE_GIT_LOG": str(self.git_log),
-                "FAKE_HEAD_SHA": SHA,
+                "FAKE_CURL_LOG": str(self.curl_log),
+                "FAKE_CLIENT_LOG": str(self.client_log),
+                "FAKE_HEAD_SHA": self.accepted_sha,
+                "FAKE_REAL_GIT": self.real_git,
                 "FAKE_PACK_FILE": str(self.root / "pack.toml"),
                 "FAKE_INDEX_FILE": str(self.root / "index.toml"),
+                "FAKE_ORIGIN_URL": "https://github.com/Luskish/afterlight-pack.git",
+                "FAKE_PUSH_URL": "https://github.com/Luskish/afterlight-pack.git",
                 "FAKE_TAG_MESSAGE_FILE": str(self.tag_message_file),
                 "AFTERLIGHT_CI_POLL_ATTEMPTS": "2",
                 "AFTERLIGHT_CI_POLL_SECONDS": "0",
@@ -104,16 +117,27 @@ class ReleasePromotionTests(unittest.TestCase):
             r"""
             #!/usr/bin/env bash
             set -u
+            if [ "${FAKE_REQUIRE_NO_REPLACE:-0}" = 1 ] && [ "${GIT_NO_REPLACE_OBJECTS:-}" != 1 ]; then exit 96; fi
             printf '%s\n' "$*" >> "$FAKE_GIT_LOG"
+            if [ "${1:-}" = "-C" ]; then
+              exec "$FAKE_REAL_GIT" "$@"
+            fi
             case "${1:-} ${2:-}" in
               "branch --show-current") cat "$FAKE_BRANCH_FILE" ;;
               "rev-parse HEAD") printf '%s\n' "$FAKE_HEAD_SHA" ;;
               "status --porcelain")
                 if [ "${FAKE_DIRTY:-0}" = 1 ]; then printf ' M tools/release-policy.env\n'; fi
                 ;;
+              "remote get-url")
+                if [ "${3:-}" = "--push" ]; then
+                  printf '%s\n' "$FAKE_PUSH_URL"
+                else
+                  printf '%s\n' "$FAKE_ORIGIN_URL"
+                fi
+                ;;
               "tag --list") ;;
               "ls-remote --exit-code") exit 2 ;;
-              "push origin") ;;
+              push*) ;;
               "switch main") printf 'main\n' > "$FAKE_BRANCH_FILE" ;;
               "switch dev") printf 'dev\n' > "$FAKE_BRANCH_FILE" ;;
               "merge --ff-only") ;;
@@ -134,6 +158,10 @@ class ReleasePromotionTests(unittest.TestCase):
             #!/usr/bin/env bash
             set -u
             printf '%s\n' "$*" >> "$FAKE_GH_LOG"
+            if [ "${1:-}" = api ] && [[ " $* " == *" repos/Luskish/afterlight-pack/actions/workflows/pack-ci.yml "* ]]; then
+              printf '777\t.github/workflows/pack-ci.yml\tactive\n'
+              exit 0
+            fi
             if [ "${1:-} ${2:-}" = "run list" ]; then
               [ "${FAKE_GH_NO_RUNS:-0}" = 0 ] || exit 0
               case " $* " in
@@ -151,8 +179,8 @@ class ReleasePromotionTests(unittest.TestCase):
             fi
             if [ "${1:-} ${2:-}" = "run view" ]; then
               case "${3:-}" in
-                101) printf '%s\tpush\tcompleted\tsuccess\thttps://example.invalid/dev/101\n' "$FAKE_HEAD_SHA" ;;
-                202) printf '%s\tpush\tcompleted\tsuccess\thttps://example.invalid/main/202\n' "$FAKE_HEAD_SHA" ;;
+                101) printf '%s\t%s\tpush\tcompleted\tsuccess\thttps://example.invalid/dev/101\t%s\t%s\n' "$FAKE_HEAD_SHA" "${FAKE_CI_BRANCH:-dev}" "${FAKE_CI_WORKFLOW_ID:-777}" "${FAKE_CI_ATTEMPT:-1}" ;;
+                202) printf '%s\t%s\tpush\tcompleted\tsuccess\thttps://example.invalid/main/202\t%s\t%s\n' "$FAKE_HEAD_SHA" "${FAKE_CI_BRANCH_MAIN:-main}" "${FAKE_CI_WORKFLOW_ID:-777}" "${FAKE_CI_ATTEMPT:-1}" ;;
                 *) exit 93 ;;
               esac
               exit 0
@@ -165,13 +193,40 @@ class ReleasePromotionTests(unittest.TestCase):
             "curl",
             r"""
             #!/usr/bin/env bash
+            printf '%s\n' "$*" >> "$FAKE_CURL_LOG"
             case "$*" in
-              *pack.toml*) cat "$FAKE_PACK_FILE" ;;
-              *index.toml*) cat "$FAKE_INDEX_FILE" ;;
+              *pack.toml*)
+                if [ "${FAKE_BARE_STALE:-0}" = 1 ] && [[ "$*" != *\?* ]]; then
+                  printf 'stale pack\n'
+                else
+                  cat "$FAKE_PACK_FILE"
+                fi
+                ;;
+              *index.toml*)
+                if [ "${FAKE_BARE_STALE:-0}" = 1 ] && [[ "$*" != *\?* ]]; then
+                  printf 'stale index\n'
+                else
+                  cat "$FAKE_INDEX_FILE"
+                fi
+                ;;
               *) exit 95 ;;
             esac
             """,
         )
+        client_install = self.root / "tools" / "client-install-test.sh"
+        client_install.write_text(
+            "#!/usr/bin/env bash\n"
+            "printf '%s\\n' \"$*\" >> \"$FAKE_CLIENT_LOG\"\n"
+            "if [ \"${2:-}\" = local ]; then\n"
+            "  printf 'Client mod-set SHA-256: %s\\n' \"${FAKE_LOCAL_MODSET_SHA256:-1111111111111111111111111111111111111111111111111111111111111111}\"\n"
+            "  printf 'Client payload SHA-256: %s\\n' \"${FAKE_LOCAL_PAYLOAD_SHA256:-2222222222222222222222222222222222222222222222222222222222222222}\"\n"
+            "fi\n"
+            "if [ \"${2:-}\" = production ] && [ \"${3:-}\" != \"${FAKE_LOCAL_MODSET_SHA256:-1111111111111111111111111111111111111111111111111111111111111111}\" ]; then exit 18; fi\n"
+            "if [ \"${2:-}\" = production ] && [ \"${4:-}\" != \"${FAKE_LOCAL_PAYLOAD_SHA256:-2222222222222222222222222222222222222222222222222222222222222222}\" ]; then exit 19; fi\n"
+            "exit \"${FAKE_CLIENT_EXIT:-0}\"\n",
+            encoding="utf-8",
+        )
+        client_install.chmod(client_install.stat().st_mode | stat.S_IXUSR)
         self._write_executable("sleep", "#!/usr/bin/env bash\nexit 0\n")
 
     def _run(
@@ -188,7 +243,7 @@ class ReleasePromotionTests(unittest.TestCase):
         return subprocess.run(
             [
                 str(self.root / "tools" / "promote-release.sh"),
-                SHA,
+                self.accepted_sha,
                 receipt_sha256,
                 "--confirm",
             ],
@@ -209,12 +264,18 @@ class ReleasePromotionTests(unittest.TestCase):
             return []
         return self.gh_log.read_text(encoding="utf-8").splitlines()
 
+    def _push_calls(self) -> list[str]:
+        return [call for call in self._git_calls() if call.startswith("push ")]
+
     def test_failed_dev_ci_stops_before_main_and_tag(self) -> None:
         result = self._run(environment={"FAKE_GH_FAIL_WATCH_ID": "101"})
 
         self.assertNotEqual(result.returncode, 0)
         calls = self._git_calls()
-        self.assertIn("push origin dev", calls)
+        self.assertIn(
+            f"push {PRODUCTION_PUSH_URL} HEAD:refs/heads/dev",
+            calls,
+        )
         self.assertNotIn("switch main", calls)
         self.assertNotIn("switch dev", calls)
         self.assertEqual(self.branch_file.read_text(encoding="utf-8"), "dev\n")
@@ -242,7 +303,7 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("positive integer", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
 
     def test_rejects_dirty_policy_before_sourcing_trusted_values(self) -> None:
         marker = self.root / "policy-sourced"
@@ -256,10 +317,68 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(marker.exists())
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
+
+    def test_rejects_nonproduction_origin_before_push(self) -> None:
+        result = self._run(
+            environment={"FAKE_ORIGIN_URL": "https://github.com/attacker/fork.git"}
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("production repository", result.stderr)
+        self.assertFalse(self._push_calls())
+
+    def test_rejects_nonproduction_push_url_before_push(self) -> None:
+        result = self._run(
+            environment={"FAKE_PUSH_URL": "ssh://git@attacker.invalid/fork.git"}
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("production repository", result.stderr)
+        self.assertFalse(self._push_calls())
+
+    def test_rejects_multiple_push_urls_before_push(self) -> None:
+        result = self._run(
+            environment={
+                "FAKE_PUSH_URL": (
+                    "https://github.com/Luskish/afterlight-pack.git\n"
+                    "ssh://git@attacker.invalid/fork.git"
+                )
+            }
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exactly one production repository URL", result.stderr)
+        self.assertFalse(self._push_calls())
+
+    def test_success_pushes_directly_to_the_validated_production_url(self) -> None:
+        production_url = "ssh://git@github.com/Luskish/afterlight-pack.git"
+
+        result = self._run(environment={"FAKE_PUSH_URL": production_url})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self._git_calls()
+        self.assertIn(
+            f"push {production_url} HEAD:refs/heads/dev",
+            calls,
+        )
+        self.assertIn(
+            f"push {production_url} HEAD:refs/heads/main",
+            calls,
+        )
+        self.assertIn(
+            f"push {production_url} refs/tags/v{VERSION}:refs/tags/v{VERSION}",
+            calls,
+        )
+        self.assertFalse(any(call.startswith("push origin") for call in calls))
+
+    def test_disables_git_replace_objects_for_release_control(self) -> None:
+        result = self._run(environment={"FAKE_REQUIRE_NO_REPLACE": "1"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_rejects_noncanonical_public_inventory_before_push(self) -> None:
-        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        public = self.root / "dist" / "gauntlet" / self.accepted_sha / "public"
         cases = (
             public / "extra.txt",
             public / "friends-only",
@@ -276,7 +395,7 @@ class ReleasePromotionTests(unittest.TestCase):
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("inventory", result.stderr)
-                self.assertNotIn("push origin dev", self._git_calls())
+                self.assertFalse(self._push_calls())
                 if path.is_dir():
                     path.rmdir()
                 else:
@@ -285,7 +404,12 @@ class ReleasePromotionTests(unittest.TestCase):
 
     def test_rejects_missing_checksum_before_push(self) -> None:
         checksum_path = (
-            self.root / "dist" / "gauntlet" / SHA / "public" / "SHA256SUMS"
+            self.root
+            / "dist"
+            / "gauntlet"
+            / self.accepted_sha
+            / "public"
+            / "SHA256SUMS"
         )
         checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
         checksum_path.write_text("\n".join(checksum_lines[1:]) + "\n", encoding="utf-8")
@@ -293,11 +417,16 @@ class ReleasePromotionTests(unittest.TestCase):
         result = self._run()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
 
     def test_rejects_noncanonical_checksum_format_before_push(self) -> None:
         checksum_path = (
-            self.root / "dist" / "gauntlet" / SHA / "public" / "SHA256SUMS"
+            self.root
+            / "dist"
+            / "gauntlet"
+            / self.accepted_sha
+            / "public"
+            / "SHA256SUMS"
         )
         checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
         checksum_path.write_text(
@@ -310,10 +439,10 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("checksums are malformed", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
 
     def test_rejects_malformed_metadata_before_push_or_tag(self) -> None:
-        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        public = self.root / "dist" / "gauntlet" / self.accepted_sha / "public"
         (public / "release-metadata.json").write_text(
             "{not-json\n", encoding="utf-8"
         )
@@ -323,20 +452,20 @@ class ReleasePromotionTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("valid UTF-8 JSON", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
         self.assertFalse(any(call.startswith("tag -a ") for call in self._git_calls()))
 
     def test_rejects_self_consistent_post_gauntlet_archive_replacement(self) -> None:
-        public = self.root / "dist" / "gauntlet" / SHA / "public"
+        public = self.root / "dist" / "gauntlet" / self.accepted_sha / "public"
         write_empty_zip(public / "AFTERLIGHT.mrpack")
-        rewrite_metadata(public, VERSION, SHA)
+        rewrite_metadata(public, VERSION, self.accepted_sha)
         rewrite_checksums(public)
 
         result = self._run()
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Modrinth manifest", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
         self.assertFalse(any(call.startswith("tag -a ") for call in self._git_calls()))
 
     def test_requires_exact_accepted_receipt_digest_before_push(self) -> None:
@@ -346,11 +475,15 @@ class ReleasePromotionTests(unittest.TestCase):
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("receipt", result.stderr.lower())
-                self.assertNotIn("push origin dev", self._git_calls())
+                self.assertFalse(self._push_calls())
                 self.git_log.unlink(missing_ok=True)
 
         result = subprocess.run(
-            [str(self.root / "tools" / "promote-release.sh"), SHA, "--confirm"],
+            [
+                str(self.root / "tools" / "promote-release.sh"),
+                self.accepted_sha,
+                "--confirm",
+            ],
             cwd=self.root,
             env=self.environment,
             capture_output=True,
@@ -359,10 +492,10 @@ class ReleasePromotionTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RECEIPT_SHA256", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
 
     def test_rejects_self_consistent_receipt_replacement_before_push(self) -> None:
-        accepted = self.root / "dist" / "gauntlet" / SHA
+        accepted = self.root / "dist" / "gauntlet" / self.accepted_sha
         public = accepted / "public"
         metadata_path = public / "release-metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -371,41 +504,124 @@ class ReleasePromotionTests(unittest.TestCase):
             encoding="utf-8",
         )
         rewrite_checksums(public)
-        replacement_digest = write_gauntlet_receipt(accepted, VERSION, SHA)
+        replacement_digest = write_gauntlet_receipt(
+            accepted,
+            VERSION,
+            self.accepted_sha,
+        )
         self.assertNotEqual(replacement_digest, self.receipt_sha256)
 
         result = self._run()
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("receipt SHA-256", result.stderr)
-        self.assertNotIn("push origin dev", self._git_calls())
+        self.assertFalse(self._push_calls())
 
     def test_success_requires_exact_push_runs_pages_parity_and_then_tags(self) -> None:
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         git_calls = self._git_calls()
-        self.assertLess(git_calls.index("push origin dev"), git_calls.index("switch main"))
-        tag_call = next(call for call in git_calls if call.startswith(f"tag -a v{VERSION} {SHA} -F "))
-        self.assertLess(git_calls.index("push origin main"), git_calls.index(tag_call))
-        self.assertIn(f"push origin v{VERSION}", git_calls)
+        dev_push = f"push {PRODUCTION_PUSH_URL} HEAD:refs/heads/dev"
+        main_push = f"push {PRODUCTION_PUSH_URL} HEAD:refs/heads/main"
+        tag_push = (
+            f"push {PRODUCTION_PUSH_URL} "
+            f"refs/tags/v{VERSION}:refs/tags/v{VERSION}"
+        )
+        self.assertLess(git_calls.index(dev_push), git_calls.index("switch main"))
+        tag_call = next(
+            call
+            for call in git_calls
+            if call.startswith(f"tag -a v{VERSION} {self.accepted_sha} -F ")
+        )
+        self.assertLess(git_calls.index(main_push), git_calls.index(tag_call))
+        self.assertIn(tag_push, git_calls)
         self.assertEqual(
             self.tag_message_file.read_text(encoding="utf-8"),
             expected_tag_message(
-                self.root / "dist" / "gauntlet" / SHA,
+                self.root / "dist" / "gauntlet" / self.accepted_sha,
                 self.receipt_sha256,
             ),
         )
         gh_calls = "\n".join(self._gh_calls())
-        self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci --branch dev --event push --commit {SHA}", gh_calls)
-        self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci --branch main --event push --commit {SHA}", gh_calls)
+        self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci.yml --branch dev --event push --commit {self.accepted_sha}", gh_calls)
+        self.assertIn(f"run list --repo Luskish/afterlight-pack --workflow pack-ci.yml --branch main --event push --commit {self.accepted_sha}", gh_calls)
         self.assertIn("DEV_CI_URL=https://example.invalid/dev/101", result.stdout)
         self.assertIn("MAIN_CI_URL=https://example.invalid/main/202", result.stdout)
         self.assertIn("PAGES_PACK_SHA=", result.stdout)
         self.assertIn("PAGES_INDEX_SHA=", result.stdout)
+        curl_calls = self.curl_log.read_text(encoding="utf-8")
+        self.assertIn("https://luskish.github.io/afterlight-pack/pack.toml", curl_calls)
+        self.assertIn("https://luskish.github.io/afterlight-pack/index.toml", curl_calls)
+        for call in curl_calls.splitlines():
+            self.assertTrue(call.startswith("--disable "), call)
+            self.assertIn("--proto =https", call)
+            self.assertIn("--proto-redir =https", call)
+            self.assertIn("--tlsv1.2", call)
+        self.assertEqual(
+            self.client_log.read_text(encoding="utf-8").splitlines(),
+            [
+                f"dist/gauntlet/{self.accepted_sha}/public/AFTERLIGHT-prism-instance.zip local",
+                f"dist/gauntlet/{self.accepted_sha}/public/AFTERLIGHT-prism-instance.zip production "
+                + "1" * 64
+                + " "
+                + "2" * 64,
+            ],
+        )
+        bare_calls = [
+            call
+            for call in curl_calls.splitlines()
+            if "?" not in call and "github.io/afterlight-pack" in call
+        ]
+        self.assertTrue(bare_calls)
+        self.assertGreaterEqual(len(bare_calls), 4)
+        self.assertTrue(all("Cache-Control" not in call for call in bare_calls))
+
+    def test_stale_bare_pages_stops_before_client_install_and_tag(self) -> None:
+        result = self._run(environment={"FAKE_BARE_STALE": "1"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("GitHub Pages", result.stderr)
+        self.assertFalse(self.client_log.exists())
+        self.assertFalse(
+            any(call.startswith("tag -a ") for call in self._git_calls())
+        )
+
+    def test_failed_production_client_install_stops_before_tag(self) -> None:
+        result = self._run(environment={"FAKE_CLIENT_EXIT": "17"})
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            f"push {PRODUCTION_PUSH_URL} HEAD:refs/heads/main",
+            self._git_calls(),
+        )
+        self.assertFalse(
+            any(call.startswith("tag -a ") for call in self._git_calls())
+        )
+
+    def test_rejects_mismatched_ci_branch_workflow_or_attempt(self) -> None:
+        cases = (
+            {"FAKE_CI_BRANCH": "main"},
+            {"FAKE_CI_WORKFLOW_ID": "778"},
+            {"FAKE_CI_ATTEMPT": "0"},
+        )
+        for environment in cases:
+            with self.subTest(environment=environment):
+                result = self._run(environment=environment)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(
+                    any(call.startswith("tag -a ") for call in self._git_calls())
+                )
+                self.gh_log.unlink(missing_ok=True)
+                self.git_log.unlink(missing_ok=True)
+                self.branch_file.write_text("dev\n", encoding="utf-8")
 
     def test_release_docs_use_fail_closed_promoter_before_publication(self) -> None:
         releasing = (ROOT / "docs" / "RELEASING.md").read_text(encoding="utf-8")
+        release_notes = (ROOT / "docs" / "releases" / "1.0.0-rc.1.md").read_text(
+            encoding="utf-8"
+        )
         verifier = (ROOT / "tools" / "verify-pack.sh").read_text(encoding="utf-8")
         publisher = (ROOT / "tools" / "publish-release.sh").read_text(
             encoding="utf-8"
@@ -417,14 +633,32 @@ class ReleasePromotionTests(unittest.TestCase):
         )
         self.assertIn('TAG="v$VERSION"', releasing)
         self.assertIn('RELEASE_DOC="docs/releases/$VERSION.md"', releasing)
-        self.assertIn("Populate every automated evidence field", releasing)
+        self.assertIn(
+            "Populate every prepublication automated evidence field",
+            releasing,
+        )
         self.assertIn("must contain no automated `NOT RUN`", releasing)
+        self.assertIn("must contain no automated `PENDING`", releasing)
+        self.assertIn("bare and cache-busted", releasing)
+        self.assertIn("clean install directly from the public Pages URL", releasing)
+        self.assertIn("mod sets and payloads to be byte-identical", releasing)
+        self.assertIn("draft GitHub release", releasing)
+        self.assertIn("authenticated downloads", releasing)
+        self.assertIn("unauthenticated downloads", releasing)
+        self.assertIn("pushed descendant of the accepted SHA", releasing)
         self.assertIn(
             'tools/publish-release.sh "$SHA" "$VERSION" "$RECEIPT_SHA256"',
             releasing,
         )
+        automated = release_notes.split("## Automated Evidence", 1)[1].split(
+            "## Known Boundaries", 1
+        )[0]
+        self.assertNotIn("Public prerelease URL", automated)
+        self.assertNotIn("publication timestamp", automated.casefold())
+        self.assertIn("## Postpublication Evidence", release_notes)
         self.assertNotIn("refs/tags/v0.9.0-rc.1^{}", releasing)
-        self.assertIn("--verify-tag", publisher)
+        self.assertIn('"tag_name": tag', publisher)
+        self.assertIn('"repos/$REPOSITORY/releases/$RELEASE_ID"', publisher)
         self.assertIn("tools/promote-release.sh", verifier)
         self.assertIn("tools/publish-release.sh", verifier)
 

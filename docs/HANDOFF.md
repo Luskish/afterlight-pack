@@ -27,7 +27,9 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Integration commit: `66eac04ecaa2160a392b57da1fcc1b311f15a9a6`.
 - Remote `dev` duplicate design lineage was reconciled without changing pack bytes in merge commit `5bba025182ebba312c29b998c6a50ccd897bdee1`.
 - The integrated preflight passed 522 authenticated tests and printed `SERVER BOOT: OK` before the version-only RC1 preparation.
-- Complete release gauntlet, exact branch CI, promotion, publication, portal selection, and VPS rollout are still pending until recorded below.
+- Candidate `2cb2f152b244d5fba0b18f716c2e087758ad2b4c` passed a full local gauntlet, but independent review found release-control gaps. That candidate is obsolete and must not be promoted.
+- Release hardening now includes replacement-ref-resistant CurseForge and Modrinth commit-tree reconciliation, an upstream-verified 140-record Modrinth manifest lock, typed, quoted, and oversized credential detection, exact automated evidence binding, direct explicit-refspec pushes to one captured production URL, HTTPS-only ordinary and cache-busted Pages parity, rejection of unexpected installed files, accepted-versus-hosted client mod-set and complete payload equality, numeric release ownership without automatic deletion, and authenticated plus unauthenticated byte verification.
+- A fresh full gauntlet, exact branch CI, promotion, publication, portal selection, and VPS rollout remain pending until recorded below.
 
 ## Signal Companion
 
@@ -75,13 +77,13 @@ Capture the exact printed receipt SHA-256. Then push the feature branch and requ
 tools/promote-release.sh "$SHA" "$RECEIPT_SHA256" --confirm
 ```
 
-Populate `docs/releases/1.0.0-rc.1.md` and this handoff with exact evidence, commit that documentation on `dev`, push it, and require exact documentation CI. Then publish:
+The promoter must push branches and the tag directly to the captured production URL, prove HTTPS-only ordinary bare and cache-busted Pages parity, derive accepted client mod-set and complete Packwiz payload SHA-256 values from a clean local install with no unexpected installed files, require a clean production Pages install to match both, and check Pages parity again before creating the tag. The accepted `.mrpack` must match `tools/modrinth-manifest-lock.json`, whose 140 records were independently checked against 138 Modrinth API records and two streamed GitHub release JARs. Populate `docs/releases/1.0.0-rc.1.md` and this handoff with exact prepublication evidence, commit only those documentation files as a distinct child on `dev`, push them, and require exact documentation CI. The publisher machine-checks every canonical evidence line and accepts only that pushed documentation descendant while requiring publication tooling to remain identical to the accepted SHA. Then publish:
 
 ```bash
 tools/publish-release.sh "$SHA" 1.0.0-rc.1 "$RECEIPT_SHA256" --prerelease --confirm
 ```
 
-Verify all five public assets through unauthenticated downloads and confirm that `https://rl-labs.org/afterlight/` selects RC1.
+The publisher creates an ID-owned draft, verifies all five assets through authenticated asset-ID downloads, never automatically deletes a release, and then repeats equality through unauthenticated downloads. Any failure after creation preserves the exact numeric release for manual inspection. Confirm that `https://rl-labs.org/afterlight/` selects RC1.
 
 ## VPS Preflight
 

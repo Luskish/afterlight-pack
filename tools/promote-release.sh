@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export GIT_NO_REPLACE_OBJECTS=1
 
 cd "$(dirname "$0")/.."
 
 REPOSITORY=Luskish/afterlight-pack
-WORKFLOW=pack-ci
+WORKFLOW_FILE=pack-ci.yml
+WORKFLOW_PATH=.github/workflows/pack-ci.yml
+WORKFLOW_ID=""
 CI_POLL_ATTEMPTS=${AFTERLIGHT_CI_POLL_ATTEMPTS:-60}
 CI_POLL_SECONDS=${AFTERLIGHT_CI_POLL_SECONDS:-5}
 PAGES_POLL_ATTEMPTS=${AFTERLIGHT_PAGES_POLL_ATTEMPTS:-60}
@@ -58,19 +61,38 @@ cleanup() {
 wait_for_exact_ci() {
   local branch=$1
   local sha=$2
-  local attempt=1
+  local poll_attempt=1
   local actual_conclusion
   local actual_event
+  local actual_branch
+  local actual_attempt
   local actual_sha
   local actual_status
+  local actual_workflow_id
   local run_id=""
   local run_record
   local run_url
+  local workflow_record workflow_path workflow_state
 
-  while [[ "$attempt" -le "$CI_POLL_ATTEMPTS" ]]; do
+  if [[ -z "$WORKFLOW_ID" ]]; then
+    workflow_record=$(gh api --hostname github.com \
+      "repos/$REPOSITORY/actions/workflows/$WORKFLOW_FILE" \
+      --jq '[.id,.path,.state] | @tsv') || return 1
+    IFS=$'\t' read -r WORKFLOW_ID workflow_path workflow_state <<< "$workflow_record"
+    [[ "$WORKFLOW_ID" =~ ^[1-9][0-9]*$ ]] || {
+      fail "pack-ci workflow ID is malformed"
+      return 1
+    }
+    [[ "$workflow_path" == "$WORKFLOW_PATH" && "$workflow_state" == active ]] || {
+      fail "pack-ci workflow identity changed"
+      return 1
+    }
+  fi
+
+  while [[ "$poll_attempt" -le "$CI_POLL_ATTEMPTS" ]]; do
     run_id=$(gh run list \
       --repo "$REPOSITORY" \
-      --workflow "$WORKFLOW" \
+      --workflow "$WORKFLOW_FILE" \
       --branch "$branch" \
       --event push \
       --commit "$sha" \
@@ -82,7 +104,7 @@ wait_for_exact_ci() {
     fi
     run_id=""
     sleep "$CI_POLL_SECONDS"
-    attempt=$((attempt + 1))
+    poll_attempt=$((poll_attempt + 1))
   done
 
   if [[ -z "$run_id" ]]; then
@@ -93,10 +115,13 @@ wait_for_exact_ci() {
   gh run watch "$run_id" --repo "$REPOSITORY" --exit-status
   run_record=$(gh run view "$run_id" \
     --repo "$REPOSITORY" \
-    --json headSha,event,status,conclusion,url \
-    --jq '[.headSha,.event,.status,.conclusion,.url] | @tsv') || return 1
-  IFS=$'\t' read -r actual_sha actual_event actual_status actual_conclusion run_url <<< "$run_record"
-  if [[ "$actual_sha" != "$sha" || "$actual_event" != "push" || "$actual_status" != "completed" || "$actual_conclusion" != "success" || -z "$run_url" ]]; then
+    --json headSha,headBranch,event,status,conclusion,url,workflowDatabaseId,attempt \
+    --jq '[.headSha,.headBranch,.event,.status,.conclusion,.url,.workflowDatabaseId,.attempt] | @tsv') || return 1
+  IFS=$'\t' read -r actual_sha actual_branch actual_event actual_status actual_conclusion run_url actual_workflow_id actual_attempt <<< "$run_record"
+  if [[ "$actual_sha" != "$sha" || "$actual_branch" != "$branch" ||
+    "$actual_event" != "push" || "$actual_status" != "completed" ||
+    "$actual_conclusion" != "success" || "$actual_workflow_id" != "$WORKFLOW_ID" ||
+    ! "$actual_attempt" =~ ^[1-9][0-9]*$ || -z "$run_url" ]]; then
     fail "CI evidence did not match successful push run $run_id for $branch at $sha"
     return 1
   fi
@@ -108,6 +133,8 @@ wait_for_pages_parity() {
   local attempt=1
   local local_index_sha
   local local_pack_sha
+  local bare_index_sha=""
+  local bare_pack_sha=""
   local pages_index_sha=""
   local pages_pack_sha=""
 
@@ -115,13 +142,28 @@ wait_for_pages_parity() {
   local_index_sha=$(shasum -a 256 index.toml | awk '{print $1}')
 
   while [[ "$attempt" -le "$PAGES_POLL_ATTEMPTS" ]]; do
-    pages_pack_sha=$(curl -fsSL "https://luskish.github.io/afterlight-pack/pack.toml?sha=$sha&attempt=$attempt" |
+    bare_pack_sha=$(curl --disable -fsSL \
+      --proto '=https' --proto-redir '=https' --tlsv1.2 \
+      "https://luskish.github.io/afterlight-pack/pack.toml" |
+      shasum -a 256 | awk '{print $1}') || bare_pack_sha=""
+    bare_index_sha=$(curl --disable -fsSL \
+      --proto '=https' --proto-redir '=https' --tlsv1.2 \
+      "https://luskish.github.io/afterlight-pack/index.toml" |
+      shasum -a 256 | awk '{print $1}') || bare_index_sha=""
+    pages_pack_sha=$(curl --disable -fsSL \
+      --proto '=https' --proto-redir '=https' --tlsv1.2 \
+      "https://luskish.github.io/afterlight-pack/pack.toml?sha=$sha&attempt=$attempt" |
       shasum -a 256 | awk '{print $1}') || pages_pack_sha=""
-    pages_index_sha=$(curl -fsSL "https://luskish.github.io/afterlight-pack/index.toml?sha=$sha&attempt=$attempt" |
+    pages_index_sha=$(curl --disable -fsSL \
+      --proto '=https' --proto-redir '=https' --tlsv1.2 \
+      "https://luskish.github.io/afterlight-pack/index.toml?sha=$sha&attempt=$attempt" |
       shasum -a 256 | awk '{print $1}') || pages_index_sha=""
-    if [[ "$pages_pack_sha" == "$local_pack_sha" && "$pages_index_sha" == "$local_index_sha" ]]; then
-      PAGES_PACK_SHA=$pages_pack_sha
-      PAGES_INDEX_SHA=$pages_index_sha
+    if [[ "$bare_pack_sha" == "$local_pack_sha" &&
+      "$bare_index_sha" == "$local_index_sha" &&
+      "$pages_pack_sha" == "$local_pack_sha" &&
+      "$pages_index_sha" == "$local_index_sha" ]]; then
+      PAGES_PACK_SHA=$bare_pack_sha
+      PAGES_INDEX_SHA=$bare_index_sha
       return 0
     fi
     sleep "$PAGES_POLL_SECONDS"
@@ -166,6 +208,28 @@ if [[ -n "$status" ]]; then
   fail "Promotion requires a clean dev worktree"
   exit 2
 fi
+ORIGIN_URL=$(git remote get-url origin) || {
+  fail "Unable to resolve the production repository origin"
+  exit 2
+}
+case "$ORIGIN_URL" in
+  https://github.com/Luskish/afterlight-pack.git|git@github.com:Luskish/afterlight-pack.git|ssh://git@github.com/Luskish/afterlight-pack.git) ;;
+  *)
+    fail "origin is not the production repository"
+    exit 2
+    ;;
+esac
+PUSH_URL=$(git remote get-url --push --all origin) || {
+  fail "Unable to resolve the production repository push URL"
+  exit 2
+}
+case "$PUSH_URL" in
+  https://github.com/Luskish/afterlight-pack.git|git@github.com:Luskish/afterlight-pack.git|ssh://git@github.com/Luskish/afterlight-pack.git) ;;
+  *)
+    fail "origin push URL is not exactly one production repository URL"
+    exit 2
+    ;;
+esac
 # shellcheck disable=SC1091
 source tools/release-policy.env
 
@@ -186,6 +250,7 @@ if [[ ! -f "$ACCEPTED_ROOT/gauntlet.txt" || -L "$ACCEPTED_ROOT/gauntlet.txt" ]] 
 fi
 python3 tools/release_artifacts.py verify-public-release \
   --dist-dir "$PUBLIC_ROOT" \
+  --pack-root . \
   --version "$VERSION" \
   --git-sha "$SHA" \
   --pack-url "$RELEASE_PACK_URL" \
@@ -219,7 +284,7 @@ python3 tools/release_artifacts.py render-gauntlet-tag-message \
   --receipt "$RECEIPT_PATH" \
   --receipt-sha256 "$RECEIPT_SHA256" > "$TAG_MESSAGE_FILE"
 
-git push origin dev
+git push "$PUSH_URL" HEAD:refs/heads/dev
 wait_for_exact_ci dev "$SHA"
 DEV_CI_URL=$CI_RUN_URL
 
@@ -230,13 +295,33 @@ if [[ "$(git rev-parse HEAD)" != "$SHA" ]]; then
   fail "main did not fast-forward to the accepted SHA"
   exit 1
 fi
-git push origin main
+git push "$PUSH_URL" HEAD:refs/heads/main
 wait_for_exact_ci main "$SHA"
 MAIN_CI_URL=$CI_RUN_URL
 
 wait_for_pages_parity "$SHA"
+LOCAL_CLIENT_OUTPUT=$(./tools/client-install-test.sh \
+  "$PUBLIC_ROOT/AFTERLIGHT-prism-instance.zip" local)
+printf '%s\n' "$LOCAL_CLIENT_OUTPUT"
+EXPECTED_MODSET_SHA256=$(printf '%s\n' "$LOCAL_CLIENT_OUTPUT" |
+  sed -n 's/^Client mod-set SHA-256: //p')
+[[ "$EXPECTED_MODSET_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+  fail "Accepted local client install did not report one canonical mod-set SHA-256"
+  exit 1
+}
+EXPECTED_PAYLOAD_SHA256=$(printf '%s\n' "$LOCAL_CLIENT_OUTPUT" |
+  sed -n 's/^Client payload SHA-256: //p')
+[[ "$EXPECTED_PAYLOAD_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+  fail "Accepted local client install did not report one canonical payload SHA-256"
+  exit 1
+}
+./tools/client-install-test.sh \
+  "$PUBLIC_ROOT/AFTERLIGHT-prism-instance.zip" production \
+  "$EXPECTED_MODSET_SHA256" \
+  "$EXPECTED_PAYLOAD_SHA256"
+wait_for_pages_parity "$SHA"
 git tag -a "$TAG" "$SHA" -F "$TAG_MESSAGE_FILE"
-git push origin "$TAG"
+git push "$PUSH_URL" "refs/tags/$TAG:refs/tags/$TAG"
 git switch "$START_BRANCH"
 BRANCH_CHANGED=0
 

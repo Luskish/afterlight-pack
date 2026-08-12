@@ -7,11 +7,19 @@ import os
 import stat
 import sys
 import tomllib
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath
 
 
 ALLOWED_SIDES = {"client", "server", "both"}
+ALLOWED_HASHES = {"sha1", "sha256", "sha512"}
 STREAM_CHUNK_SIZE = 1024 * 1024
+INSTALLER_INFRASTRUCTURE_FILES = frozenset(
+    {
+        "packwiz-installer-bootstrap.jar",
+        "packwiz-installer.jar",
+        "packwiz.json",
+    }
+)
 
 
 def _require_directory(path, label):
@@ -34,12 +42,170 @@ def _require_regular_file(path, label):
         raise ValueError(f"{label} is not a regular file: {path}")
 
 
-def _sha256_file(path):
-    digest = hashlib.sha256()
+def _hash_file(path, hash_name):
+    digest = hashlib.new(hash_name)
     with path.open("rb") as source:
         while chunk := source.read(STREAM_CHUNK_SIZE):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _sha256_file(path):
+    return _hash_file(path, "sha256")
+
+
+def _load_toml(path, label):
+    _require_regular_file(path, label)
+    try:
+        with path.open("rb") as source:
+            document = tomllib.load(source)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ValueError(f"invalid {label}: {path}") from error
+    if not isinstance(document, dict):
+        raise ValueError(f"invalid {label}: {path}")
+    return document
+
+
+def _relative_pack_path(value, label):
+    if not isinstance(value, str) or not value or "\\" in value or "//" in value:
+        raise ValueError(f"invalid {label}")
+    path = PurePosixPath(value)
+    if path.is_absolute() or str(path) != value or any(
+        part in {"", ".", ".."} for part in path.parts
+    ):
+        raise ValueError(f"invalid {label}")
+    return value
+
+
+def _expected_packwiz_payload(pack_root):
+    root = _require_directory(pack_root, "Packwiz source root")
+    pack = _load_toml(root / "pack.toml", "Packwiz pack metadata")
+    index_reference = pack.get("index")
+    if not isinstance(index_reference, dict):
+        raise ValueError("Packwiz pack metadata has no index")
+    index_relative_path = _relative_pack_path(
+        index_reference.get("file"), "Packwiz index path"
+    )
+    index_hash_name = index_reference.get("hash-format")
+    if index_hash_name not in ALLOWED_HASHES:
+        raise ValueError("Packwiz index reference uses an unsupported hash")
+    index_hash = index_reference.get("hash")
+    if not isinstance(index_hash, str) or index_hash != _hash_file(
+        root / index_relative_path, index_hash_name
+    ):
+        raise ValueError("Packwiz index hash does not match pack.toml")
+
+    index = _load_toml(root / index_relative_path, "Packwiz index")
+    payload_hash_name = index.get("hash-format")
+    if payload_hash_name not in ALLOWED_HASHES:
+        raise ValueError("Packwiz index uses an unsupported hash")
+    records = index.get("files")
+    if not isinstance(records, list) or not records:
+        raise ValueError("Packwiz index contains no files")
+
+    expected = {}
+    collision_paths = {}
+    for record in records:
+        if not isinstance(record, dict) or not {"file", "hash"}.issubset(record):
+            raise ValueError("Packwiz index file record is invalid")
+        if set(record) - {"file", "hash", "metafile", "preserve"}:
+            raise ValueError("Packwiz index file record is invalid")
+        relative_path = _relative_pack_path(
+            record["file"], "Packwiz index file path"
+        )
+        expected_source_hash = record["hash"]
+        if not isinstance(expected_source_hash, str):
+            raise ValueError(f"Packwiz index hash is invalid: {relative_path}")
+        source_path = root / relative_path
+        _require_regular_file(source_path, "Packwiz indexed source")
+        if _hash_file(source_path, payload_hash_name) != expected_source_hash:
+            raise ValueError(f"Packwiz indexed source hash mismatch: {relative_path}")
+
+        metafile = record.get("metafile", False)
+        if type(metafile) is not bool:
+            raise ValueError(f"Packwiz metafile flag is invalid: {relative_path}")
+        if "preserve" in record and type(record["preserve"]) is not bool:
+            raise ValueError(f"Packwiz preserve flag is invalid: {relative_path}")
+        if metafile:
+            metadata = _load_toml(source_path, "Packwiz file metadata")
+            side = metadata.get("side")
+            if side not in ALLOWED_SIDES:
+                raise ValueError(
+                    f"Packwiz metadata requires a deliberate side: {relative_path}"
+                )
+            if side == "server":
+                continue
+            filename = metadata.get("filename")
+            if (
+                not isinstance(filename, str)
+                or not filename
+                or PurePosixPath(filename).name != filename
+                or "\\" in filename
+            ):
+                raise ValueError(f"invalid Packwiz payload filename: {relative_path}")
+            parent = PurePosixPath(relative_path).parent
+            installed_relative_path = (parent / filename).as_posix()
+            download = metadata.get("download")
+            if not isinstance(download, dict):
+                raise ValueError(f"Packwiz download metadata is invalid: {relative_path}")
+            installed_hash_name = download.get("hash-format")
+            if installed_hash_name not in ALLOWED_HASHES:
+                raise ValueError(f"Packwiz download hash is invalid: {relative_path}")
+            installed_hash = download.get("hash")
+            if not isinstance(installed_hash, str):
+                raise ValueError(f"Packwiz download hash is invalid: {relative_path}")
+        else:
+            installed_relative_path = relative_path
+            installed_hash_name = payload_hash_name
+            installed_hash = expected_source_hash
+
+        collision_key = installed_relative_path.casefold()
+        if collision_key in collision_paths:
+            raise ValueError(
+                "duplicate Packwiz payload path: "
+                f"{collision_paths[collision_key]} and {installed_relative_path}"
+            )
+        collision_paths[collision_key] = installed_relative_path
+        expected[installed_relative_path] = (installed_hash_name, installed_hash)
+    return expected
+
+
+def _installed_file_inventory(instance_directory):
+    installed = {}
+    collisions = {}
+    for current_root, directory_names, file_names in os.walk(
+        instance_directory,
+        topdown=True,
+        followlinks=False,
+    ):
+        current_path = Path(current_root)
+        for directory_name in directory_names:
+            directory_path = current_path / directory_name
+            try:
+                directory_status = directory_path.lstat()
+            except OSError as error:
+                raise ValueError(
+                    f"installed directory is unreadable: {directory_path}"
+                ) from error
+            if stat.S_ISLNK(directory_status.st_mode) or not stat.S_ISDIR(
+                directory_status.st_mode
+            ):
+                raise ValueError(
+                    f"installed directory is not a regular directory: {directory_path}"
+                )
+        for file_name in file_names:
+            file_path = current_path / file_name
+            _require_regular_file(file_path, "installed file")
+            relative_path = file_path.relative_to(instance_directory).as_posix()
+            collision_key = relative_path.casefold()
+            if collision_key in collisions:
+                raise ValueError(
+                    "duplicate installed file path: "
+                    f"{collisions[collision_key]} and {relative_path}"
+                )
+            collisions[collision_key] = relative_path
+            installed[relative_path] = file_path
+    return installed
 
 
 def expected_mod_inventory(mods_dir):
@@ -91,7 +257,7 @@ def expected_mod_inventory(mods_dir):
     return client_required, server_only
 
 
-def validate_client_install(instance_dir, mods_dir):
+def validate_client_install(instance_dir, mods_dir, pack_root=None):
     instance_directory = _require_directory(instance_dir, "client instance directory")
     installed_mods_directory = _require_directory(
         instance_directory / "mods", "installed client mods directory"
@@ -132,19 +298,51 @@ def validate_client_install(instance_dir, mods_dir):
     modset_sha256 = hashlib.sha256(
         "".join(digest_lines).encode("utf-8")
     ).hexdigest()
-    return {
+    summary = {
         "client_mod_count": len(client_required),
         "server_only_count": len(server_only),
         "modset_sha256": modset_sha256,
     }
+    if pack_root is not None:
+        expected_payload = _expected_packwiz_payload(pack_root)
+        installed_files = _installed_file_inventory(instance_directory)
+        allowed_files = set(expected_payload) | INSTALLER_INFRASTRUCTURE_FILES
+        unexpected_files = sorted(set(installed_files) - allowed_files)
+        if unexpected_files:
+            raise ValueError(f"unexpected installed file: {unexpected_files[0]}")
+        payload_lines = []
+        for relative_path in sorted(expected_payload):
+            path = instance_directory / relative_path
+            try:
+                _require_regular_file(path, "installed Packwiz payload")
+            except ValueError as error:
+                raise ValueError(
+                    f"missing installed payload: {relative_path}"
+                ) from error
+            hash_name, expected_hash = expected_payload[relative_path]
+            if _hash_file(path, hash_name) != expected_hash:
+                raise ValueError(
+                    f"installed payload hash mismatch: {relative_path}"
+                )
+            payload_lines.append(f"{_sha256_file(path)}  {relative_path}\n")
+        summary.update(
+            {
+                "payload_file_count": len(expected_payload),
+                "payload_sha256": hashlib.sha256(
+                    "".join(payload_lines).encode("utf-8")
+                ).hexdigest(),
+            }
+        )
+    return summary
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Validate an AFTERLIGHT client install")
     parser.add_argument("--instance-dir", required=True)
     parser.add_argument("--mods-dir", required=True)
+    parser.add_argument("--pack-root", required=True)
     args = parser.parse_args(argv)
-    summary = validate_client_install(args.instance_dir, args.mods_dir)
+    summary = validate_client_install(args.instance_dir, args.mods_dir, args.pack_root)
     print(json.dumps(summary, sort_keys=True))
     return 0
 

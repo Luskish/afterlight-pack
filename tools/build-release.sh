@@ -108,10 +108,14 @@ python3 tools/release_artifacts.py normalize-archive --archive "$MRPACK"
 python3 tools/release_artifacts.py normalize-archive --archive "$CURSEFORGE_ZIP"
 python3 tools/release_artifacts.py inspect-modrinth \
   --archive "$MRPACK" \
-  --version "$VERSION"
+  --version "$VERSION" \
+  --pack-root . \
+  --git-sha "$GIT_SHA"
 python3 tools/release_artifacts.py inspect-curseforge \
   --archive "$CURSEFORGE_ZIP" \
-  --version "$VERSION"
+  --version "$VERSION" \
+  --pack-root . \
+  --git-sha "$GIT_SHA"
 mv "$MRPACK" "$STAGING_DIR/$PUBLIC_MRPACK_NAME"
 mv "$CURSEFORGE_ZIP" "$STAGING_DIR/$PUBLIC_CURSEFORGE_NAME"
 

@@ -17,6 +17,7 @@ from tools.tests.release_fixtures import (
     INSTALLER_VERSION,
     PACK_URL,
     PUBLIC_RELEASE_NAMES,
+    write_packwiz_source,
     write_release_policy,
 )
 
@@ -95,11 +96,12 @@ class ReleaseGauntletTests(unittest.TestCase):
             executable=True,
         )
         self._write(self.root / "tools" / "sample.sh", "#!/usr/bin/env bash\nexit 0\n", executable=True)
+        write_packwiz_source(self.root, "0.9.0-rc.1")
 
     def _write_fake_commands(self):
         self._write(
             self.fake_bin / "git",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'git' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"$1\" = -C ] && [ \"$3 $4\" = 'worktree remove' ]; then [ \"${GAUNTLET_WORKTREE_REMOVE_FAIL:-0}\" = 1 ] && exit 1; rm -rf \"$6\"; exit 0; fi\ncase \"$1 ${2:-}\" in\n  'status --porcelain'*) if [ \"${GAUNTLET_DIRTY:-0}\" = 1 ] || { [ \"${GAUNTLET_TRACK_ENV:-0}\" = 1 ] && [ -e server/.env.gauntlet ]; }; then printf ' M server/.env.gauntlet\\n'; fi;;\n  'rev-parse HEAD') printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'rev-parse --verify') [ \"${GAUNTLET_NONCOMMIT:-0}\" = 1 ] && exit 1; printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'worktree add') destination=$4; mkdir -p \"$destination\"; if [ \"${GAUNTLET_WORKTREE_ADD_FAIL:-0}\" = 1 ]; then printf 'partial\\n' > \"$destination/partial.txt\"; exit 1; fi; cp -R \"$GAUNTLET_REPOSITORY/.\" \"$destination\";;\n  'ls-files '*) printf 'tools/sample.sh\\n';;\n  'diff --exit-code') exit \"${GAUNTLET_DIFF_EXIT:-0}\";;\nesac\nexit 0\n",
+            "#!/usr/bin/env bash\nset -eu\nif [ \"${GAUNTLET_REQUIRE_NO_REPLACE:-0}\" = 1 ] && [ \"${GIT_NO_REPLACE_OBJECTS:-}\" != 1 ]; then printf 'replace refs enabled\\n' >&2; exit 96; fi\nif [ \"$1\" = -C ] && [ \"${3:-}\" = rev-parse ]; then printf '%s\\n' \"$GAUNTLET_SHA\"; exit 0; fi\nif [ \"$1\" = -C ] && [ \"${3:-}\" = ls-tree ]; then exec \"$GAUNTLET_REAL_GIT\" -C \"$2\" ls-tree -rz --full-tree HEAD; fi\nif [ \"$1\" = -C ] && [ \"${3:-}\" = cat-file ]; then exec \"$GAUNTLET_REAL_GIT\" \"$@\"; fi\nprintf 'git' >> \"$GAUNTLET_LOG\"\nfor argument in \"$@\"; do printf ' %s' \"$argument\" >> \"$GAUNTLET_LOG\"; done\nprintf '\\n' >> \"$GAUNTLET_LOG\"\nif [ \"$1\" = -C ] && [ \"$3 $4\" = 'worktree remove' ]; then [ \"${GAUNTLET_WORKTREE_REMOVE_FAIL:-0}\" = 1 ] && exit 1; rm -rf \"$6\"; exit 0; fi\ncase \"$1 ${2:-}\" in\n  'status --porcelain'*) if [ \"${GAUNTLET_DIRTY:-0}\" = 1 ] || { [ \"${GAUNTLET_TRACK_ENV:-0}\" = 1 ] && [ -e server/.env.gauntlet ]; }; then printf ' M server/.env.gauntlet\\n'; fi;;\n  'rev-parse HEAD') printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'rev-parse --verify') [ \"${GAUNTLET_NONCOMMIT:-0}\" = 1 ] && exit 1; printf '%s\\n' \"$GAUNTLET_SHA\";;\n  'worktree add') destination=$4; mkdir -p \"$destination\"; if [ \"${GAUNTLET_WORKTREE_ADD_FAIL:-0}\" = 1 ]; then printf 'partial\\n' > \"$destination/partial.txt\"; exit 1; fi; cp -R \"$GAUNTLET_REPOSITORY/.\" \"$destination\";;\n  'ls-files '*) printf 'tools/sample.sh\\n';;\n  'diff --exit-code') exit \"${GAUNTLET_DIFF_EXIT:-0}\";;\nesac\nexit 0\n",
             executable=True,
         )
         self._write(
@@ -153,6 +155,7 @@ class ReleaseGauntletTests(unittest.TestCase):
                 "PATH": f"{self.fake_bin}:{environment['PATH']}",
                 "GAUNTLET_LOG": str(self.log_path),
                 "GAUNTLET_REPOSITORY": str(self.root),
+                "GAUNTLET_REAL_GIT": shutil.which("git"),
                 "GAUNTLET_REAL_PYTHON": sys.executable,
                 "GAUNTLET_SHA": SHA,
                 "GAUNTLET_BUILD_COUNT_FILE": str(self.root / "build-count"),
@@ -216,6 +219,11 @@ class ReleaseGauntletTests(unittest.TestCase):
         self.assertTrue(any(line.startswith("git worktree add --detach ") and line.endswith(f" {SHA}") for line in self._log_lines()))
         self.assertTrue(any("worktree remove --force" in line for line in self._log_lines()))
 
+    def test_disables_git_replace_objects_for_every_git_identity_check(self):
+        result = self._run(GAUNTLET_REQUIRE_NO_REPLACE="1")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_runs_tests_verify_boot_compose_shellcheck_and_two_builds_in_order(self):
         result = self._run()
 
@@ -253,6 +261,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             f"--installer-size {len(INSTALLER_BYTES)} "
             "--installer-sha256 "
             f"{hashlib.sha256(INSTALLER_BYTES).hexdigest()} "
+            "--pack-root . "
             "--write-receipt <STAGING>/gauntlet-receipt.json",
             "git -C <REPO> worktree remove --force <WORKTREE>",
         ])

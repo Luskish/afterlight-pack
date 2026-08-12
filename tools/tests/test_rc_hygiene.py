@@ -312,6 +312,7 @@ class DeterministicLoaderConfigTests(unittest.TestCase):
         config_text = config_path.read_text(encoding="utf-8")
         config = tomllib.loads(config_text)
         self.assertIs(config.get("disableConfigWatcher"), True)
+        self.assertIs(config.get("versionCheck"), False)
         self.assertIn(
             '#dependencyOverrides.targetMod = ["-dep1", "+dep2"]',
             config_text,

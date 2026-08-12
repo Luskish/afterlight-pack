@@ -26,7 +26,7 @@ hash = "74d6bf333342576057cb0da6252a0aa836191090ec30d75d5e100de2b1fb6f68"
 
 [[files]]
 file = "config/fml.toml"
-hash = "9462c2542c859e66dc400581e4140fa88cf41855dc08793d9674328972ce577d"
+hash = "07507c820b1bac772274ddb9a3483903d91852b4fddcd291ef48a869af694ab0"
 
 [[files]]
 file = "config/ftbchunks-world.snbt"
@@ -558,7 +558,7 @@ hash = "9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "9547cdefe2dfa1dbb7d3f484e8cf87dc2d11492f730b8f2e700e208a7d2bf539"
+hash = "01f0164ba24600111ea3cd130dba5cf7740bb49d816de581cae3f3950b0afa7a"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"

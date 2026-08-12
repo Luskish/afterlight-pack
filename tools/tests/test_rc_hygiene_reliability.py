@@ -2944,7 +2944,6 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "[08Aug2026 12:00:00.000] [main/WARN] "
             "[fixture.Substitute/SOURCE]: same count substitution"
         )
-        version_marker = "Failed to process update information"
         mutations = (
             (
                 self.inject_after_ignored_info(self.latest, unknown),
@@ -2959,10 +2958,12 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             (changed_thread_latest, changed_thread_debug),
             (
                 insert_after_line(
-                    self.latest, version_marker, "Caused by: fixture.ChangedWarning"
+                    self.latest, first_warning, "Caused by: fixture.ChangedWarning"
                 ),
                 insert_after_line(
-                    self.debug, version_marker, "Caused by: fixture.ChangedWarning"
+                    self.debug,
+                    debug_first_warning,
+                    "Caused by: fixture.ChangedWarning",
                 ),
             ),
             (
@@ -3164,7 +3165,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "9ce5d8ba2c42abd2d70b63eaee8db02269aec84ac98e21f51c4e30549610e1c1",
+                "e948bbc39c6fc2178da72165cb008cce17b007f84422ba0e7b99eb9d60afb1ca",
                 238,
             ),
         )
@@ -4057,7 +4058,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "e96e859682a924554fda65ad90755adeb1425cebd74798182e53ea4140b9ada3",
+            "86e2d18e17df0cc9f64ab8b2c09b8d961d29804682567bc5e055f737c27494dd",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

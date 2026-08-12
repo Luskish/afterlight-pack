@@ -3164,7 +3164,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "2ed6a0fe7e98176645599ccc3eed2b1b17f37d77a0aee4b1196ff404b201996b",
+                "9ce5d8ba2c42abd2d70b63eaee8db02269aec84ac98e21f51c4e30549610e1c1",
                 238,
             ),
         )

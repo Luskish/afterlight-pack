@@ -194,10 +194,10 @@ Write the literal resulting SHA-512 into a `side = "both"` Packwiz descriptor. T
 Reserve these exact FTB IDs after proving they do not collide:
 
 ```text
-ECHO Protocols chapter  EC40000000000001
-Recover ECHO quest      EC40000000000002
-Checkmark task          EC40000000000003
-Command reward          EC40000000000004
+ECHO Protocols chapter  6C40000000000001
+Recover ECHO quest      6C40000000000002
+Checkmark task          6C40000000000003
+Command reward          6C40000000000004
 ```
 
 Tests require repeatable true, cooldown 5 seconds, permission level 0, silent command `echo recover`, no item reward, no dependency, and icon `afterlight:echo`.
@@ -292,10 +292,10 @@ Preserve existing task ID `645F98B8FAD4A1E5` but change its task type from check
 Reserve these exact new IDs after collision check:
 
 ```text
-Far Relay quest          EC40000000000101
-Arrival advancement task EC40000000000102
-Chit reward              EC40000000000103
-XP reward                EC40000000000104
+Far Relay quest          6C40000000000101
+Arrival advancement task 6C40000000000102
+Chit reward              6C40000000000103
+XP reward                6C40000000000104
 ```
 
 The new quest depends on existing finale quest `31C9557D2F51238F`, uses advancement `afterlight:far_relay_arrival`, grants 16 Chits and 500 XP, and does not gate the Ascendancy Seal.

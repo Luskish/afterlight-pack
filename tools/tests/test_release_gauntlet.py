@@ -24,7 +24,7 @@ REQUIRED_GAUNTLET_TESTS = {
     "test_rejects_dirty_tree_noncommit_and_nonhead_sha",
     "test_creates_detached_worktree_for_exact_sha",
     "test_runs_tests_verify_boot_compose_shellcheck_and_two_builds_in_order",
-    "test_compares_two_prism_archives_byte_for_byte",
+    "test_compares_all_public_artifacts_byte_for_byte",
     "test_client_install_failure_stops_before_acceptance",
     "test_failure_stops_before_copying_accepted_artifacts",
     "test_success_copies_exact_public_inventory_with_transcript",
@@ -86,7 +86,7 @@ class ReleaseGauntletTests(unittest.TestCase):
         )
         self._write(
             self.root / "tools" / "build-release.sh",
-            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\nif [ \"$count\" -eq 2 ] && [ \"${GAUNTLET_SECOND_PRISM_DIFFERENT:-0}\" = 1 ]; then\n  \"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\" different\nelse\n  \"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\"\nfi\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
+            "#!/usr/bin/env bash\nset -eu\nprintf 'build-release %s %s\\n' \"$DIST_DIR\" \"$GIT_SHA\" >> \"$GAUNTLET_LOG\"\nmkdir -p \"$DIST_DIR\"\ncount_file=\"${GAUNTLET_BUILD_COUNT_FILE:?}\"\ncount=$(cat \"$count_file\")\ncount=$((count + 1))\nprintf '%s\\n' \"$count\" > \"$count_file\"\n\"$GAUNTLET_REAL_PYTHON\" tools/release_fixtures.py \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\"\n\"$GAUNTLET_REAL_PYTHON\" tools/release_artifacts.py normalize-archive --archive \"$DIST_DIR/AFTERLIGHT-curseforge.zip\" >/dev/null\n\"$GAUNTLET_REAL_PYTHON\" tools/release_artifacts.py normalize-archive --archive \"$DIST_DIR/AFTERLIGHT.mrpack\" >/dev/null\n\"$GAUNTLET_REAL_PYTHON\" -c 'import sys; from pathlib import Path; from tools.release_fixtures import rewrite_checksums, rewrite_metadata; public = Path(sys.argv[1]); rewrite_metadata(public, sys.argv[2], sys.argv[3]); rewrite_checksums(public)' \"$DIST_DIR\" 0.9.0-rc.1 \"$GIT_SHA\"\nif [ \"$count\" -eq 2 ] && [ -n \"${GAUNTLET_SECOND_DIFFERENT_FILE:-}\" ]; then\n  printf 'different\\n' >> \"$DIST_DIR/$GAUNTLET_SECOND_DIFFERENT_FILE\"\n  (cd \"$DIST_DIR\" && shasum -a 256 AFTERLIGHT-curseforge.zip AFTERLIGHT-prism-instance.zip AFTERLIGHT.mrpack release-metadata.json > SHA256SUMS)\nfi\nif [ \"${GAUNTLET_EXTRA_FILE:-0}\" = 1 ]; then printf 'extra\\n' > \"$DIST_DIR/extra.txt\"; fi\nif [ \"${GAUNTLET_FRIENDS_DIRECTORY:-0}\" = 1 ]; then mkdir \"$DIST_DIR/friends-only\"; fi\nif [ \"${GAUNTLET_VERSIONED_NAME:-0}\" = 1 ]; then printf 'stale\\n' > \"$DIST_DIR/AFTERLIGHT-0.9.0-rc.1.mrpack\"; fi\nif [ \"${GAUNTLET_MISSING_CHECKSUMS:-0}\" = 1 ]; then rm \"$DIST_DIR/SHA256SUMS\"; fi\nif [ \"${GAUNTLET_MALFORMED_CHECKSUMS:-0}\" = 1 ]; then awk '{printf \"%s\\t%s\\n\", $1, $2}' \"$DIST_DIR/SHA256SUMS\" > \"$DIST_DIR/SHA256SUMS.tmp\"; mv \"$DIST_DIR/SHA256SUMS.tmp\" \"$DIST_DIR/SHA256SUMS\"; fi\nexit \"${GAUNTLET_BUILD_EXIT:-0}\"\n",
             executable=True,
         )
         self._write(
@@ -233,7 +233,11 @@ class ReleaseGauntletTests(unittest.TestCase):
             "shellcheck -x tools/sample.sh",
             f"build-release <WORKTREE>/dist/.release-gauntlet-first {SHA}",
             f"build-release <WORKTREE>/dist/.release-gauntlet-second {SHA}",
+            "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-curseforge.zip <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT-curseforge.zip",
             "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-prism-instance.zip <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT-prism-instance.zip",
+            "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT.mrpack <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT.mrpack",
+            "cmp <WORKTREE>/dist/.release-gauntlet-first/release-metadata.json <WORKTREE>/dist/.release-gauntlet-second/release-metadata.json",
+            "cmp <WORKTREE>/dist/.release-gauntlet-first/SHA256SUMS <WORKTREE>/dist/.release-gauntlet-second/SHA256SUMS",
             "client-install <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-prism-instance.zip",
             "git diff --exit-code",
             "git status --porcelain --untracked-files=all",
@@ -253,12 +257,30 @@ class ReleaseGauntletTests(unittest.TestCase):
             "git -C <REPO> worktree remove --force <WORKTREE>",
         ])
 
-    def test_compares_two_prism_archives_byte_for_byte(self):
-        result = self._run(GAUNTLET_SECOND_PRISM_DIFFERENT="1")
+    def test_compares_all_public_artifacts_byte_for_byte(self):
+        mutable_files = (
+            "AFTERLIGHT-curseforge.zip",
+            "AFTERLIGHT-prism-instance.zip",
+            "AFTERLIGHT.mrpack",
+            "release-metadata.json",
+        )
+        output = self.root / "dist" / "gauntlet" / SHA
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertTrue(any(line.startswith("cmp ") for line in self._log_lines()))
-        self.assertFalse((self.root / "dist" / "gauntlet" / SHA).exists())
+        for filename in mutable_files:
+            with self.subTest(filename=filename):
+                shutil.rmtree(output, ignore_errors=True)
+                self.log_path.unlink(missing_ok=True)
+
+                result = self._run(GAUNTLET_SECOND_DIFFERENT_FILE=filename)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(
+                    any(
+                        line.startswith("cmp ") and filename in line
+                        for line in self._log_lines()
+                    )
+                )
+                self.assertFalse(output.exists())
 
     def test_client_install_failure_stops_before_acceptance(self):
         result = self._run(GAUNTLET_CLIENT_EXIT="1")

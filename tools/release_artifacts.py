@@ -790,6 +790,78 @@ def _write_prism_archive(archive_path, entries):
             )
 
 
+def normalize_launcher_archive(archive_path):
+    archive_path = Path(archive_path)
+    _require_regular_file(archive_path, "launcher archive")
+    with tempfile.NamedTemporaryFile(
+        prefix=f".{archive_path.name}.",
+        suffix=".tmp",
+        dir=archive_path.parent,
+        delete=False,
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+
+    try:
+        with zipfile.ZipFile(archive_path) as source_archive:
+            source_infos, _ = _inspect_zip_safety(
+                source_archive,
+                allow_directories=True,
+            )
+            source_files = sorted(
+                (info for info in source_infos if not info.is_dir()),
+                key=lambda info: info.filename,
+            )
+            if not source_files:
+                raise ValueError("launcher archive contains no files")
+
+            with zipfile.ZipFile(
+                temporary_path,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=DEFLATE_LEVEL,
+                strict_timestamps=True,
+            ) as normalized_archive:
+                for source_info in source_files:
+                    target_info = _normalized_zip_info(source_info.filename)
+                    target_info.file_size = source_info.file_size
+                    written_size = 0
+                    with source_archive.open(source_info, "r") as source_member:
+                        with normalized_archive.open(target_info, "w") as target_member:
+                            while chunk := source_member.read(STREAM_CHUNK_SIZE):
+                                target_member.write(chunk)
+                                written_size += len(chunk)
+                    if written_size != source_info.file_size:
+                        raise ValueError(
+                            "launcher archive member size changed during normalization: "
+                            f"{source_info.filename!r}"
+                        )
+
+        temporary_path.chmod(0o644)
+        with temporary_path.open("rb") as normalized_file:
+            os.fsync(normalized_file.fileno())
+
+        expected_names = tuple(info.filename for info in source_files)
+        with zipfile.ZipFile(temporary_path) as normalized_archive:
+            normalized_infos, normalized_names = _inspect_zip_safety(
+                normalized_archive,
+                allow_directories=False,
+            )
+            if tuple(normalized_names) != expected_names:
+                raise ValueError("normalized launcher archive inventory changed")
+            for info in normalized_infos:
+                _validate_zip_metadata(info)
+
+        os.replace(temporary_path, archive_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+    return {
+        "archive": str(archive_path),
+        "entry_count": len(source_files),
+        "sha256": _sha256_file(archive_path),
+    }
+
+
 def build_prism_archive(
     bootstrap_path,
     installer_path,
@@ -1856,6 +1928,9 @@ def _parser():
     curseforge_parser.add_argument("--archive", required=True)
     curseforge_parser.add_argument("--version", required=True)
 
+    normalize_parser = subparsers.add_parser("normalize-archive")
+    normalize_parser.add_argument("--archive", required=True)
+
     repository_parser = subparsers.add_parser("scan-repository")
     repository_parser.add_argument("--root", default=".")
 
@@ -1929,6 +2004,11 @@ def main(argv=None):
 
     if args.command == "inspect-curseforge":
         summary = inspect_curseforge_archive(args.archive, args.version)
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
+    if args.command == "normalize-archive":
+        summary = normalize_launcher_archive(args.archive)
         print(json.dumps(summary, sort_keys=True))
         return 0
 

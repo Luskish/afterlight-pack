@@ -124,7 +124,14 @@ EOF
   run_build "$SECOND"
   validate_public_release_directory "$FIRST"
   validate_public_release_directory "$SECOND"
-  run cmp "$FIRST/AFTERLIGHT-prism-instance.zip" "$SECOND/AFTERLIGHT-prism-instance.zip"
+  for public_name in \
+    AFTERLIGHT-curseforge.zip \
+    AFTERLIGHT-prism-instance.zip \
+    AFTERLIGHT.mrpack \
+    release-metadata.json \
+    SHA256SUMS; do
+    run cmp "$FIRST/$public_name" "$SECOND/$public_name"
+  done
   run ./tools/client-install-test.sh "$FIRST/AFTERLIGHT-prism-instance.zip"
   run git diff --exit-code
   require_clean_tree

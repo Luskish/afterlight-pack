@@ -11,7 +11,11 @@ import warnings
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from tools.release_artifacts import build_prism_archive, inspect_prism_archive
+from tools.release_artifacts import (
+    build_prism_archive,
+    inspect_prism_archive,
+    normalize_launcher_archive,
+)
 from tools.tests.release_fixtures import (
     expected_tag_message,
     rewrite_checksums,
@@ -35,6 +39,7 @@ REQUIRED_PRISM_TESTS = {
 }
 
 REQUIRED_RELEASE_POLICY_TESTS = {
+    "test_launcher_archive_normalization_is_byte_reproducible",
     "test_public_launcher_archive_allows_mod_jars_but_rejects_secrets",
     "test_public_file_set_is_exactly_the_canonical_inventory",
     "test_metadata_binds_version_commit_pack_url_size_and_sha256",
@@ -332,6 +337,63 @@ class PrismArtifactTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "parent traversal"):
             self._inspect(parent_path)
+
+
+class LauncherArchiveNormalizationTests(unittest.TestCase):
+    def setUp(self):
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        self.root = Path(temporary_directory.name)
+
+    def _write_archive(self, path, timestamp, names):
+        entries = {
+            "manifest.json": b'{"name":"AFTERLIGHT"}\n',
+            "overrides/config/afterlight.cfg": b"enabled=true\n",
+        }
+        with zipfile.ZipFile(
+            path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=1,
+        ) as archive:
+            directory = zipfile.ZipInfo("overrides/", timestamp)
+            directory.create_system = 0
+            directory.external_attr = 0x10
+            archive.writestr(directory, b"")
+            for name in names:
+                info = zipfile.ZipInfo(name, timestamp)
+                info.create_system = 0
+                info.external_attr = 0
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(
+                    info,
+                    entries[name],
+                    compress_type=zipfile.ZIP_DEFLATED,
+                    compresslevel=1,
+                )
+
+    def test_launcher_archive_normalization_is_byte_reproducible(self):
+        first = self.root / "first.zip"
+        second = self.root / "second.zip"
+        names = ("manifest.json", "overrides/config/afterlight.cfg")
+        self._write_archive(first, (2026, 8, 12, 7, 0, 0), names)
+        self._write_archive(second, (2026, 8, 12, 7, 0, 2), tuple(reversed(names)))
+
+        normalize_launcher_archive(first)
+        normalize_launcher_archive(second)
+
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        with zipfile.ZipFile(first) as archive:
+            infos = archive.infolist()
+            self.assertEqual([info.filename for info in infos], sorted(names))
+            for info in infos:
+                self.assertEqual(info.date_time, FIXED_TIMESTAMP)
+                self.assertEqual(info.create_system, 3)
+                self.assertEqual(info.external_attr, (stat.S_IFREG | 0o644) << 16)
+                self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
+                self.assertEqual(info.flag_bits, 0)
+                self.assertEqual(info.extra, b"")
+                self.assertEqual(info.comment, b"")
 
 
 class ReleasePolicyTests(unittest.TestCase):

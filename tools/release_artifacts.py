@@ -146,6 +146,7 @@ WINDOWS_RESERVED_BASENAMES = frozenset(
     }
 )
 CURSEFORGE_MANIFEST_NAME = "manifest.json"
+CURSEFORGE_MODLIST_NAME = "modlist.html"
 MODRINTH_MANIFEST_NAME = "modrinth.index.json"
 JSON_MANIFEST_NAMES = frozenset(
     {CURSEFORGE_MANIFEST_NAME, MODRINTH_MANIFEST_NAME, "mmc-pack.json"}
@@ -790,6 +791,75 @@ def _write_prism_archive(archive_path, entries):
             )
 
 
+def _canonicalize_curseforge_modlist(payload):
+    try:
+        lines = payload.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise ValueError("CurseForge mod list is not valid UTF-8") from error
+    if (
+        len(lines) < 2
+        or lines[0] != "<ul>"
+        or lines[-1] != "</ul>"
+        or any(
+            not line.startswith("<li>") or not line.endswith("</li>")
+            for line in lines[1:-1]
+        )
+    ):
+        raise ValueError("CurseForge mod list has an unexpected structure")
+    sorted_entries = sorted(lines[1:-1])
+    return (
+        "<ul>\r\n" + "\r\n".join(sorted_entries) + "\r\n</ul>\r\n"
+    ).encode("utf-8")
+
+
+def _canonical_curseforge_members(archive, names):
+    if CURSEFORGE_MANIFEST_NAME not in names:
+        return {}
+    try:
+        manifest = json.loads(
+            _read_bounded_zip_member(
+                archive,
+                CURSEFORGE_MANIFEST_NAME,
+                "CurseForge manifest",
+                MAX_MANIFEST_SIZE,
+            )
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("manifestType") != "minecraftModpack"
+    ):
+        return {}
+
+    files = manifest.get("files")
+    _validate_curseforge_files(files)
+    canonical_manifest = dict(manifest)
+    canonical_manifest["files"] = sorted(
+        files,
+        key=lambda record: (
+            record["projectID"],
+            record["fileID"],
+            record["required"],
+        ),
+    )
+    canonical_members = {
+        CURSEFORGE_MANIFEST_NAME: _canonical_json_bytes(canonical_manifest),
+    }
+    if CURSEFORGE_MODLIST_NAME in names:
+        canonical_members[CURSEFORGE_MODLIST_NAME] = (
+            _canonicalize_curseforge_modlist(
+                _read_bounded_zip_member(
+                    archive,
+                    CURSEFORGE_MODLIST_NAME,
+                    "CurseForge mod list",
+                    MAX_MANIFEST_SIZE,
+                )
+            )
+        )
+    return canonical_members
+
+
 def normalize_launcher_archive(archive_path):
     archive_path = Path(archive_path)
     _require_regular_file(archive_path, "launcher archive")
@@ -813,6 +883,11 @@ def normalize_launcher_archive(archive_path):
             )
             if not source_files:
                 raise ValueError("launcher archive contains no files")
+            source_names = tuple(info.filename for info in source_files)
+            canonical_members = _canonical_curseforge_members(
+                source_archive,
+                source_names,
+            )
 
             with zipfile.ZipFile(
                 temporary_path,
@@ -823,6 +898,15 @@ def normalize_launcher_archive(archive_path):
             ) as normalized_archive:
                 for source_info in source_files:
                     target_info = _normalized_zip_info(source_info.filename)
+                    canonical_payload = canonical_members.get(source_info.filename)
+                    if canonical_payload is not None:
+                        normalized_archive.writestr(
+                            target_info,
+                            canonical_payload,
+                            compress_type=zipfile.ZIP_DEFLATED,
+                            compresslevel=DEFLATE_LEVEL,
+                        )
+                        continue
                     target_info.file_size = source_info.file_size
                     written_size = 0
                     with source_archive.open(source_info, "r") as source_member:
@@ -840,7 +924,7 @@ def normalize_launcher_archive(archive_path):
         with temporary_path.open("rb") as normalized_file:
             os.fsync(normalized_file.fileno())
 
-        expected_names = tuple(info.filename for info in source_files)
+        expected_names = source_names
         with zipfile.ZipFile(temporary_path) as normalized_archive:
             normalized_infos, normalized_names = _inspect_zip_safety(
                 normalized_archive,

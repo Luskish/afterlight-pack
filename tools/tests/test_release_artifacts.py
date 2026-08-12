@@ -372,6 +372,41 @@ class LauncherArchiveNormalizationTests(unittest.TestCase):
                     compresslevel=1,
                 )
 
+    def _write_curseforge_archive(self, path, file_records, mod_entries):
+        manifest = {
+            "manifestType": "minecraftModpack",
+            "manifestVersion": 1,
+            "name": "AFTERLIGHT",
+            "version": "1.0.0-rc.1",
+            "author": "AFTERLIGHT Team",
+            "files": file_records,
+            "overrides": "overrides",
+            "minecraft": {
+                "version": "1.21.1",
+                "modLoaders": [
+                    {"id": "neoforge-21.1.248", "primary": True},
+                ],
+            },
+        }
+        entries = {
+            "manifest.json": (
+                json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+            ).encode("utf-8"),
+            "modlist.html": (
+                "<ul>\r\n"
+                + "\r\n".join(f"<li>{entry}</li>" for entry in mod_entries)
+                + "\r\n</ul>\r\n"
+            ).encode("utf-8"),
+        }
+        with zipfile.ZipFile(
+            path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=1,
+        ) as archive:
+            for name, payload in entries.items():
+                archive.writestr(name, payload)
+
     def test_launcher_archive_normalization_is_byte_reproducible(self):
         first = self.root / "first.zip"
         second = self.root / "second.zip"
@@ -394,6 +429,37 @@ class LauncherArchiveNormalizationTests(unittest.TestCase):
                 self.assertEqual(info.flag_bits, 0)
                 self.assertEqual(info.extra, b"")
                 self.assertEqual(info.comment, b"")
+
+    def test_curseforge_payload_order_is_canonicalized(self):
+        first = self.root / "first-curseforge.zip"
+        second = self.root / "second-curseforge.zip"
+        file_records = [
+            {"projectID": 300, "fileID": 30, "required": True},
+            {"projectID": 100, "fileID": 10, "required": True},
+            {"projectID": 200, "fileID": 20, "required": True},
+        ]
+        mod_entries = ["Zulu", "Alpha", "Mike"]
+        self._write_curseforge_archive(first, file_records, mod_entries)
+        self._write_curseforge_archive(
+            second,
+            list(reversed(file_records)),
+            list(reversed(mod_entries)),
+        )
+
+        normalize_launcher_archive(first)
+        normalize_launcher_archive(second)
+
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        with zipfile.ZipFile(first) as archive:
+            manifest = json.loads(archive.read("manifest.json"))
+            self.assertEqual(
+                [record["projectID"] for record in manifest["files"]],
+                [100, 200, 300],
+            )
+            self.assertEqual(
+                archive.read("modlist.html"),
+                b"<ul>\r\n<li>Alpha</li>\r\n<li>Mike</li>\r\n<li>Zulu</li>\r\n</ul>\r\n",
+            )
 
 
 class ReleasePolicyTests(unittest.TestCase):

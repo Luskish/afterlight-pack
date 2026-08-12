@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -3994,6 +3995,13 @@ class ReleaseWorkflowPolicyTests(unittest.TestCase):
             build_step,
         )
         self.assertEqual(build_step.count("./tools/build-release.sh"), 1)
+
+    def test_release_job_budget_covers_large_archive_normalization(self):
+        match = re.search(
+            r"^\s+timeout-minutes:\s+(\d+)$", self.workflow, re.MULTILINE
+        )
+        self.assertIsNotNone(match)
+        self.assertGreaterEqual(int(match.group(1)), 60)
 
     def test_pull_requests_keep_all_read_only_verification_steps(self):
         required_steps = (

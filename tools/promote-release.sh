@@ -12,6 +12,8 @@ PAGES_POLL_SECONDS=${AFTERLIGHT_PAGES_POLL_SECONDS:-5}
 CI_RUN_URL=""
 EXPECTED_ACCEPTED_ROOT=$'gauntlet-receipt.json\ngauntlet.txt\npublic'
 TAG_MESSAGE_FILE=""
+START_BRANCH=""
+BRANCH_CHANGED=0
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -36,21 +38,22 @@ require_nonnegative_integer() {
   fi
 }
 
-return_to_dev() {
-  local status=$?
+cleanup() {
+  local exit_status=$?
   local current_branch
   trap - EXIT
   if [[ -n "$TAG_MESSAGE_FILE" ]]; then
     rm -f "$TAG_MESSAGE_FILE"
     TAG_MESSAGE_FILE=""
   fi
-  current_branch=$(git branch --show-current 2>/dev/null || true)
-  if [[ "$current_branch" == "main" ]]; then
-    git switch dev >/dev/null 2>&1 || true
+  if [[ "$BRANCH_CHANGED" -eq 1 ]]; then
+    current_branch=$(git branch --show-current 2>/dev/null || true)
+    if [[ -n "$START_BRANCH" && "$current_branch" != "$START_BRANCH" ]]; then
+      git switch "$START_BRANCH" >/dev/null 2>&1 || true
+    fi
   fi
-  exit "$status"
+  exit "$exit_status"
 }
-trap return_to_dev EXIT
 
 wait_for_exact_ci() {
   local branch=$1
@@ -148,7 +151,8 @@ require_nonnegative_integer AFTERLIGHT_CI_POLL_SECONDS "$CI_POLL_SECONDS"
 require_positive_integer AFTERLIGHT_PAGES_POLL_ATTEMPTS "$PAGES_POLL_ATTEMPTS"
 require_nonnegative_integer AFTERLIGHT_PAGES_POLL_SECONDS "$PAGES_POLL_SECONDS"
 
-if [[ "$(git branch --show-current)" != "dev" ]]; then
+START_BRANCH=$(git branch --show-current)
+if [[ "$START_BRANCH" != "dev" ]]; then
   fail "Promotion must start from the dev branch"
   exit 2
 fi
@@ -193,10 +197,6 @@ python3 tools/release_artifacts.py verify-public-release \
   --installer-sha256 "$RELEASE_PACKWIZ_INSTALLER_SHA256" \
   --receipt "$RECEIPT_PATH" \
   --receipt-sha256 "$RECEIPT_SHA256"
-TAG_MESSAGE_FILE=$(mktemp "${TMPDIR:-/tmp}/afterlight-tag-message.XXXXXX")
-python3 tools/release_artifacts.py render-gauntlet-tag-message \
-  --receipt "$RECEIPT_PATH" \
-  --receipt-sha256 "$RECEIPT_SHA256" > "$TAG_MESSAGE_FILE"
 
 if [[ -n "$(git tag --list "$TAG")" ]]; then
   fail "Local tag already exists: $TAG"
@@ -213,11 +213,18 @@ else
   fi
 fi
 
+trap cleanup EXIT
+TAG_MESSAGE_FILE=$(mktemp "${TMPDIR:-/tmp}/afterlight-tag-message.XXXXXX")
+python3 tools/release_artifacts.py render-gauntlet-tag-message \
+  --receipt "$RECEIPT_PATH" \
+  --receipt-sha256 "$RECEIPT_SHA256" > "$TAG_MESSAGE_FILE"
+
 git push origin dev
 wait_for_exact_ci dev "$SHA"
 DEV_CI_URL=$CI_RUN_URL
 
 git switch main
+BRANCH_CHANGED=1
 git merge --ff-only "$SHA"
 if [[ "$(git rev-parse HEAD)" != "$SHA" ]]; then
   fail "main did not fast-forward to the accepted SHA"
@@ -230,7 +237,8 @@ MAIN_CI_URL=$CI_RUN_URL
 wait_for_pages_parity "$SHA"
 git tag -a "$TAG" "$SHA" -F "$TAG_MESSAGE_FILE"
 git push origin "$TAG"
-git switch dev
+git switch "$START_BRANCH"
+BRANCH_CHANGED=0
 
 printf 'PROMOTION: CODE ACCEPTED %s\n' "$SHA"
 printf 'DEV_CI_URL=%s\n' "$DEV_CI_URL"

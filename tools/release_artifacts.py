@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import codecs
 import hashlib
 import json
 import os
@@ -75,70 +76,62 @@ MAX_ARCHIVE_TOTAL_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024
 MAX_ARCHIVE_COMPRESSION_RATIO = 200
 MAX_MANIFEST_SIZE = 1024 * 1024
 MAX_TEXT_LINE_SIZE = 1024 * 1024
+CREDENTIAL_SCAN_OVERLAP_SIZE = 64 * 1024
+MAX_UNSIGNED_32 = 4294967295
 PRIVATE_KEY_HEADER = re.compile(
     rb"-----BEGIN (?:[A-Z0-9][A-Z0-9 ]* )?PRIVATE KEY(?: BLOCK)?-----"
 )
 CREDENTIAL_ASSIGNMENT = re.compile(
-    rb"(?:^|[\r\n,{])[\t ]*"
-    rb"(?:(?:export|const|let|var)[\t ]+)?"
-    rb"[\"']?(?:api[._-]?key|rcon[._-]?password|"
-    rb"(?:access|auth|private|refresh)[._-]?token|"
-    rb"(?:client|consumer|signing|webhook)[._-]?secret|"
-    rb"(?:database|db)[._-]?password|token|password|secret)"
-    rb"[\"']?[\t ]*[:=][\t ]*"
-    rb"(?P<value>\"[^\"\r\n]*\"|'[^'\r\n]*'|[^,\s#;}\r\n]+)",
+    r"(?:[\r\n,{])[\t ]*"
+    r"(?:(?:export|const|let|var)[\t ]+)?"
+    r"[\"']?"
+    r"(?:(?:[A-Za-z0-9]+[._-])+)?"
+    r"(?:api[._-]?key|rcon[._-]?password|"
+    r"(?:access|auth|private|refresh)[._-]?token|"
+    r"(?:client|consumer|signing|webhook)[._-]?secret|"
+    r"(?:database|db)[._-]?password|token|password|secret)"
+    r"[\"']?[\t \r\n]*[:=][\t \r\n]*"
+    r"(?P<value>\"(?:\\.|[^\"\\\r\n])*\"|"
+    r"'(?:\\.|[^'\\\r\n])*'|"
+    r"\$\{[^{}\r\n]*\}|[^,\s#;}\r\n]+)"
+    r"(?=$|[,\s#;}])",
     re.IGNORECASE,
 )
 TEMPLATE_CREDENTIAL_VALUES = frozenset(
     {
-        b"0",
-        b"change-me",
-        b"change_me",
-        b"changeme",
-        b"example",
-        b"false",
-        b"none",
-        b"null",
-        b"placeholder",
-        b"replace-me",
-        b"replace_me",
-        b"sample",
-        b"template",
-        b"true",
-        b"unset",
+        "0",
+        "change-me",
+        "change_me",
+        "changeme",
+        "example",
+        "false",
+        "none",
+        "null",
+        "placeholder",
+        "replace-me",
+        "replace_me",
+        "sample",
+        "template",
+        "true",
+        "unset",
     }
 )
 TEMPLATE_CREDENTIAL_PATTERN = re.compile(
-    rb"(?:\$\{[A-Za-z_][A-Za-z0-9_]*(?::[-+?=][^{}\r\n]*)?\}|"
-    rb"\$env:[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%|"
-    rb"\$[A-Za-z_][A-Za-z0-9_]*|"
-    rb"<[A-Za-z_][A-Za-z0-9_.-]*>|\{\{[^{}]+\}\}|"
-    rb"__[A-Za-z_][A-Za-z0-9_]*__|"
-    rb"your[._-][A-Za-z0-9_.-]+[._-]here|"
-    rb"(?:example|sample)[._-][A-Za-z0-9_.-]+)",
+    r"(?:<[A-Za-z_][A-Za-z0-9_.-]*>|\{\{[^{}]+\}\}|"
+    r"__[A-Za-z_][A-Za-z0-9_]*__|"
+    r"your[._-][A-Za-z0-9_.-]+[._-]here|"
+    r"(?:example|sample)[._-][A-Za-z0-9_.-]+)",
     re.IGNORECASE,
 )
-TEXT_CONFIG_SUFFIXES = frozenset(
-    {
-        ".bat",
-        ".cfg",
-        ".conf",
-        ".env",
-        ".ini",
-        ".js",
-        ".json",
-        ".mcmeta",
-        ".properties",
-        ".ps1",
-        ".sh",
-        ".snbt",
-        ".toml",
-        ".ts",
-        ".txt",
-        ".xml",
-        ".yaml",
-        ".yml",
-    }
+SIMPLE_ENVIRONMENT_REFERENCE = re.compile(
+    r"(?:\$env:[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%|"
+    r"\$[A-Za-z_][A-Za-z0-9_]*)",
+    re.IGNORECASE,
+)
+BRACED_ENVIRONMENT_REFERENCE = re.compile(
+    r"\$\{[A-Za-z_][A-Za-z0-9_]*"
+    r"(?:(?P<operator>:\?|\?|:-|-|:=|=|:\+|\+)(?P<operand>.*))?\}",
+    re.DOTALL,
 )
 WINDOWS_FORBIDDEN_CHARACTERS = frozenset('<>:"|?*')
 WINDOWS_RESERVED_BASENAMES = frozenset(
@@ -297,42 +290,105 @@ def _scan_binary_stream(stream, label, reject_u2014=False, max_bytes=None):
     return total_bytes
 
 
-def _is_text_config_member(name):
-    normalized_name = name[:-1] if name.endswith("/") else name
-    return PurePosixPath(normalized_name).suffix.casefold() in TEXT_CONFIG_SUFFIXES
-
-
 def _is_template_credential_value(raw_value):
     value = raw_value.strip()
-    if len(value) >= 2 and value[:1] == value[-1:] and value[:1] in {b'"', b"'"}:
+    if len(value) >= 2 and value[:1] == value[-1:] and value[:1] in {'"', "'"}:
         value = value[1:-1].strip()
     if not value:
         return True
-    normalized_value = value.lower()
-    return normalized_value in TEMPLATE_CREDENTIAL_VALUES or bool(
-        TEMPLATE_CREDENTIAL_PATTERN.fullmatch(value)
-    )
+    if value.casefold() in TEMPLATE_CREDENTIAL_VALUES:
+        return True
+    if TEMPLATE_CREDENTIAL_PATTERN.fullmatch(value):
+        return True
+    if SIMPLE_ENVIRONMENT_REFERENCE.fullmatch(value):
+        return True
+    environment_reference = BRACED_ENVIRONMENT_REFERENCE.fullmatch(value)
+    if environment_reference is None:
+        return False
+    operator = environment_reference.group("operator")
+    if operator is None or operator in {"?", ":?"}:
+        return True
+    return _is_template_credential_value(environment_reference.group("operand"))
 
 
-def _scan_credential_assignments(data, label):
-    for match in CREDENTIAL_ASSIGNMENT.finditer(data):
+def _contains_live_credential(data, final):
+    scan_data = data if final else data + "\x00"
+    for match in CREDENTIAL_ASSIGNMENT.finditer(scan_data):
         if not _is_template_credential_value(match.group("value")):
-            raise ValueError(f"credential assignment found in {label}")
+            return True
+    return False
 
 
-def _scan_text_stream(stream, label, max_bytes):
+def _scan_archive_member_stream(stream, label, max_bytes):
+    decoder = codecs.getincrementaldecoder("utf-8")("strict")
+    binary_overlap = b""
+    credential_buffer = "\n"
+    credential_found = False
+    text_valid = True
+    text_line_too_long = False
+    current_line_size = 0
     total_bytes = 0
     while True:
-        line = stream.readline(MAX_TEXT_LINE_SIZE + 1)
-        if not line:
+        read_size = min(STREAM_CHUNK_SIZE, max_bytes - total_bytes + 1)
+        chunk = stream.read(read_size)
+        if not chunk:
             break
-        if len(line) > MAX_TEXT_LINE_SIZE:
-            raise ValueError(f"text line exceeds the byte limit in {label}")
-        total_bytes += len(line)
+        total_bytes += len(chunk)
         if total_bytes > max_bytes:
             raise ValueError(f"stream exceeds the byte limit for {label}")
-        _scan_binary_stream_bytes(line, label)
-        _scan_credential_assignments(line, label)
+
+        combined = binary_overlap + chunk
+        if PRIVATE_KEY_HEADER.search(combined):
+            raise ValueError(f"private-key header found in {label}")
+        binary_overlap = combined[-STREAM_OVERLAP_SIZE:]
+
+        if not text_valid:
+            continue
+        if b"\x00" in chunk:
+            text_valid = False
+            credential_found = False
+            credential_buffer = ""
+            continue
+
+        line_parts = chunk.split(b"\n")
+        if len(line_parts) == 1:
+            current_line_size += len(chunk)
+            text_line_too_long |= current_line_size > MAX_TEXT_LINE_SIZE
+        else:
+            current_line_size += len(line_parts[0])
+            text_line_too_long |= current_line_size > MAX_TEXT_LINE_SIZE
+            for line_part in line_parts[1:-1]:
+                text_line_too_long |= len(line_part) > MAX_TEXT_LINE_SIZE
+            current_line_size = len(line_parts[-1])
+
+        try:
+            credential_buffer += decoder.decode(chunk, final=False)
+        except UnicodeDecodeError:
+            text_valid = False
+            credential_found = False
+            credential_buffer = ""
+            continue
+        credential_found |= _contains_live_credential(
+            credential_buffer,
+            final=False,
+        )
+        credential_buffer = credential_buffer[-CREDENTIAL_SCAN_OVERLAP_SIZE:]
+
+    if text_valid:
+        try:
+            credential_buffer += decoder.decode(b"", final=True)
+        except UnicodeDecodeError:
+            text_valid = False
+    if text_valid:
+        text_line_too_long |= current_line_size > MAX_TEXT_LINE_SIZE
+        if text_line_too_long:
+            raise ValueError(f"text line exceeds the byte limit in {label}")
+        credential_found |= _contains_live_credential(
+            credential_buffer,
+            final=True,
+        )
+        if credential_found:
+            raise ValueError(f"credential assignment found in {label}")
     return total_bytes
 
 
@@ -449,18 +505,11 @@ def _inspect_zip_safety(archive, allow_directories):
         try:
             with archive.open(info, "r") as member:
                 label = f"archive entry {info.filename!r}"
-                if _is_text_config_member(info.filename):
-                    scanned_size = _scan_text_stream(
-                        member,
-                        label,
-                        info.file_size,
-                    )
-                else:
-                    scanned_size = _scan_binary_stream(
-                        member,
-                        label,
-                        max_bytes=info.file_size,
-                    )
+                scanned_size = _scan_archive_member_stream(
+                    member,
+                    label,
+                    info.file_size,
+                )
                 if scanned_size != info.file_size:
                     raise ValueError(
                         f"archive entry uncompressed size does not match ZIP metadata: {info.filename!r}"
@@ -471,11 +520,6 @@ def _inspect_zip_safety(archive, allow_directories):
             ) from error
 
     return infos, names
-
-
-def _scan_binary_stream_bytes(data, label):
-    if PRIVATE_KEY_HEADER.search(data):
-        raise ValueError(f"private-key header found in {label}")
 
 
 def _normalized_zip_info(name):
@@ -791,7 +835,7 @@ def _validate_modrinth_files(files):
             raise ValueError(f"Modrinth file environment is invalid: {path!r}")
 
         file_size = record["fileSize"]
-        if type(file_size) is not int or file_size <= 0:
+        if type(file_size) is not int or not 1 <= file_size <= MAX_UNSIGNED_32:
             raise ValueError(f"Modrinth fileSize is invalid: {path!r}")
 
 
@@ -809,10 +853,10 @@ def _validate_curseforge_files(files):
         project_id = record["projectID"]
         file_id = record["fileID"]
         required = record["required"]
-        if type(project_id) is not int or project_id <= 0:
-            raise ValueError("CurseForge projectID must be a positive integer")
-        if type(file_id) is not int or file_id <= 0:
-            raise ValueError("CurseForge fileID must be a positive integer")
+        if type(project_id) is not int or not 1 <= project_id <= MAX_UNSIGNED_32:
+            raise ValueError("CurseForge projectID must be an unsigned 32-bit integer")
+        if type(file_id) is not int or not 1 <= file_id <= MAX_UNSIGNED_32:
+            raise ValueError("CurseForge fileID must be an unsigned 32-bit integer")
         if type(required) is not bool:
             raise ValueError("CurseForge required flag must be a boolean")
         file_key = (project_id, file_id)

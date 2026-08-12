@@ -476,6 +476,30 @@ class ReleasePolicyTests(unittest.TestCase):
     def _regular_entry(self, name, data=b"safe fixture\n"):
         return name, data, (stat.S_IFREG | 0o644) << 16
 
+    def _deterministic_text_padding(self, size):
+        chunks = bytearray()
+        counter = 0
+        while len(chunks) < size:
+            chunks.extend(hashlib.sha256(str(counter).encode("ascii")).hexdigest().encode("ascii"))
+            chunks.extend(b"\n")
+            counter += 1
+        return bytes(chunks[: size - 1]) + b"\n"
+
+    def _assert_archive_credential_rejected(self, member_name, content, secret_value):
+        archive_path = self._write_archive(
+            "credential-bypass.zip",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(member_name, content),
+            ],
+        )
+
+        result = self._inspect_public_launcher(archive_path)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("credential assignment", result.stderr)
+        self.assertNotIn(secret_value, result.stderr)
+
     def _patch_central_uncompressed_sizes(self, archive_path, sizes):
         archive_bytes = bytearray(archive_path.read_bytes())
         position = 0
@@ -745,6 +769,110 @@ class ReleasePolicyTests(unittest.TestCase):
 
         self._assert_tool_succeeds(result)
 
+    def test_archive_content_rejects_split_line_and_namespaced_credentials(self):
+        fixtures = (
+            (
+                "overrides/neutral/nested.data",
+                b'{"service": {\n  "client_secret"\n  :\n  "split-live-fixture"\n}}\n',
+                "split-live-fixture",
+            ),
+            (
+                "overrides/neutral/settings.data",
+                b'service.client_secret = "namespace-live-fixture"\n',
+                "namespace-live-fixture",
+            ),
+            (
+                "overrides/docs/setup.md",
+                b'client_secret = "markdown-live-fixture"\n',
+                "markdown-live-fixture",
+            ),
+        )
+        for member_name, content, secret_value in fixtures:
+            with self.subTest(member_name=member_name):
+                self._assert_archive_credential_rejected(
+                    member_name,
+                    content,
+                    secret_value,
+                )
+
+    def test_archive_content_rejects_environment_references_with_literal_defaults(self):
+        fixtures = (
+            b'client_secret = "${CLIENT_SECRET:-fallback-live-fixture}"\n',
+            b'access_token = "${ACCESS_TOKEN-fallback-live-fixture}"\n',
+            b'auth_token = "${AUTH_TOKEN:=fallback-live-fixture}"\n',
+            b'private_token = "${PRIVATE_TOKEN=fallback-live-fixture}"\n',
+        )
+        for content in fixtures:
+            with self.subTest(content=content):
+                self._assert_archive_credential_rejected(
+                    "overrides/neutral/runtime.data",
+                    content,
+                    "fallback-live-fixture",
+                )
+
+    def test_archive_content_allows_safe_references_and_nonassignments_in_any_text_member(self):
+        archive_path = self._write_archive(
+            "safe-text-members.zip",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/docs/setup.md",
+                    b"Password recovery tokens are ordinary documentation words.\n"
+                    b"The service.client_secret_description field documents setup.\n",
+                ),
+                self._regular_entry(
+                    "overrides/neutral/runtime.data",
+                    b'client_secret = "${CLIENT_SECRET}"\n'
+                    b'access_token = "${ACCESS_TOKEN:-}"\n'
+                    b'auth_token = "${AUTH_TOKEN:?required}"\n'
+                    b'private_token = "${PRIVATE_TOKEN?required}"\n'
+                    b'consumer_secret = "${CONSUMER_SECRET:-placeholder}"\n'
+                    b'signing_secret = "${SIGNING_SECRET:-example-signing-secret}"\n'
+                    b'webhook_secret = "$WEBHOOK_SECRET"\n'
+                    b'database_password = "$env:DATABASE_PASSWORD"\n'
+                    b'rcon_password = "%RCON_PASSWORD%"\n',
+                ),
+            ],
+        )
+
+        result = self._inspect_public_launcher(archive_path)
+
+        self._assert_tool_succeeds(result)
+
+    def test_archive_content_detects_split_assignment_across_stream_chunk_boundary(self):
+        chunk_size = 1024 * 1024
+        prefix = self._deterministic_text_padding(chunk_size - 10)
+        content = (
+            prefix
+            + b'"service.client_secret"\n:\n"chunk-live-fixture"\n'
+        )
+
+        self._assert_archive_credential_rejected(
+            "overrides/neutral/chunked.data",
+            content,
+            "chunk-live-fixture",
+        )
+
+    def test_archive_content_distinguishes_utf8_text_from_binary_bytes(self):
+        self._assert_archive_credential_rejected(
+            "overrides/neutral/extensionless",
+            b'client_secret = "utf8-live-fixture"\n',
+            "utf8-live-fixture",
+        )
+
+        binary_archive = self._write_archive(
+            "binary-member.zip",
+            [
+                self._modrinth_manifest_entry(),
+                self._regular_entry(
+                    "overrides/neutral/payload.bin",
+                    b'client_secret = "binary-fixture"\n\xff\x00',
+                ),
+            ],
+        )
+
+        self._assert_tool_succeeds(self._inspect_public_launcher(binary_archive))
+
     def test_format_specific_launchers_require_expected_manifests(self):
         modrinth_archive = self._write_archive(
             "valid.mrpack",
@@ -852,6 +980,28 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
 
+    def test_modrinth_file_size_requires_unsigned_32_bit_integer(self):
+        maximum = self._valid_modrinth_file()
+        maximum["fileSize"] = 4294967295
+        maximum_archive = self._write_archive(
+            "maximum-modrinth-file-size.mrpack",
+            [self._modrinth_manifest_entry(files=[maximum])],
+        )
+        self._assert_tool_succeeds(self._inspect_public_launcher(maximum_archive))
+
+        invalid_values = (0, -1, False, True, 1.0, 4294967296, 10**99)
+        for invalid_value in invalid_values:
+            with self.subTest(file_size=invalid_value):
+                record = self._valid_modrinth_file()
+                record["fileSize"] = invalid_value
+                archive_path = self._write_archive(
+                    "invalid-modrinth-file-size.mrpack",
+                    [self._modrinth_manifest_entry(files=[record])],
+                )
+                result = self._inspect_public_launcher(archive_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("fileSize", result.stderr)
+
     def test_curseforge_manifest_validates_every_realistic_file_record(self):
         first = self._valid_curseforge_file()
         second = {"projectID": 314906, "fileID": 5639982, "required": False}
@@ -897,6 +1047,30 @@ class ReleasePolicyTests(unittest.TestCase):
                 result = self._inspect_curseforge(archive_path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected_error, result.stderr)
+
+    def test_curseforge_ids_require_unsigned_32_bit_integers(self):
+        maximum = self._valid_curseforge_file()
+        maximum["projectID"] = 4294967295
+        maximum["fileID"] = 4294967295
+        maximum_archive = self._write_archive(
+            "maximum-curseforge-ids.zip",
+            [self._curseforge_manifest_entry(files=[maximum])],
+        )
+        self._assert_tool_succeeds(self._inspect_curseforge(maximum_archive))
+
+        invalid_values = (0, -1, False, True, 1.0, 4294967296, 10**99)
+        for field in ("projectID", "fileID"):
+            for invalid_value in invalid_values:
+                with self.subTest(field=field, value=invalid_value):
+                    record = self._valid_curseforge_file()
+                    record[field] = invalid_value
+                    archive_path = self._write_archive(
+                        "invalid-curseforge-id.zip",
+                        [self._curseforge_manifest_entry(files=[record])],
+                    )
+                    result = self._inspect_curseforge(archive_path)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(field, result.stderr)
 
         identity_cases = (
             (

@@ -130,7 +130,7 @@ Also allow TCP `25565` in the VPS provider firewall. Only add `sudo ufw allow 24
 - Recovery instruction if interrupted: run `git status`, read this section and `docs/releases/0.9.0-rc.1.md`, then begin with the unclaimed manual acceptance checks. Do not rerun any retired quest generator. All four retired scripts are committed with mode `100644`, not executable.
 - Plan 07 launch audit: AutoModpack is disabled and is not a launch dependency because 13 denied, 13 manual-review, and 7 unknown client entries block complete hosting. The rewritten plan uses one `/data` bind; separate backup, state, quarantine, and secret paths; exact OCI image digests; a shared maintenance lock; authenticated archive bundles; transactional pack ownership; exact-SHA GitHub workflow acceptance; Pages parity; raw full-SHA production staging; and checksum-pinned Packwiz bootstrap plus main installer JARs. Automated completion releases `0.9.0-rc.1`. Version `1.0.0` waits for Shane's manual client, multiplayer, voice, gameplay, update, rollback, and encrypted empty-host restore matrix.
 
-## Historical rc1 State
+## Historical rc1 State (Noncurrent)
 
 - Repo: https://github.com/Luskish/afterlight-pack (public). The streamlined friend release is promoted at exact code SHA `6e153d760479088beae9640d99472c5705017f92`, tagged `v0.9.0-rc.1`, and published at https://github.com/Luskish/afterlight-pack/releases/tag/v0.9.0-rc.1.
 - Auto-update URL live and byte-exact: https://luskish.github.io/afterlight-pack/pack.toml (GitHub Pages from main root).
@@ -150,6 +150,8 @@ Plan doc: docs/superpowers/plans/2026-08-08-afterlight-03-integration.md. Delive
 ## Plan 02 status: COMPLETE (merged to main 2026-08-08)
 
 The full plan is written: `docs/superpowers/plans/2026-08-08-afterlight-02-roster.md` (Task 0 hardening + Waves 1-13 + verification sweep + configs). Resume at the first wave below not marked complete, following the plan's Wave Pattern exactly.
+
+Distribution-policy notes in this completed table are historical and noncurrent. The dated 2026-08-11 exact five-file public policy controls every new release.
 
 ### Plan 02 live progress (update after every wave)
 
@@ -222,7 +224,7 @@ Act as a skeptical reviewer of the AFTERLIGHT repo on branch dev. Read AGENTS.md
 - Skills in `.agents/skills/` are read before the work they cover, every time.
 - Nothing is "done" without its verification command having just run green.
 - `dev` for work, `main` only via green CI, never force-push, never delete dev.
-- No jars/secrets in git; CF zip stays friends-only; new root files go into `.packwizignore`.
+- Public release policy dated 2026-08-11: publish exactly `AFTERLIGHT-prism-instance.zip`, `AFTERLIGHT-curseforge.zip`, `AFTERLIGHT.mrpack`, `SHA256SUMS`, and `release-metadata.json`. Keep the gauntlet receipt nonpublic. Earlier private-release directions are historical and noncurrent. No jars or secrets enter git, and new root files go into `.packwizignore`.
 - One question at a time when blocked, with a recommendation.
 
 ## If returning to Claude instead of Codex

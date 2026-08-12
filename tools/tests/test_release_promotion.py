@@ -216,6 +216,18 @@ class ReleasePromotionTests(unittest.TestCase):
         calls = self._git_calls()
         self.assertIn("push origin dev", calls)
         self.assertNotIn("switch main", calls)
+        self.assertNotIn("switch dev", calls)
+        self.assertEqual(self.branch_file.read_text(encoding="utf-8"), "dev\n")
+        self.assertFalse(any(call.startswith("tag -a ") for call in calls))
+
+    def test_failure_after_script_switches_main_restores_dev(self) -> None:
+        result = self._run(environment={"FAKE_GH_FAIL_WATCH_ID": "202"})
+
+        self.assertNotEqual(result.returncode, 0)
+        calls = self._git_calls()
+        self.assertEqual(calls.count("switch main"), 1)
+        self.assertEqual(calls.count("switch dev"), 1)
+        self.assertEqual(self.branch_file.read_text(encoding="utf-8"), "dev\n")
         self.assertFalse(any(call.startswith("tag -a ") for call in calls))
 
     def test_missing_exact_dev_ci_run_stops_before_main(self) -> None:
@@ -415,6 +427,135 @@ class ReleasePromotionTests(unittest.TestCase):
         self.assertIn("--verify-tag", publisher)
         self.assertIn("tools/promote-release.sh", verifier)
         self.assertIn("tools/publish-release.sh", verifier)
+
+    def test_handoff_active_hard_rules_use_exact_public_inventory(self) -> None:
+        handoff = (ROOT / "docs" / "HANDOFF.md").read_text(encoding="utf-8")
+        hard_rules = handoff.split(
+            "## Hard rules the prompts assume (also in AGENTS.md)",
+            1,
+        )[1].split("## If returning to Claude instead of Codex", 1)[0]
+
+        self.assertIn("2026-08-11", hard_rules)
+        for public_name in (
+            "AFTERLIGHT-prism-instance.zip",
+            "AFTERLIGHT-curseforge.zip",
+            "AFTERLIGHT.mrpack",
+            "SHA256SUMS",
+            "release-metadata.json",
+        ):
+            self.assertIn(public_name, hard_rules)
+        self.assertNotIn("friends-only", hard_rules.casefold())
+
+
+class PromotionArgumentHygieneTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+        temporary_root = Path(self.temporary_directory.name)
+        self.root = temporary_root / "checkout"
+        self.remote = temporary_root / "origin.git"
+        self.root.mkdir()
+        (self.root / "tools").mkdir()
+        destination = self.root / "tools" / "promote-release.sh"
+        destination.write_bytes(PROMOTION_SCRIPT.read_bytes())
+        destination.chmod(destination.stat().st_mode | stat.S_IXUSR)
+        (self.root / "tracked.txt").write_text("dev fixture\n", encoding="utf-8")
+
+        self._run_git("init", "--quiet")
+        self._run_git("config", "user.name", "Release Test")
+        self._run_git("config", "user.email", "release-test@example.invalid")
+        self._run_git("add", "tools/promote-release.sh", "tracked.txt")
+        self._run_git("commit", "--quiet", "-m", "dev fixture")
+        self._run_git("branch", "-M", "dev")
+        self._run_git("switch", "--quiet", "-c", "main")
+        (self.root / "tracked.txt").write_text("main fixture\n", encoding="utf-8")
+        self._run_git("add", "tracked.txt")
+        self._run_git("commit", "--quiet", "-m", "main fixture")
+        self._run_git("switch", "--quiet", "dev")
+
+        subprocess.run(
+            ["git", "init", "--quiet", "--bare", str(self.remote)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self._run_git("remote", "add", "origin", str(self.remote))
+        self._run_git("push", "--quiet", "-u", "origin", "dev", "main")
+        self.receipt_sha256 = "a" * 64
+
+    def _run_git(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def _repository_snapshot(self) -> dict[str, str]:
+        return {
+            "branch": self._run_git("branch", "--show-current").stdout,
+            "head": self._run_git("rev-parse", "HEAD").stdout,
+            "index": self._run_git("ls-files", "--stage").stdout,
+            "worktree": self._run_git(
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=all",
+            ).stdout,
+            "local_refs": self._run_git(
+                "for-each-ref",
+                "--format=%(refname) %(objectname)",
+            ).stdout,
+            "remote_config": self._run_git("remote", "-v").stdout,
+            "remote_refs": subprocess.run(
+                [
+                    "git",
+                    f"--git-dir={self.remote}",
+                    "for-each-ref",
+                    "--format=%(refname) %(objectname)",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout,
+        }
+
+    def _run_invalid(self, arguments: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(self.root / "tools" / "promote-release.sh"), *arguments],
+            cwd=self.root,
+            env=os.environ.copy(),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_invalid_calls_preserve_exact_repository_state_from_main_and_dev(self) -> None:
+        for branch in ("main", "dev"):
+            self._run_git("switch", "--quiet", branch)
+            branch_sha = self._run_git("rev-parse", "HEAD").stdout.strip()
+            invalid_calls = (
+                ("omitted", []),
+                ("unconfirmed", [branch_sha, self.receipt_sha256]),
+                ("reordered", [branch_sha, "--confirm", self.receipt_sha256]),
+                ("malformed-sha", ["not-a-sha", self.receipt_sha256, "--confirm"]),
+                ("malformed-receipt", [branch_sha, "not-a-digest", "--confirm"]),
+                ("extra", [branch_sha, self.receipt_sha256, "--confirm", "extra"]),
+            )
+            if branch == "main":
+                invalid_calls = (
+                    *invalid_calls,
+                    ("wrong-starting-branch", [branch_sha, self.receipt_sha256, "--confirm"]),
+                )
+            for label, arguments in invalid_calls:
+                with self.subTest(branch=branch, label=label):
+                    self._run_git("switch", "--quiet", branch)
+                    before = self._repository_snapshot()
+
+                    result = self._run_invalid(arguments)
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(self._repository_snapshot(), before)
 
 
 if __name__ == "__main__":

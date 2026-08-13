@@ -232,22 +232,34 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** failure
-- **Status:** resolved
+- **Status:** superseded
 - **Subsystem:** Quest-safe server deployment review
 - **Summary:** Initial Task 9 slices lacked a deployable transaction, then review found snapshot inventory coupling, nonfinite scalar gaps, ambiguous firewall insertion, unverified container Packwiz URL, symlinked backup acceptance, inaccessible quarantine discovery, and rollback archive reauthentication gaps.
 - **Evidence:** Strict TDD began with the progress guard at `Ran 12 tests` and `FAILED (failures=17)`, the transaction at `Ran 9 tests` and `FAILED (failures=23)`, and quarantine integration at `Ran 7 tests` and `FAILED (failures=7)`. Review regressions reproduced the additional gaps at `Ran 6 tests` and `FAILED (failures=12)`, and the archive-tamper regression separately ended with `Ran 1 test` and `FAILED (failures=1)`. The implementation isolated progress manifests under `snapshot/progress`, rejected nonfinite SNBT and JSON values, detected uncertain insertion ownership, inspected the live container's exact immutable Packwiz URL, rejected links after preflight extraction, changed the root-owned marker directory to traversal-only mode `0711`, and rehashed the mode `0600` checksum record immediately before rollback extraction.
 - **Files or Commit:** `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `tools/tests/test_quest_safe_update.py`, and `server/README.md`
 - **Impact:** Candidate failure cannot silently open the server, trust a replaced backup, accept unsupported progress values, or hide durable quarantine from the unprivileged maintenance service.
-- **Follow-up:** Keep every quest deployment on the tested exact-SHA transaction and fix forward through a new release if any production proof fails.
+- **Follow-up:** Superseded by `MEM-2026-08-13-900`, which records the independent rejection and architectural remediation.
 
 ### MEM-2026-08-13-019
 
 - **Date:** 2026-08-13
 - **Category:** addition
-- **Status:** verified
+- **Status:** superseded
 - **Subsystem:** Quest-safe server deployment and reboot quarantine
 - **Summary:** AFTERLIGHT now has a dependency-free canonical progress guard, an exact-SHA two-start quest deployment transaction, durable rollback-failure quarantine, and early rejection in ordinary updates and scheduled maintenance.
 - **Evidence:** Final bounded focused runs passed all 29 quest-safe tests as `Ran 17 tests`, `Ran 6 tests`, `Ran 3 tests`, and `Ran 3 tests`, each with `OK`. Friend-server tests ended with `Ran 30 tests in 9.026s` and `OK`; maintenance tests ended with `Ran 29 tests in 11.166s` and `OK`. ShellCheck printed `SHELLCHECK: OK`, Bash parsing printed `BASH SYNTAX: OK`, Python compilation printed `PYTHON COMPILE: OK`, diff validation printed `DIFF CHECK: OK`, Unicode validation printed `U+2014: NONE`, privacy sentinels printed `PRIVACY LOG SOURCE GUARD: OK`, and scope guards printed `PACKWIZ AND GENERATED CORPUS GUARD: OK` plus `NO GENERATED-CORPUS OR PACKWIZ FILES TOUCHED`.
 - **Files or Commit:** `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `server/systemd/afterlight-quarantine-gate.service`, `server/afterlight-server.sh`, `server/afterlight-maintenance.sh`, `tools/tests/test_quest_safe_update.py`, `tools/tests/test_friend_server.py`, `tools/tests/test_server_maintenance.py`, `server/README.md`, and `docs/RELEASING.md`
-- **Impact:** Quest deployments remain externally closed until zero-player, backup, exact revision, canonical progress, whitelist, clean-stop, and second-start proofs pass. Failed rollback persists `restart: no`, stopped containers, the exact owned rule identity, and a privacy-safe recovery marker across reboot.
-- **Follow-up:** Install and enable the post-Docker quarantine unit before the first quest deployment, then follow the documented exact-marker recovery without removing the gate early.
+- **Impact:** The original focused suite did not establish reboot, filesystem identity, accepted-release, shared-lock, or process-cleanup guarantees, so the implementation was rejected before integration.
+- **Follow-up:** Superseded by `MEM-2026-08-13-900`; do not deploy the earlier Task 9 implementation.
+
+### MEM-2026-08-13-900
+
+- **Date:** 2026-08-13
+- **Category:** vulnerability
+- **Status:** resolved
+- **Subsystem:** Quest-safe deployment architecture, temporary controller-renumberable event
+- **Summary:** Independent Task 9 review rejected the first deployment design for missing durable pre-mutation authority, fail-open quarantine, archive pathname races, incomplete filesystem identity, bypassable locks, unattested releases, weak marker trust, and uncontrolled child cleanup; the remediation replaces those boundaries with durable descriptor-based and resumable controls.
+- **Evidence:** Independent RED probes reproduced authority as `absent` before the firewall and after SIGKILL, a restartable container after partial quarantine failure, archive replacement promotion, accepted hardlinks and ownership drift, post-stat link following, ordinary update lock bypass, lock-symlink victim truncation, unattested checkout acceptance, traversal marker acceptance, retained foreground children, unsafe recovery documentation, inaccurate retention wording, and a skippable boot unit. Same-session GREEN runs ended with `Ran 29 tests in 181.294s` and `OK` for the complete quest transaction suite, then `Ran 80 tests in 51.425s` and `OK` for friend-server, maintenance, and adversarial suites. ShellCheck, Bash syntax, and Python compilation each printed `OK`. No local Linux systemd runtime or Docker daemon was available for `systemd-analyze verify`, so executable Linux unit verification remains an explicit rereview gate.
+- **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `server/afterlight-ingress-boot-gate.sh`, `server/afterlight-quarantine-recover.sh`, `server/afterlight-server.sh`, `server/afterlight-maintenance.sh`, `server/docker-compose.transaction.yml`, `server/systemd/afterlight-ingress-boot-gate.service`, `server/systemd/afterlight-quarantine-gate.service`, focused tests, and safe server documentation
+- **Impact:** Pending authority is durable before protected mutation; boot and partial Docker failures remain discoverably closed; rollback archive bytes and complete inventory remain descriptor-bound; progress and marker reads bind ownership, links, and identity; all mutating operators share one no-follow lock; accepted release, live mods, quests, and logs are proven; and signals terminate children while allowing bounded rollback cleanup.
+- **Follow-up:** Renumber this temporary event during controller integration, run `systemd-analyze verify` in disposable Linux when available, and require a fresh independent rereview with Critical 0 and Important 0 before integration or deployment.

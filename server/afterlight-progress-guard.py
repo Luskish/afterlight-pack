@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MANIFEST_NAME = "progress-manifest.json"
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._-]+$")
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+MAX_DOCUMENT_BYTES = 32 * 1024 * 1024
+MAX_MANIFEST_BYTES = 16 * 1024 * 1024
 NUMBER_PATTERN = re.compile(
     r"^([+-]?(?:(?:[0-9]+(?:\.[0-9]*)?)|(?:\.[0-9]+))"
     r"(?:[eE][+-]?[0-9]+)?)([bBsSlLfFdD]?)$"
@@ -37,6 +39,7 @@ class Number:
 @dataclass(frozen=True)
 class State:
     documents: tuple[dict[str, str], ...]
+    filesystem: tuple[dict[str, str | int], ...]
     canonical_sha256: str
     snapshot_sha256: str
 
@@ -319,96 +322,228 @@ def digest_json(value: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def checked_root(path: Path, label: str) -> Path:
+def checked_root(path: Path, label: str) -> tuple[Path, os.stat_result]:
     if not path.is_absolute():
         raise GuardError(f"{label} must be absolute")
-    if path.is_symlink() or not path.is_dir():
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise GuardError(f"{label} must be a real directory") from error
+    if not stat.S_ISDIR(metadata.st_mode):
         raise GuardError(f"{label} must be a real directory")
     if path.resolve() != path:
         raise GuardError(f"{label} must be canonical")
-    return path
+    return path, metadata
+
+
+def path_digest(relative: str) -> str:
+    return hashlib.sha256(relative.casefold().encode("utf-8")).hexdigest()
+
+
+def filesystem_record(
+    relative: str,
+    kind: str,
+    metadata: os.stat_result,
+) -> dict[str, str | int]:
+    return {
+        "path_sha256": path_digest(relative),
+        "kind": kind,
+        "mode": stat.S_IMODE(metadata.st_mode),
+        "uid": metadata.st_uid,
+        "gid": metadata.st_gid,
+        "nlink": metadata.st_nlink,
+    }
+
+
+def opened_identity(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_uid,
+        metadata.st_gid,
+        metadata.st_nlink,
+        metadata.st_size,
+    )
+
+
+def open_directory_at(parent_fd: int, name: str, expected: os.stat_result) -> int:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(name, flags, dir_fd=parent_fd)
+    except OSError as error:
+        raise GuardError("progress directory open failure") from error
+    opened = os.fstat(descriptor)
+    if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+        os.close(descriptor)
+        raise GuardError("progress directory identity changed during open")
+    return descriptor
+
+
+def read_document_at(
+    directory_fd: int,
+    name: str,
+    expected: os.stat_result,
+) -> bytes:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(name, flags, dir_fd=directory_fd)
+    except OSError as error:
+        raise GuardError("progress document no-follow open failure") from error
+    try:
+        opened = os.fstat(descriptor)
+        if (
+            opened_identity(opened) != opened_identity(expected)
+            or opened.st_mtime_ns != expected.st_mtime_ns
+        ):
+            raise GuardError("progress document identity changed during open")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(1024 * 1024, MAX_DOCUMENT_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > MAX_DOCUMENT_BYTES:
+                raise GuardError("progress document exceeds size limit")
+        after = os.fstat(descriptor)
+        if (
+            opened_identity(after) != opened_identity(opened)
+            or after.st_mtime_ns != opened.st_mtime_ns
+        ):
+            raise GuardError("progress document changed during read")
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
 
 
 def collect_state(world: Path) -> State:
-    checked_root(world, "world")
+    _world, world_metadata = checked_root(world, "world")
+    world_fd = os.open(
+        world,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
     records: list[dict[str, str]] = []
-    permission_records: list[list[str | int]] = []
+    filesystem: list[dict[str, str | int]] = [
+        filesystem_record("world", "directory", world_metadata)
+    ]
     identifiers: set[str] = set()
-    for root_name in ("ftbquests", "ftbteams"):
-        progress_root = world / root_name
-        if progress_root.is_symlink() or not progress_root.is_dir():
-            raise GuardError("progress root must be a real directory")
-        permission_records.append([root_name, stat.S_IMODE(progress_root.stat().st_mode)])
-        scan_directory(
-            progress_root,
-            root_name,
-            records,
-            permission_records,
-            identifiers,
-        )
-    records.sort(key=lambda item: item["id"])
+    try:
+        for root_name in ("ftbquests", "ftbteams"):
+            try:
+                root_metadata = os.stat(
+                    root_name,
+                    dir_fd=world_fd,
+                    follow_symlinks=False,
+                )
+            except OSError as error:
+                raise GuardError("progress root must be a real directory") from error
+            if not stat.S_ISDIR(root_metadata.st_mode):
+                raise GuardError("progress root must be a real directory")
+            if (
+                root_metadata.st_uid != world_metadata.st_uid
+                or root_metadata.st_gid != world_metadata.st_gid
+            ):
+                raise GuardError("progress root owner or group mismatch")
+            filesystem.append(filesystem_record(root_name, "directory", root_metadata))
+            root_fd = open_directory_at(world_fd, root_name, root_metadata)
+            try:
+                scan_directory(
+                    root_fd,
+                    root_name,
+                    records,
+                    filesystem,
+                    identifiers,
+                    expected_uid=world_metadata.st_uid,
+                    expected_gid=world_metadata.st_gid,
+                )
+            finally:
+                os.close(root_fd)
+    finally:
+        os.close(world_fd)
+    records.sort(key=lambda item: item["path_sha256"])
+    filesystem.sort(key=lambda item: str(item["path_sha256"]))
     canonical_sha256 = digest_json(
-        [[record["id"], record["canonical_sha256"]] for record in records]
+        [
+            [record["path_sha256"], record["canonical_sha256"]]
+            for record in records
+        ]
     )
     snapshot_sha256 = digest_json(
         {
             "canonical_sha256": canonical_sha256,
-            "permissions": sorted(permission_records),
+            "filesystem": filesystem,
         }
     )
-    return State(tuple(records), canonical_sha256, snapshot_sha256)
+    return State(tuple(records), tuple(filesystem), canonical_sha256, snapshot_sha256)
 
 
 def scan_directory(
-    directory: Path,
+    directory_fd: int,
     relative: str,
     records: list[dict[str, str]],
-    permission_records: list[list[str | int]],
+    filesystem: list[dict[str, str | int]],
     identifiers: set[str],
+    *,
+    expected_uid: int,
+    expected_gid: int,
 ) -> None:
     try:
-        entries = sorted(os.scandir(directory), key=lambda entry: entry.name)
+        names = sorted(os.listdir(directory_fd))
     except OSError as error:
         raise GuardError("progress tree scan failure") from error
-    for entry in entries:
-        if not SAFE_COMPONENT.fullmatch(entry.name):
+    for name in names:
+        if not SAFE_COMPONENT.fullmatch(name):
             raise GuardError("unsafe progress path")
-        child_relative = f"{relative}/{entry.name}"
+        child_relative = f"{relative}/{name}"
         try:
-            if entry.is_symlink():
-                raise GuardError("link in progress tree")
-            metadata = entry.stat(follow_symlinks=False)
+            metadata = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
         except OSError as error:
             raise GuardError("progress tree scan failure") from error
-        permission_records.append(
-            [child_relative, stat.S_IMODE(metadata.st_mode)]
-        )
+        if metadata.st_uid != expected_uid or metadata.st_gid != expected_gid:
+            raise GuardError("progress tree owner or group mismatch")
         if stat.S_ISDIR(metadata.st_mode):
-            scan_directory(
-                Path(entry.path),
-                child_relative,
-                records,
-                permission_records,
-                identifiers,
-            )
+            filesystem.append(filesystem_record(child_relative, "directory", metadata))
+            child_fd = open_directory_at(directory_fd, name, metadata)
+            try:
+                scan_directory(
+                    child_fd,
+                    child_relative,
+                    records,
+                    filesystem,
+                    identifiers,
+                    expected_uid=expected_uid,
+                    expected_gid=expected_gid,
+                )
+                after = os.fstat(child_fd)
+                if opened_identity(after) != opened_identity(metadata):
+                    raise GuardError("progress directory changed during scan")
+            finally:
+                os.close(child_fd)
             continue
+        if stat.S_ISLNK(metadata.st_mode):
+            raise GuardError("link in progress tree")
         if not stat.S_ISREG(metadata.st_mode):
             raise GuardError("unsupported progress tree entry")
-        suffix = Path(entry.name).suffix.lower()
+        if metadata.st_nlink != 1:
+            raise GuardError("progress document link count must equal one")
+        filesystem.append(filesystem_record(child_relative, "file", metadata))
+        suffix = Path(name).suffix.lower()
         if suffix not in {".snbt", ".json"}:
             raise GuardError("unsupported progress document format")
         folded = child_relative.casefold()
         if folded in identifiers:
             raise GuardError("duplicate document identifier")
         identifiers.add(folded)
-        try:
-            payload = Path(entry.path).read_bytes()
-        except OSError as error:
-            raise GuardError("progress document read failure") from error
+        payload = read_document_at(directory_fd, name, metadata)
         parsed = parse_document(payload, suffix)
         records.append(
             {
-                "id": child_relative,
+                "path_sha256": path_digest(child_relative),
                 "byte_sha256": hashlib.sha256(payload).hexdigest(),
                 "canonical_sha256": digest_json(canonical_value(parsed)),
             }
@@ -416,10 +551,10 @@ def scan_directory(
 
 
 def checked_snapshot_directory(snapshot: Path, *, empty: bool) -> None:
-    checked_root(snapshot, "snapshot directory")
-    if stat.S_IMODE(snapshot.stat().st_mode) != 0o700:
+    _snapshot, metadata = checked_root(snapshot, "snapshot directory")
+    if stat.S_IMODE(metadata.st_mode) != 0o700:
         raise GuardError("snapshot directory must have mode 0700")
-    entries = list(snapshot.iterdir())
+    entries = list(os.scandir(snapshot))
     if empty and entries:
         raise GuardError("snapshot directory must be empty")
     if not empty and {entry.name for entry in entries} != {MANIFEST_NAME}:
@@ -432,6 +567,7 @@ def write_manifest(snapshot: Path, state: State) -> None:
         "schema_version": SCHEMA_VERSION,
         "document_count": len(state.documents),
         "documents": list(state.documents),
+        "filesystem": list(state.filesystem),
         "canonical_sha256": state.canonical_sha256,
         "snapshot_sha256": state.snapshot_sha256,
     }
@@ -441,7 +577,7 @@ def write_manifest(snapshot: Path, state: State) -> None:
     manifest_path = snapshot / MANIFEST_NAME
     descriptor = os.open(
         manifest_path,
-        os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
         0o600,
     )
     try:
@@ -451,26 +587,66 @@ def write_manifest(snapshot: Path, state: State) -> None:
             os.fsync(stream.fileno())
     finally:
         os.close(descriptor)
+    directory_fd = os.open(snapshot, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 def read_manifest(snapshot: Path) -> dict[str, Any]:
     checked_snapshot_directory(snapshot, empty=False)
     manifest_path = snapshot / MANIFEST_NAME
-    if manifest_path.is_symlink() or not manifest_path.is_file():
-        raise GuardError("snapshot manifest must be a real file")
-    if stat.S_IMODE(manifest_path.stat().st_mode) != 0o600:
-        raise GuardError("snapshot manifest mode must be 0600")
+    snapshot_metadata = snapshot.lstat()
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
+        descriptor = os.open(manifest_path, flags)
+    except OSError as error:
+        raise GuardError("snapshot manifest must be a real file") from error
+    try:
+        metadata = os.fstat(descriptor)
+        path_metadata = manifest_path.lstat()
+        if not stat.S_ISREG(metadata.st_mode):
+            raise GuardError("snapshot manifest must be a real file")
+        if (metadata.st_dev, metadata.st_ino) != (
+            path_metadata.st_dev,
+            path_metadata.st_ino,
+        ):
+            raise GuardError("snapshot manifest identity changed during open")
+        if stat.S_IMODE(metadata.st_mode) != 0o600:
+            raise GuardError("snapshot manifest mode must be 0600")
+        if metadata.st_uid != snapshot_metadata.st_uid or metadata.st_gid != snapshot_metadata.st_gid:
+            raise GuardError("snapshot manifest owner or group mismatch")
+        if metadata.st_nlink != 1:
+            raise GuardError("snapshot manifest link count must equal one")
+        if metadata.st_size > MAX_MANIFEST_BYTES:
+            raise GuardError("snapshot manifest exceeds size limit")
+        payload = b""
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            payload += chunk
+            if len(payload) > MAX_MANIFEST_BYTES:
+                raise GuardError("snapshot manifest exceeds size limit")
+        after = os.fstat(descriptor)
+        if opened_identity(after) != opened_identity(metadata) or after.st_mtime_ns != metadata.st_mtime_ns:
+            raise GuardError("snapshot manifest changed during read")
         manifest = json.loads(
-            manifest_path.read_text(encoding="utf-8"),
+            payload,
             object_pairs_hook=duplicate_safe_object,
         )
+    except GuardError:
+        raise
     except (OSError, UnicodeDecodeError, ValueError) as error:
         raise GuardError("snapshot manifest parse failure") from error
+    finally:
+        os.close(descriptor)
     if not isinstance(manifest, dict) or set(manifest) != {
         "schema_version",
         "document_count",
         "documents",
+        "filesystem",
         "canonical_sha256",
         "snapshot_sha256",
     }:
@@ -483,22 +659,37 @@ def read_manifest(snapshot: Path) -> dict[str, Any]:
     seen: set[str] = set()
     for document in documents:
         if not isinstance(document, dict) or set(document) != {
-            "id",
+            "path_sha256",
             "byte_sha256",
             "canonical_sha256",
         }:
             raise GuardError("snapshot manifest schema mismatch")
-        identifier = document["id"]
-        if not isinstance(identifier, str) or any(
-            not SAFE_COMPONENT.fullmatch(part) for part in identifier.split("/")
-        ):
+        identifier = document["path_sha256"]
+        if not isinstance(identifier, str) or not HASH_PATTERN.fullmatch(identifier):
             raise GuardError("snapshot manifest schema mismatch")
-        if identifier.casefold() in seen:
+        if identifier in seen:
             raise GuardError("duplicate document identifier")
-        seen.add(identifier.casefold())
+        seen.add(identifier)
         for key in ("byte_sha256", "canonical_sha256"):
             if not isinstance(document[key], str) or not HASH_PATTERN.fullmatch(document[key]):
                 raise GuardError("snapshot manifest schema mismatch")
+    filesystem = manifest["filesystem"]
+    if not isinstance(filesystem, list) or not filesystem:
+        raise GuardError("snapshot manifest schema mismatch")
+    seen_paths: set[str] = set()
+    for record in filesystem:
+        if not isinstance(record, dict) or set(record) != {
+            "path_sha256", "kind", "mode", "uid", "gid", "nlink"
+        }:
+            raise GuardError("snapshot manifest schema mismatch")
+        path_hash = record["path_sha256"]
+        if not isinstance(path_hash, str) or not HASH_PATTERN.fullmatch(path_hash) or path_hash in seen_paths:
+            raise GuardError("snapshot manifest schema mismatch")
+        seen_paths.add(path_hash)
+        if record["kind"] not in {"file", "directory"}:
+            raise GuardError("snapshot manifest schema mismatch")
+        if not all(isinstance(record[key], int) for key in ("mode", "uid", "gid", "nlink")):
+            raise GuardError("snapshot manifest schema mismatch")
     for key in ("canonical_sha256", "snapshot_sha256"):
         if not isinstance(manifest[key], str) or not HASH_PATTERN.fullmatch(manifest[key]):
             raise GuardError("snapshot manifest schema mismatch")
@@ -506,8 +697,8 @@ def read_manifest(snapshot: Path) -> dict[str, Any]:
 
 
 def compare_state(state: State, manifest: dict[str, Any]) -> None:
-    current = {record["id"]: record for record in state.documents}
-    expected = {record["id"]: record for record in manifest["documents"]}
+    current = {record["path_sha256"]: record for record in state.documents}
+    expected = {record["path_sha256"]: record for record in manifest["documents"]}
     if set(current) != set(expected):
         raise GuardError("document inventory mismatch")
     if any(
@@ -516,8 +707,8 @@ def compare_state(state: State, manifest: dict[str, Any]) -> None:
         for identifier in current
     ) or state.canonical_sha256 != manifest["canonical_sha256"]:
         raise GuardError("canonical progress mismatch")
-    if state.snapshot_sha256 != manifest["snapshot_sha256"]:
-        raise GuardError("permission mismatch")
+    if list(state.filesystem) != manifest["filesystem"] or state.snapshot_sha256 != manifest["snapshot_sha256"]:
+        raise GuardError("permission, owner, group, or link mismatch")
 
 
 def print_summary(state: State) -> None:

@@ -1,0 +1,27 @@
+[Unit]
+Description=AFTERLIGHT pre-Docker transaction ingress gate
+DefaultDependencies=no
+After=local-fs.target
+Before=docker.service
+Before=network-online.target
+RequiresMountsFor=/var/lib/afterlight/quest-update-quarantine
+
+[Service]
+Type=oneshot
+User=root
+Group=afterlight
+ExecStart=/opt/afterlight/server/afterlight-ingress-boot-gate.sh
+RemainAfterExit=yes
+RuntimeDirectory=afterlight
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+UMask=0077
+TimeoutStartSec=1min
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/afterlight /etc/afterlight /var/lib/afterlight
+ReadWritePaths=/run/afterlight
+
+[Install]
+RequiredBy=docker.service

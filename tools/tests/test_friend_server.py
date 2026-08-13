@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SERVER_DIR = ROOT / "server"
 COMPOSE_FILE = SERVER_DIR / "docker-compose.yml"
 OPERATOR = SERVER_DIR / "afterlight-server.sh"
+SAFETY_HELPER = SERVER_DIR / "afterlight-safety.py"
 
 EXPECTED_MINECRAFT_IMAGE = (
     "itzg/minecraft-server:2026.8.0-java21@sha256:"
@@ -74,6 +75,11 @@ class FriendServerTests(unittest.TestCase):
         self.pack_url_log = self.temp_path / "pack-url.log"
         self.rm_log = self.temp_path / "rm.log"
         self.quarantine_dir = self.temp_path / "quarantine"
+        self.runtime_dir = self.temp_path / "run"
+        self.snapshot_root = self.temp_path / "snapshots"
+        self.quarantine_dir.mkdir(mode=0o750)
+        self.runtime_dir.mkdir(mode=0o750)
+        self.snapshot_root.mkdir(mode=0o700)
         self._write_env()
         self._install_fakes()
 
@@ -88,6 +94,19 @@ class FriendServerTests(unittest.TestCase):
                 "FAKE_GIT_SHA": CURRENT_PACK_SHA,
                 "FAKE_RM_LOG": str(self.rm_log),
                 "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
+                "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
+                "AFTERLIGHT_SNAPSHOT_ROOT": str(self.snapshot_root),
+                "AFTERLIGHT_SAFETY_HELPER": str(SAFETY_HELPER),
+                "AFTERLIGHT_RUNTIME_MODE": "750",
+                "AFTERLIGHT_STATE_DIR_MODE": "750",
+                "AFTERLIGHT_STATE_FILE_MODE": "640",
+                "AFTERLIGHT_SNAPSHOT_ROOT_MODE": "700",
+                "AFTERLIGHT_LOCK_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_LOCK_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_STATE_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_STATE_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_SNAPSHOT_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_SNAPSHOT_GROUP_GID": str(os.getgid()),
             }
         )
 
@@ -911,15 +930,14 @@ class FriendServerTests(unittest.TestCase):
         )
 
     def test_update_rejects_durable_quest_quarantine_before_docker(self) -> None:
-        self.quarantine_dir.mkdir(mode=0o700)
         marker = self.quarantine_dir / "state"
         marker.write_text("test-only-marker\n", encoding="utf-8")
-        marker.chmod(0o600)
+        marker.chmod(0o640)
 
         result = self._run_operator("update")
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("quest update quarantine", result.stderr.lower())
+        self.assertIn("transaction authority", result.stderr.lower())
         self.assertEqual(self._docker_calls(), [])
 
     def test_update_separates_backup_process_output_from_selected_path(self) -> None:

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import shutil
 import stat
 import subprocess
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -15,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROGRESS_GUARD = ROOT / "server" / "afterlight-progress-guard.py"
 SAFE_UPDATE = ROOT / "server" / "afterlight-quest-safe-update.sh"
 QUARANTINE_GATE = ROOT / "server" / "afterlight-quarantine-gate.sh"
+SAFETY_HELPER = ROOT / "server" / "afterlight-safety.py"
 QUARANTINE_SERVICE = (
     ROOT / "server" / "systemd" / "afterlight-quarantine-gate.service"
 )
@@ -99,15 +102,13 @@ class ProgressGuardTests(unittest.TestCase):
         manifest_path = self.snapshot / "progress-manifest.json"
         self.assertEqual(stat.S_IMODE(manifest_path.stat().st_mode), 0o600)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(manifest["schema_version"], 2)
         self.assertEqual(manifest["document_count"], 2)
-        self.assertEqual(
-            [entry["id"] for entry in manifest["documents"]],
-            ["ftbquests/progress.snbt", "ftbteams/team.json"],
-        )
+        self.assertEqual(len({entry["path_sha256"] for entry in manifest["documents"]}), 2)
+        self.assertNotIn("ftbquests/progress.snbt", manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(
             set(manifest["documents"][0]),
-            {"id", "byte_sha256", "canonical_sha256"},
+            {"path_sha256", "byte_sha256", "canonical_sha256"},
         )
 
         (self.quests / "progress.snbt").write_text(
@@ -173,7 +174,7 @@ class ProgressGuardTests(unittest.TestCase):
         result = self._run("compare")
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("permission mismatch", result.stderr.lower())
+        self.assertIn("permission, owner, group, or link mismatch", result.stderr.lower())
 
     def test_output_directory_must_be_empty_mode_0700(self) -> None:
         self.snapshot.chmod(0o755)
@@ -264,7 +265,7 @@ class ProgressGuardTests(unittest.TestCase):
         self._snapshot()
         manifest_path = self.snapshot / "progress-manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["documents"][1]["id"] = manifest["documents"][0]["id"].upper()
+        manifest["documents"][1]["path_sha256"] = manifest["documents"][0]["path_sha256"]
         manifest_path.write_text(
             json.dumps(manifest),
             encoding="utf-8",
@@ -308,6 +309,9 @@ class QuestSafeUpdateTests(unittest.TestCase):
             self.snapshot_root,
         ):
             directory.mkdir()
+        self.runtime_dir.chmod(0o750)
+        self.snapshot_root.chmod(0o700)
+        self.quarantine_dir.mkdir(mode=0o750)
         world = self.data_dir / "world"
         (world / "ftbquests").mkdir(parents=True)
         (world / "ftbteams").mkdir()
@@ -357,6 +361,10 @@ class QuestSafeUpdateTests(unittest.TestCase):
         self.tar_count = self.temp_path / "tar-count"
         self.operator = self.temp_path / "operator"
         self.progress_guard = self.temp_path / "progress-guard"
+        self.safety_helper = self.temp_path / "safety-helper"
+        self.accepted_receipt = self.temp_path / "gauntlet-receipt.json"
+        self.accepted_receipt.write_text("{}\n", encoding="utf-8")
+        self.accepted_receipt.chmod(0o600)
         self._install_fakes()
         self.environment = os.environ.copy()
         self.environment.update(
@@ -368,6 +376,19 @@ class QuestSafeUpdateTests(unittest.TestCase):
                 "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
                 "AFTERLIGHT_OPERATOR": str(self.operator),
                 "AFTERLIGHT_PROGRESS_GUARD": str(self.progress_guard),
+                "AFTERLIGHT_SAFETY_HELPER": str(self.safety_helper),
+                "AFTERLIGHT_ACCEPTED_RECEIPT": str(self.accepted_receipt),
+                "AFTERLIGHT_ACCEPTED_RECEIPT_SHA256": "a" * 64,
+                "AFTERLIGHT_RUNTIME_MODE": "750",
+                "AFTERLIGHT_STATE_DIR_MODE": "750",
+                "AFTERLIGHT_STATE_FILE_MODE": "640",
+                "AFTERLIGHT_SNAPSHOT_ROOT_MODE": "700",
+                "AFTERLIGHT_LOCK_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_LOCK_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_STATE_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_STATE_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_SNAPSHOT_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_SNAPSHOT_GROUP_GID": str(os.getgid()),
                 "AFTERLIGHT_HEALTH_TIMEOUT": "0",
                 "AFTERLIGHT_POLL_INTERVAL": "0",
                 "FAKE_DATA_DIR": str(self.data_dir),
@@ -388,6 +409,41 @@ class QuestSafeUpdateTests(unittest.TestCase):
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
     def _install_fakes(self) -> None:
+        self._write_executable(
+            self.safety_helper,
+            f"""
+            #!/usr/bin/env bash
+            set -eu
+            case "${{1:-}}" in
+              lock-run)
+                if [ "${{FAKE_FLOCK_EXIT:-0}}" -ne 0 ]; then
+                  printf '%s\n' 'ERROR: unable to acquire maintenance lock' >&2
+                  exit "$FAKE_FLOCK_EXIT"
+                fi
+                ;;
+              receipt-verify)
+                if [ "${{FAKE_GIT_SHA:-{CURRENT_SHA}}}" != "{CURRENT_SHA}" ]; then
+                  printf '%s\n' 'ERROR: repository HEAD does not equal the accepted release' >&2
+                  exit 1
+                fi
+                exit "${{FAKE_SAFETY_VERIFY_EXIT:-0}}"
+                ;;
+              live-verify)
+                exit "${{FAKE_SAFETY_VERIFY_EXIT:-0}}"
+                ;;
+              archive-create)
+                if [ "${{FAKE_TAR_CREATE_EXIT:-0}}" -ne 0 ]; then exit "$FAKE_TAR_CREATE_EXIT"; fi
+                ;;
+              archive-restore)
+                count_file="${{FAKE_TAR_COUNT}}"
+                count=$(( $(cat "$count_file" 2>/dev/null || printf 0) + 1 ))
+                printf '%s' "$count" > "$count_file"
+                if [ "$count" -eq "${{FAKE_TAR_EXTRACT_FAIL_AT:-0}}" ]; then exit 77; fi
+                ;;
+            esac
+            exec {SAFETY_HELPER} "$@"
+            """,
+        )
         self._write_executable(
             self.fake_bin / "git",
             """
@@ -454,6 +510,9 @@ class QuestSafeUpdateTests(unittest.TestCase):
                         arguments[arguments.index("--snapshot") + 1]
                     ).parent
                     (snapshot / "full-backup.tar.zst").write_bytes(
+                        b"tampered-test-archive\n"
+                    )
+                    (snapshot / "full-backup.tar.gz").write_bytes(
                         b"tampered-test-archive\n"
                     )
                 fail_at = int(os.environ.get("FAKE_PROGRESS_FAIL_AT", "0"))
@@ -582,10 +641,11 @@ class QuestSafeUpdateTests(unittest.TestCase):
                     else:
                         print("PACKWIZ_URL=" + active_url)
                 raise SystemExit(0)
-            if arguments[:2] == ["update", "--restart=no"]:
+            if arguments[:2] in (["update", "--restart=no"], ["update", "--restart=unless-stopped"]):
+                policy = "no" if arguments[1] == "--restart=no" else "unless-stopped"
                 for container in arguments[2:]:
                     service = "minecraft" if container in {"minecraft-id", "afterlight-minecraft-1"} else "backup"
-                    state[service]["restart"] = "no"
+                    state[service]["restart"] = policy
                 save()
                 raise SystemExit(0)
             if arguments[0] == "stop":
@@ -737,8 +797,7 @@ class QuestSafeUpdateTests(unittest.TestCase):
         self.assertTrue(
             (snapshots[0] / "progress" / "progress-manifest.json").is_file()
         )
-        self.assertTrue((snapshots[0] / "full-backup.tar.zst").is_file())
-        self.assertTrue((snapshots[0] / "full-backup.sha256").is_file())
+        self.assertTrue((snapshots[0] / "full-backup.tar.gz").is_file())
         self.assertTrue((snapshots[0] / "backup-preflight.json").is_file())
         self.assertIn("QUEST-SAFE UPDATE: OK", result.stdout)
         self.assertNotIn("test-only-private-identity", result.stdout + result.stderr)
@@ -747,14 +806,10 @@ class QuestSafeUpdateTests(unittest.TestCase):
         stop_event = (
             "docker:compose --project-name afterlight --env-file "
             f"{self.env_file} -f {ROOT / 'server' / 'docker-compose.yml'} "
+            f"-f {ROOT / 'server' / 'docker-compose.transaction.yml'} "
             "stop backup minecraft"
         )
-        archive_event = (
-            "tar:--create --zstd --file "
-            f"{snapshots[0] / 'full-backup.tar.zst'} --directory {self.data_dir} ."
-        )
         self.assertLess(events.index(save_event), events.index(stop_event))
-        self.assertLess(events.index(stop_event), events.index(archive_event))
         self.assertEqual(sum(event.startswith("iptables:-w -I DOCKER-USER") for event in events), 1)
 
     def test_arguments_lock_operator_and_repository_sha_fail_before_gate(self) -> None:
@@ -775,21 +830,22 @@ class QuestSafeUpdateTests(unittest.TestCase):
 
     def test_player_queries_fail_closed_at_both_checks(self) -> None:
         cases = (
-            ({"FAKE_RCON_FIRST": "unknown"}, "parse", 0),
-            ({"FAKE_RCON_FIRST": "There are 1 of a max of 12 players online: Friend"}, "players online", 0),
-            ({"FAKE_RCON_SECOND": "There are 1 of a max of 12 players online: Friend"}, "players online", 2),
+            ({"FAKE_RCON_FIRST": "unknown"}, "parse", False),
+            ({"FAKE_RCON_FIRST": "There are 1 of a max of 12 players online: Friend"}, "players online", False),
+            ({"FAKE_RCON_SECOND": "There are 1 of a max of 12 players online: Friend"}, "players online", True),
         )
-        for environment, expected, rollback_starts in cases:
+        for environment, expected, quarantined in cases:
             with self.subTest(environment=environment):
                 result = self._run(CURRENT_SHA, "--confirm", environment=environment)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stderr.lower())
-                self.assertEqual(self._state()["start_count"], rollback_starts)
+                self.assertEqual(self._state()["start_count"], 0)
                 self.assertEqual(
                     (self.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
                     f"{PRIOR_SHA}\n",
                 )
-                self.assertFalse(self.firewall_state.exists())
+                self.assertEqual(self.firewall_state.exists(), quarantined)
+                self.assertEqual((self.quarantine_dir / "state").exists(), quarantined)
                 self.setUp()
 
     def test_firewall_insert_check_and_delete_failures_never_open_candidate(self) -> None:
@@ -814,30 +870,35 @@ class QuestSafeUpdateTests(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertFalse(self.firewall_state.exists())
-        self.assertTrue(self._state()["minecraft"]["running"])
+        self.assertTrue(self.firewall_state.exists())
+        self.assertFalse(self._state()["minecraft"]["running"])
+        self.assertTrue((self.quarantine_dir / "state").is_file())
 
     def test_save_archive_mode_shutdown_and_candidate_failures_roll_back(self) -> None:
         cases = (
-            ({"FAKE_SAVE_EXIT": "1"}, "save-all"),
-            ({"FAKE_TAR_EXTRACT_FAIL_AT": "1"}, "backup verification"),
-            ({"FAKE_TAR_SYMLINK_AT_CREATE": "1"}, "backup verification"),
-            ({"FAKE_SNAPSHOT_MODE_DRIFT": "1"}, "mode 0700"),
-            ({"FAKE_STOP_FAIL_AT": "1"}, "clean shutdown"),
-            ({"FAKE_START_FAIL_AT": "1"}, "candidate start"),
+            ({"FAKE_SAVE_EXIT": "1"}, "save-all", True),
+            ({"FAKE_TAR_CREATE_EXIT": "77"}, "backup authentication", True),
+            ({"FAKE_SNAPSHOT_MODE_DRIFT": "1"}, "mode 0700", True),
+            ({"FAKE_STOP_FAIL_AT": "1"}, "clean shutdown", True),
+            ({"FAKE_START_FAIL_AT": "1"}, "candidate start", False),
         )
-        for environment, expected in cases:
+        for environment, expected, quarantined in cases:
             with self.subTest(expected=expected):
-                result = self._run(CURRENT_SHA, "--confirm", environment=environment)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(expected, result.stderr.lower())
-                self.assertFalse(self.firewall_state.exists())
-                self.assertTrue(self._state()["minecraft"]["running"])
-                self.assertEqual(
-                    (self.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
-                    f"{PRIOR_SHA}\n",
-                )
-                self.setUp()
+                harness = QuestSafeUpdateTests(methodName="runTest")
+                harness.setUp()
+                try:
+                    result = harness._run(CURRENT_SHA, "--confirm", environment=environment)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(expected, result.stderr.lower())
+                    self.assertEqual(harness.firewall_state.exists(), quarantined)
+                    self.assertEqual(harness._state()["minecraft"]["running"], not quarantined)
+                    self.assertEqual((harness.quarantine_dir / "state").exists(), quarantined)
+                    self.assertEqual(
+                        (harness.data_dir / ".afterlight-pack-sha").read_text(encoding="utf-8"),
+                        f"{PRIOR_SHA}\n",
+                    )
+                finally:
+                    harness.doCleanups()
 
     def test_container_packwiz_url_mismatch_rolls_back(self) -> None:
         result = self._run(
@@ -847,7 +908,7 @@ class QuestSafeUpdateTests(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("pack sha", result.stderr.lower())
+        self.assertIn("accepted release", result.stderr.lower())
         self.assertTrue(self._state()["minecraft"]["running"])
         self.assertFalse(self.firewall_state.exists())
 
@@ -892,16 +953,42 @@ class QuestSafeUpdateTests(unittest.TestCase):
                 self.setUp()
 
     def test_signal_interruption_rolls_back_and_cleans_owned_rule(self) -> None:
-        result = self._run(
-            CURRENT_SHA,
-            "--confirm",
-            environment={"FAKE_SIGNAL_AT_START": "1"},
+        docker = self.fake_bin / "docker"
+        source = docker.read_text(encoding="utf-8")
+        source = source.replace("import sys\n", "import sys\nimport time\n")
+        source = source.replace(
+            "os.kill(os.getppid(), signal.SIGTERM)",
+            "time.sleep(120)",
         )
+        docker.write_text(source, encoding="utf-8")
+        docker.chmod(docker.stat().st_mode | stat.S_IXUSR)
+        environment = self.environment | {"FAKE_SIGNAL_AT_START": "1"}
+        process = subprocess.Popen(
+            ["/bin/bash", str(SAFE_UPDATE), CURRENT_SHA, "--confirm"],
+            cwd=ROOT,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if self._state()["start_count"] >= 1:
+                break
+            time.sleep(0.02)
+        self.assertGreaterEqual(self._state()["start_count"], 1)
+        process.send_signal(signal.SIGTERM)
+        stdout, stderr = process.communicate(timeout=20)
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("interrupted", result.stderr.lower())
+        self.assertNotEqual(process.returncode, 0, stdout)
+        self.assertIn("interrupted", stderr.lower())
         self.assertTrue(self._state()["minecraft"]["running"])
-        self.assertFalse(self.firewall_state.exists())
+        self.assertFalse(
+            self.firewall_state.exists(),
+            f"stdout={stdout!r} stderr={stderr!r} state={self._state()!r} "
+            f"authority={(self.quarantine_dir / 'state').exists()}",
+        )
 
     def test_rollback_failure_disables_restarts_and_writes_durable_quarantine(self) -> None:
         result = self._run(
@@ -917,8 +1004,8 @@ class QuestSafeUpdateTests(unittest.TestCase):
             self.assertEqual(state[service]["restart"], "no")
         marker = self.quarantine_dir / "state"
         self.assertTrue(marker.is_file())
-        self.assertEqual(stat.S_IMODE(marker.stat().st_mode), 0o600)
-        self.assertEqual(stat.S_IMODE(self.quarantine_dir.stat().st_mode), 0o711)
+        self.assertEqual(stat.S_IMODE(marker.stat().st_mode), 0o640)
+        self.assertEqual(stat.S_IMODE(self.quarantine_dir.stat().st_mode), 0o750)
         self.assertTrue(self.firewall_state.exists())
         self.assertNotIn("test-only-private-identity", marker.read_text(encoding="utf-8"))
         self.assertIn("ROLLBACK FAILED: QUARANTINED", result.stderr)
@@ -950,18 +1037,50 @@ class QuarantineGateTests(unittest.TestCase):
 
     def setUp(self) -> None:
         QuestSafeUpdateTests.setUp(self)
-        self.quarantine_dir.mkdir(mode=0o711)
         self.recorded_snapshot = self.snapshot_root / "recorded"
         self.recorded_snapshot.mkdir(mode=0o700)
         self.marker = self.quarantine_dir / "state"
-        self.marker.write_text(
-            "schema=1\n"
-            f"comment=afterlight-quest-update-{CURRENT_SHA}-1234\n"
-            f"expected_sha={CURRENT_SHA}\n"
-            f"snapshot_dir={self.recorded_snapshot}\n",
-            encoding="utf-8",
+        common = [
+            "--state-dir", str(self.quarantine_dir),
+            "--state-dir-mode", "750",
+            "--state-file-mode", "640",
+            "--owner-uid", str(os.getuid()),
+            "--group-gid", str(os.getgid()),
+            "--snapshot-owner-uid", str(os.getuid()),
+            "--snapshot-group-gid", str(os.getgid()),
+                "--snapshot-root-mode", "700",
+                "--canonical-snapshot-root", str(self.snapshot_root),
+        ]
+        created = subprocess.run(
+            [
+                str(self.safety_helper), "authority-create", *common,
+                "--expected-sha", CURRENT_SHA,
+                "--prior-sha", PRIOR_SHA,
+                "--snapshot-root", str(self.snapshot_root),
+                "--receipt-sha256", "a" * 64,
+            ],
+            cwd=ROOT,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+            check=False,
         )
-        self.marker.chmod(0o600)
+        self.assertEqual(created.returncode, 0, created.stderr)
+        self.transaction_id = created.stdout.strip()
+        updated = subprocess.run(
+            [
+                str(self.safety_helper), "authority-update", *common,
+                "--transaction-id", self.transaction_id,
+                "--snapshot-dir", str(self.recorded_snapshot),
+                "--phase", "candidate-started",
+            ],
+            cwd=ROOT,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(updated.returncode, 0, updated.stderr)
         state = self._state()
         for service in ("minecraft", "backup"):
             state[service]["running"] = False
@@ -1001,7 +1120,10 @@ class QuarantineGateTests(unittest.TestCase):
             self.assertEqual(state[service]["restart"], "no")
         rule = json.loads(self.firewall_state.read_text(encoding="utf-8"))
         self.assertEqual(rule[0], "DOCKER-USER")
-        self.assertEqual(rule[rule.index("--comment") + 1], f"afterlight-quest-update-{CURRENT_SHA}-1234")
+        self.assertEqual(
+            rule[rule.index("--comment") + 1],
+            f"afterlight-quest-update-{CURRENT_SHA}-{self.transaction_id}",
+        )
         inserts = [
             event
             for event in self._events()
@@ -1029,12 +1151,12 @@ class QuarantineGateTests(unittest.TestCase):
 
     def test_malformed_or_mode_drifted_marker_fails_with_containers_disabled(self) -> None:
         cases = (
-            ("malformed", 0o600),
+            ("malformed", 0o640),
             (
                 "schema=1\ncomment=afterlight-quest-update-bad-1\n"
                 f"expected_sha={CURRENT_SHA}\n"
                 f"snapshot_dir={self.recorded_snapshot}\n",
-                0o600,
+                0o640,
             ),
             (
                 "schema=1\n"

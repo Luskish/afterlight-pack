@@ -12,6 +12,14 @@ MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
 RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
 QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
+SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
+RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
+RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
+LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
+STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
+STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
+SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
+SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
 
 DATA_DIR=""
 BACKUP_DIR=""
@@ -35,6 +43,97 @@ require_command() {
   local command_name=$1
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "Required command not found: $command_name"
+    return 1
+  fi
+}
+
+stat_value() {
+  local format=$1 target=$2
+  stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+}
+
+derive_lock_identity() {
+  [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
+  [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || fail "Transaction authority directory is missing or unsafe"
+  [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
+  LOCK_OWNER_UID=${AFTERLIGHT_LOCK_OWNER_UID:-$(stat_value '%u' "$RUNTIME_DIR")}
+  LOCK_GROUP_GID=${AFTERLIGHT_LOCK_GROUP_GID:-$(stat_value '%g' "$RUNTIME_DIR")}
+  STATE_OWNER_UID=${AFTERLIGHT_STATE_OWNER_UID:-$(stat_value '%u' "$QUARANTINE_DIR")}
+  STATE_GROUP_GID=${AFTERLIGHT_STATE_GROUP_GID:-$(stat_value '%g' "$QUARANTINE_DIR")}
+  SNAPSHOT_OWNER_UID=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(stat_value '%u' "$SNAPSHOT_ROOT")}
+  SNAPSHOT_GROUP_GID=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(stat_value '%g' "$SNAPSHOT_ROOT")}
+}
+
+state_arguments() {
+  printf '%s\0' \
+    --state-dir "$QUARANTINE_DIR" \
+    --state-dir-mode "$STATE_DIR_MODE" \
+    --state-file-mode "$STATE_FILE_MODE" \
+    --owner-uid "$STATE_OWNER_UID" \
+    --group-gid "$STATE_GROUP_GID" \
+    --snapshot-owner-uid "$SNAPSHOT_OWNER_UID" \
+    --snapshot-group-gid "$SNAPSHOT_GROUP_GID" \
+    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
+    --canonical-snapshot-root "$SNAPSHOT_ROOT"
+}
+
+authority_command() {
+  local command_name=$1
+  shift
+  local -a common=()
+  while IFS= read -r -d '' value; do common+=("$value"); done < <(state_arguments)
+  "$SAFETY_HELPER" "$command_name" "${common[@]}" "$@"
+}
+
+acquire_mutation_lock() {
+  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then return 0; fi
+  derive_lock_identity || return 1
+  exec "$SAFETY_HELPER" lock-run \
+    --runtime-dir "$RUNTIME_DIR" \
+    --runtime-mode "$RUNTIME_MODE" \
+    --lock-mode "$LOCK_MODE" \
+    --owner-uid "$LOCK_OWNER_UID" \
+    --group-gid "$LOCK_GROUP_GID" \
+    -- "$0" "$@"
+}
+
+verify_mutation_authority() {
+  local command_name=$1
+  derive_lock_identity || return 1
+  local authority_status=0
+  if authority_command authority-status >/dev/null 2>&1; then
+    local recovery_id=${AFTERLIGHT_RECOVERY_TRANSACTION_ID:-}
+    if [[ -z "$recovery_id" ]]; then
+      fail "Operation rejected because a quest update transaction is active"
+      return 1
+    fi
+    if [[ "$command_name" != "start" && "$command_name" != "stop" ]]; then
+      fail "Only recovery start and stop are allowed while transaction authority is active"
+      return 1
+    fi
+    local recorded_id gate_comment
+    recorded_id=$(authority_command authority-status --field transaction_id) || return 1
+    gate_comment=$(authority_command authority-status --field gate_comment) || return 1
+    [[ "$recorded_id" == "$recovery_id" ]] || {
+      fail "Recovery transaction identifier mismatch"
+      return 1
+    }
+    local -a rule=(
+      -p tcp --dport 25565
+      -m conntrack --ctstate NEW
+      -m comment --comment "$gate_comment"
+      -j REJECT
+    )
+    iptables -w -C DOCKER-USER "${rule[@]}" || {
+      fail "Recovery start rejected because the exact owned firewall gate is absent"
+      return 1
+    }
+    return 0
+  else
+    authority_status=$?
+  fi
+  if [[ "$authority_status" -ne 3 ]]; then
+    fail "Operation rejected because transaction authority is unsafe"
     return 1
   fi
 }
@@ -651,10 +750,6 @@ stop_after_failed_update() {
 run_update() {
   local backup_path
   local pack_sha
-  if [[ -e "$QUARANTINE_DIR/state" || -L "$QUARANTINE_DIR/state" ]]; then
-    fail "Ordinary update rejected because quest update quarantine is active"
-    return 1
-  fi
   prepare_paths || return 1
   pack_sha=$(repository_pack_sha) || return 1
   use_pack_sha "$pack_sha" || return 1
@@ -766,6 +861,13 @@ main() {
     usage
     return 1
   fi
+  case "$command_name" in
+    start|stop|backup|update|rollback)
+      [[ -x "$SAFETY_HELPER" ]] || { fail "Safety helper is unavailable"; return 1; }
+      acquire_mutation_lock "$@"
+      verify_mutation_authority "$command_name" || return 1
+      ;;
+  esac
   shift
 
   case "$command_name" in

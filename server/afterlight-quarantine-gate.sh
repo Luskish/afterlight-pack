@@ -1,33 +1,87 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 umask 077
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 ENV_FILE=${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}
-QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
+SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
+RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
+RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
+LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
+STATE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
+STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
+STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
+SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
+SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
 ATTEMPTS=${AFTERLIGHT_QUARANTINE_GATE_ATTEMPTS:-30}
 INTERVAL=${AFTERLIGHT_QUARANTINE_GATE_INTERVAL:-2}
-MARKER="$QUARANTINE_DIR/state"
+COMMAND_TIMEOUT=${AFTERLIGHT_COMMAND_TIMEOUT:-120}
+TRANSACTION_TIMEOUT=${AFTERLIGHT_TRANSACTION_TIMEOUT:-900}
+EMERGENCY_COMMENT=afterlight-transaction-emergency
 
 fail() {
   printf 'ERROR: %s\n' "$*" >&2
   return 1
 }
 
-stat_mode() {
-  local target=$1
-  local mode
-  if mode=$(stat -c '%a' "$target" 2>/dev/null); then
-    printf '%s\n' "$mode"
-  else
-    stat -f '%Lp' "$target"
-  fi
+stat_value() {
+  local format=$1 target=$2
+  stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+}
+
+derive_identity() {
+  [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
+  [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
+  LOCK_OWNER_UID=${AFTERLIGHT_LOCK_OWNER_UID:-$(stat_value '%u' "$RUNTIME_DIR")}
+  LOCK_GROUP_GID=${AFTERLIGHT_LOCK_GROUP_GID:-$(stat_value '%g' "$RUNTIME_DIR")}
+  STATE_OWNER_UID=${AFTERLIGHT_STATE_OWNER_UID:-$(stat_value '%u' "$STATE_DIR")}
+  STATE_GROUP_GID=${AFTERLIGHT_STATE_GROUP_GID:-$(stat_value '%g' "$STATE_DIR")}
+  SNAPSHOT_OWNER_UID=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(stat_value '%u' "$SNAPSHOT_ROOT")}
+  SNAPSHOT_GROUP_GID=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(stat_value '%g' "$SNAPSHOT_ROOT")}
+}
+
+state_arguments() {
+  printf '%s\0' \
+    --state-dir "$STATE_DIR" \
+    --state-dir-mode "$STATE_DIR_MODE" \
+    --state-file-mode "$STATE_FILE_MODE" \
+    --owner-uid "$STATE_OWNER_UID" \
+    --group-gid "$STATE_GROUP_GID" \
+    --snapshot-owner-uid "$SNAPSHOT_OWNER_UID" \
+    --snapshot-group-gid "$SNAPSHOT_GROUP_GID" \
+    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
+    --canonical-snapshot-root "$SNAPSHOT_ROOT"
+}
+
+authority_command() {
+  local command_name=$1
+  shift
+  local -a common=()
+  while IFS= read -r -d '' value; do common+=("$value"); done < <(state_arguments)
+  run_bounded "$SAFETY_HELPER" "$command_name" "${common[@]}" "$@"
+}
+
+run_bounded() {
+  "$SAFETY_HELPER" run-command --timeout "$COMMAND_TIMEOUT" -- "$@"
+}
+
+acquire_shared_lock() {
+  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then return 0; fi
+  derive_identity || return 1
+  exec "$SAFETY_HELPER" lock-run \
+    --runtime-dir "$RUNTIME_DIR" \
+    --runtime-mode "$RUNTIME_MODE" \
+    --lock-mode "$LOCK_MODE" \
+    --timeout "$TRANSACTION_TIMEOUT" \
+    --owner-uid "$LOCK_OWNER_UID" \
+    --group-gid "$LOCK_GROUP_GID" \
+    -- "$0" "$@"
 }
 
 compose() {
-  docker compose \
+  run_bounded docker compose \
     --project-name afterlight \
     --env-file "$ENV_FILE" \
     -f "$COMPOSE_FILE" \
@@ -35,107 +89,77 @@ compose() {
 }
 
 container_state() {
-  docker inspect --format '{{.State.Status}}' "$1"
+  run_bounded docker inspect --format '{{.State.Status}}' "$1"
 }
 
 container_restart_policy() {
-  docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' "$1"
-}
-
-disable_containers() {
-  local minecraft_id
-  local backup_id
-  minecraft_id=$(compose ps -aq minecraft) || return 1
-  backup_id=$(compose ps -aq backup) || return 1
-  [[ -n "$minecraft_id" && -n "$backup_id" ]] || {
-    fail "Quarantined containers could not be identified"
-    return 1
-  }
-  docker update --restart=no "$minecraft_id" "$backup_id" >/dev/null || return 1
-  docker stop "$minecraft_id" "$backup_id" >/dev/null || return 1
-  local container_id
-  for container_id in "$minecraft_id" "$backup_id"; do
-    [[ "$(container_restart_policy "$container_id")" == "no" ]] || return 1
-    [[ "$(container_state "$container_id")" != "running" ]] || return 1
-  done
-}
-
-read_marker() {
-  [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || {
-    fail "Quarantine directory is unsafe"
-    return 1
-  }
-  [[ "$(stat_mode "$QUARANTINE_DIR")" == "711" ]] || {
-    fail "Quarantine directory mode must be 0711"
-    return 1
-  }
-  [[ -f "$MARKER" && ! -L "$MARKER" ]] || {
-    fail "Quarantine marker is unsafe"
-    return 1
-  }
-  [[ "$(stat_mode "$MARKER")" == "600" ]] || {
-    fail "Quarantine marker mode must be 0600"
-    return 1
-  }
-  local schema=""
-  local comment=""
-  local expected_sha=""
-  local snapshot_dir=""
-  local line
-  local schema_seen=0
-  local comment_seen=0
-  local sha_seen=0
-  local snapshot_seen=0
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    case "$line" in
-      schema=*) ((schema_seen += 1)); schema=${line#schema=} ;;
-      comment=*) ((comment_seen += 1)); comment=${line#comment=} ;;
-      expected_sha=*) ((sha_seen += 1)); expected_sha=${line#expected_sha=} ;;
-      snapshot_dir=*) ((snapshot_seen += 1)); snapshot_dir=${line#snapshot_dir=} ;;
-      *) fail "Quarantine marker is malformed"; return 1 ;;
-    esac
-  done < "$MARKER"
-  if [[ "$schema_seen" -ne 1 || "$comment_seen" -ne 1 || "$sha_seen" -ne 1 || "$snapshot_seen" -ne 1 ]]; then
-    fail "Quarantine marker is malformed"
-    return 1
-  fi
-  [[ "$schema" == "1" && "$expected_sha" =~ ^[0-9a-f]{40}$ ]] || {
-    fail "Quarantine marker is malformed"
-    return 1
-  }
-  [[ "$comment" =~ ^afterlight-quest-update-${expected_sha}-[0-9]+$ ]] || {
-    fail "Quarantine marker is malformed"
-    return 1
-  }
-  [[ "$snapshot_dir" =~ ^/[A-Za-z0-9._/-]+$ && "$snapshot_dir" != *"/../"* ]] || {
-    fail "Quarantine marker is malformed"
-    return 1
-  }
-  [[ -d "$snapshot_dir" && ! -L "$snapshot_dir" && "$(stat_mode "$snapshot_dir")" == "700" ]] || {
-    fail "Quarantine snapshot is missing or unsafe"
-    return 1
-  }
-  printf '%s\n' "$comment"
+  run_bounded docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' "$1"
 }
 
 wait_for_chain() {
   local attempt
   for ((attempt = 1; attempt <= ATTEMPTS; attempt += 1)); do
-    if iptables -w -n -L DOCKER-USER >/dev/null 2>&1; then
-      return 0
-    fi
-    if ((attempt < ATTEMPTS)); then
-      sleep "$INTERVAL"
-    fi
+    if run_bounded iptables -w -n -L DOCKER-USER >/dev/null 2>&1; then return 0; fi
+    if ((attempt < ATTEMPTS)); then sleep "$INTERVAL"; fi
   done
   fail "DOCKER-USER did not appear before the quarantine deadline"
 }
 
-main() {
-  if [[ ! -e "$MARKER" && ! -L "$MARKER" ]]; then
-    return 0
+ensure_rule() {
+  local comment=$1
+  local -a rule=(
+    -p tcp --dport 25565
+    -m conntrack --ctstate NEW
+    -m comment --comment "$comment"
+    -j REJECT
+  )
+  if ! run_bounded iptables -w -C DOCKER-USER "${rule[@]}" >/dev/null 2>&1; then
+    run_bounded iptables -w -I DOCKER-USER 1 "${rule[@]}" || return 1
   fi
-  [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ && "$INTERVAL" =~ ^[0-9]+$ ]] || {
+  run_bounded iptables -w -C DOCKER-USER "${rule[@]}"
+}
+
+reconcile_service() {
+  local service=$1 transaction_id=${2:-}
+  local failed=0 container_id=""
+  container_id=$(compose ps -aq "$service") || failed=1
+  if [[ -z "$container_id" ]]; then
+    return 1
+  fi
+  if run_bounded docker update --restart=no "$container_id" >/dev/null; then
+    if [[ "$(container_restart_policy "$container_id")" == "no" ]]; then
+      if [[ -n "$transaction_id" ]]; then
+        authority_command authority-update \
+          --transaction-id "$transaction_id" \
+          --service "$service" \
+          --restart-disabled true || failed=1
+      fi
+    else
+      failed=1
+    fi
+  else
+    failed=1
+  fi
+  if run_bounded docker stop "$container_id" >/dev/null; then
+    if [[ "$(container_state "$container_id")" != "running" ]]; then
+      if [[ -n "$transaction_id" ]]; then
+        authority_command authority-update \
+          --transaction-id "$transaction_id" \
+          --service "$service" \
+          --stopped true || failed=1
+      fi
+    else
+      failed=1
+    fi
+  else
+    failed=1
+  fi
+  return "$failed"
+}
+
+main() {
+  [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ && "$INTERVAL" =~ ^[0-9]+$ &&
+     "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || {
     fail "Quarantine gate timing values are invalid"
     return 1
   }
@@ -146,33 +170,50 @@ main() {
       return 1
     }
   done
-  disable_containers || {
-    fail "Quarantined containers could not be disabled"
-    return 1
-  }
-  local comment
-  comment=$(read_marker) || return 1
-  wait_for_chain || return 1
-  local -a rule=(
-    -p tcp --dport 25565
-    -m conntrack --ctstate NEW
-    -m comment --comment "$comment"
-    -j REJECT
-  )
-  if ! iptables -w -C DOCKER-USER "${rule[@]}"; then
-    iptables -w -I DOCKER-USER 1 "${rule[@]}" || {
-      fail "Quarantine firewall reconstruction failed"
-      return 1
-    }
+  [[ -x "$SAFETY_HELPER" ]] || { fail "Safety helper is unavailable"; return 1; }
+  acquire_shared_lock "$@"
+  derive_identity || return 1
+
+  local authority_result=0
+  local transaction_id="" gate_comment="$EMERGENCY_COMMENT"
+  if authority_command authority-status >/dev/null 2>&1; then
+    transaction_id=$(authority_command authority-status --field transaction_id) || authority_result=1
+    gate_comment=$(authority_command authority-status --field gate_comment) || authority_result=1
+  else
+    authority_result=$?
+    if [[ "$authority_result" -eq 3 ]]; then
+      return 0
+    fi
   fi
-  iptables -w -C DOCKER-USER "${rule[@]}" || {
-    fail "Quarantine firewall verification failed"
+
+  if ! wait_for_chain; then
+    reconcile_service minecraft "$transaction_id" || true
+    reconcile_service backup "$transaction_id" || true
+    return 1
+  fi
+  ensure_rule "$gate_comment" || {
+    fail "Quarantine firewall reconstruction failed"
     return 1
   }
-  disable_containers || {
-    fail "Quarantined containers did not remain disabled"
+  local failed=0
+  reconcile_service minecraft "$transaction_id" || failed=1
+  reconcile_service backup "$transaction_id" || failed=1
+  if [[ "$authority_result" -ne 0 || -z "$transaction_id" ]]; then
+    fail "Transaction authority is malformed or unsafe, emergency gate remains active"
     return 1
-  }
+  fi
+  if [[ "$failed" -ne 0 ]]; then
+    authority_command authority-update \
+      --transaction-id "$transaction_id" \
+      --status quarantine \
+      --phase quarantine-incomplete >/dev/null 2>&1 || true
+    fail "Quarantined containers could not be completely reconciled"
+    return 1
+  fi
+  authority_command authority-update \
+    --transaction-id "$transaction_id" \
+    --status quarantine \
+    --phase boot-reconciled || return 1
   printf 'QUARANTINE GATE: ACTIVE\n'
 }
 

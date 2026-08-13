@@ -201,6 +201,13 @@ def _hygiene_errors(corpus: Mapping[str, object], label: str) -> list[str]:
     return errors
 
 
+def _checked_corpus(
+    value: Mapping[str, object], label: str
+) -> tuple[dict[str, object], list[str]]:
+    errors = _hygiene_errors(value, label)
+    return _unwrap_corpus(value), errors
+
+
 def _identity_catalog(corpus: Mapping[str, object], label: str) -> _IdentityCatalog:
     by_id: dict[str, _Identity] = {}
     errors: list[str] = []
@@ -357,8 +364,10 @@ def compare_quest_corpus(
     *,
     commodity_replacements: Mapping[str, str],
 ) -> list[str]:
-    baseline_corpus = _unwrap_corpus(baseline)
-    current_corpus = _unwrap_corpus(current)
+    baseline_corpus, baseline_hygiene_errors = _checked_corpus(
+        baseline, "baseline"
+    )
+    current_corpus, current_hygiene_errors = _checked_corpus(current, "current")
     allowed_localization_changes = _story_localization_change_paths(baseline_corpus)
     baseline_catalog = _identity_catalog(baseline_corpus, "baseline")
     current_catalog = _identity_catalog(current_corpus, "current")
@@ -366,8 +375,8 @@ def compare_quest_corpus(
         commodity_replacements
     )
     errors = [
-        *_hygiene_errors(baseline_corpus, "baseline"),
-        *_hygiene_errors(current_corpus, "current"),
+        *baseline_hygiene_errors,
+        *current_hygiene_errors,
         *baseline_catalog.errors,
         *current_catalog.errors,
         *declaration_errors,

@@ -63,6 +63,47 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         "reward",
         "reward_table_reward",
     )
+    HYGIENE_CASES = (
+        (
+            "uuid",
+            "fixture_note",
+            "00000000-0000-0000-0000-000000000000",
+            "UUID",
+        ),
+        ("player_name", "player_name", "redacted", "player identity field"),
+        ("raw_progress", "task_progress", {}, "raw progress field"),
+        ("secret_field", "access_token", "test-only", "secret field"),
+        (
+            "secret_value",
+            "fixture_note",
+            "-----BEGIN " + "PRIVATE KEY-----",
+            "secret value",
+        ),
+        (
+            "em_dash",
+            "fixture_note",
+            f"forbidden{chr(0x2014)}punctuation",
+            "U+2014",
+        ),
+        (
+            "windows_path",
+            "fixture_note",
+            "C:\\Users\\fixture\\quests",
+            "Windows machine path",
+        ),
+        (
+            "windows_unc_path",
+            "fixture_note",
+            "\\\\server\\share\\quests",
+            "Windows machine path",
+        ),
+        (
+            "unix_root",
+            "fixture_note",
+            "/home/fixture/quests",
+            "Unix machine root",
+        ),
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -862,50 +903,16 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
             errors,
         )
 
-    def test_fixture_hygiene_rejects_every_binding_category(self) -> None:
+    def test_current_corpus_hygiene_rejects_every_binding_category(self) -> None:
         _, compare = self._compatibility_support()
-        cases = (
-            (
-                "uuid",
-                "fixture.note",
-                "00000000-0000-0000-0000-000000000000",
-                "UUID",
-            ),
-            ("player_name", "player_name", "redacted", "player identity field"),
-            ("raw_progress", "task_progress", {}, "raw progress field"),
-            ("secret", "access_token", "test-only", "secret field"),
-            (
-                "em_dash",
-                "fixture.note",
-                f"forbidden{chr(0x2014)}punctuation",
-                "U+2014",
-            ),
-            (
-                "windows_path",
-                "fixture.note",
-                "C:\\Users\\fixture\\quests",
-                "Windows machine path",
-            ),
-            (
-                "windows_unc_path",
-                "fixture.note",
-                "\\\\server\\share\\quests",
-                "Windows machine path",
-            ),
-            (
-                "unix_root",
-                "fixture.note",
-                "/home/fixture/quests",
-                "Unix machine root",
-            ),
-        )
-        for name, key, value, marker in cases:
+        for name, key, value, marker in self.HYGIENE_CASES:
             with self.subTest(name=name):
-                contaminated = self._identity_corpus()
-                contaminated["language"]["en_us"][key] = value
+                baseline = self._identity_corpus()
+                current = copy.deepcopy(baseline)
+                current["language"]["en_us"][key] = value
                 errors = compare(
-                    contaminated,
-                    copy.deepcopy(contaminated),
+                    baseline,
+                    current,
                     commodity_replacements={},
                 )
                 expected_path = f"$.language.en_us.{key}"
@@ -913,6 +920,30 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
                     any(
                         error.startswith(f"{expected_path}:")
                         and marker in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_fixture_wrapper_metadata_hygiene_fails_closed(self) -> None:
+        _, compare = self._compatibility_support()
+        for name, key, value, marker in self.HYGIENE_CASES:
+            with self.subTest(name=name):
+                corpus = self._identity_corpus()
+                fixture = {
+                    "corpus": corpus,
+                    "schema_version": 1,
+                    "source_commit": self.SOURCE_COMMIT,
+                    key: value,
+                }
+                errors = compare(
+                    fixture,
+                    copy.deepcopy(corpus),
+                    commodity_replacements={},
+                )
+                self.assertTrue(
+                    any(
+                        error.startswith(f"$.{key}:") and marker in error
                         for error in errors
                     ),
                     errors,

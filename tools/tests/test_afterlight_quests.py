@@ -3015,26 +3015,27 @@ class QuestLinkCompilerTests(unittest.TestCase):
 
 
 class LegacyQuestOverlayTests(unittest.TestCase):
+    DIGEST_BASE = "65345312e2d2fe2f4fabf68437dfea0dbdb8e544"
     QUEST_ROOT = ROOT / "config" / "ftbquests" / "quests"
     STORY_GROUP_ID = "4525BB3160467FCB"
     MANUAL_GROUP_ID = "4A20F33642175B95"
-    LINK_DIGESTS = {
-        "4C01977EF77930A6": "84b682eb046cc73a8e1962ae7b98a37a3323a5d035054e372b919a43de7b3729",
-        "770DAD173D9C234B": "3cca17187e1382064192ea9235b0679590fc844954b689d413aad90cd84adb7e",
-        "45491A24F6B8C192": "ae8fe08053a769600b8d416bebb679b1731b0680a87f164e694ee861c533b139",
-        "52EF477C2D995F40": "874388f975a02bda088fcb30650bb03c15935a98b3c2e85453ebf86bc4bd2df0",
-    }
+    LINK_CHAPTERS = (
+        "4C01977EF77930A6",
+        "770DAD173D9C234B",
+        "45491A24F6B8C192",
+        "52EF477C2D995F40",
+    )
     ORDER_OVERLAYS = {
-        "23643435F7BE74AC": (10, "1f4c08e6b0a16ca3daea9df556a0362755651279deac7426643ac1514505899d"),
-        "7BA8A3335FAC821A": (11, "9595ed5d1d1854b5819cceb3f711b00694dde3911f3f0ed9ccfd8d0443233db6"),
-        "16E0B20162F6DAE5": (12, "f8bf11642044bc13d24e9f87a20d9f6c9c7438b040825dc00df168c7dd88282b"),
-        "775CD739E3318A7E": (13, "336f13085cdf9b13e9bc950a4d96f7c3a175e565531435e3ec440759fcaebc2e"),
-        "18471B3E458EAB62": (14, "0f1c4a5640a3cab7dde702708ad7f4489a6d59d60f2fb754d883d68fdf77eae6"),
-        "0FAB5AA8294D4487": (15, "66dcc20b74ab4d7736306bd8b8ac42b1fdaf17045b8fee58ca79c999d72af3cf"),
-        "5070DE6E2B300F4B": (16, "6a47c3fdd03732e2c3cb63b23d701cfeeead40ca4814d1f28ec4dd4fd2c1be13"),
-        "758F5AEF697F7EFD": (30, "489fcf938d8b5c527e448130dfb910b1b590b03722c39b25017421b68408bb41"),
-        "7C611E8A94BC5CE5": (31, "f4a58c6f862abdf812317f8388ad47e9bb5101979330a566cc28488dc1f227ef"),
-        "099200314296766A": (32, "6cb986df548e93ac96ff67e6a8e39e3644762ccbdb12bfc751073510aefa5cf5"),
+        "23643435F7BE74AC": 10,
+        "7BA8A3335FAC821A": 11,
+        "16E0B20162F6DAE5": 12,
+        "775CD739E3318A7E": 13,
+        "18471B3E458EAB62": 14,
+        "0FAB5AA8294D4487": 15,
+        "5070DE6E2B300F4B": 16,
+        "758F5AEF697F7EFD": 30,
+        "7C611E8A94BC5CE5": 31,
+        "099200314296766A": 32,
     }
     LOCALIZATION_KEY = "chapter_group.4A20F33642175B95.title"
     LOCALIZATION_DIGEST = "0712cdefe59c27dd3b487616122da45a0f657166612cd6704762227a274a5e24"
@@ -3090,6 +3091,93 @@ class LegacyQuestOverlayTests(unittest.TestCase):
         span = spans[0]
         return (text[: span.offset] + text[span.end :]).encode("utf-8")
 
+    def independent_top_level_value_span(
+        self,
+        payload: bytes,
+        field: str,
+    ) -> tuple[int, int]:
+        text = payload.decode("utf-8")
+        tokens: list[tuple[str, str, int, int]] = []
+        cursor = 0
+        punctuation = set("{}[]:,")
+        while cursor < len(text):
+            if text[cursor].isspace():
+                cursor += 1
+                continue
+            if text[cursor] in punctuation:
+                tokens.append((text[cursor], text[cursor], cursor, cursor + 1))
+                cursor += 1
+                continue
+            if text[cursor] == '"':
+                start = cursor
+                cursor += 1
+                escaped = False
+                while cursor < len(text):
+                    character = text[cursor]
+                    cursor += 1
+                    if character == '"' and not escaped:
+                        break
+                    escaped = character == "\\" and not escaped
+                    if character != "\\":
+                        escaped = False
+                else:
+                    self.fail("independent scanner found unterminated string")
+                tokens.append(("atom", text[start + 1 : cursor - 1], start, cursor))
+                continue
+            start = cursor
+            while (
+                cursor < len(text)
+                and not text[cursor].isspace()
+                and text[cursor] not in punctuation
+            ):
+                cursor += 1
+            tokens.append(("atom", text[start:cursor], start, cursor))
+
+        compound_depth = 0
+        list_depth = 0
+        matches: list[tuple[int, int]] = []
+        for index, (kind, value, _start, _end) in enumerate(tokens):
+            if kind == "{":
+                compound_depth += 1
+                continue
+            if kind == "}":
+                compound_depth -= 1
+                continue
+            if kind == "[":
+                list_depth += 1
+                continue
+            if kind == "]":
+                list_depth -= 1
+                continue
+            if not (
+                kind == "atom"
+                and value == field
+                and compound_depth == 1
+                and list_depth == 0
+                and index + 2 < len(tokens)
+                and tokens[index + 1][0] == ":"
+            ):
+                continue
+            value_index = index + 2
+            value_token = tokens[value_index]
+            value_start = value_token[2]
+            if value_token[0] not in {"{", "["}:
+                matches.append((value_start, value_token[3]))
+                continue
+            brace_balance = 0
+            bracket_balance = 0
+            for nested in tokens[value_index:]:
+                brace_balance += nested[0] == "{"
+                brace_balance -= nested[0] == "}"
+                bracket_balance += nested[0] == "["
+                bracket_balance -= nested[0] == "]"
+                if brace_balance == 0 and bracket_balance == 0:
+                    matches.append((value_start, nested[3]))
+                    break
+        self.assertEqual(matches, [matches[0]] if matches else [], field)
+        self.assertEqual(len(matches), 1, field)
+        return matches[0]
+
     def synthetic_link_overlays(self):
         result = []
         for index, overlay in enumerate(self.overlays.LEGACY_QUEST_LINK_OVERLAYS, start=1):
@@ -3128,24 +3216,62 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             known_quest_ids=(self.KNOWN_TARGET_ID,) if known_quest_ids is None else known_quest_ids,
         )
 
-    def test_overlay_manifests_are_frozen_exact_and_base_bound(self) -> None:
+    def test_overlay_manifests_are_frozen_exact_and_git_object_bound(self) -> None:
         self.assertEqual(
-            [
-                (overlay.chapter_id, overlay.quest_links, overlay.expected_outside_sha256)
-                for overlay in self.overlays.LEGACY_QUEST_LINK_OVERLAYS
-            ],
-            [(chapter_id, (), digest) for chapter_id, digest in self.LINK_DIGESTS.items()],
+            [(overlay.chapter_id, overlay.quest_links) for overlay in self.overlays.LEGACY_QUEST_LINK_OVERLAYS],
+            [(chapter_id, ()) for chapter_id in self.LINK_CHAPTERS],
         )
         self.assertEqual(
             [
-                (overlay.chapter_id, overlay.order_index, overlay.expected_outside_sha256)
+                (overlay.chapter_id, overlay.order_index)
                 for overlay in self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS
             ],
-            [
-                (chapter_id, order, digest)
-                for chapter_id, (order, digest) in self.ORDER_OVERLAYS.items()
-            ],
+            list(self.ORDER_OVERLAYS.items()),
         )
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "cat-file", "-t", self.DIGEST_BASE],
+                cwd=ROOT,
+                text=True,
+            ).strip(),
+            "commit",
+        )
+        manifest_fields = [
+            *( (overlay, "quest_links") for overlay in self.overlays.LEGACY_QUEST_LINK_OVERLAYS ),
+            *( (overlay, "order_index") for overlay in self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS ),
+        ]
+        for overlay, field in manifest_fields:
+            relative = (
+                "config/ftbquests/quests/chapters/"
+                f"{overlay.chapter_id}.snbt"
+            )
+            revision = f"{self.DIGEST_BASE}:{relative}"
+            blob_id = subprocess.check_output(
+                ["git", "rev-parse", revision],
+                cwd=ROOT,
+                text=True,
+            ).strip()
+            payload = subprocess.check_output(
+                ["git", "show", revision],
+                cwd=ROOT,
+            )
+            self.assertEqual(
+                subprocess.check_output(
+                    ["git", "cat-file", "blob", blob_id],
+                    cwd=ROOT,
+                ),
+                payload,
+            )
+            start, end = self.independent_top_level_value_span(payload, field)
+            outside = (
+                payload.decode("utf-8")[:start]
+                + payload.decode("utf-8")[end:]
+            ).encode("utf-8")
+            self.assertEqual(
+                hashlib.sha256(outside).hexdigest(),
+                overlay.expected_outside_sha256,
+                relative,
+            )
         self.assertEqual(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.overlays, ())
         self.assertIsNone(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.expected_outside_sha256)
         with self.assertRaises(FrozenInstanceError):
@@ -3180,7 +3306,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 changed_names,
             )
             observed_orders = []
-            for chapter_id, (expected_order, _) in self.ORDER_OVERLAYS.items():
+            for chapter_id, expected_order in self.ORDER_OVERLAYS.items():
                 chapter = self.parsed_chapter(quest_root, chapter_id)
                 observed_orders.append(int(chapter["order_index"]))
                 self.assertEqual(int(chapter["order_index"]), expected_order)
@@ -3190,7 +3316,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     self.outside_value_span(after[relative], "order_index"),
                 )
             self.assertEqual(observed_orders, [10, 11, 12, 13, 14, 15, 16, 30, 31, 32])
-            for chapter_id in self.LINK_DIGESTS:
+            for chapter_id in self.LINK_CHAPTERS:
                 relative = f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                 self.assertEqual(before[relative], after[relative])
 
@@ -3202,7 +3328,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             self.apply_custom(quest_root, link_overlays=self.synthetic_link_overlays())
 
             after = self.snapshot_files(repo_root)
-            for index, chapter_id in enumerate(self.LINK_DIGESTS, start=1):
+            for index, chapter_id in enumerate(self.LINK_CHAPTERS, start=1):
                 relative = f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                 chapter = self.parsed_chapter(quest_root, chapter_id)
                 self.assertEqual(
@@ -3233,7 +3359,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     group_orders[chapter["id"]] = int(chapter["order_index"])
             self.assertEqual(
                 group_orders,
-                {chapter_id: order for chapter_id, (order, _) in self.ORDER_OVERLAYS.items()},
+                self.ORDER_OVERLAYS,
             )
             self.assertEqual(len(set(group_orders.values())), len(group_orders))
             self.assertTrue(set(group_orders.values()).isdisjoint(range(8)))
@@ -3263,7 +3389,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             ),
             "malformed SNBT": lambda text: text.replace("\tquest_links: [ ]\n", "\tquest_links: [\n", 1),
         }
-        chapter_id = next(iter(self.LINK_DIGESTS))
+        chapter_id = self.LINK_CHAPTERS[0]
         for expected, mutate in cases.items():
             with self.subTest(expected=expected), tempfile.TemporaryDirectory() as temp_dir:
                 repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
@@ -3301,22 +3427,31 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
             chapter_id = next(iter(self.ORDER_OVERLAYS))
             path = quest_root / "chapters" / f"{chapter_id}.snbt"
-            original_commit = self.overlays._commit_overlay_writes
+            transaction_module = importlib.import_module(
+                "afterlight_quests.quest_build_transaction"
+            )
+            original_exchange = transaction_module._atomic_exchange
             drifted = path.read_bytes().replace(
                 b"\timages: [ ]",
                 b"\timages: [{ x: 9.0d }]",
                 1,
             )
             before = self.snapshot_files(repo_root)
+            raced = False
 
-            def drift_before_commit(writes, expected_originals):
-                path.write_bytes(drifted)
-                return original_commit(writes, expected_originals)
+            def drift_before_exchange(parent_fd, staged_name, target_name):
+                nonlocal raced
+                if target_name == path.name and not raced:
+                    raced = True
+                    replacement = path.with_name("review-race.tmp")
+                    replacement.write_bytes(drifted)
+                    os.replace(replacement, path)
+                return original_exchange(parent_fd, staged_name, target_name)
 
             with mock.patch.object(
-                self.overlays,
-                "_commit_overlay_writes",
-                side_effect=drift_before_commit,
+                transaction_module,
+                "_atomic_exchange",
+                side_effect=drift_before_exchange,
             ):
                 with self.assertRaisesRegex(ValueError, "changed after preflight"):
                     self.overlays.write_legacy_quest_overlays(
@@ -3324,6 +3459,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                         catalog=self.quests.build_catalog(),
                     )
 
+            self.assertTrue(raced)
             after = self.snapshot_files(repo_root)
             relative = path.relative_to(repo_root).as_posix()
             self.assertEqual(after[relative], drifted)
@@ -3437,24 +3573,148 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 self.apply_custom(quest_root, localization_overlays=invalid_manifest)
             self.assertEqual(self.snapshot_files(repo_root), before)
 
+        duplicate_manifest = self.overlays.LegacyLocalizationManifest(
+            expected_outside_sha256=self.LOCALIZATION_DIGEST,
+            overlays=(manifest.overlays[0], manifest.overlays[0]),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            before = self.snapshot_files(repo_root)
+            with self.assertRaisesRegex(ValueError, "duplicate localization overlay key"):
+                self.apply_custom(
+                    quest_root,
+                    localization_overlays=duplicate_manifest,
+                )
+            self.assertEqual(self.snapshot_files(repo_root), before)
+
+    def test_nested_lookalikes_are_preserved_and_only_top_level_values_change(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            link_template = self.overlays.LEGACY_QUEST_LINK_OVERLAYS[0]
+            link_path = quest_root / "chapters" / f"{link_template.chapter_id}.snbt"
+            link_text = link_path.read_text(encoding="utf-8").replace(
+                "\tquest_links: [ ]\n",
+                "\tprobe: { quest_links: [{ id: \"1234567890ABCDEF\" }] }\n"
+                "\tquest_links: [ ]\n",
+                1,
+            )
+            link_path.write_text(link_text, encoding="utf-8")
+            link_span = self.overlays._unique_top_level_value_span(
+                link_text,
+                "quest_links",
+                link_path,
+            )
+            custom_link = self.overlays.LegacyQuestLinkOverlay(
+                chapter_id=link_template.chapter_id,
+                expected_outside_sha256=self.overlays._outside_span_sha256(
+                    link_text,
+                    (link_span,),
+                ),
+                quest_links=self.synthetic_link_overlays()[0].quest_links,
+            )
+
+            order_template = self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS[0]
+            order_path = quest_root / "chapters" / f"{order_template.chapter_id}.snbt"
+            order_text = order_path.read_text(encoding="utf-8").replace(
+                "\torder_index:",
+                "\tprobe: { order_index: 777 }\n\torder_index:",
+                1,
+            )
+            order_path.write_text(order_text, encoding="utf-8")
+            order_span = self.overlays._unique_top_level_value_span(
+                order_text,
+                "order_index",
+                order_path,
+            )
+            custom_order = self.overlays.LegacyChapterOrderOverlay(
+                chapter_id=order_template.chapter_id,
+                expected_outside_sha256=self.overlays._outside_span_sha256(
+                    order_text,
+                    (order_span,),
+                ),
+                order_index=order_template.order_index,
+            )
+            order_overlays = (
+                custom_order,
+                *self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS[1:],
+            )
+
+            self.apply_custom(
+                quest_root,
+                link_overlays=(custom_link, *self.overlays.LEGACY_QUEST_LINK_OVERLAYS[1:]),
+                order_overlays=order_overlays,
+            )
+
+            self.assertEqual(
+                self.parsed_chapter(quest_root, link_template.chapter_id)["probe"]["quest_links"],
+                [{"id": "1234567890ABCDEF"}],
+            )
+            self.assertEqual(
+                self.parsed_chapter(quest_root, order_template.chapter_id)["probe"]["order_index"],
+                "777",
+            )
+
+    def test_multiline_localization_replaces_exact_top_level_key_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            lang_path = quest_root / "lang" / "en_us.snbt"
+            text = lang_path.read_text(encoding="utf-8")
+            text = text.rstrip()[:-1] + (
+                f'\tnested_probe: {{ {self.LOCALIZATION_KEY}: "Nested" }}\n'
+                "}\n"
+            )
+            lang_path.write_text(text, encoding="utf-8")
+            span = self.overlays._unique_top_level_value_span(
+                text,
+                self.LOCALIZATION_KEY,
+                lang_path,
+            )
+            manifest = self.overlays.LegacyLocalizationManifest(
+                expected_outside_sha256=self.overlays._outside_span_sha256(
+                    text,
+                    (span,),
+                ),
+                overlays=(
+                    self.overlays.LegacyLocalizationOverlay(
+                        key=self.LOCALIZATION_KEY,
+                        value=("Field Manuals", "Certifications"),
+                    ),
+                ),
+            )
+
+            self.apply_custom(quest_root, localization_overlays=manifest)
+
+            language = self.builder._parse_snbt(lang_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                language[self.LOCALIZATION_KEY],
+                ["Field Manuals", "Certifications"],
+            )
+            self.assertEqual(
+                language["nested_probe"][self.LOCALIZATION_KEY],
+                "Nested",
+            )
+
     def test_mid_commit_write_failure_restores_every_original_byte(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
             before = self.snapshot_files(repo_root)
-            original_replace = self.overlays._replace_overlay_file
+            transaction_module = importlib.import_module(
+                "afterlight_quests.quest_build_transaction"
+            )
+            original_exchange = transaction_module._atomic_exchange
             call_count = 0
 
-            def fail_second_replace(staged: Path, target: Path) -> None:
+            def fail_second_exchange(parent_fd, staged_name, target_name):
                 nonlocal call_count
                 call_count += 1
                 if call_count == 2:
                     raise OSError("injected later overlay write failure")
-                original_replace(staged, target)
+                return original_exchange(parent_fd, staged_name, target_name)
 
             with mock.patch.object(
-                self.overlays,
-                "_replace_overlay_file",
-                side_effect=fail_second_replace,
+                transaction_module,
+                "_atomic_exchange",
+                side_effect=fail_second_exchange,
             ):
                 with self.assertRaisesRegex(OSError, "injected later overlay write failure"):
                     self.overlays.write_legacy_quest_overlays(
@@ -3505,8 +3765,13 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     int(self.parsed_chapter(root, chapter_id)["order_index"])
                     for chapter_id in self.ORDER_OVERLAYS
                 ])
+                observed_repo_root = root.parents[2]
                 audit = (
-                    repo_root / "kubejs" / "server_scripts" / "afterlight" / "generated_quest_item_audit.js"
+                    observed_repo_root
+                    / "kubejs"
+                    / "server_scripts"
+                    / "afterlight"
+                    / "generated_quest_item_audit.js"
                 ).read_text(encoding="utf-8")
                 self.assertIn(self.quests.quest_item_audit_digest(root), audit)
                 return real_validate(root, observed_mods)
@@ -3520,7 +3785,10 @@ class LegacyQuestOverlayTests(unittest.TestCase):
 
             self.assertEqual(
                 validation_observations,
-                [[10, 11, 12, 13, 14, 15, 16, 30, 31, 32]],
+                [
+                    [10, 11, 12, 13, 14, 15, 16, 30, 31, 32],
+                    [10, 11, 12, 13, 14, 15, 16, 30, 31, 32],
+                ],
             )
             after = self.snapshot_files(repo_root)
             changed = sorted(
@@ -6173,7 +6441,7 @@ class QuestCompilerTests(unittest.TestCase):
             )
             self.assertEqual(list(quest_root.rglob("*.tmp")), [])
 
-    def test_writer_removes_only_stale_compiler_managed_output(self) -> None:
+    def test_writer_rejects_stale_managed_removal_requests(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
             unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
@@ -6189,10 +6457,22 @@ class QuestCompilerTests(unittest.TestCase):
                 (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
             )
 
-            self.quests.write_catalog([], quest_root)
+            before = {
+                path.relative_to(quest_root).as_posix(): path.read_bytes()
+                for path in sorted(quest_root.rglob("*"))
+                if path.is_file()
+            }
+            with self.assertRaisesRegex(ValueError, "unknown prior managed chapter"):
+                self.quests.write_catalog([], quest_root)
 
-            self.assertFalse(managed_chapter.exists())
-            self.assertNotIn(
+            after = {
+                path.relative_to(quest_root).as_posix(): path.read_bytes()
+                for path in sorted(quest_root.rglob("*"))
+                if path.is_file()
+            }
+            self.assertEqual(after, before)
+            self.assertTrue(managed_chapter.exists())
+            self.assertIn(
                 managed_key,
                 (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
             )

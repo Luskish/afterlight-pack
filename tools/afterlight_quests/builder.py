@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -12,6 +13,13 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
+
+from .quest_build_transaction import (
+    QuestBuildTransaction,
+    candidate_workspace,
+    is_quest_transaction_artifact,
+    quest_build_dependency_roots,
+)
 
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
@@ -798,6 +806,8 @@ def _load_managed_state(path: Path) -> tuple[set[str], set[str]]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"invalid managed quest state {path}: {error}") from error
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError(f"invalid managed quest state {path}: expected version 1 object")
     chapters = data.get("chapters")
     localization_keys = data.get("localization_keys")
     if not isinstance(chapters, list) or not all(isinstance(value, str) for value in chapters):
@@ -806,6 +816,12 @@ def _load_managed_state(path: Path) -> tuple[set[str], set[str]]:
         isinstance(value, str) for value in localization_keys
     ):
         raise ValueError(f"invalid managed localization list in {path}")
+    if len(chapters) != len(set(chapters)):
+        raise ValueError(f"duplicate managed chapter in {path}")
+    if len(localization_keys) != len(set(localization_keys)):
+        raise ValueError(f"duplicate managed localization key in {path}")
+    for chapter_id in chapters:
+        _require_signed_safe_ftb_identity(chapter_id, f"managed chapter in {path}")
     return set(chapters), set(localization_keys)
 
 
@@ -830,6 +846,76 @@ def write_catalog(
     quest_root: Path,
     *,
     legacy_quest_ids: Iterable[str] = (),
+    transaction: QuestBuildTransaction | None = None,
+) -> list[Path]:
+    repository_root = quest_root.parents[2]
+    frozen_catalog = copy.deepcopy(tuple(catalog))
+    frozen_legacy_ids = tuple(legacy_quest_ids)
+    if transaction is None:
+        with QuestBuildTransaction(repository_root) as owned_transaction:
+            return _write_catalog_transactional(
+                frozen_catalog,
+                quest_root,
+                legacy_quest_ids=frozen_legacy_ids,
+                transaction=owned_transaction,
+            )
+    transaction.require_root(repository_root)
+    if transaction.is_workspace(repository_root):
+        return _write_catalog_workspace(
+            frozen_catalog,
+            quest_root,
+            legacy_quest_ids=frozen_legacy_ids,
+        )
+    return _write_catalog_transactional(
+        frozen_catalog,
+        quest_root,
+        legacy_quest_ids=frozen_legacy_ids,
+        transaction=transaction,
+    )
+
+
+def _write_catalog_transactional(
+    catalog: Sequence[ChapterSpec],
+    quest_root: Path,
+    *,
+    legacy_quest_ids: Iterable[str],
+    transaction: QuestBuildTransaction,
+) -> list[Path]:
+    repository_root = quest_root.parents[2]
+    frozen = transaction.freeze(quest_build_dependency_roots(repository_root))
+    output_roots = (
+        quest_root,
+        repository_root
+        / "kubejs"
+        / "server_scripts"
+        / "afterlight"
+        / "generated_quest_item_audit.js",
+    )
+    with candidate_workspace(transaction, frozen) as candidate_root:
+        candidate_quest_root = (
+            candidate_root / quest_root.relative_to(repository_root)
+        )
+        _write_catalog_workspace(
+            catalog,
+            candidate_quest_root,
+            legacy_quest_ids=legacy_quest_ids,
+        )
+        writes, deletions = frozen.candidate_changes(
+            candidate_root,
+            output_roots,
+        )
+    transaction.promote_bytes(writes, frozen, deletions=deletions)
+    return [
+        quest_root / "chapters" / f"{chapter.id}.snbt"
+        for chapter in catalog
+    ]
+
+
+def _write_catalog_workspace(
+    catalog: Sequence[ChapterSpec],
+    quest_root: Path,
+    *,
+    legacy_quest_ids: Iterable[str] = (),
 ) -> list[Path]:
     resolved_quest_links = _validate_catalog(
         catalog,
@@ -842,11 +928,26 @@ def write_catalog(
         )
         for chapter_index, chapter in enumerate(catalog)
     }
-    normalize_quest_corpus_ids(quest_root)
     state_path = quest_root / MANAGED_STATE_NAME
     old_chapters, old_localization_keys = _load_managed_state(state_path)
     current_chapters = {chapter.id for chapter in catalog}
     localization_entries = _localization_entries(catalog)
+    unknown_chapters = sorted(old_chapters - current_chapters)
+    if unknown_chapters:
+        raise ValueError(
+            "unknown prior managed chapter removal request: "
+            + ", ".join(unknown_chapters)
+        )
+    unknown_localization = sorted(
+        old_localization_keys - set(localization_entries)
+    )
+    if unknown_localization:
+        raise ValueError(
+            "unknown prior managed localization removal request: "
+            + ", ".join(unknown_localization)
+        )
+    normalize_quest_corpus_ids(quest_root)
+    old_chapters, old_localization_keys = _load_managed_state(state_path)
     lang_path = quest_root / "lang" / "en_us.snbt"
     current_language = lang_path.read_text(encoding="utf-8")
     _, current_language_blocks = _split_language_entries(current_language)
@@ -855,9 +956,6 @@ def write_catalog(
         for key in localization_entries
         if key in old_localization_keys or key not in current_language_blocks
     }
-
-    for chapter_id in sorted(old_chapters - current_chapters):
-        (quest_root / "chapters" / f"{chapter_id}.snbt").unlink(missing_ok=True)
 
     written: list[Path] = []
     for chapter in catalog:
@@ -875,7 +973,7 @@ def write_catalog(
         _merge_language(
             current_language,
             managed_entries,
-            old_localization_keys - current_localization_keys,
+            (),
         ),
     )
     _atomic_write(
@@ -2704,6 +2802,8 @@ def _registry_input_digest(
     }
     paths.update(overrides)
     for path in sorted(paths):
+        if is_quest_transaction_artifact(path):
+            continue
         if path not in overrides and not path.is_file():
             continue
         digest.update(path.relative_to(repo_root).as_posix().encode("utf-8"))

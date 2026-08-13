@@ -1,11 +1,8 @@
 from __future__ import annotations
 
+import copy
 import hashlib
-import os
 import re
-import shutil
-import stat
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -14,6 +11,7 @@ from .builder import (
     ChapterSpec,
     QuestLinkSpec,
     SnbtParseError,
+    _atomic_write,
     _canonical_quest_link_coordinate,
     _escape,
     _managed_quest_slug_index,
@@ -24,6 +22,11 @@ from .builder import (
     _scan_snbt_value_spans,
     _validate_catalog,
     _validated_legacy_quest_ids,
+)
+from .quest_build_transaction import (
+    QuestBuildTransaction,
+    candidate_workspace,
+    quest_build_dependency_roots,
 )
 
 
@@ -311,98 +314,7 @@ def _validate_story_group_orders(
         )
 
 
-def _fsync_directory(path: Path) -> None:
-    descriptor = os.open(path, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
-
-
-def _write_staged_file(path: Path, payload: bytes, mode: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("wb") as output:
-        output.write(payload)
-        output.flush()
-        os.fsync(output.fileno())
-    os.chmod(path, mode)
-
-
-def _replace_overlay_file(staged: Path, target: Path) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(staged, target)
-    _fsync_directory(target.parent)
-
-
-def _commit_overlay_writes(
-    writes: Mapping[Path, bytes],
-    expected_originals: Mapping[Path, bytes | None],
-) -> list[Path]:
-    if set(writes) != set(expected_originals):
-        raise ValueError("legacy overlay write set does not match preflight originals")
-    for path, expected in expected_originals.items():
-        current = path.read_bytes() if path.exists() else None
-        if current != expected:
-            raise ValueError(f"legacy overlay target changed after preflight: {path}")
-    changed = [
-        path
-        for path in sorted(writes)
-        if expected_originals[path] != writes[path]
-    ]
-    if not changed:
-        return []
-
-    originals = {path: expected_originals[path] for path in changed}
-    modes = {
-        path: stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
-        for path in changed
-    }
-    repo_root = next(iter(changed)).parents[3]
-    transaction = Path(tempfile.mkdtemp(prefix=".legacy-overlay-", dir=repo_root))
-    staged_paths: dict[Path, Path] = {}
-    backup_paths: dict[Path, Path] = {}
-    attempted: list[Path] = []
-    try:
-        for index, path in enumerate(changed):
-            staged = transaction / "staged" / str(index)
-            _write_staged_file(staged, writes[path], modes[path])
-            staged_paths[path] = staged
-            if originals[path] is not None:
-                backup = transaction / "backup" / str(index)
-                _write_staged_file(backup, originals[path], modes[path])
-                backup_paths[path] = backup
-
-        for path in changed:
-            current = path.read_bytes() if path.exists() else None
-            if current != originals[path]:
-                raise ValueError(f"legacy overlay target changed after preflight: {path}")
-
-        for path in changed:
-            attempted.append(path)
-            _replace_overlay_file(staged_paths[path], path)
-    except BaseException as error:
-        rollback_errors: list[BaseException] = []
-        for path in reversed(attempted):
-            try:
-                if originals[path] is None:
-                    path.unlink(missing_ok=True)
-                    _fsync_directory(path.parent)
-                else:
-                    os.replace(backup_paths[path], path)
-                    _fsync_directory(path.parent)
-            except BaseException as rollback_error:
-                rollback_errors.append(rollback_error)
-        if rollback_errors:
-            raise RuntimeError(
-                f"legacy overlay rollback failed after {error}: {rollback_errors}"
-            ) from error
-        raise
-    finally:
-        shutil.rmtree(transaction, ignore_errors=True)
-    return changed
-
-
-def _write_legacy_quest_overlays(
+def _apply_legacy_quest_overlays_workspace(
     quest_root: Path,
     *,
     link_overlays: Sequence[LegacyQuestLinkOverlay],
@@ -647,7 +559,78 @@ def _write_legacy_quest_overlays(
         if path != audit_path
     }
     expected_originals[audit_path] = audit_original
-    return _commit_overlay_writes(candidate_bytes, expected_originals)
+    changed = [
+        path
+        for path in sorted(candidate_bytes)
+        if expected_originals[path] != candidate_bytes[path]
+    ]
+    for path in changed:
+        _atomic_write(path, candidate_bytes[path].decode("utf-8"))
+    return changed
+
+
+def _write_legacy_quest_overlays(
+    quest_root: Path,
+    *,
+    link_overlays: Sequence[LegacyQuestLinkOverlay],
+    order_overlays: Sequence[LegacyChapterOrderOverlay],
+    localization_overlays: LegacyLocalizationManifest,
+    catalog: Sequence[ChapterSpec] | None = None,
+    known_quest_ids: Iterable[str] | None = None,
+    transaction: QuestBuildTransaction | None = None,
+) -> list[Path]:
+    repository_root = quest_root.parents[2]
+    frozen_link_overlays = copy.deepcopy(tuple(link_overlays))
+    frozen_order_overlays = copy.deepcopy(tuple(order_overlays))
+    frozen_localization_overlays = copy.deepcopy(localization_overlays)
+    frozen_catalog = None if catalog is None else copy.deepcopy(tuple(catalog))
+    frozen_known_ids = None if known_quest_ids is None else tuple(known_quest_ids)
+    if transaction is None:
+        with QuestBuildTransaction(repository_root) as owned_transaction:
+            return _write_legacy_quest_overlays(
+                quest_root,
+                link_overlays=frozen_link_overlays,
+                order_overlays=frozen_order_overlays,
+                localization_overlays=frozen_localization_overlays,
+                catalog=frozen_catalog,
+                known_quest_ids=frozen_known_ids,
+                transaction=owned_transaction,
+            )
+    transaction.require_root(repository_root)
+    if transaction.is_workspace(repository_root):
+        return _apply_legacy_quest_overlays_workspace(
+            quest_root,
+            link_overlays=frozen_link_overlays,
+            order_overlays=frozen_order_overlays,
+            localization_overlays=frozen_localization_overlays,
+            catalog=frozen_catalog,
+            known_quest_ids=frozen_known_ids,
+        )
+    frozen = transaction.freeze(quest_build_dependency_roots(repository_root))
+    audit_path = (
+        repository_root
+        / "kubejs"
+        / "server_scripts"
+        / "afterlight"
+        / "generated_quest_item_audit.js"
+    )
+    with candidate_workspace(transaction, frozen) as candidate_root:
+        candidate_quest_root = (
+            candidate_root / quest_root.relative_to(repository_root)
+        )
+        _apply_legacy_quest_overlays_workspace(
+            candidate_quest_root,
+            link_overlays=frozen_link_overlays,
+            order_overlays=frozen_order_overlays,
+            localization_overlays=frozen_localization_overlays,
+            catalog=frozen_catalog,
+            known_quest_ids=frozen_known_ids,
+        )
+        writes, deletions = frozen.candidate_changes(
+            candidate_root,
+            (quest_root, audit_path),
+        )
+    return transaction.promote_bytes(writes, frozen, deletions=deletions)
 
 
 def write_legacy_quest_overlays(
@@ -655,6 +638,7 @@ def write_legacy_quest_overlays(
     *,
     catalog: Sequence[ChapterSpec] | None = None,
     known_quest_ids: Iterable[str] | None = None,
+    transaction: QuestBuildTransaction | None = None,
 ) -> list[Path]:
     return _write_legacy_quest_overlays(
         quest_root,
@@ -663,4 +647,5 @@ def write_legacy_quest_overlays(
         localization_overlays=LEGACY_LOCALIZATION_OVERLAYS,
         catalog=catalog,
         known_quest_ids=known_quest_ids,
+        transaction=transaction,
     )

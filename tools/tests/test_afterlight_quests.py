@@ -2337,7 +2337,7 @@ class QuestLinkCompilerTests(unittest.TestCase):
             explicit_id=explicit_id,
         )
 
-    def make_catalog(self, quest_links=()):
+    def make_catalog(self, quest_links=(), *, target_explicit_id=None):
         group = self.quests.GroupSpec(
             slug="story",
             title="The Story",
@@ -2369,6 +2369,7 @@ class QuestLinkCompilerTests(unittest.TestCase):
             description=("Target quest.",),
             x=1.0,
             y=0.0,
+            explicit_id=target_explicit_id,
         )
         return [
             self.quests.ChapterSpec(
@@ -2391,6 +2392,20 @@ class QuestLinkCompilerTests(unittest.TestCase):
                 explicit_id=self.TARGET_CHAPTER_ID,
             ),
         ]
+
+    def make_clean_quest_root(self, base: Path) -> Path:
+        quest_root = base / "config" / "ftbquests" / "quests"
+        (quest_root / "chapters").mkdir(parents=True)
+        (quest_root / "lang").mkdir()
+        (quest_root / "chapter_groups.snbt").write_text(
+            '{\n\tchapter_groups: [{ id: "4525BB3160467FCB" }]\n}\n',
+            encoding="utf-8",
+        )
+        (quest_root / "lang" / "en_us.snbt").write_text(
+            '{\n\tchapter_group.4525BB3160467FCB.title: "The Story"\n}\n',
+            encoding="utf-8",
+        )
+        return quest_root
 
     def make_sentinel_quest_root(self, base: Path) -> Path:
         quest_root = base / "config" / "ftbquests" / "quests"
@@ -2455,11 +2470,27 @@ class QuestLinkCompilerTests(unittest.TestCase):
         self.assertEqual(explicit.id, self.EXPLICIT_LINK_ID)
 
     def test_link_targets_resolve_slugs_and_preserve_explicit_ids(self) -> None:
-        slug_target = self.make_link()
+        slug_catalog = self.make_catalog([self.make_link()])
         explicit_target = self.make_link(linked_quest=self.EXPLICIT_TARGET_ID)
 
-        self.assertEqual(slug_target.linked_quest_id, "146BD13E3B28B192")
+        self.quests.assert_no_id_collisions(slug_catalog)
         self.assertEqual(explicit_target.linked_quest_id, self.EXPLICIT_TARGET_ID)
+
+    def test_slug_target_resolves_to_managed_quests_exact_explicit_id(self) -> None:
+        catalog = self.make_catalog(
+            [self.make_link()],
+            target_explicit_id=self.EXPLICIT_TARGET_ID,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_clean_quest_root(Path(temp_dir))
+            written = self.quests.write_catalog(catalog, quest_root)
+            chapter_text = written[0].read_text(encoding="utf-8")
+
+        self.assertIn(
+            f'linked_quest: "{self.EXPLICIT_TARGET_ID}"',
+            chapter_text,
+        )
 
     def test_link_ids_reject_malformed_low_and_high_bit_values(self) -> None:
         for identifier in (
@@ -2474,8 +2505,62 @@ class QuestLinkCompilerTests(unittest.TestCase):
     def test_explicit_targets_reject_low_and_high_bit_values(self) -> None:
         for identifier in ("0000000000000001", "8000000000000000"):
             with self.subTest(identifier=identifier):
-                with self.assertRaisesRegex(ValueError, "signed-safe"):
-                    _ = self.make_link(linked_quest=identifier).linked_quest_id
+                expected = (
+                    r"catalog\[0\]\.quest_links\[0\]\.linked_quest"
+                    + r".*chapter 'story/test/source-chapter'.*"
+                    + re.escape(repr(identifier))
+                )
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.quests.assert_no_id_collisions(
+                        self.make_catalog([self.make_link(linked_quest=identifier)])
+                    )
+
+    def test_id_like_and_invalid_slug_targets_fail_with_exact_paths(self) -> None:
+        for target in (
+            "2aaaaaaaaaaaaaaa",
+            "1234567890ABCDEG",
+            "Story/test/target",
+            "story//target",
+            "story/test_target",
+        ):
+            with self.subTest(target=target):
+                expected = (
+                    r"catalog\[0\]\.quest_links\[0\]\.linked_quest"
+                    + r".*chapter 'story/test/source-chapter'.*"
+                    + re.escape(repr(target))
+                )
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.quests.assert_no_id_collisions(
+                        self.make_catalog([self.make_link(linked_quest=target)])
+                    )
+
+    def test_absent_slug_cannot_resolve_through_hash_alias(self) -> None:
+        absent_slug = "story/test/absent-alias"
+        catalog = self.make_catalog(
+            [self.make_link(linked_quest=absent_slug)],
+            target_explicit_id="0A3939447125BD12",
+        )
+        expected = (
+            r"catalog\[0\]\.quest_links\[0\]\.linked_quest"
+            + r".*chapter 'story/test/source-chapter'.*"
+            + re.escape(repr(absent_slug))
+        )
+
+        with self.assertRaisesRegex(ValueError, expected):
+            self.quests.assert_no_id_collisions(catalog)
+
+    def test_duplicate_quest_slugs_report_both_exact_catalog_paths(self) -> None:
+        catalog = self.make_catalog(target_explicit_id=self.EXPLICIT_TARGET_ID)
+        duplicate_slug = catalog[0].quests[0].slug
+        catalog[1].quests[0].slug = duplicate_slug
+        expected = (
+            r"catalog\[1\]\.quests\[0\]\.slug"
+            + r".*catalog\[0\]\.quests\[0\]\.slug"
+            + r".*'story/test/source'"
+        )
+
+        with self.assertRaisesRegex(ValueError, expected):
+            self.quests.assert_no_id_collisions(catalog)
 
     def test_render_chapter_emits_exact_installed_quest_link_schema(self) -> None:
         group = self.quests.GroupSpec("story", "The Story", self.GROUP_ID)
@@ -2606,6 +2691,30 @@ class QuestLinkCompilerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate.*target.*coordinate"):
             self.quests.assert_no_id_collisions(catalog)
 
+    def test_duplicate_triples_use_canonical_serialized_coordinates(self) -> None:
+        coordinate_pairs = (
+            ({"x": 0.01, "y": 2.0}, {"x": 0.04, "y": 2.0}),
+            ({"x": 2.0, "y": 1.01}, {"x": 2.0, "y": 1.04}),
+            ({"x": -0.0, "y": 2.0}, {"x": -0.04, "y": 2.0}),
+        )
+        for first, second in coordinate_pairs:
+            with self.subTest(first=first, second=second):
+                catalog = self.make_catalog(
+                    [
+                        self.make_link(**first),
+                        self.make_link(
+                            slug="story/test/other-link",
+                            explicit_id=self.EXPLICIT_LINK_ID,
+                            **second,
+                        ),
+                    ]
+                )
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate.*target.*coordinate",
+                ):
+                    self.quests.assert_no_id_collisions(catalog)
+
     def test_nan_link_coordinate_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "finite SNBT double"):
             self.quests.assert_no_id_collisions(
@@ -2656,6 +2765,60 @@ class QuestLinkCompilerTests(unittest.TestCase):
                 legacy_quest_ids=[managed_quest_id],
             )
 
+    def test_repeated_groups_require_consistent_slug_title_and_id(self) -> None:
+        self.quests.assert_no_id_collisions(self.make_catalog())
+
+        divergent_groups = (
+            self.quests.GroupSpec("story", "Other Story", self.GROUP_ID),
+            self.quests.GroupSpec("story", "The Story", "3AAAAAAAAAAAAAAA"),
+        )
+        for group in divergent_groups:
+            with self.subTest(group=group):
+                catalog = self.make_catalog()
+                catalog[1].group = group
+                with self.assertRaisesRegex(
+                    ValueError,
+                    r"catalog\[1\]\.group.*catalog\[0\]\.group",
+                ):
+                    self.quests.assert_no_id_collisions(catalog)
+
+    def test_distinct_groups_use_the_complete_global_collision_namespace(self) -> None:
+        baseline = self.make_catalog(
+            [self.make_link(explicit_id=self.EXPLICIT_LINK_ID)]
+        )
+        identifiers = {
+            "group": baseline[0].group.resolved_id,
+            "chapter": baseline[0].id,
+            "link": baseline[0].quest_links[0].id,
+            "quest": baseline[0].quests[0].id,
+            "task": baseline[0].quests[0].tasks[0].id,
+            "reward": baseline[0].quests[0].rewards[0].id,
+        }
+        for kind, identifier in identifiers.items():
+            with self.subTest(kind=kind):
+                catalog = self.make_catalog(
+                    [self.make_link(explicit_id=self.EXPLICIT_LINK_ID)]
+                )
+                catalog[1].group = self.quests.GroupSpec(
+                    f"manual-{kind}",
+                    f"Manual {kind}",
+                    identifier,
+                )
+                with self.assertRaisesRegex(ValueError, "collision"):
+                    self.quests.assert_no_id_collisions(catalog)
+
+        legacy_catalog = self.make_catalog()
+        legacy_catalog[1].group = self.quests.GroupSpec(
+            "manual-legacy",
+            "Manual Legacy",
+            self.LEGACY_TARGET_ID,
+        )
+        with self.assertRaisesRegex(ValueError, "collision"):
+            self.quests.assert_no_id_collisions(
+                legacy_catalog,
+                legacy_quest_ids=[self.LEGACY_TARGET_ID],
+            )
+
     def test_write_preflight_preserves_quest_root_for_every_failure_class(self) -> None:
         duplicate_links = [
             self.make_link(),
@@ -2681,6 +2844,48 @@ class QuestLinkCompilerTests(unittest.TestCase):
             ),
         }
 
+        absent_alias = self.make_catalog(
+            [self.make_link(linked_quest="story/test/absent-alias")],
+            target_explicit_id="0A3939447125BD12",
+        )
+        duplicate_slug = self.make_catalog(
+            target_explicit_id=self.EXPLICIT_TARGET_ID
+        )
+        duplicate_slug[1].quests[0].slug = duplicate_slug[0].quests[0].slug
+        serialized_duplicate = self.make_catalog(
+            [
+                self.make_link(x=0.01),
+                self.make_link(
+                    slug="story/test/other-link",
+                    x=0.04,
+                    explicit_id=self.EXPLICIT_LINK_ID,
+                ),
+            ]
+        )
+        divergent_group = self.make_catalog()
+        divergent_group[1].group = self.quests.GroupSpec(
+            "story",
+            "The Story",
+            self.LEGACY_TARGET_ID,
+        )
+        failure_catalogs.update(
+            {
+                "lowercase target": self.make_catalog(
+                    [self.make_link(linked_quest="2aaaaaaaaaaaaaaa")]
+                ),
+                "nonhex target": self.make_catalog(
+                    [self.make_link(linked_quest="1234567890ABCDEG")]
+                ),
+                "invalid target slug": self.make_catalog(
+                    [self.make_link(linked_quest="story//target")]
+                ),
+                "absent slug hash alias": absent_alias,
+                "duplicate quest slug": duplicate_slug,
+                "serialized duplicate triple": serialized_duplicate,
+                "divergent repeated group": divergent_group,
+            }
+        )
+
         for failure_class, catalog in failure_catalogs.items():
             with self.subTest(failure_class=failure_class):
                 with tempfile.TemporaryDirectory() as temp_dir:
@@ -2689,6 +2894,25 @@ class QuestLinkCompilerTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         self.quests.write_catalog(catalog, quest_root)
                     self.assertEqual(self.snapshot_files(quest_root), before)
+
+    def test_write_preflight_preserves_root_for_legacy_group_collision(self) -> None:
+        catalog = self.make_catalog()
+        catalog[1].group = self.quests.GroupSpec(
+            "manual-legacy",
+            "Manual Legacy",
+            self.LEGACY_TARGET_ID,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            quest_root = self.make_sentinel_quest_root(Path(temp_dir))
+            before = self.snapshot_files(quest_root)
+            with self.assertRaisesRegex(ValueError, "collision"):
+                self.quests.write_catalog(
+                    catalog,
+                    quest_root,
+                    legacy_quest_ids=[self.LEGACY_TARGET_ID],
+                )
+            self.assertEqual(self.snapshot_files(quest_root), before)
 
 
 class QuestCompilerTests(unittest.TestCase):
@@ -5286,11 +5510,12 @@ class QuestCompilerTests(unittest.TestCase):
     def test_catalog_collision_detection_rejects_reused_id(self) -> None:
         catalog = self.make_catalog()
         duplicate = self.quests.QuestSpec(
-            slug=catalog[0].quests[0].slug,
+            slug="story/test/duplicate-widget",
             title="Duplicate",
             description=("Duplicate identifier.",),
             x=1.0,
             y=0.0,
+            explicit_id=catalog[0].quests[0].id,
         )
         catalog[0].quests += (duplicate,)
 

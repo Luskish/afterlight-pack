@@ -15,6 +15,10 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
+FTB_ID_LIKE = re.compile(r"^[0-9A-Za-z]{16}$")
+PROJECT_QUEST_SLUG = re.compile(
+    r"^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+)
 FTB_LOCALIZATION_KEY = re.compile(
     r"^(?P<prefix>(?:chapter|chapter_group|image|quest|quest_link|reward|reward_table|task)\.)"
     r"(?P<identifier>[0-9A-F]{16})(?P<suffix>\..+)$"
@@ -134,6 +138,13 @@ class _MigrationRewardRecord:
 
 
 @dataclass(frozen=True)
+class _ResolvedQuestLink:
+    linked_quest_id: str
+    x_literal: str
+    y_literal: str
+
+
+@dataclass(frozen=True)
 class GroupSpec:
     slug: str
     title: str
@@ -188,12 +199,20 @@ class QuestLinkSpec:
 
     @property
     def linked_quest_id(self) -> str:
-        if re.fullmatch(r"[0-9A-Fa-f]{16}", self.linked_quest):
+        if isinstance(self.linked_quest, str) and FTB_ID_LIKE.fullmatch(
+            self.linked_quest
+        ):
             return _require_signed_safe_ftb_identity(
                 self.linked_quest,
                 f"linked quest target for {self.slug}",
             )
-        return stable_id("quest", self.linked_quest)
+        _require_project_quest_slug(
+            self.linked_quest,
+            f"linked quest target for {self.slug}",
+        )
+        raise ValueError(
+            f"catalog resolution required for linked quest slug: {self.linked_quest!r}"
+        )
 
 
 @dataclass
@@ -308,72 +327,213 @@ def _require_quest_link_coordinate(value: object, label: str) -> float:
     return value
 
 
+def _canonical_quest_link_coordinate(value: object, label: str) -> str:
+    coordinate = _require_quest_link_coordinate(value, label)
+    return f"{coordinate:.1f}d"
+
+
+def _require_project_quest_slug(value: object, label: str) -> str:
+    if not isinstance(value, str) or PROJECT_QUEST_SLUG.fullmatch(value) is None:
+        raise ValueError(
+            f"project quest slug required for {label}: {value!r}; expected lowercase "
+            "letters or digits with single hyphens inside slash-separated segments"
+        )
+    return value
+
+
+def _managed_quest_slug_index(
+    catalog: Sequence[ChapterSpec],
+) -> dict[str, tuple[str, str]]:
+    index: dict[str, tuple[str, str]] = {}
+    for chapter_index, chapter in enumerate(catalog):
+        for quest_index, quest in enumerate(chapter.quests):
+            path = f"catalog[{chapter_index}].quests[{quest_index}].slug"
+            slug = _require_project_quest_slug(quest.slug, path)
+            previous = index.get(slug)
+            if previous is not None:
+                raise ValueError(
+                    f"duplicate quest slug at {path}; first declared at "
+                    f"{previous[1]}: {slug!r}"
+                )
+            index[slug] = (quest.id, path)
+    return index
+
+
+def _resolve_quest_link_target(
+    link: QuestLinkSpec,
+    *,
+    path: str,
+    chapter_slug: str,
+    quest_slug_index: Mapping[str, tuple[str, str]],
+    valid_explicit_ids: set[str],
+) -> str:
+    value = link.linked_quest
+    location = f"{path} in chapter {chapter_slug!r}"
+    if isinstance(value, str) and FTB_ID_LIKE.fullmatch(value):
+        try:
+            target_id = _require_signed_safe_ftb_identity(value, location)
+        except ValueError as error:
+            raise ValueError(
+                f"invalid linked quest target at {location}: {value!r}"
+            ) from error
+        if target_id not in valid_explicit_ids:
+            raise ValueError(
+                f"unresolved linked quest target at {location}: {value!r}"
+            )
+        return target_id
+
+    try:
+        slug = _require_project_quest_slug(value, location)
+    except ValueError as error:
+        raise ValueError(
+            f"invalid linked quest target at {location}: {value!r}"
+        ) from error
+    target = quest_slug_index.get(slug)
+    if target is None:
+        raise ValueError(f"unresolved linked quest target at {location}: {value!r}")
+    return target[0]
+
+
+def _validate_catalog(
+    catalog: Sequence[ChapterSpec],
+    *,
+    legacy_quest_ids: Iterable[str] = (),
+) -> tuple[tuple[_ResolvedQuestLink, ...], ...]:
+    owners: dict[str, tuple[str, str, str]] = {}
+    groups_by_slug: dict[str, tuple[str, str, str]] = {}
+    legacy_ids = _validated_legacy_quest_ids(legacy_quest_ids)
+    quest_slug_index = _managed_quest_slug_index(catalog)
+
+    def register(identifier: str, kind: str, slug: str, path: str) -> None:
+        if not HEX_ID.fullmatch(identifier):
+            raise ValueError(
+                f"malformed {kind} ID at {path} for {slug}: {identifier}"
+            )
+        previous = owners.get(identifier)
+        if previous is not None:
+            raise ValueError(
+                f"ID collision at {path} for {kind}:{slug} with {previous[2]} "
+                f"for {previous[0]}:{previous[1]}: {identifier}"
+            )
+        owners[identifier] = (kind, slug, path)
+
+    for legacy_index, legacy_id in enumerate(legacy_ids):
+        register(
+            legacy_id,
+            "legacy_quest",
+            legacy_id,
+            f"legacy_quest_ids[{legacy_index}]",
+        )
+
+    managed_quest_ids = {target[0] for target in quest_slug_index.values()}
+    for chapter_index, chapter in enumerate(catalog):
+        group_path = f"catalog[{chapter_index}].group"
+        group_id = chapter.group.resolved_id
+        previous_group = groups_by_slug.get(chapter.group.slug)
+        if previous_group is None:
+            register(
+                group_id,
+                "chapter_group",
+                chapter.group.slug,
+                group_path,
+            )
+            groups_by_slug[chapter.group.slug] = (
+                chapter.group.title,
+                group_id,
+                group_path,
+            )
+        elif (chapter.group.title, group_id) != previous_group[:2]:
+            raise ValueError(
+                f"inconsistent repeated chapter group at {group_path}; first "
+                f"declared at {previous_group[2]}: slug={chapter.group.slug!r}, "
+                f"title={chapter.group.title!r}, resolved_id={group_id!r}"
+            )
+
+        register(chapter.id, "chapter", chapter.slug, f"catalog[{chapter_index}].id")
+        for link_index, link in enumerate(chapter.quest_links):
+            register(
+                link.id,
+                "quest_link",
+                link.slug,
+                f"catalog[{chapter_index}].quest_links[{link_index}].id",
+            )
+        for quest_index, quest in enumerate(chapter.quests):
+            register(
+                quest.id,
+                "quest",
+                quest.slug,
+                f"catalog[{chapter_index}].quests[{quest_index}].id",
+            )
+            for task_index, task in enumerate(quest.tasks):
+                register(
+                    task.id,
+                    "task",
+                    task.slug,
+                    (
+                        f"catalog[{chapter_index}].quests[{quest_index}]"
+                        f".tasks[{task_index}].id"
+                    ),
+                )
+            for reward_index, reward in enumerate(quest.rewards):
+                register(
+                    reward.id,
+                    "reward",
+                    reward.slug,
+                    (
+                        f"catalog[{chapter_index}].quests[{quest_index}]"
+                        f".rewards[{reward_index}].id"
+                    ),
+                )
+
+    valid_target_ids = managed_quest_ids | set(legacy_ids)
+    resolved_links: list[tuple[_ResolvedQuestLink, ...]] = []
+    for chapter_index, chapter in enumerate(catalog):
+        target_coordinates: set[tuple[str, str, str]] = set()
+        chapter_links: list[_ResolvedQuestLink] = []
+        for link_index, link in enumerate(chapter.quest_links):
+            x_literal = _canonical_quest_link_coordinate(
+                link.x,
+                f"quest link {link.slug} x coordinate",
+            )
+            y_literal = _canonical_quest_link_coordinate(
+                link.y,
+                f"quest link {link.slug} y coordinate",
+            )
+            linked_quest_id = _resolve_quest_link_target(
+                link,
+                path=(
+                    f"catalog[{chapter_index}].quest_links[{link_index}]"
+                    ".linked_quest"
+                ),
+                chapter_slug=chapter.slug,
+                quest_slug_index=quest_slug_index,
+                valid_explicit_ids=valid_target_ids,
+            )
+            target_coordinate = (linked_quest_id, x_literal, y_literal)
+            if target_coordinate in target_coordinates:
+                raise ValueError(
+                    f"duplicate quest link target and coordinate triple in "
+                    f"chapter {chapter.slug}: {linked_quest_id}, "
+                    f"{x_literal}, {y_literal}"
+                )
+            target_coordinates.add(target_coordinate)
+            chapter_links.append(
+                _ResolvedQuestLink(
+                    linked_quest_id=linked_quest_id,
+                    x_literal=x_literal,
+                    y_literal=y_literal,
+                )
+            )
+        resolved_links.append(tuple(chapter_links))
+    return tuple(resolved_links)
+
+
 def assert_no_id_collisions(
     catalog: Sequence[ChapterSpec],
     *,
     legacy_quest_ids: Iterable[str] = (),
 ) -> None:
-    owners: dict[str, tuple[str, str]] = {}
-    seen_groups: set[tuple[str, str]] = set()
-    legacy_ids = _validated_legacy_quest_ids(legacy_quest_ids)
-
-    def register(identifier: str, kind: str, slug: str, allow_repeat: bool = False) -> None:
-        if not HEX_ID.fullmatch(identifier):
-            raise ValueError(f"malformed {kind} ID for {slug}: {identifier}")
-        owner = (kind, slug)
-        if allow_repeat and owner in seen_groups:
-            return
-        previous = owners.get(identifier)
-        if previous is not None:
-            raise ValueError(
-                f"ID collision for {kind}:{slug} and {previous[0]}:{previous[1]}: "
-                f"{identifier}"
-            )
-        owners[identifier] = owner
-        if allow_repeat:
-            seen_groups.add(owner)
-
-    for legacy_id in legacy_ids:
-        register(legacy_id, "legacy_quest", legacy_id)
-
-    managed_quest_ids: set[str] = set()
-    for chapter in catalog:
-        register(chapter.group.resolved_id, "chapter_group", chapter.group.slug, True)
-        register(chapter.id, "chapter", chapter.slug)
-        for link in chapter.quest_links:
-            register(link.id, "quest_link", link.slug)
-        for quest in chapter.quests:
-            register(quest.id, "quest", quest.slug)
-            managed_quest_ids.add(quest.id)
-            for task in quest.tasks:
-                register(task.id, "task", task.slug)
-            for reward in quest.rewards:
-                register(reward.id, "reward", reward.slug)
-
-    valid_target_ids = managed_quest_ids | set(legacy_ids)
-    for chapter in catalog:
-        target_coordinates: set[tuple[str, float, float]] = set()
-        for link in chapter.quest_links:
-            x = _require_quest_link_coordinate(
-                link.x,
-                f"quest link {link.slug} x coordinate",
-            )
-            y = _require_quest_link_coordinate(
-                link.y,
-                f"quest link {link.slug} y coordinate",
-            )
-            linked_quest_id = link.linked_quest_id
-            if linked_quest_id not in valid_target_ids:
-                raise ValueError(
-                    f"unresolved linked quest target for {link.slug}: {linked_quest_id}"
-                )
-            target_coordinate = (linked_quest_id, x, y)
-            if target_coordinate in target_coordinates:
-                raise ValueError(
-                    f"duplicate quest link target and coordinate triple in "
-                    f"chapter {chapter.slug}: {linked_quest_id}, {x}, {y}"
-                )
-            target_coordinates.add(target_coordinate)
+    _validate_catalog(catalog, legacy_quest_ids=legacy_quest_ids)
 
 
 def _escape(value: str) -> str:
@@ -415,7 +575,11 @@ def _render_object(fields: Iterable[tuple[str, Any]], indent: int) -> list[str]:
     return lines
 
 
-def render_chapter(chapter: ChapterSpec) -> str:
+def render_chapter(
+    chapter: ChapterSpec,
+    *,
+    _resolved_quest_links: Sequence[_ResolvedQuestLink] | None = None,
+) -> str:
     lines = [
         "{",
         "\tdefault_hide_dependency_lines: false",
@@ -428,20 +592,34 @@ def render_chapter(chapter: ChapterSpec) -> str:
         f"\torder_index: {chapter.order_index}",
     ]
     if chapter.quest_links:
-        lines.append("\tquest_links: [")
-        for link in chapter.quest_links:
-            x = _require_quest_link_coordinate(
-                link.x,
-                f"quest link {link.slug} x coordinate",
+        if (
+            _resolved_quest_links is not None
+            and len(_resolved_quest_links) != len(chapter.quest_links)
+        ):
+            raise ValueError(
+                f"resolved quest link target count mismatch for chapter {chapter.slug}"
             )
-            y = _require_quest_link_coordinate(
-                link.y,
-                f"quest link {link.slug} y coordinate",
+        lines.append("\tquest_links: [")
+        for link_index, link in enumerate(chapter.quest_links):
+            resolved_link = (
+                _resolved_quest_links[link_index]
+                if _resolved_quest_links is not None
+                else _ResolvedQuestLink(
+                    linked_quest_id=link.linked_quest_id,
+                    x_literal=_canonical_quest_link_coordinate(
+                        link.x,
+                        f"quest link {link.slug} x coordinate",
+                    ),
+                    y_literal=_canonical_quest_link_coordinate(
+                        link.y,
+                        f"quest link {link.slug} y coordinate",
+                    ),
+                )
             )
             lines.append(
                 f"\t\t{{ id: {_escape(link.id)}, "
-                f"linked_quest: {_escape(link.linked_quest_id)}, "
-                f"x: {_format_scalar(x)}, y: {_format_scalar(y)} }}"
+                f"linked_quest: {_escape(resolved_link.linked_quest_id)}, "
+                f"x: {resolved_link.x_literal}, y: {resolved_link.y_literal} }}"
             )
         lines.append("\t]")
     else:
@@ -607,8 +785,17 @@ def write_catalog(
     *,
     legacy_quest_ids: Iterable[str] = (),
 ) -> list[Path]:
-    assert_no_id_collisions(catalog, legacy_quest_ids=legacy_quest_ids)
-    rendered_chapters = {chapter.id: render_chapter(chapter) for chapter in catalog}
+    resolved_quest_links = _validate_catalog(
+        catalog,
+        legacy_quest_ids=legacy_quest_ids,
+    )
+    rendered_chapters = {
+        chapter.id: render_chapter(
+            chapter,
+            _resolved_quest_links=resolved_quest_links[chapter_index],
+        )
+        for chapter_index, chapter in enumerate(catalog)
+    }
     normalize_quest_corpus_ids(quest_root)
     state_path = quest_root / MANAGED_STATE_NAME
     old_chapters, old_localization_keys = _load_managed_state(state_path)

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SERVER_DIR = ROOT / "server"
 COMPOSE_FILE = SERVER_DIR / "docker-compose.yml"
 OPERATOR = SERVER_DIR / "afterlight-server.sh"
+SAFETY_HELPER = SERVER_DIR / "afterlight-safety.py"
 
 EXPECTED_MINECRAFT_IMAGE = (
     "itzg/minecraft-server:2026.8.0-java21@sha256:"
@@ -30,6 +31,8 @@ EXPECTED_PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
 RAW_PACK_URL_PREFIX = "https://raw.githubusercontent.com/Luskish/afterlight-pack"
 CURRENT_PACK_SHA = "2" * 40
 BACKUP_PACK_SHA = "1" * 40
+MINECRAFT_CONTAINER_ID = "a" * 64
+BACKUP_CONTAINER_ID = "b" * 64
 EXPECTED_PATH_GRAMMAR = "^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
 REQUIRED_OPERATOR_TESTS = {
     "test_unknown_command_fails_with_usage",
@@ -38,6 +41,7 @@ REQUIRED_OPERATOR_TESTS = {
     "test_backup_requires_a_new_regular_archive",
     "test_update_backs_up_before_recreating_minecraft",
     "test_failed_update_stops_services_and_prints_exact_rollback_command",
+    "test_update_rejects_durable_quest_quarantine_before_docker",
     "test_backup_rejects_archives_missing_required_markers",
     "test_rollback_rejects_invalid_archive_before_stopping_services",
     "test_rollback_requires_confirm_and_archive_beneath_backup_root",
@@ -72,6 +76,18 @@ class FriendServerTests(unittest.TestCase):
         self.docker_log = self.temp_path / "docker.log"
         self.pack_url_log = self.temp_path / "pack-url.log"
         self.rm_log = self.temp_path / "rm.log"
+        self.quarantine_dir = self.temp_path / "quarantine"
+        self.runtime_dir = self.temp_path / "run"
+        self.snapshot_root = self.temp_path / "snapshots"
+        self.quarantine_dir.mkdir(mode=0o750)
+        self.runtime_dir.mkdir(mode=0o750)
+        self.snapshot_root.mkdir(mode=0o700)
+        self.test_contract = self.temp_path / ".afterlight-safety-test-contract"
+        self.test_contract.write_text(
+            "AFTERLIGHT SAFETY TEST CONTRACT v1\n",
+            encoding="utf-8",
+        )
+        self.test_contract.chmod(0o600)
         self._write_env()
         self._install_fakes()
 
@@ -79,12 +95,29 @@ class FriendServerTests(unittest.TestCase):
         self.environment.update(
             {
                 "PATH": f"{self.fake_bin}:{self.environment['PATH']}",
+                "AFTERLIGHT_SAFETY_TEST_ROOT": str(self.temp_path),
                 "AFTERLIGHT_ENV_FILE": str(self.env_file),
                 "AFTERLIGHT_HEALTH_TIMEOUT": "0",
                 "FAKE_DOCKER_LOG": str(self.docker_log),
                 "FAKE_PACK_URL_LOG": str(self.pack_url_log),
                 "FAKE_GIT_SHA": CURRENT_PACK_SHA,
+                "MINECRAFT_CONTAINER_ID": MINECRAFT_CONTAINER_ID,
+                "BACKUP_CONTAINER_ID": BACKUP_CONTAINER_ID,
                 "FAKE_RM_LOG": str(self.rm_log),
+                "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
+                "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
+                "AFTERLIGHT_SNAPSHOT_ROOT": str(self.snapshot_root),
+                "AFTERLIGHT_SAFETY_HELPER": str(SAFETY_HELPER),
+                "AFTERLIGHT_RUNTIME_MODE": "750",
+                "AFTERLIGHT_STATE_DIR_MODE": "750",
+                "AFTERLIGHT_STATE_FILE_MODE": "640",
+                "AFTERLIGHT_SNAPSHOT_ROOT_MODE": "700",
+                "AFTERLIGHT_LOCK_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_LOCK_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_STATE_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_STATE_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_SNAPSHOT_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_SNAPSHOT_GROUP_GID": str(os.getgid()),
             }
         )
 
@@ -113,6 +146,16 @@ class FriendServerTests(unittest.TestCase):
               printf '\n'
             } >> "$FAKE_DOCKER_LOG"
 
+            if [ "${1:-}" = "inspect" ]; then
+              container_id="${@: -1}"
+              health=healthy
+              case "${FAKE_DOCKER_PS_OUTPUT:-}" in
+                *'"Health":"starting"'*) health=starting ;;
+                *'"Health":"unhealthy"'*) health=unhealthy ;;
+              esac
+              printf '[{"Id":"%s","State":{"Running":true,"Status":"running","StartedAt":"2026-08-13T12:00:00Z","Health":{"Status":"%s"}}}]\n' "$container_id" "$health"
+              exit 0
+            fi
             [ "${1:-}" = "compose" ] || exit 91
             shift
             if [ "${1:-}" = "version" ]; then
@@ -138,7 +181,13 @@ class FriendServerTests(unittest.TestCase):
                 exit_code="${FAKE_DOCKER_CONFIG_EXIT:-0}"
                 ;;
               ps)
-                output="${FAKE_DOCKER_PS_OUTPUT:-[{\"Service\":\"minecraft\",\"State\":\"running\",\"Health\":\"healthy\"}]}"
+                if [ "${2:-}" = "-q" ] && [ "${3:-}" = "minecraft" ]; then
+                  output="$MINECRAFT_CONTAINER_ID"
+                elif [ "${2:-}" = "-q" ] && [ "${3:-}" = "backup" ]; then
+                  output="$BACKUP_CONTAINER_ID"
+                else
+                  output="${FAKE_DOCKER_PS_OUTPUT:-[{\"Service\":\"minecraft\",\"State\":\"running\",\"Health\":\"healthy\"}]}"
+                fi
                 exit_code="${FAKE_DOCKER_PS_EXIT:-0}"
                 ;;
               up)
@@ -182,6 +231,12 @@ class FriendServerTests(unittest.TestCase):
             if [ "$#" -eq 5 ] && [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--verify" ] && [ "$5" = "HEAD^{commit}" ]; then
               printf '%s\n' "${FAKE_GIT_SHA:?FAKE_GIT_SHA must be set}"
               exit 0
+            fi
+            if [ "$#" -ge 5 ] && [ "$1" = "-C" ] && [ "$3" = "cat-file" ] && [ "$4" = "-e" ]; then
+              exit 0
+            fi
+            if [ "$#" -ge 8 ] && [ "$1" = "-C" ] && [ "$3" = "diff" ] && [ "$4" = "--quiet" ]; then
+              exit "${FAKE_QUEST_CORPUS_CHANGED:-0}"
             fi
             printf 'unexpected fake git command: %s\n' "$*" >&2
             exit 94
@@ -250,6 +305,8 @@ class FriendServerTests(unittest.TestCase):
             f"DATA_DIR={data_value}",
             f"BACKUP_DIR={backup_value}",
             f"SECRETS_DIR={secrets_value}",
+            f"AFTERLIGHT_DATA_UID={os.getuid()}",
+            f"AFTERLIGHT_DATA_GID={os.getgid()}",
         ]
         if init_memory is not None:
             assignments.append(f"AFTERLIGHT_INIT_MEMORY={init_memory}")
@@ -290,7 +347,8 @@ class FriendServerTests(unittest.TestCase):
         commands: list[tuple[str, ...]] = []
         for recorded_call in self._docker_calls():
             arguments = list(recorded_call)
-            self.assertEqual(arguments.pop(0), "compose")
+            if not arguments or arguments.pop(0) != "compose":
+                continue
             if arguments == ["version"]:
                 commands.append(("version",))
                 continue
@@ -364,6 +422,11 @@ class FriendServerTests(unittest.TestCase):
             "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
         }
 
+    def _write_pack_marker(self, revision: str = CURRENT_PACK_SHA) -> None:
+        marker = self.data_dir / ".afterlight-pack-sha"
+        marker.write_text(f"{revision}\n", encoding="ascii")
+        marker.chmod(0o600)
+
     def test_required_operator_contract_is_complete(self) -> None:
         methods = {
             name
@@ -383,8 +446,8 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(source.count("restart: unless-stopped"), 2)
         self.assertNotIn("25575:", source)
         self.assertRegex(source, r"(?m)^name: afterlight$")
-        self.assertRegex(source, r'(?m)^\s+- "25565:25565/tcp"$')
-        self.assertRegex(source, r'(?m)^\s+- "24454:24454/udp"$')
+        self.assertRegex(source, r'(?m)^\s+- "0[.]0[.]0[.]0:25565:25565/tcp"$')
+        self.assertRegex(source, r'(?m)^\s+- "0[.]0[.]0[.]0:24454:24454/udp"$')
         self.assertIn("INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}", source)
         self.assertIn("MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}", source)
         self.assertIn("mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}", source)
@@ -395,6 +458,8 @@ class FriendServerTests(unittest.TestCase):
             "DATA_DIR=/srv/afterlight/data\n"
             "BACKUP_DIR=/srv/afterlight/backups\n"
             "SECRETS_DIR=/etc/afterlight/secrets\n"
+            "AFTERLIGHT_DATA_UID=1000\n"
+            "AFTERLIGHT_DATA_GID=1000\n"
             "AFTERLIGHT_INIT_MEMORY=4G\n"
             "AFTERLIGHT_MAX_MEMORY=10G\n"
             "AFTERLIGHT_MEMORY_LIMIT=13G\n"
@@ -504,19 +569,14 @@ class FriendServerTests(unittest.TestCase):
         self.assertRegex(docs, r"(?i)immutable.*packwiz.*revision")
         self.assertRegex(docs, r"(?i)preflight.*world/level\.dat")
         for command in (
-            "cp server/.env.example server/.env",
-            "AFTERLIGHT_USER=$(id -un)",
-            "AFTERLIGHT_GROUP=$(id -gn)",
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
-            "umask 077",
-            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
-            "chmod 0600 /etc/afterlight/secrets/rcon_password",
-            "server/afterlight-server.sh doctor",
-            "server/afterlight-server.sh start",
-            "server/afterlight-server.sh backup",
-            "server/afterlight-server.sh update",
-            "server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm",
+            "AFTERLIGHT_DATA_UID=$(id -u afterlight)",
+            "AFTERLIGHT_DATA_GID=$(id -g afterlight)",
+            'sudo install -d -o "$AFTERLIGHT_DATA_UID" -g "$AFTERLIGHT_DATA_GID" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            "sudo /opt/afterlight/server/afterlight-server.sh doctor",
+            "sudo /opt/afterlight/server/afterlight-server.sh start",
+            "sudo /opt/afterlight/server/afterlight-server.sh backup",
+            "sudo /opt/afterlight/server/afterlight-server.sh update",
+            "sudo /opt/afterlight/server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm",
         ):
             self.assertIn(command, docs)
         self.assertIn("25565/tcp", docs)
@@ -528,27 +588,21 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("sysstat", docs)
         self.assertIn("sar -u 1 5", docs)
 
-    def test_setup_assigns_restrictive_paths_to_normal_operator(self) -> None:
+    def test_setup_assigns_root_control_and_unprivileged_data_identity(self) -> None:
         required_commands = (
-            "AFTERLIGHT_USER=$(id -un)",
-            "AFTERLIGHT_GROUP=$(id -gn)",
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
-            "umask 077",
-            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
-            "chmod 0600 /etc/afterlight/secrets/rcon_password",
+            "root-only host control plane",
+            "AFTERLIGHT_DATA_UID=$(id -u afterlight)",
+            "AFTERLIGHT_DATA_GID=$(id -g afterlight)",
+            'sudo install -d -o "$AFTERLIGHT_DATA_UID" -g "$AFTERLIGHT_DATA_GID" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            "sudo install -d -o root -g root -m 0700 /etc/afterlight/secrets",
         )
-        for path in (ROOT / "docs" / "SERVER.md", SERVER_DIR / "README.md"):
-            with self.subTest(path=path):
-                source = path.read_text(encoding="utf-8")
-                for command in required_commands:
-                    self.assertIn(command, source)
-                self.assertNotIn("| sudo tee", source)
-                self.assertNotIn("sudo chmod 0600", source)
-                self.assertRegex(
-                    source,
-                    r"(?i)normal dedicated operator.*access to Docker",
-                )
+        runbook = (SERVER_DIR / "README.md").read_text(encoding="utf-8")
+        for command in required_commands:
+            self.assertIn(command, runbook)
+        self.assertNotIn("| sudo tee", runbook)
+        operations = (ROOT / "docs" / "SERVER.md").read_text(encoding="utf-8")
+        self.assertRegex(runbook, r"(?i)root-only host control plane")
+        self.assertRegex(operations, r"(?i)root-only host control plane")
 
     def test_unknown_command_fails_with_usage(self) -> None:
         result = self._run_operator("not-a-command")
@@ -611,7 +665,10 @@ class FriendServerTests(unittest.TestCase):
                 self._write_env(data_dir=unsafe_data)
                 result = self._run_operator("doctor")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(EXPECTED_PATH_GRAMMAR, result.stderr)
+                self.assertRegex(
+                    result.stderr,
+                    rf"{re.escape(EXPECTED_PATH_GRAMMAR)}|canonical safety contract",
+                )
                 self.assertEqual(self._docker_calls(), [])
 
     def test_docs_publish_the_exact_conservative_path_grammar(self) -> None:
@@ -641,8 +698,9 @@ class FriendServerTests(unittest.TestCase):
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
                 ("up", "-d", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
         self.assertEqual(
@@ -669,8 +727,9 @@ class FriendServerTests(unittest.TestCase):
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
                 ("up", "-d", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
 
@@ -878,6 +937,7 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), str(archive))
 
     def test_update_backs_up_before_recreating_minecraft(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         result = self._run_operator(
             "update",
@@ -894,8 +954,9 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
         self.assertEqual(
@@ -907,7 +968,19 @@ class FriendServerTests(unittest.TestCase):
             {f"{RAW_PACK_URL_PREFIX}/{CURRENT_PACK_SHA}/pack.toml"},
         )
 
+    def test_update_rejects_durable_quest_quarantine_before_docker(self) -> None:
+        marker = self.quarantine_dir / "state"
+        marker.write_text("test-only-marker\n", encoding="utf-8")
+        marker.chmod(0o640)
+
+        result = self._run_operator("update")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("transaction authority", result.stderr.lower())
+        self.assertEqual(self._docker_calls(), [])
+
     def test_update_separates_backup_process_output_from_selected_path(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         environment = self._valid_backup_environment(archive)
         environment.update(
@@ -930,12 +1003,14 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
 
     def test_failed_update_stops_services_and_prints_exact_rollback_command(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         result = self._run_operator(
             "update",
@@ -962,7 +1037,7 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("stop", "backup", "minecraft"),
             ],
         )
@@ -1013,26 +1088,22 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(self._docker_calls(), [])
 
     def test_rollback_rejects_unwritable_data_parent_before_stop(self) -> None:
-        data_parent = self.temp_path / "locked-parent"
-        data_parent.mkdir()
-        data_dir = data_parent / "data"
-        (data_dir / "world").mkdir(parents=True)
-        level_file = data_dir / "world" / "level.dat"
+        (self.data_dir / "world").mkdir(parents=True)
+        level_file = self.data_dir / "world" / "level.dat"
         level_file.write_text("current world\n", encoding="utf-8")
-        self._write_env(data_dir=data_dir)
         archive = self._make_backup_archive()
 
-        data_parent.chmod(0o555)
+        self.temp_path.chmod(0o555)
         try:
             result = self._run_operator("rollback", str(archive), "--confirm")
         finally:
-            data_parent.chmod(0o755)
+            self.temp_path.chmod(0o700)
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("data parent", result.stderr.lower())
         self.assertNotIn(("stop", "backup", "minecraft"), self._compose_commands())
         self.assertEqual(level_file.read_text(encoding="utf-8"), "current world\n")
-        self.assertEqual(list(self.temp_path.glob("locked-parent/data.rescue-*")), [])
+        self.assertEqual(list(self.temp_path.glob("data.rescue-*")), [])
 
     def test_rollback_renames_data_restores_and_never_invokes_rm(self) -> None:
         (self.data_dir / "world").mkdir()
@@ -1079,7 +1150,8 @@ class FriendServerTests(unittest.TestCase):
                 ("ps", "--format", "json", "minecraft"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "minecraft", "backup"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
+                ("ps", "-q", "backup"),
             ],
         )
 
@@ -1141,7 +1213,7 @@ class FriendServerTests(unittest.TestCase):
                 ("ps", "--format", "json", "minecraft"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "minecraft", "backup"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("stop", "backup", "minecraft"),
             ],
         )

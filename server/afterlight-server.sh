@@ -2,19 +2,16 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-ENV_FILE="${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
+AFTERLIGHT_HEALTH_POLL_INTERVAL="${AFTERLIGHT_HEALTH_POLL_INTERVAL:-2}"
 CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
 MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
 RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
-
-DATA_DIR=""
-BACKUP_DIR=""
-SECRETS_DIR=""
 AFTERLIGHT_INIT_MEMORY=4G
 AFTERLIGHT_MAX_MEMORY=10G
 AFTERLIGHT_MEMORY_LIMIT=13G
@@ -34,6 +31,81 @@ require_command() {
   local command_name=$1
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "Required command not found: $command_name"
+    return 1
+  fi
+}
+
+stat_value() {
+  local format=$1 target=$2
+  stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+}
+
+derive_lock_identity() {
+  [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
+  [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || fail "Transaction authority directory is missing or unsafe"
+  [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
+  [[ $(stat_value '%u' "$RUNTIME_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$RUNTIME_DIR") == "$CONTROL_GID" ]] ||
+    fail "Runtime directory owner or group is invalid"
+  [[ $(stat_value '%u' "$QUARANTINE_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$QUARANTINE_DIR") == "$CONTROL_GID" ]] ||
+    fail "Transaction authority directory owner or group is invalid"
+  [[ $(stat_value '%u' "$SNAPSHOT_ROOT") == "$CONTROL_UID" && $(stat_value '%g' "$SNAPSHOT_ROOT") == "$CONTROL_GID" ]] ||
+    fail "Snapshot root owner or group is invalid"
+}
+
+state_arguments() {
+  afterlight_state_arguments
+}
+
+authority_command() {
+  local command_name=$1
+  shift
+  local -a common=()
+  while IFS= read -r -d '' value; do common+=("$value"); done < <(state_arguments)
+  "$SAFETY_HELPER" "$command_name" "${common[@]}" "$@"
+}
+
+acquire_mutation_lock() {
+  derive_lock_identity || return 1
+  afterlight_verify_or_reexec_lock 3600 300 "$@"
+}
+
+verify_mutation_authority() {
+  local command_name=$1
+  derive_lock_identity || return 1
+  local authority_status=0
+  if authority_command authority-status >/dev/null 2>&1; then
+    local recovery_id=${AFTERLIGHT_RECOVERY_TRANSACTION_ID:-}
+    if [[ -z "$recovery_id" ]]; then
+      fail "Operation rejected because a quest update transaction is active"
+      return 1
+    fi
+    if [[ "$command_name" != "start" && "$command_name" != "stop" ]]; then
+      fail "Only recovery start and stop are allowed while transaction authority is active"
+      return 1
+    fi
+    local recorded_id gate_comment
+    recorded_id=$(authority_command authority-status --field transaction_id) || return 1
+    gate_comment=$(authority_command authority-status --field gate_comment) || return 1
+    [[ "$recorded_id" == "$recovery_id" ]] || {
+      fail "Recovery transaction identifier mismatch"
+      return 1
+    }
+    local -a rule=(
+      -p tcp --dport 25565
+      -m conntrack --ctstate NEW
+      -m comment --comment "$gate_comment"
+      -j REJECT
+    )
+    iptables -w -C DOCKER-USER "${rule[@]}" || {
+      fail "Recovery start rejected because the exact owned firewall gate is absent"
+      return 1
+    }
+    return 0
+  else
+    authority_status=$?
+  fi
+  if [[ "$authority_status" -ne 3 ]]; then
+    fail "Operation rejected because transaction authority is unsafe"
     return 1
   fi
 }
@@ -72,14 +144,17 @@ validate_memory_budget() {
 }
 
 load_paths() {
-  [[ -f "$ENV_FILE" ]] || fail "Environment file not found: $ENV_FILE"
+  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "Environment file not found or unsafe: $ENV_FILE"
 
+  local configured_data=$DATA_DIR configured_backup=$BACKUP_DIR configured_secrets=$SECRETS_DIR
   local data_seen=0
   local backup_seen=0
   local secrets_seen=0
   local init_memory_seen=0
   local max_memory_seen=0
   local memory_limit_seen=0
+  local data_uid_seen=0
+  local data_gid_seen=0
   local assignment
   while IFS= read -r assignment || [[ -n "$assignment" ]]; do
     case "$assignment" in
@@ -131,6 +206,14 @@ load_paths() {
         AFTERLIGHT_MEMORY_LIMIT=${assignment#AFTERLIGHT_MEMORY_LIMIT=}
         memory_limit_seen=1
         ;;
+      AFTERLIGHT_DATA_UID=*)
+        ((data_uid_seen += 1))
+        DATA_OWNER_UID=${assignment#AFTERLIGHT_DATA_UID=}
+        ;;
+      AFTERLIGHT_DATA_GID=*)
+        ((data_gid_seen += 1))
+        DATA_GROUP_GID=${assignment#AFTERLIGHT_DATA_GID=}
+        ;;
       *)
         fail "Invalid assignment in $ENV_FILE: $assignment"
         return 1
@@ -150,6 +233,27 @@ load_paths() {
     fail "SECRETS_DIR must be assigned once"
     return 1
   fi
+  if [[ "$DATA_DIR" != "$configured_data" || "$BACKUP_DIR" != "$configured_backup" || "$SECRETS_DIR" != "$configured_secrets" ]]; then
+    fail "Environment paths differ from the canonical safety contract"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -ne "$data_gid_seen" ]]; then
+    fail "Data UID and GID must either both be present or both be absent"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -gt 1 || "$data_gid_seen" -gt 1 ]]; then
+    fail "Data UID and GID must each be assigned at most once"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -ne 1 || "$data_gid_seen" -ne 1 ]]; then
+    fail "Data UID and GID must each be assigned exactly once"
+    return 1
+  fi
+  if [[ ! ${DATA_OWNER_UID:-} =~ ^[0-9]+$ || ! ${DATA_GROUP_GID:-} =~ ^[0-9]+$ ]]; then
+    fail "Data UID and GID must be nonnegative integers"
+    return 1
+  fi
+  afterlight_validate_data_identity "$DATA_OWNER_UID" "$DATA_GROUP_GID" || return 1
   validate_configured_path_syntax DATA_DIR "$DATA_DIR" || return 1
   validate_configured_path_syntax BACKUP_DIR "$BACKUP_DIR" || return 1
   validate_configured_path_syntax SECRETS_DIR "$SECRETS_DIR" || return 1
@@ -209,11 +313,12 @@ use_pack_sha() {
 
 write_pack_sha() {
   local pack_sha=$1
-  local marker_path="$DATA_DIR/$PACK_SHA_FILE_NAME"
-  local temporary_path="$DATA_DIR/.${PACK_SHA_FILE_NAME}.tmp.$$"
   use_pack_sha "$pack_sha" || return 1
-  printf '%s\n' "$pack_sha" > "$temporary_path" || return 1
-  mv "$temporary_path" "$marker_path"
+  "$SAFETY_HELPER" release-marker-write \
+    --data "$DATA_DIR" \
+    --revision "$pack_sha" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID"
 }
 
 tree_pack_sha() {
@@ -313,12 +418,30 @@ validate_writable_dirs() {
       return 1
     fi
   done
+  if [[ $(stat_value '%u' "$DATA_DIR") != "$DATA_OWNER_UID" || $(stat_value '%g' "$DATA_DIR") != "$DATA_GROUP_GID" ]]; then
+    fail "DATA_DIR owner or group differs from the explicit runtime identity"
+    return 1
+  fi
+  if [[ $(stat_value '%u' "$BACKUP_DIR") != "$DATA_OWNER_UID" || $(stat_value '%g' "$BACKUP_DIR") != "$DATA_GROUP_GID" ]]; then
+    fail "BACKUP_DIR owner or group differs from the explicit runtime identity"
+    return 1
+  fi
+  local data_parent
+  data_parent=$(dirname "$DATA_DIR")
+  if [[ $(stat_value '%u' "$data_parent") != "$CONTROL_UID" || $(stat_value '%g' "$data_parent") != "$CONTROL_GID" ]]; then
+    fail "DATA_DIR parent owner or group differs from the control identity"
+    return 1
+  fi
   if [[ ! -d "$SECRETS_DIR" ]]; then
     fail "Secrets directory does not exist: $SECRETS_DIR"
     return 1
   fi
   if [[ -L "$SECRETS_DIR" ]]; then
     fail "Secrets directory must not be a symlink: $SECRETS_DIR"
+    return 1
+  fi
+  if [[ $(stat_value '%u' "$SECRETS_DIR") != "$CONTROL_UID" || $(stat_value '%g' "$SECRETS_DIR") != "$CONTROL_GID" ]]; then
+    fail "SECRETS_DIR owner or group differs from the control identity"
     return 1
   fi
 }
@@ -434,25 +557,24 @@ validate_ports() {
   fi
 }
 
-wait_healthy() {
-  if [[ ! "$AFTERLIGHT_HEALTH_TIMEOUT" =~ ^[0-9]+$ ]]; then
-    fail "AFTERLIGHT_HEALTH_TIMEOUT must be a nonnegative integer"
+wait_service_healthy() {
+  local service=$1 container_id
+  if [[ ! "$AFTERLIGHT_HEALTH_TIMEOUT" =~ ^[0-9]+$ ||
+        ! "$AFTERLIGHT_HEALTH_POLL_INTERVAL" =~ ^[0-9]+$ ]]; then
+    fail "Container health timing values must be nonnegative integers"
     return 1
   fi
-  local deadline=$((SECONDS + AFTERLIGHT_HEALTH_TIMEOUT))
-  local state
-
-  while true; do
-    state=$(minecraft_state 2>/dev/null || true)
-    if minecraft_is_healthy "$state"; then
-      return 0
-    fi
-    if ((SECONDS >= deadline)); then
-      fail "Minecraft did not become healthy within ${AFTERLIGHT_HEALTH_TIMEOUT}s"
+  container_id=$(compose ps -q "$service") || return 1
+  [[ "$container_id" =~ ^[0-9a-f]{12,64}$ ]] || {
+    fail "$service container identity is unavailable"
+    return 1
+  }
+  afterlight_wait_container_healthy \
+    "$container_id" "$AFTERLIGHT_HEALTH_TIMEOUT" "$AFTERLIGHT_HEALTH_POLL_INTERVAL" || {
+      fail "$service did not become healthy within ${AFTERLIGHT_HEALTH_TIMEOUT}s"
       return 1
-    fi
-    sleep 2
-  done
+    }
+  printf '%s\n' "$container_id"
 }
 
 latest_backup_snapshot() {
@@ -570,7 +692,7 @@ run_start() {
     fail "Minecraft start failed"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null; then
     compose stop backup minecraft || true
     fail "Minecraft health check failed"
     return 1
@@ -583,6 +705,11 @@ run_start() {
   if ! compose up -d backup; then
     compose stop backup minecraft || true
     fail "Backup service start failed"
+    return 1
+  fi
+  if ! wait_service_healthy backup >/dev/null; then
+    compose stop backup minecraft || true
+    fail "Backup health check failed"
     return 1
   fi
 }
@@ -650,8 +777,25 @@ stop_after_failed_update() {
 run_update() {
   local backup_path
   local pack_sha
+  local prior_sha
+  local quest_state
   prepare_paths || return 1
   pack_sha=$(repository_pack_sha) || return 1
+  prior_sha=$("$SAFETY_HELPER" release-marker-read \
+    --data "$DATA_DIR" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID") || return 1
+  quest_state=$("$SAFETY_HELPER" quest-corpus-state \
+    --repository "$REPOSITORY_ROOT" \
+    --prior-sha "$prior_sha" \
+    --candidate-sha "$pack_sha") || {
+      fail "Unable to classify the immutable quest corpus change"
+      return 1
+    }
+  if [[ "$quest_state" != unchanged ]]; then
+    fail "Ordinary update rejected a protected quest corpus change; use afterlight-quest-safe-update.sh"
+    return 1
+  fi
   use_pack_sha "$pack_sha" || return 1
   backup_path=$(run_backup) || return 1
   if ! compose stop backup minecraft; then
@@ -662,7 +806,7 @@ run_update() {
     stop_after_failed_update "$backup_path"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null; then
     stop_after_failed_update "$backup_path"
     return 1
   fi
@@ -671,6 +815,10 @@ run_update() {
     return 1
   fi
   if ! compose up -d backup; then
+    stop_after_failed_update "$backup_path"
+    return 1
+  fi
+  if ! wait_service_healthy backup >/dev/null; then
     stop_after_failed_update "$backup_path"
     return 1
   fi
@@ -747,7 +895,8 @@ run_rollback() {
     fail "Rollback start failed; archive, rescue tree, and restored tree were preserved"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null ||
+     ! wait_service_healthy backup >/dev/null; then
     compose stop backup minecraft || true
     fail "Rollback health check failed; archive, rescue tree, and restored tree were preserved"
     return 1
@@ -761,6 +910,14 @@ main() {
     usage
     return 1
   fi
+  afterlight_require_control_root || return 1
+  case "$command_name" in
+    start|stop|backup|update|rollback)
+      [[ -x "$SAFETY_HELPER" ]] || { fail "Safety helper is unavailable"; return 1; }
+      acquire_mutation_lock "$@"
+      verify_mutation_authority "$command_name" || return 1
+      ;;
+  esac
   shift
 
   case "$command_name" in

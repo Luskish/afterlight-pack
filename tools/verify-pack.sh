@@ -57,7 +57,7 @@ for f in mods/*.pw.toml; do
 done
 
 echo "== 3/3 tooling sanity =="
-for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/client-install-test.sh tools/promote-release.sh tools/publish-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh server/afterlight-maintenance.sh; do
+for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh tools/client-install-test.sh tools/promote-release.sh tools/publish-release.sh tools/release-gauntlet.sh tools/server-test.sh server/afterlight-server.sh server/afterlight-maintenance.sh server/afterlight-ingress-boot-gate.sh server/afterlight-quarantine-gate.sh server/afterlight-quarantine-recover.sh server/afterlight-transaction-finalize.sh server/afterlight-snapshot-retention.sh; do
   if bash -n "$s"; then
     echo "OK: $s parses"
   else
@@ -71,7 +71,7 @@ for s in tools/export.sh tools/build-prism-instance.sh tools/build-release.sh to
     FAIL=1
   fi
 done
-for python_file in tools/client_install_support.py tools/release_artifacts.py; do
+for python_file in tools/client_install_support.py tools/release_artifacts.py tools/build_server_mod_manifest_lock.py server/afterlight-safety.py server/afterlight-progress-guard.py; do
   if python3 -m py_compile "$python_file"; then
     echo "OK: $python_file compiles"
   else
@@ -79,5 +79,11 @@ for python_file in tools/client_install_support.py tools/release_artifacts.py; d
     FAIL=1
   fi
 done
+if bash -n server/afterlight-safety-contract.sh; then
+  echo "OK: server/afterlight-safety-contract.sh parses"
+else
+  echo "FAIL: server/afterlight-safety-contract.sh syntax"
+  FAIL=1
+fi
 
 if [ "$FAIL" -eq 0 ]; then echo "VERIFY: ALL GREEN"; else echo "VERIFY: FAILURES PRESENT"; exit 1; fi

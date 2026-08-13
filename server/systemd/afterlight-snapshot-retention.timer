@@ -1,0 +1,11 @@
+[Unit]
+Description=Prune successful AFTERLIGHT transaction snapshots after seven days
+
+[Timer]
+OnCalendar=Sun *-*-* 04:15:00 America/New_York
+Persistent=true
+AccuracySec=5min
+Unit=afterlight-snapshot-retention.service
+
+[Install]
+WantedBy=timers.target

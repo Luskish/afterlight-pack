@@ -13,29 +13,42 @@ ROOT = Path(__file__).resolve().parents[2]
 MAINTENANCE = ROOT / "server" / "afterlight-maintenance.sh"
 SERVICE = ROOT / "server" / "systemd" / "afterlight-maintenance.service"
 TIMER = ROOT / "server" / "systemd" / "afterlight-maintenance.timer"
+SAFETY_HELPER = ROOT / "server" / "afterlight-safety.py"
 
 
 class ServerMaintenanceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
-        self.temp_path = Path(self.temporary_directory.name)
+        self.temp_path = Path(self.temporary_directory.name).resolve()
         self.fake_bin = self.temp_path / "bin"
         self.runtime_dir = self.temp_path / "run"
         self.fake_bin.mkdir()
         self.runtime_dir.mkdir()
+        self.runtime_dir.chmod(0o750)
         self.docker_log = self.temp_path / "docker.log"
         self.event_log = self.temp_path / "events.log"
         self.operator_log = self.temp_path / "operator.log"
+        self.quarantine_dir = self.temp_path / "quarantine"
+        self.snapshot_root = self.temp_path / "snapshots"
+        self.quarantine_dir.mkdir(mode=0o750)
+        self.snapshot_root.mkdir(mode=0o700)
         self.backup_path = self.temp_path / "backups" / "verified.tar.zst"
         self.backup_path.parent.mkdir()
         self.operator = self.temp_path / "operator"
+        self.test_contract = self.temp_path / ".afterlight-safety-test-contract"
+        self.test_contract.write_text(
+            "AFTERLIGHT SAFETY TEST CONTRACT v1\n",
+            encoding="utf-8",
+        )
+        self.test_contract.chmod(0o600)
         self._install_fakes()
 
         self.environment = os.environ.copy()
         self.environment.update(
             {
                 "PATH": f"{self.fake_bin}:{self.environment['PATH']}",
+                "AFTERLIGHT_SAFETY_TEST_ROOT": str(self.temp_path),
                 "AFTERLIGHT_OPERATOR": str(self.operator),
                 "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
                 "FAKE_BACKUP_PATH": str(self.backup_path),
@@ -46,6 +59,19 @@ class ServerMaintenanceTests(unittest.TestCase):
                 "FAKE_RCON_OUTPUT": (
                     "There are 0 of a max of 12 players online: "
                 ),
+                "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
+                "AFTERLIGHT_SNAPSHOT_ROOT": str(self.snapshot_root),
+                "AFTERLIGHT_SAFETY_HELPER": str(SAFETY_HELPER),
+                "AFTERLIGHT_RUNTIME_MODE": "750",
+                "AFTERLIGHT_STATE_DIR_MODE": "750",
+                "AFTERLIGHT_STATE_FILE_MODE": "640",
+                "AFTERLIGHT_SNAPSHOT_ROOT_MODE": "700",
+                "AFTERLIGHT_LOCK_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_LOCK_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_STATE_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_STATE_GROUP_GID": str(os.getgid()),
+                "AFTERLIGHT_SNAPSHOT_OWNER_UID": str(os.getuid()),
+                "AFTERLIGHT_SNAPSHOT_GROUP_GID": str(os.getgid()),
             }
         )
 
@@ -368,6 +394,18 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.assertEqual(self._operator_calls(), ["backup"])
         self.assertIn("server was not stopped", result.stderr)
 
+    def test_durable_quest_quarantine_rejects_all_maintenance_before_docker(self) -> None:
+        marker = self.quarantine_dir / "state"
+        marker.write_text("test-only-marker\n", encoding="utf-8")
+        marker.chmod(0o640)
+
+        for mode in ("idle", "scheduled"):
+            with self.subTest(mode=mode):
+                result = self._run(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("transaction authority", result.stderr.lower())
+                self.assertFalse(self.docker_log.exists())
+
     def test_health_drift_after_backup_never_stops_server(self) -> None:
         self.environment["FAKE_CONTAINER_STATE_AFTER_BACKUP"] = (
             "running|unhealthy"
@@ -563,16 +601,17 @@ class ServerMaintenanceTests(unittest.TestCase):
         for expected in (
             "Description=AFTERLIGHT daily warned server restart",
             "ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh",
-            "User=afterlight",
-            "SupplementaryGroups=docker",
+            "User=root",
+            "Group=root",
             "WorkingDirectory=/opt/afterlight",
-            "RuntimeDirectory=afterlight",
             "NoNewPrivileges=true",
             "ProtectSystem=strict",
             "ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled",
             "TimeoutStartSec=infinity",
         ):
             self.assertIn(expected, service)
+        self.assertNotIn("RuntimeDirectory=afterlight", service)
+        self.assertNotIn("SupplementaryGroups=docker", service)
         self.assertNotIn("ConditionPathIsExecutable", service)
         self.assertNotIn("TimeoutStartSec=20min", service)
         self.assertNotIn("AFTERLIGHT_MIN_UPTIME_SECONDS", service)

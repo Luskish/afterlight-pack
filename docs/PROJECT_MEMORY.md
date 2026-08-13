@@ -223,10 +223,10 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** Production read-only audit tooling
 - **Summary:** Early operator audit probes hit Git repository trust, shell quoting, zsh variable shadowing, and command-policy errors before corrected read-only commands completed the audit.
-- **Evidence:** The failed probes produced a Git safe-directory rejection, two malformed byte-sum commands, command-not-found output after a loop variable replaced shell PATH, and one rejected command that unnecessarily included cleanup. Corrected read-only probes completed without changing production state.
+- **Evidence:** The failed probes produced a Git safe-directory rejection, two malformed byte-sum commands, command-not-found output after a loop variable replaced shell PATH, and one rejected command that unnecessarily included cleanup. During Task 9 integration, a tree-comparison loop again named its variable `path`, made `cmp` unavailable, printed false mismatches, and then printed an invalid success marker because the wrapper lacked fail-fast execution. Corrected read-only probes completed without changing production state.
 - **Files or Commit:** `docs/PROJECT_MEMORY.md`
 - **Impact:** No server, world, quest progress, firewall, service, or release state changed, and future audits have searchable warnings against these four operator-tooling mistakes.
-- **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never name a zsh loop variable `path`, and omit cleanup from read-only probes.
+- **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never use zsh special names such as `path` or `status` for local variables, and omit cleanup from read-only probes.
 
 ### MEM-2026-08-13-018
 
@@ -467,3 +467,39 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `docs/PROJECT_MEMORY.md`
 - **Impact:** No repository or runtime state changed, and the final inventory independently confirms 17 unique bed members and five unique steel members.
 - **Follow-up:** Avoid `grep -q` in a `pipefail` archive-list pipeline when the producer can receive SIGPIPE.
+
+### MEM-2026-08-13-038
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** Quest-safe server deployment and reboot quarantine
+- **Summary:** AFTERLIGHT now has an exact-release, two-start quest deployment transaction with immutable prior and candidate manifests, canonical progress comparison, verified backup and rollback, durable quarantine, shared bounded health checks, exact container log evidence, and reboot-safe terminal cleanup.
+- **Evidence:** Task 9 commits `d885e55`, `0283a26`, `ce1cb81`, `1bdab358`, `cc61002`, and `5a4883e` add the root control plane, unprivileged data identity, ingress gate, snapshot retention, recovery helper, ordinary-update quest comparison, and focused regression suites without changing the generated quest corpus, Packwiz state, mods, or production.
+- **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-recover.sh`, `server/afterlight-transaction-finalize.sh`, server systemd units, server documentation, and Task 9 tests
+- **Impact:** Quest-changing releases can preserve existing player progress and fail closed through rollback or durable quarantine instead of relying on an ordinary one-start update.
+- **Follow-up:** Resolve the generated quest audit, run the complete release gates, and execute the quest-safe transaction only with zero players and a verified backup.
+
+### MEM-2026-08-13-039
+
+- **Date:** 2026-08-13
+- **Category:** vulnerability
+- **Status:** resolved
+- **Subsystem:** Quest-safe deployment review corrections
+- **Summary:** Five independent review rounds found and corrected fail-open authority timing, archive and pathname races, lock bypasses, incomplete release attestation, prior-checkout and manifest errors, mutable log evidence, non-resumable cleanup, health and firewall ambiguity, invalid runtime identity, undersized authority state, owner-coupled quest equality, unpinned mod traversal, single-sided container evidence, and incomplete timeout budgets.
+- **Evidence:** RED suites reproduced every corrected boundary before implementation. The final focused suite ended with `Ran 7 tests in 1.228s` and `OK`; the implementing agent's complete Task 9 matrix ended with `Ran 164 tests in 379.044s` and `OK`. Earlier controller matrices independently ended with 147 and 157 tests passing, and controller reran the final seven regressions successfully before integration.
+- **Files or Commit:** `1bdab358`, `cc61002`, `5a4883e`, `tools/tests/test_task9_rereview3.py`, `tools/tests/test_task9_rereview4.py`, and `tools/tests/test_task9_rereview5.py`
+- **Impact:** The supported transaction binds durable state and accepted bytes before mutation, selects the exact prior release during rollback, validates current pack-sized authority, enforces runtime ownership, rejects observed path replacement, and keeps recovery bounded.
+- **Follow-up:** Keep all focused Task 9 suites in the release matrix and rerun Linux systemd verification before production deployment.
+
+### MEM-2026-08-13-040
+
+- **Date:** 2026-08-13
+- **Category:** decision
+- **Status:** accepted
+- **Subsystem:** Live multi-file attestation threat boundary
+- **Summary:** The release accepts the residual theoretical race in which a malicious concurrent local writer repeatedly replaces an already verified quest file or mod after its last pathname check while restoring parent metadata.
+- **Evidence:** Final review reported Critical 0 and two Important findings limited to this cross-file adversarial mutation. Eliminating every post-check mutation requires an atomic filesystem snapshot or a writer-enforced freeze, because any finite sequential restat has a final checked pathname. The production host is a private Minecraft VPS with a root-only control plane, one non-login runtime identity, stopped services during protected mutation, and no untrusted local shell users. Shane explicitly requested shipping once the private-friend release was good enough.
+- **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-quarantine-recover.sh`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Normal failures, observed mutations, symlink roots, same-name replacements, ownership drift, and container identity changes fail closed. A malicious process already running under the trusted local data identity during the final attestation is outside the accepted private-server threat model.
+- **Follow-up:** If AFTERLIGHT later supports shared hosting or untrusted local workloads, move live attestation to an atomic filesystem snapshot or enforce a kernel-backed write freeze before verification.

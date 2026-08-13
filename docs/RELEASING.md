@@ -35,6 +35,14 @@ Before any push, merge, or tag, the promoter requires the single fetch URL and s
 
 Whenever a non-CurseForge mod changes, regenerate `tools/modrinth-manifest-lock.json` from independently verified upstream metadata. Modrinth records must match the public v2 version API. Direct-download records must be streamed and hashed locally. Never copy unchecked SHA-1 or file-size values from an exported `.mrpack` into the lock.
 
+Every server-side mod change must also update `tools/server-mod-manifest-lock.json`. Generate it only from a clean Packwiz server install whose jars match every tracked `.pw.toml` digest:
+
+```bash
+python3 tools/build_server_mod_manifest_lock.py --repository . --installed-mods server-test/mods
+```
+
+`tools/server-test.sh` independently regenerates this lock from its clean install and rejects any byte difference.
+
 ## Evidence
 
 Record the promoter's exact SHA, receipt digest, transcript digest, accepted `dev` and `main` CI URLs, Pages hashes, tool versions, and five artifact hashes in `RELEASE_DOC`. Populate every prepublication automated evidence field. The automated evidence through the public artifact section must contain no automated `NOT RUN` and must contain no automated `PENDING` value. The publisher independently requires each canonical prepublication evidence line exactly once and derives its expected values from the accepted receipt, transcript, repository files, and exact accepted GitHub Actions runs. It also requires the distinct documentation evidence commit's exact CI run at publication time and prints that run URL for postpublication recording. Requiring that future run URL inside its own commit would be circular. Publication-only values belong in the postpublication section. Manual acceptance remains pending until a player or VPS operator actually observes it.
@@ -72,3 +80,9 @@ The publisher creates a draft GitHub release without assets through the GitHub A
 ## Recovery
 
 If `dev` CI, `main` CI, Pages parity, publication, or a manual gate fails, fix forward through a new candidate SHA. Never force-push `dev` or `main`, and never move a published tag.
+
+## Server Deployment
+
+Artifact publication does not authorize an unsafe server update. The production host uses the canonical root-only control plane documented in `server/README.md`. For a revision with any quest corpus change, copy the complete immutable `dist/gauntlet/$SHA` directory to `/var/lib/afterlight/accepted/$SHA`, preserve the independently captured receipt digest, and run `sudo /opt/afterlight/server/afterlight-quest-safe-update.sh "$SHA" "/var/lib/afterlight/accepted/$SHA/gauntlet-receipt.json" "$RECEIPT_SHA256" --confirm` only after `/opt/afterlight` is the exact clean accepted checkout. Ordinary `sudo /opt/afterlight/server/afterlight-server.sh update` compares immutable prior and candidate quest corpora before backup or Docker and rejects any protected change.
+
+The quest-safe transaction holds one authenticated inherited no-follow lock descriptor and the IPv4 game ingress gate through two zero-player checks, a descriptor-bound authenticated backup, the candidate's first start and clean stop, canonical FTB Quests and FTB Teams comparison, accepted receipt verification, exact server jar digest and size verification, whitelist verification, and the second healthy start. Durable authority stores distinct prior and candidate manifests plus every intended checkout before transition. Live quest evidence comes from the exact inspected container start. One bounded container-health primitive covers candidate, rollback, ordinary start, and recovery. Restart-policy, systemd, and exact firewall cleanup phases remain durable until reconciliation succeeds. Pending, quarantined, or terminal-cleanup authority blocks ordinary mutations, scheduled maintenance, and snapshot retention. Follow `server/README.md` exactly for idempotent recovery through `afterlight-quarantine-recover.sh`. Never edit authority or substitute inline archive commands.

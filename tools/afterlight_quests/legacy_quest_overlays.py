@@ -29,6 +29,7 @@ from .quest_build_transaction import (
     candidate_workspace,
     quest_build_dependency_roots,
 )
+from .story_cohesion import STORY_LINK_ROUTES
 
 
 STORY_GROUP_ID = "4525BB3160467FCB"
@@ -70,26 +71,34 @@ class LegacyCommodityTaskOverlay:
     declaration_key: str
 
 
+def _legacy_story_links(chapter_id: str) -> tuple[QuestLinkSpec, ...]:
+    return tuple(
+        route.link
+        for route in STORY_LINK_ROUTES
+        if route.route == "legacy" and route.owner_chapter_id == chapter_id
+    )
+
+
 LEGACY_QUEST_LINK_OVERLAYS = (
     LegacyQuestLinkOverlay(
         chapter_id="4C01977EF77930A6",
         expected_outside_sha256="84b682eb046cc73a8e1962ae7b98a37a3323a5d035054e372b919a43de7b3729",
-        quest_links=(),
+        quest_links=_legacy_story_links("4C01977EF77930A6"),
     ),
     LegacyQuestLinkOverlay(
         chapter_id="770DAD173D9C234B",
         expected_outside_sha256="3cca17187e1382064192ea9235b0679590fc844954b689d413aad90cd84adb7e",
-        quest_links=(),
+        quest_links=_legacy_story_links("770DAD173D9C234B"),
     ),
     LegacyQuestLinkOverlay(
         chapter_id="45491A24F6B8C192",
         expected_outside_sha256="ae8fe08053a769600b8d416bebb679b1731b0680a87f164e694ee861c533b139",
-        quest_links=(),
+        quest_links=_legacy_story_links("45491A24F6B8C192"),
     ),
     LegacyQuestLinkOverlay(
         chapter_id="52EF477C2D995F40",
         expected_outside_sha256="874388f975a02bda088fcb30650bb03c15935a98b3c2e85453ebf86bc4bd2df0",
-        quest_links=(),
+        quest_links=_legacy_story_links("52EF477C2D995F40"),
     ),
 )
 
@@ -149,8 +158,59 @@ LEGACY_CHAPTER_ORDER_OVERLAYS = (
 
 
 LEGACY_LOCALIZATION_OVERLAYS = LegacyLocalizationManifest(
-    expected_outside_sha256=None,
-    overlays=(),
+    expected_outside_sha256=(
+        "7fef8b47eeb10126ed18472316279d750e33be9083348fae5ad9a3e5a2e5a7a0"
+    ),
+    overlays=(
+        LegacyLocalizationOverlay(
+            key="chapter_group.4A20F33642175B95.title",
+            value="Field Manuals & Certifications",
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.45021BE218C5DFBD.quest_subtitle",
+            value="Survival becomes a supply line.",
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.45021BE218C5DFBD.quest_desc",
+            value=(
+                "Cold Boot proved that you can survive one emergency. Recovery begins when the next meal, tool, and shelter no longer depend on luck.",
+                "Treat every salvage stream as input, every repeated need as a process, and every waste pile as evidence. Scavenging becomes industry through repetition.",
+            ),
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.718424A08FE06E9A.quest_subtitle",
+            value="Material hunger leaves coordinates in the wreckage.",
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.718424A08FE06E9A.quest_desc",
+            value=(
+                "Scavenger's Creed made supply repeatable, then exposed the limit of local wreckage. The systems ahead require material the vault cannot provide.",
+                "Survey the Scarlands and follow the surviving portal record. The Nether is evidence that movement through the old network remains possible. The Expedition Log can orient the route without becoming part of story progress.",
+            ),
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.79145D1842E317AA.quest_subtitle",
+            value="Passage is useful only when return is possible.",
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.79145D1842E317AA.quest_desc",
+            value=(
+                "The Scarlands proved that the old routes still open. A recovery plan needs defended ground to return to, repair within, and improve.",
+                "Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then establish permanent industry. Field Manual: Heavy Industry begins at the recovered manual and the first formed multiblock.",
+            ),
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.43860D6CFEF31BB9.quest_subtitle",
+            value="Steel and first current can now multiply labor.",
+        ),
+        LegacyLocalizationOverlay(
+            key="quest.43860D6CFEF31BB9.quest_desc",
+            value=(
+                "Foothold secured a stable base, steel, and stored current. Those conditions support machines that repeat work without spending another pair of hands.",
+                "Recover osmium and rebuild the first processing line in measured stages. Field Manual: Matter Systems starts with sided machines, power, and an observable ore-doubling loop.",
+            ),
+        ),
+    ),
 )
 
 
@@ -344,6 +404,32 @@ def _chapter_corpus(
     return chapters
 
 
+def _unmanaged_quest_ids(
+    quest_root: Path,
+    catalog: Sequence[ChapterSpec],
+) -> tuple[str, ...]:
+    managed_chapter_ids = {chapter.id for chapter in catalog}
+    quest_ids: list[str] = []
+    for path in sorted((quest_root / "chapters").glob("*.snbt")):
+        if path.stem in managed_chapter_ids:
+            continue
+        try:
+            chapter = _parse_snbt(path.read_text(encoding="utf-8"))
+        except (OSError, SnbtParseError) as error:
+            raise ValueError(f"malformed unmanaged chapter in {path}: {error}") from error
+        if (
+            not isinstance(chapter, Mapping)
+            or chapter.get("id") != path.stem
+            or not isinstance(chapter.get("quests"), list)
+        ):
+            raise ValueError(f"malformed unmanaged chapter in {path}")
+        for quest in chapter["quests"]:
+            if not isinstance(quest, Mapping) or not isinstance(quest.get("id"), str):
+                raise ValueError(f"malformed unmanaged quest in {path}")
+            quest_ids.append(quest["id"])
+    return _validated_legacy_quest_ids(quest_ids)
+
+
 def _collect_corpus_ids(
     chapters: Mapping[Path, Mapping[str, object]],
     link_owner_ids: set[str],
@@ -424,8 +510,12 @@ def _apply_legacy_quest_overlays_workspace(
         raise ValueError(
             "legacy overlays require a complete managed catalog or exact known quest ID universe"
         )
-    known_ids = _validated_legacy_quest_ids(known_quest_ids or ())
     managed_catalog = tuple(catalog or ())
+    known_ids = (
+        _unmanaged_quest_ids(quest_root, managed_catalog)
+        if known_quest_ids is None and catalog is not None
+        else _validated_legacy_quest_ids(known_quest_ids or ())
+    )
     if catalog is not None:
         _validate_catalog(managed_catalog, legacy_quest_ids=known_ids)
     quest_slug_index = _managed_quest_slug_index(managed_catalog)

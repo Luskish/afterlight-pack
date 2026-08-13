@@ -2240,7 +2240,15 @@ class Plan06ActIVContractTests(unittest.TestCase):
         self,
         catalog: list[object] | None = None,
     ) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
         catalog = self.quests.build_catalog() if catalog is None else catalog
+        excluded_manual_quest_ids = {
+            quest.id
+            for chapter in catalog
+            if chapter.slug.startswith("manuals/")
+            for quest in chapter.quests
+        }
         committed_manual_group = self.quests.GroupSpec(
             "certifications",
             "Certifications",
@@ -2268,7 +2276,22 @@ class Plan06ActIVContractTests(unittest.TestCase):
                 isolated_root / "kubejs" / "startup_scripts",
             )
             isolated_quest_root = isolated_root / "config" / "ftbquests" / "quests"
-            written = self.quests.write_catalog(catalog, isolated_quest_root)
+            managed_quest_ids = {
+                quest.id
+                for chapter in catalog
+                for quest in chapter.quests
+            }
+            legacy_quest_ids = {
+                quest["id"]
+                for path in sorted((isolated_quest_root / "chapters").glob("*.snbt"))
+                for quest in _parse_snbt(path.read_text(encoding="utf-8"))["quests"]
+                if quest["id"] not in managed_quest_ids
+            }
+            written = self.quests.write_catalog(
+                catalog,
+                isolated_quest_root,
+                legacy_quest_ids=legacy_quest_ids | excluded_manual_quest_ids,
+            )
             self.assertEqual({path.name for path in written}, managed_chapters)
             for filename in sorted(managed_chapters):
                 self.assertEqual(
@@ -2987,7 +3010,10 @@ class FieldManualCatalogTests(unittest.TestCase):
         for chapter in manuals:
             self.assertEqual(chapter.group.resolved_id, "4A20F33642175B95")
             self.assertEqual(chapter.group.title, "Field Manuals & Certifications")
-            self.assertEqual(chapter.quest_links, ())
+        self.assertEqual(
+            sum(len(chapter.quest_links) for chapter in manuals),
+            19,
+        )
 
     def test_exact_counts_optionality_and_linear_coordinates_are_closed(self) -> None:
         manuals = self.field_manuals()
@@ -3186,7 +3212,19 @@ class FieldManualCatalogTests(unittest.TestCase):
                 self.assertIsNone(explicit_id)
                 self.assertEqual(identifier, self.quests.stable_id(kind, slug))
         self.assertEqual(len({entity[2] for entity in manual_entities}), len(manual_entities))
-        self.quests.assert_no_id_collisions(catalog)
+        managed_quest_ids = {
+            quest.id for chapter in catalog for quest in chapter.quests
+        }
+        legacy_targets = {
+            link.linked_quest
+            for chapter in catalog
+            for link in chapter.quest_links
+            if link.linked_quest not in managed_quest_ids
+        }
+        self.quests.assert_no_id_collisions(
+            catalog,
+            legacy_quest_ids=legacy_targets,
+        )
 
 
 class QuestLinkCompilerTests(unittest.TestCase):
@@ -3942,7 +3980,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
     COMMODITY_CHAPTER = "5B93C6934B230CFB"
     COMMODITY_TASK = "39C717BFFEE3D235"
     LOCALIZATION_KEY = "chapter_group.4A20F33642175B95.title"
-    LOCALIZATION_DIGEST = "0712cdefe59c27dd3b487616122da45a0f657166612cd6704762227a274a5e24"
+    LOCALIZATION_DIGEST = "a37815245672902454ff0daf4a642c4c81bea408b030029dc4fa83fbb5155c83"
     KNOWN_TARGET_ID = "0576C37E9FA4116C"
 
     @classmethod
@@ -3970,6 +4008,21 @@ class LegacyQuestOverlayTests(unittest.TestCase):
         audit_target = base / "kubejs" / "server_scripts" / "afterlight" / "generated_quest_item_audit.js"
         audit_target.parent.mkdir(parents=True)
         shutil.copy2(audit_source, audit_target)
+        catalog = self.quests.build_catalog()
+        managed_chapter_ids = {chapter.id for chapter in catalog}
+        legacy_quest_ids = tuple(
+            quest["id"]
+            for path in sorted((quest_root / "chapters").glob("*.snbt"))
+            if path.stem not in managed_chapter_ids
+            for quest in self.builder._parse_snbt(
+                path.read_text(encoding="utf-8")
+            )["quests"]
+        )
+        self.quests.write_catalog(
+            catalog,
+            quest_root,
+            legacy_quest_ids=legacy_quest_ids,
+        )
         return base, quest_root
 
     @staticmethod
@@ -4112,20 +4165,67 @@ class LegacyQuestOverlayTests(unittest.TestCase):
         commodity_overlays=None,
         known_quest_ids=None,
     ):
+        catalog = self.quests.build_catalog()
+        frozen_known_ids = self.frozen_unmanaged_quest_ids(catalog)
+        if known_quest_ids is None:
+            known_quest_ids = frozen_known_ids
+        else:
+            known_quest_ids = tuple(
+                dict.fromkeys((*frozen_known_ids, *known_quest_ids))
+            )
         return self.overlays._write_legacy_quest_overlays(
             quest_root,
             link_overlays=self.overlays.LEGACY_QUEST_LINK_OVERLAYS if link_overlays is None else link_overlays,
             order_overlays=self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS if order_overlays is None else order_overlays,
             localization_overlays=self.overlays.LEGACY_LOCALIZATION_OVERLAYS if localization_overlays is None else localization_overlays,
             commodity_overlays=self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS if commodity_overlays is None else commodity_overlays,
-            catalog=self.quests.build_catalog(),
-            known_quest_ids=(self.KNOWN_TARGET_ID,) if known_quest_ids is None else known_quest_ids,
+            catalog=catalog,
+            known_quest_ids=known_quest_ids,
+        )
+
+    def frozen_unmanaged_quest_ids(self, catalog):
+        managed_quest_ids = {
+            quest.id for chapter in catalog for quest in chapter.quests
+        }
+        baseline = json.loads(
+            (
+                ROOT
+                / "tools"
+                / "fixtures"
+                / "quests"
+                / "story-cohesion-baseline.json"
+            ).read_text(encoding="utf-8")
+        )["corpus"]
+        return tuple(
+            quest["id"]
+            for chapter in baseline["chapters"].values()
+            for quest in chapter["quests"]
+            if quest["id"] not in managed_quest_ids
+        )
+
+    def write_default(self, quest_root: Path):
+        catalog = self.quests.build_catalog()
+        return self.overlays.write_legacy_quest_overlays(
+            quest_root,
+            catalog=catalog,
+            known_quest_ids=self.frozen_unmanaged_quest_ids(catalog),
         )
 
     def test_overlay_manifests_are_frozen_exact_and_git_object_bound(self) -> None:
         self.assertEqual(
             [(overlay.chapter_id, overlay.quest_links) for overlay in self.overlays.LEGACY_QUEST_LINK_OVERLAYS],
-            [(chapter_id, ()) for chapter_id in self.LINK_CHAPTERS],
+            [
+                (
+                    chapter_id,
+                    tuple(
+                        route.link
+                        for route in self.quests.STORY_LINK_ROUTES
+                        if route.route == "legacy"
+                        and route.owner_chapter_id == chapter_id
+                    ),
+                )
+                for chapter_id in self.LINK_CHAPTERS
+            ],
         )
         self.assertEqual(
             [
@@ -4178,8 +4278,11 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 overlay.expected_outside_sha256,
                 relative,
             )
-        self.assertEqual(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.overlays, ())
-        self.assertIsNone(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.expected_outside_sha256)
+        self.assertEqual(len(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.overlays), 9)
+        self.assertEqual(
+            self.overlays.LEGACY_LOCALIZATION_OVERLAYS.expected_outside_sha256,
+            "7fef8b47eeb10126ed18472316279d750e33be9083348fae5ad9a3e5a2e5a7a0",
+        )
         self.assertEqual(
             self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS,
             (
@@ -4207,10 +4310,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
             before = self.snapshot_files(repo_root)
 
-            changed = self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
-            )
+            changed = self.write_default(quest_root)
 
             after = self.snapshot_files(repo_root)
             changed_names = sorted(
@@ -4218,14 +4318,21 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             )
             expected_chapters = [
                 f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                for chapter_id in self.ORDER_OVERLAYS
+                for chapter_id in (
+                    set(self.ORDER_OVERLAYS)
+                    | set(self.LINK_CHAPTERS)
+                    | {self.COMMODITY_CHAPTER}
+                )
             ]
-            expected_chapters.append(
-                f"config/ftbquests/quests/chapters/{self.COMMODITY_CHAPTER}.snbt"
-            )
             self.assertEqual(
                 changed_names,
-                sorted([*expected_chapters, "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"]),
+                sorted(
+                    [
+                        *expected_chapters,
+                        "config/ftbquests/quests/lang/en_us.snbt",
+                        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+                    ]
+                ),
             )
             self.assertEqual(
                 sorted(path.relative_to(repo_root).as_posix() for path in changed),
@@ -4244,7 +4351,10 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             self.assertEqual(observed_orders, [10, 11, 12, 13, 14, 15, 16, 30, 31, 32])
             for chapter_id in self.LINK_CHAPTERS:
                 relative = f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                self.assertEqual(before[relative], after[relative])
+                self.assertEqual(
+                    self.outside_value_span(before[relative], "quest_links"),
+                    self.outside_value_span(after[relative], "quest_links"),
+                )
 
     def test_rations_replaces_only_item_span_and_preserves_steel_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -4256,10 +4366,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             before_rations = rations_path.read_bytes()
             before_steel = steel_path.read_bytes()
 
-            self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
-            )
+            self.write_default(quest_root)
 
             after_rations = rations_path.read_bytes()
             chapter = self.parsed_chapter(quest_root, self.COMMODITY_CHAPTER)
@@ -4275,7 +4382,10 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     repository_root=ROOT
                 ).by_task_id[self.COMMODITY_TASK].smart_filter_item,
             )
-            self.assertEqual(steel_path.read_bytes(), before_steel)
+            self.assertEqual(
+                self.outside_value_span(before_steel, "quest_links"),
+                self.outside_value_span(steel_path.read_bytes(), "quest_links"),
+            )
             before_span = self.overlays._commodity_task_item_span(
                 before_rations.decode("utf-8"),
                 self.COMMODITY_TASK,
@@ -4367,10 +4477,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
                 before = self.snapshot_files(repo_root)
                 with self.assertRaisesRegex(ValueError, expected):
-                    self.overlays.write_legacy_quest_overlays(
-                        quest_root,
-                        catalog=self.quests.build_catalog(),
-                    )
+                    self.write_default(quest_root)
                 self.assertEqual(self.snapshot_files(repo_root), before)
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -4424,10 +4531,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
     def test_complete_group_orders_are_unique_and_reserve_manual_range(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             _, quest_root = self.copy_repo_inputs(Path(temp_dir))
-            self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
-            )
+            self.write_default(quest_root)
             group_orders = {}
             for path in sorted((quest_root / "chapters").glob("*.snbt")):
                 chapter = self.builder._parse_snbt(path.read_text(encoding="utf-8"))
@@ -4435,10 +4539,25 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     group_orders[chapter["id"]] = int(chapter["order_index"])
             self.assertEqual(
                 group_orders,
-                self.ORDER_OVERLAYS,
+                {
+                    **self.ORDER_OVERLAYS,
+                    **{
+                        chapter.id: chapter.order_index
+                        for chapter in self.quests.build_catalog()
+                        if chapter.slug.startswith("manuals/")
+                    },
+                },
             )
             self.assertEqual(len(set(group_orders.values())), len(group_orders))
-            self.assertTrue(set(group_orders.values()).isdisjoint(range(8)))
+            self.assertEqual(
+                {
+                    order
+                    for chapter_id, order in group_orders.items()
+                    if chapter_id not in self.ORDER_OVERLAYS
+                },
+                set(range(8)),
+            )
+            self.assertTrue(set(self.ORDER_OVERLAYS.values()).isdisjoint(range(8)))
 
             manual_path = quest_root / "chapters" / "1234567890ABCDE0.snbt"
             manual_path.write_text(
@@ -4452,9 +4571,15 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 "}\n",
                 encoding="utf-8",
             )
-            self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
+            before = self.snapshot_files(quest_root.parents[2])
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate manual-group order_index 0",
+            ):
+                self.write_default(quest_root)
+            self.assertEqual(
+                self.snapshot_files(quest_root.parents[2]),
+                before,
             )
 
     def test_missing_duplicate_and_malformed_top_level_spans_fail_before_writes(self) -> None:
@@ -4473,10 +4598,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
                 before = self.snapshot_files(repo_root)
                 with self.assertRaisesRegex(ValueError, expected):
-                    self.overlays.write_legacy_quest_overlays(
-                        quest_root,
-                        catalog=self.quests.build_catalog(),
-                    )
+                    self.write_default(quest_root)
                 self.assertEqual(self.snapshot_files(repo_root), before)
 
     def test_unrelated_digest_drift_fails_before_writes(self) -> None:
@@ -4492,10 +4614,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             )
             before = self.snapshot_files(repo_root)
             with self.assertRaisesRegex(ValueError, "outside-span digest mismatch"):
-                self.overlays.write_legacy_quest_overlays(
-                    quest_root,
-                    catalog=self.quests.build_catalog(),
-                )
+                self.write_default(quest_root)
             self.assertEqual(self.snapshot_files(repo_root), before)
 
     def test_target_change_after_preflight_is_not_overwritten(self) -> None:
@@ -4530,10 +4649,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 side_effect=drift_before_exchange,
             ):
                 with self.assertRaisesRegex(ValueError, "changed after preflight"):
-                    self.overlays.write_legacy_quest_overlays(
-                        quest_root,
-                        catalog=self.quests.build_catalog(),
-                    )
+                    self.write_default(quest_root)
 
             self.assertTrue(raced)
             after = self.snapshot_files(repo_root)
@@ -4793,25 +4909,16 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 side_effect=fail_second_exchange,
             ):
                 with self.assertRaisesRegex(OSError, "injected later overlay write failure"):
-                    self.overlays.write_legacy_quest_overlays(
-                        quest_root,
-                        catalog=self.quests.build_catalog(),
-                    )
+                    self.write_default(quest_root)
             self.assertGreaterEqual(call_count, 2)
             self.assertEqual(self.snapshot_files(repo_root), before)
 
     def test_second_overlay_run_is_byte_identical(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
-            self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
-            )
+            self.write_default(quest_root)
             first = self.snapshot_files(repo_root)
-            changed = self.overlays.write_legacy_quest_overlays(
-                quest_root,
-                catalog=self.quests.build_catalog(),
-            )
+            changed = self.write_default(quest_root)
             self.assertEqual(changed, [])
             self.assertEqual(self.snapshot_files(repo_root), first)
 
@@ -4873,24 +4980,12 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             self.assertEqual(
                 changed,
                 sorted([
-                    "config/ftbquests/quests/.afterlight-managed.json",
-                    *[
-                        f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                        for chapter_id in self.ORDER_OVERLAYS
-                    ],
-                    "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
-                    f"config/ftbquests/quests/chapters/{self.COMMODITY_CHAPTER}.snbt",
                     *[
                         f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                         for chapter_id in (
-                            "150C6F996983394C",
-                            "4DE10FFCDEEF9892",
-                            "01749E1554DFF98B",
-                            "4690C88367D47FF3",
-                            "0A510C4BD2A3818B",
-                            "67F13F819570ED52",
-                            "67C126F7B1338CB1",
-                            "0B7C7859EBD6EFF3",
+                            set(self.ORDER_OVERLAYS)
+                            | set(self.LINK_CHAPTERS)
+                            | {self.COMMODITY_CHAPTER}
                         )
                     ],
                     "config/ftbquests/quests/lang/en_us.snbt",

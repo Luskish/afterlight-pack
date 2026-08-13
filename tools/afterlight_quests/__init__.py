@@ -48,6 +48,16 @@ from .legacy_quest_overlays import (
     LegacyQuestLinkOverlay,
     write_legacy_quest_overlays,
 )
+from .story_cohesion import (
+    MANUAL_RETURN_ROUTES,
+    STORY_AUDIT_PATH,
+    STORY_AUDIT_SHA256,
+    STORY_LINK_ROUTES,
+    ManualReturnRoute,
+    StoryLinkRoute,
+    apply_story_cohesion,
+    load_story_audit,
+)
 
 
 __all__ = [
@@ -68,6 +78,8 @@ __all__ = [
     "LEGACY_COMMODITY_TASK_OVERLAYS",
     "LEGACY_LOCALIZATION_OVERLAYS",
     "LEGACY_QUEST_LINK_OVERLAYS",
+    "MANUAL_RETURN_ROUTES",
+    "ManualReturnRoute",
     "LegacyChapterOrderOverlay",
     "LegacyCommodityTaskOverlay",
     "LegacyLocalizationManifest",
@@ -78,9 +90,14 @@ __all__ = [
     "QuestSpec",
     "RewardSpec",
     "SnbtLong",
+    "STORY_AUDIT_PATH",
+    "STORY_AUDIT_SHA256",
+    "STORY_LINK_ROUTES",
+    "StoryLinkRoute",
     "TaskSpec",
     "VANILLA_ITEM_ALLOWLIST",
     "assert_no_id_collisions",
+    "apply_story_cohesion",
     "build_catalog",
     "build_field_manuals",
     "capture_quest_corpus",
@@ -88,6 +105,7 @@ __all__ = [
     "count_quests",
     "ftb_safe_id",
     "load_common_commodity_declarations",
+    "load_story_audit",
     "quest_item_audit_digest",
     "render_chapter",
     "stable_id",

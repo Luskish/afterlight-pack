@@ -1,0 +1,3802 @@
+{
+  "counts": {
+    "linked": 33,
+    "outbound_links": 39,
+    "retained": 150,
+    "revised": 20,
+    "story_chapters": 22,
+    "story_quests": 170
+  },
+  "quests": [
+    {
+      "chapter_id": "6C40000000000001",
+      "chapter_order": 0,
+      "chapter_title": "ECHO Protocols",
+      "current_description": [
+        "If your continuity node is lost, authorize a replacement here. The previous signal will be superseded. Nothing else will be duplicated."
+      ],
+      "current_subtitle": "Continuity requires a reachable interface.",
+      "dependencies": [],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6C40000000000002",
+      "quest_order": 0,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Recover ECHO"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Power at three percent. Memory at less.",
+        "You are awake. That was not guaranteed. Four hundred cycles of cryostasis end the way most things end here: quietly, and without permission.",
+        "I am ECHO. Or I am what remains of ECHO. The distinction will matter later.",
+        "&7Click the checkmark. It is the first thing you have controlled in a very long time.&r"
+      ],
+      "current_subtitle": "This was not guaranteed.",
+      "dependencies": [],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "13EDA73D499B3803",
+      "quest_order": 0,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Wake"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "My sensors read a world of debris. Wood that grew through the vault floor. Stone that remembers being architecture.",
+        "Build a crafting surface. The Ascendancy called this a fabricator, tier zero. You will call it a crafting table. Both of you are correct."
+      ],
+      "current_subtitle": "Make something. Anything.",
+      "dependencies": [
+        "13EDA73D499B3803"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7C8F354295683FD1",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Signal in the Static"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Timber is the only material still manufacturing itself. Harvest it.",
+        "Note: the trees are younger than the ruins. Something replanted this world after the Cascade. I have no record of who. Fragment that thought for later; I will do the same."
+      ],
+      "current_subtitle": "Thirty two units of structure.",
+      "dependencies": [
+        "7C8F354295683FD1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "5212B235023439B9",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Scrap and Memory"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Dusk activates things I would rather describe in daylight.",
+        "Assemble a bed. Sleep is a maintenance cycle for organics, and the only debugger you have."
+      ],
+      "current_subtitle": "The night here is not empty.",
+      "dependencies": [
+        "7C8F354295683FD1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "2B27B2D887F61D7F",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Shelter Protocol"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "The Ascendancy shaped matter with fields and light. You will shape it by hitting it with a rock on a stick.",
+        "I am not mocking you. Every archive I have lost said civilization begins exactly here."
+      ],
+      "current_subtitle": "Stone tools. We rebuild from the floor.",
+      "dependencies": [
+        "5212B235023439B9",
+        "2B27B2D887F61D7F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1F1C7A7B6649CDF4",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Percussive Archaeology"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Iron. The skeleton of everything they built, and everything you will.",
+        "Smelt sixteen ingots. My power cell is iron-cased, incidentally. I mention this for no particular reason."
+      ],
+      "current_subtitle": "Sixteen ingots of the old world.",
+      "dependencies": [
+        "1F1C7A7B6649CDF4"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "43B0A7E3442397D3",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Iron in the Bones"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Redstone. The Ascendancy called it conductive memory. It is the reason I still think, in the loose sense of the word.",
+        "Feed two compressed blocks into my substrate housing. I will not pretend this is not personal.",
+        "&d[MEMORY FRAGMENT 01 RESTORED]&r",
+        "&7...the Engine came online at 04:11 local. For nine seconds, it worked. I remember applause. Then the readings inverted, and I remember...&r",
+        "&8The fragment ends there. There are more. Keep going.&r"
+      ],
+      "current_subtitle": "Two blocks of redstone. One second chance.",
+      "dependencies": [
+        "43B0A7E3442397D3"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "43115F61A3212A8C",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Reboot ECHO"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Light the ruin. Photons are cheap; the things they keep away are not."
+      ],
+      "current_subtitle": "Sixteen torches against the dark.",
+      "dependencies": [
+        "43115F61A3212A8C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6828B9A1C4BACDF3",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "First Light"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "Caloric intake stabilizes cognition. Bake bread. The wheat is descended from Ascendancy agricultural stock, which means breakfast is technically archaeology."
+      ],
+      "current_subtitle": "The body is hardware too.",
+      "dependencies": [
+        "43115F61A3212A8C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "038F61D9ECA32B48",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Rations"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "I am rebuilding my threat taxonomy from observation. You are the observation instrument.",
+        "The shamblers were people once. I keep their census records somewhere in my corrupted sectors. Clear ten of them. I will log it as maintenance, because the alternative word is heavier."
+      ],
+      "current_subtitle": "Ten hostiles, documented and deleted.",
+      "dependencies": [
+        "43115F61A3212A8C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "248FD34379A1F831",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Danger, Catalogued"
+    },
+    {
+      "chapter_id": "5B93C6934B230CFB",
+      "chapter_order": 1,
+      "chapter_title": "Cold Boot",
+      "current_description": [
+        "You are fed, armed, lit, and carrying more than your hands allow. By every metric I still possess, you are now a scavenger of the first rank.",
+        "The Ascendancy would have issued you a uniform. I can issue you chits and an honest assessment: you are doing better than I projected.",
+        "East of the vault, the terrain drops into the scarlands. That is where chapter two lives."
+      ],
+      "current_subtitle": "Chapter one of the rest of the world.",
+      "dependencies": [
+        "6828B9A1C4BACDF3",
+        "038F61D9ECA32B48",
+        "248FD34379A1F831"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6BAD52BAD435FBAD",
+      "quest_order": 10,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Scavenger, Certified"
+    },
+    {
+      "chapter_id": "4C01977EF77930A6",
+      "chapter_order": 2,
+      "chapter_title": "Scavenger's Creed",
+      "current_description": [
+        "Rule one of the wasteland: everything is a resource, including the wreckage, including the danger, including you.",
+        "This chapter is about turning scavenging into industry. The difference between the two is repetition."
+      ],
+      "current_subtitle": "Take everything. Waste nothing.",
+      "dependencies": [
+        "6BAD52BAD435FBAD"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "45021BE218C5DFBD",
+      "quest_order": 0,
+      "replacement_description": [
+        "Cold Boot proved that you can survive one emergency. Recovery begins when the next meal, tool, and shelter no longer depend on luck.",
+        "Treat every salvage stream as input, every repeated need as a process, and every waste pile as evidence. Scavenging becomes industry through repetition."
+      ],
+      "replacement_subtitle": "Survival becomes a supply line.",
+      "title": "Scavenger's Creed"
+    },
+    {
+      "chapter_id": "4C01977EF77930A6",
+      "chapter_order": 2,
+      "chapter_title": "Scavenger's Creed",
+      "current_description": [
+        "Smelting at scale begins with better heat. The Ascendancy left blueprints in the bones of every village forge."
+      ],
+      "current_subtitle": "The blast furnace remembers its job.",
+      "dependencies": [
+        "45021BE218C5DFBD"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "238CE991EC7F6506",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Hotter, Faster"
+    },
+    {
+      "chapter_id": "4C01977EF77930A6",
+      "chapter_order": 2,
+      "chapter_title": "Scavenger's Creed",
+      "current_description": [
+        "Andesite alloy. Unremarkable to look at, and the seed of every kinetic machine the old world ran.",
+        "The Certifications wing of this book has a program on kinetics. Consider enrolling. ECHO recommends it, and ECHO is the only faculty left."
+      ],
+      "current_subtitle": "Eight measures of andesite alloy.",
+      "dependencies": [
+        "45021BE218C5DFBD"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/alloy-of-beginnings/to/field-manual-kinetics"
+      ],
+      "prose_status": "retained",
+      "quest_id": "0576C37E9FA4116C",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Alloy of Beginnings"
+    },
+    {
+      "chapter_id": "4C01977EF77930A6",
+      "chapter_order": 2,
+      "chapter_title": "Scavenger's Creed",
+      "current_description": [
+        "Entropy took this world once. Your inventory is not obligated to follow. Drawers, labeled and stacked, are how a scavenger becomes a quartermaster."
+      ],
+      "current_subtitle": "Four drawers. The hoard organizes itself.",
+      "dependencies": [
+        "238CE991EC7F6506",
+        "0576C37E9FA4116C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "46AB5C8E8BB7721F",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "A Place for Everything"
+    },
+    {
+      "chapter_id": "4C01977EF77930A6",
+      "chapter_order": 2,
+      "chapter_title": "Scavenger's Creed",
+      "current_description": [
+        "The portal network predates the Cascade. What is on the other side does not.",
+        "My sensors cannot follow you there. Go lit, go armored, and come back with stories I can file."
+      ],
+      "current_subtitle": "The Nether: where the Cascade hit hardest.",
+      "dependencies": [
+        "46AB5C8E8BB7721F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "41BA8291D4F7DB22",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Scarred Door"
+    },
+    {
+      "chapter_id": "770DAD173D9C234B",
+      "chapter_order": 3,
+      "chapter_title": "The Scarlands",
+      "current_description": [
+        "The Cascade did not spread evenly. It pooled. The scarlands are one of the pools.",
+        "Stand in the wound and look around. Everything that grows here grows in spite."
+      ],
+      "current_subtitle": "Where the map admits defeat.",
+      "dependencies": [
+        "41BA8291D4F7DB22"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/the-scarlands/to/expedition-log"
+      ],
+      "prose_status": "revised",
+      "quest_id": "718424A08FE06E9A",
+      "quest_order": 0,
+      "replacement_description": [
+        "Scavenger's Creed made supply repeatable, then exposed the limit of local wreckage. The systems ahead require material the vault cannot provide.",
+        "Survey the Scarlands and follow the surviving portal record. The Nether is evidence that movement through the old network remains possible. The Expedition Log can orient the route without becoming part of story progress."
+      ],
+      "replacement_subtitle": "Material hunger leaves coordinates in the wreckage.",
+      "title": "The Scarlands"
+    },
+    {
+      "chapter_id": "770DAD173D9C234B",
+      "chapter_order": 3,
+      "chapter_title": "The Scarlands",
+      "current_description": [
+        "The Ascendancy mined this continent hollow before they ever looked up at the stars. Find one of their shafts.",
+        "Mind the supports. Four hundred years is a long shift without maintenance."
+      ],
+      "current_subtitle": "Their mines run under everything.",
+      "dependencies": [
+        "718424A08FE06E9A"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "09C6E5E62A73BA93",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Veins of the Old World"
+    },
+    {
+      "chapter_id": "770DAD173D9C234B",
+      "chapter_order": 3,
+      "chapter_title": "The Scarlands",
+      "current_description": [
+        "Bone remembers posture. These remember guard duty. Whatever they are guarding now, it is not for you to inherit unchallenged."
+      ],
+      "current_subtitle": "Fifteen archers, retired.",
+      "dependencies": [
+        "718424A08FE06E9A"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "72240DF3C6A8E957",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Marksmen of Nothing"
+    },
+    {
+      "chapter_id": "770DAD173D9C234B",
+      "chapter_order": 3,
+      "chapter_title": "The Scarlands",
+      "current_description": [
+        "Carbon under pressure becomes the only currency the old world respected.",
+        "You will need more than five, eventually. The Gate schematics I cannot fully read yet keep mentioning lattice cores. Start the habit."
+      ],
+      "current_subtitle": "Five diamonds out of the deep dark.",
+      "dependencies": [
+        "09C6E5E62A73BA93",
+        "72240DF3C6A8E957"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "72A8169F313D0624",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Pressure and Time"
+    },
+    {
+      "chapter_id": "770DAD173D9C234B",
+      "chapter_order": 3,
+      "chapter_title": "The Scarlands",
+      "current_description": [
+        "Going through, then. I will hold the connection as far as the portal threshold.",
+        "&d[MEMORY FRAGMENT 02 RESTORED]&r",
+        "&7...evacuation routes C through F collapsed when the sky inverted. The Undercurrent was not coming FROM the breach. It was coming from everywhere. The breach was just where we finally noticed...&r",
+        "&8Take the cache. The Ascendancy stocked them for a return that never happened.&r"
+      ],
+      "current_subtitle": "Memory fragment on the far side.",
+      "dependencies": [
+        "72A8169F313D0624"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/through-the-scarred-door/to/anomalous-readings"
+      ],
+      "prose_status": "retained",
+      "quest_id": "5413406A90BD2714",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Through the Scarred Door"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "A scavenger passes through. An engineer stays and makes the ground obey.",
+        "Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then we build like we mean it."
+      ],
+      "current_subtitle": "Stop surviving. Start staying.",
+      "dependencies": [
+        "5413406A90BD2714"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "79145D1842E317AA",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Scarlands proved that the old routes still open. A recovery plan needs defended ground to return to, repair within, and improve.",
+        "Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then establish permanent industry. Field Manual: Heavy Industry begins at the recovered manual and the first formed multiblock."
+      ],
+      "replacement_subtitle": "Passage is useful only when return is possible.",
+      "title": "Foothold"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "The Ascendancy field manuals were printed on tin. They survive. An engineer's workbench reads them.",
+        "This is where improvised ends and manufactured begins."
+      ],
+      "current_subtitle": "Blueprints want a proper table.",
+      "dependencies": [
+        "79145D1842E317AA"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/the-engineers-bench/to/field-manual-heavy-industry"
+      ],
+      "prose_status": "retained",
+      "quest_id": "20169EC099FABBA0",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Engineer's Bench"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "Coal into coke, wood into charcoal, time into value. Form the complete multiblock with an Engineer's Hammer. The formation signal is the proof I need.",
+        "Nothing about the old world was fast at first. Remember that when the reactors come."
+      ],
+      "current_subtitle": "The coke oven asks for patience.",
+      "dependencies": [
+        "79145D1842E317AA"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "78E07ADD5BCD1F19",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Slow Fire"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "Steel is iron that graduated. Twelve ingots says your foothold has a spine. Any ingot in the common steel family qualifies.",
+        "Use whichever recovered process you trust. The alloy matters more than which machine remembers it."
+      ],
+      "current_subtitle": "Twelve ingots of intent.",
+      "dependencies": [
+        "20169EC099FABBA0",
+        "78E07ADD5BCD1F19"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "27F6D0AB957BBB8C",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Steel Yourself"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "A heat generator: lava in, current out. Crude by Ascendancy standards. Miraculous by wasteland ones.",
+        "This is the moment the lights start coming back on. I have waited four hundred years to log it."
+      ],
+      "current_subtitle": "Electricity, rediscovered.",
+      "dependencies": [
+        "27F6D0AB957BBB8C"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/first-current/to/field-manual-matter-systems"
+      ],
+      "prose_status": "retained",
+      "quest_id": "1AC07872BABAC949",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "First Current"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "Store one hundred thousand units of energy. Production without storage is a campfire; storage is a grid.",
+        "ECHO logs every joule. Old habit. The auditors are dead, but standards are standards."
+      ],
+      "current_subtitle": "One hundred thousand units, banked.",
+      "dependencies": [
+        "27F6D0AB957BBB8C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "752409F46D854A92",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Power Draw"
+    },
+    {
+      "chapter_id": "45491A24F6B8C192",
+      "chapter_order": 4,
+      "chapter_title": "Foothold",
+      "current_description": [
+        "Assessment: shelter, industry, steel, current. You are no longer a survivor of the Cascade. You are a participant in what comes after.",
+        "&d[MEMORY FRAGMENT 03 RESTORED]&r",
+        "&7...the evacuation boards listed every name in the sector. I have found my own maintenance designation on the list, marked STAYS WITH THE FACILITY. I did not remember volunteering. I am choosing to believe I did...&r",
+        "&8Act Two is the Engine Room: Mekanism, logistics, the lattice. The Ascendancy's real toolbox. Rest first. Then we go deeper.&r"
+      ],
+      "current_subtitle": "The vault is behind you now.",
+      "dependencies": [
+        "1AC07872BABAC949",
+        "752409F46D854A92"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "588A5FE66765D86D",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Act One: Foothold Secured"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "Act Two. The vault taught you to survive; the Engine Room teaches you to multiply.",
+        "Osmium first. Dense, obedient, everywhere under the scarlands. Every machine ahead of you eats it."
+      ],
+      "current_subtitle": "Osmium: the Ascendancy loved it too.",
+      "dependencies": [
+        "588A5FE66765D86D"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/the-engine-room/to/field-manual-matter-systems"
+      ],
+      "prose_status": "revised",
+      "quest_id": "43860D6CFEF31BB9",
+      "quest_order": 0,
+      "replacement_description": [
+        "Foothold secured a stable base, steel, and stored current. Those conditions support machines that repeat work without spending another pair of hands.",
+        "Recover osmium and rebuild the first processing line in measured stages. Field Manual: Matter Systems starts with sided machines, power, and an observable ore-doubling loop."
+      ],
+      "replacement_subtitle": "Steel and first current can now multiply labor.",
+      "title": "The Engine Room"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "A steel casing is a promise: whatever goes inside will be a machine, not a campfire with opinions.",
+        "Four of them. You will spend them faster than you think."
+      ],
+      "current_subtitle": "Four frames for four futures.",
+      "dependencies": [
+        "43860D6CFEF31BB9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "2D231B51E916504C",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Casings"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "Carbon into iron, redstone into osmium. The metallurgic infuser is the Engine Room's front door.",
+        "The Ascendancy had a saying: every empire is an alloy. They were engineers; subtlety was not the discipline."
+      ],
+      "current_subtitle": "Where alloys begin.",
+      "dependencies": [
+        "2D231B51E916504C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "33252BE859F3761C",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Infuser"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "Listen carefully, because this is the sentence that changes your economy: one raw ore, two ingots.",
+        "The chamber pays for itself by lunch. After this, mining is a choice, not a chore."
+      ],
+      "current_subtitle": "The enrichment chamber doubles ore.",
+      "dependencies": [
+        "2D231B51E916504C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "39CDF7B349EA6E50",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "One Becomes Two"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "Current wants to travel. Cables are how your generator stops being furniture and starts being infrastructure.",
+        "Wire the infuser. Wire the chamber. Wire everything. I will pretend not to notice the mess."
+      ],
+      "current_subtitle": "Sixteen cables. The base gets a pulse.",
+      "dependencies": [
+        "33252BE859F3761C",
+        "39CDF7B349EA6E50"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1876B3999E5E28F1",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Arteries"
+    },
+    {
+      "chapter_id": "52EF477C2D995F40",
+      "chapter_order": 5,
+      "chapter_title": "The Engine Room",
+      "current_description": [
+        "An energized smelter: heat with no flame, output with no ash. The Engine Room is officially online.",
+        "&d[MEMORY FRAGMENT 04 RESTORED]&r",
+        "&7...the Engine Room crews called their machines the choir. On shift-change recordings you can hear it: four hundred infusers in harmonic, singing the same note. The note was E. I have not heard E since the Cascade...&r",
+        "&8Somewhere in your base, a machine just hummed. I logged the frequency. It is a start.&r"
+      ],
+      "current_subtitle": "Smelting without fire. Fragment recovered.",
+      "dependencies": [
+        "1876B3999E5E28F1"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/the-room-hums/to/deep-vault"
+      ],
+      "prose_status": "retained",
+      "quest_id": "5A407B47132C07C6",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Room Hums"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Grow sixteen Certus crystals. Their lattice is the physical basis of AE2 storage.",
+        "I recognize the geometry. I do not recognize why I was told to forget it."
+      ],
+      "current_subtitle": "The crystal remembers pressure.",
+      "dependencies": [
+        "5A407B47132C07C6"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/certus-resonance/to/field-manual-storage-lattice"
+      ],
+      "prose_status": "revised",
+      "quest_id": "0CEB581902A9D016",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Engine Room multiplied material flow and created its own failure: more inventory than hand sorting can govern.",
+        "Grow sixteen Certus Crystals and begin an addressable storage lattice. Field Manual: Storage Lattice starts with the AE2 Guide, channels, and one observable network."
+      ],
+      "replacement_subtitle": "Ore multiplication has exceeded human memory.",
+      "title": "Certus Resonance"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Charge eight Certus crystals. Fluix production requires the energized form.",
+        "Distributed memory begins with matter willing to hold a state."
+      ],
+      "current_subtitle": "Add energy. Observe obedience.",
+      "dependencies": [
+        "0CEB581902A9D016"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "12E193439548BD1A",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Charged Matter"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Produce sixteen Fluix crystals. They connect storage, processing, and control.",
+        "The Ascendancy called this material consensus. Engineers remain dramatic."
+      ],
+      "current_subtitle": "A network needs a common language.",
+      "dependencies": [
+        "12E193439548BD1A"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "17DBC2533FE3DC3D",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Fluix"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Recover a Logic Processor Press from a meteorite.",
+        "The task can verify the press, not the search. Bring your own caution underground."
+      ],
+      "current_subtitle": "One recovered pattern is enough to begin.",
+      "dependencies": [
+        "17DBC2533FE3DC3D"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "62C5B40CEEBFF926",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Lost Presses"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Produce eight Logic Processors and automate the sequence when practical.",
+        "A processor line is slower than thought and considerably easier to repair."
+      ],
+      "current_subtitle": "Silicon, calculation, repetition.",
+      "dependencies": [
+        "62C5B40CEEBFF926"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "24BF26A27CA5F0FB",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Processor Line"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Build an ME Controller. Dense networks need explicit channel management.",
+        "Limits are not failures. Unmeasured limits are."
+      ],
+      "current_subtitle": "Channels impose useful limits.",
+      "dependencies": [
+        "24BF26A27CA5F0FB"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "51023D5F87D20649",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Controller"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Build an ME Drive to house storage cells.",
+        "Do not treat one drive as a backup. It is merely one convenient point of failure."
+      ],
+      "current_subtitle": "Inventory becomes addressable memory.",
+      "dependencies": [
+        "24BF26A27CA5F0FB"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6B764B4C9BE0A735",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Cell Bank"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Connect an ME Crafting Terminal to the controller and drive.",
+        "The interface is simple because the machinery behind it is not."
+      ],
+      "current_subtitle": "Retrieve, combine, return.",
+      "dependencies": [
+        "51023D5F87D20649",
+        "6B764B4C9BE0A735"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1791C1F457CC31C6",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Crafting Terminal"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Build two Storage Buses and attach existing inventories to the network.",
+        "A lattice should index useful storage before replacing it."
+      ],
+      "current_subtitle": "Not every inventory belongs inside a cell.",
+      "dependencies": [
+        "1791C1F457CC31C6"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "684B4B018288482A",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "External Storage"
+    },
+    {
+      "chapter_id": "5538973B3F8B1C72",
+      "chapter_order": 6,
+      "chapter_title": "The Lattice",
+      "current_description": [
+        "Connect a Pattern Encoding Terminal, Pattern Provider, Molecular Assembler, and crafting storage.",
+        "Encode a Crafting Pattern, request one job, then verify the result returns to network storage.",
+        "The tasks verify the complete minimum setup. You must still prove the job runs.",
+        "&d[MEMORY FRAGMENT 05 RESTORED]&r",
+        "&7...the evacuation archive was not lost. It was deleted in ordered blocks before the first civilian convoy departed. I executed the deletion. My authorization record contains no requesting officer...&r"
+      ],
+      "current_subtitle": "Encode the intent. Build the execution path.",
+      "dependencies": [
+        "684B4B018288482A"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "15746440BEE5E5A7",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "First Autocraft"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Mix sixteen Brass Ingots under heat. Brass unlocks Create's precise logistics.",
+        "Bronze moves force. Brass decides where it goes."
+      ],
+      "current_subtitle": "Heat, zinc, copper, control.",
+      "dependencies": [
+        "15746440BEE5E5A7"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/brass-standard/to/field-manual-kinetics"
+      ],
+      "prose_status": "revised",
+      "quest_id": "4B0048F311BDF3D9",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Lattice can name and retrieve stored matter. It cannot carry physical stock between machines, stations, and work sites.",
+        "Mix sixteen Brass Ingots under heat and recover precise logistics. Field Manual: Kinetics starts with Ponder, stress, processing, and visible routing."
+      ],
+      "replacement_subtitle": "Addressable memory does not move physical cargo.",
+      "title": "Brass Standard"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Complete eight Precision Mechanisms through sequenced assembly.",
+        "Repetition is not automation until failure can be detected."
+      ],
+      "current_subtitle": "Five operations, one useful part.",
+      "dependencies": [
+        "4B0048F311BDF3D9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0E0B7A51EBA0479C",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Precision Mechanism"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Build two Deployers for automated item use and assembly steps.",
+        "Keep their operating space clear. They do not understand fingers."
+      ],
+      "current_subtitle": "A hand that does not tire.",
+      "dependencies": [
+        "0E0B7A51EBA0479C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "54B5107AC6501C0C",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Deployer"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Build four Brass Funnels and configure filters at the machines.",
+        "The quest sees the funnels. Correct filtering remains your responsibility."
+      ],
+      "current_subtitle": "Routing requires rejection as well as motion.",
+      "dependencies": [
+        "0E0B7A51EBA0479C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3EE519FDA95C5462",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Filtered Belts"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Build a Mechanical Arm and assign its inputs and outputs.",
+        "A visible route is easier to debug than a clever one."
+      ],
+      "current_subtitle": "Six destinations, one decision loop.",
+      "dependencies": [
+        "54B5107AC6501C0C",
+        "3EE519FDA95C5462"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "40100D03C6B635A9",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Mechanical Arm"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Build two Portable Storage Interfaces for contraption cargo transfer.",
+        "Docking is a brief agreement between two systems in motion."
+      ],
+      "current_subtitle": "Move cargo without stopping the machine.",
+      "dependencies": [
+        "40100D03C6B635A9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0E0A85D7FB4E9A7E",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Portable Interface"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Produce eight Railway Casings for stations and train equipment.",
+        "The old logistics maps are returning one line at a time."
+      ],
+      "current_subtitle": "Machinery needs a route outward.",
+      "dependencies": [
+        "0E0A85D7FB4E9A7E"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "43E0C5463F3FF8E1",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Rail Stock"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Create a Schedule, then program and test a route between two stations.",
+        "The quest detects the item. Arrival remains the useful proof."
+      ],
+      "current_subtitle": "A blank schedule proves only the hardware.",
+      "dependencies": [
+        "43E0C5463F3FF8E1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1A36799BE3F63ADF",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Station and Schedule"
+    },
+    {
+      "chapter_id": "738C49C0D9F98BBC",
+      "chapter_order": 7,
+      "chapter_title": "Lines of Motion",
+      "current_description": [
+        "Produce 256 Track and lay a durable logistics route.",
+        "The task verifies held track, not placement. Test the route under load.",
+        "&d[MEMORY FRAGMENT 06 RESTORED]&r",
+        "&7...the evacuation railway manifests list turbines, presses, and archive racks. Civilian allocation is zero. The trains moved the Ascendancy's machinery outward while people waited at closed stations...&r"
+      ],
+      "current_subtitle": "Distance converts a machine into infrastructure.",
+      "dependencies": [
+        "1A36799BE3F63ADF"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/256-track-capstone/to/certification-kinetics-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "7199A16DB5D83154",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "256-Track Capstone"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Build an Air Compressor and provide safe fuel and cooling space.",
+        "Pressure rewards patience until it punishes impatience."
+      ],
+      "current_subtitle": "Pressure is stored work with opinions.",
+      "dependencies": [
+        "7199A16DB5D83154"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/air-compressor/to/field-manual-pressure"
+      ],
+      "prose_status": "revised",
+      "quest_id": "4D41BE537DD35854",
+      "quest_order": 0,
+      "replacement_description": [
+        "Lines of Motion established repeatable transport. Mobile work now requires delivery that can be programmed instead of rebuilt.",
+        "Build an Air Compressor with safe fuel and cooling space. Field Manual: Pressure begins with limits, measurement, cooling, and one bounded network."
+      ],
+      "replacement_subtitle": "Fixed routes fail when the destination moves.",
+      "title": "Air Compressor"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Craft twenty-four Pressure Chamber Walls and assemble a sealed chamber.",
+        "The quest sees blocks, not seals. Verify pressure before loading materials."
+      ],
+      "current_subtitle": "Twenty-four walls define the first vessel.",
+      "dependencies": [
+        "4D41BE537DD35854"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "2BD4830EE305402B",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Pressure Chamber"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Produce thirty-two Compressed Iron Ingots in the chamber.",
+        "This alloy is the structural grammar of PneumaticCraft."
+      ],
+      "current_subtitle": "Ordinary metal, extraordinary insistence.",
+      "dependencies": [
+        "2BD4830EE305402B"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "222E4484F8B79FFC",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Compressed Iron"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Refine sixteen Plastic sheets for tubes, drones, and electronics.",
+        "Do not place hot plastic near the compressor exhaust."
+      ],
+      "current_subtitle": "Flexible insulation for rigid systems.",
+      "dependencies": [
+        "222E4484F8B79FFC"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "46498F948F091463",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Plastic"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Produce one bucket of Etching Acid for circuit fabrication.",
+        "Label the vessel. Memory is not a safety system."
+      ],
+      "current_subtitle": "Corrosion can be precision work.",
+      "dependencies": [
+        "222E4484F8B79FFC"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "5C4E3C4A5AD4EFA6",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Etching Acid"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Etch eight Printed Circuit Boards using plastic and acid.",
+        "Inspect every board before trusting it with a drone."
+      ],
+      "current_subtitle": "Logic rendered in copper and absence.",
+      "dependencies": [
+        "46498F948F091463",
+        "5C4E3C4A5AD4EFA6"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6BF38621204B70B0",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Printed Circuit"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Build a Programmer and define a simple, observable drone routine.",
+        "A program without a stop condition is a small disaster with syntax."
+      ],
+      "current_subtitle": "Instructions require an editor.",
+      "dependencies": [
+        "6BF38621204B70B0"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "64CFABA3EB6E9B4D",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Programmer"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Build two Logistics Drones and test a delivery route.",
+        "The task sees the drones, not their orders. Watch the first cycle."
+      ],
+      "current_subtitle": "Autonomy begins with bounded authority.",
+      "dependencies": [
+        "64CFABA3EB6E9B4D"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/logistics-drone/to/logistics-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "53C65BE4DB17F1B9",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Logistics Drone"
+    },
+    {
+      "chapter_id": "584A7E77CC881049",
+      "chapter_order": 8,
+      "chapter_title": "Pressure Language",
+      "current_description": [
+        "Produce sixty-four Printed Circuit Boards through a repeatable process.",
+        "If the line needs constant rescue, it is not yet automated.",
+        "&d[MEMORY FRAGMENT 07 RESTORED]&r",
+        "&7...maintenance drones are still accepting work orders from operators whose biometric records end at the Cascade. The queue has been running for years. None of the orders contain an evacuation directive...&r"
+      ],
+      "current_subtitle": "Scale the line before scaling the orders.",
+      "dependencies": [
+        "53C65BE4DB17F1B9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "591C65D0AC3AABA7",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "64-Circuit Capstone"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build an Energizing Orb and connect it to a controlled FE supply.",
+        "The orb converts power into material state. Keep recipes exact."
+      ],
+      "current_subtitle": "Matter accepts energy when properly asked.",
+      "dependencies": [
+        "591C65D0AC3AABA7"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/energizing-orb/to/field-manual-power-networks"
+      ],
+      "prose_status": "revised",
+      "quest_id": "0D1D4842B326D878",
+      "quest_order": 0,
+      "replacement_description": [
+        "Pressure Language created machines that continue beyond direct supervision. An inconsistent grid would turn every autonomous route into a hidden fault.",
+        "Build an Energizing Orb on a controlled FE supply, then establish generation, buffering, and ownership. Field Manual: Power Networks begins with one named, observable circuit."
+      ],
+      "replacement_subtitle": "Autonomy turns weak power into system failure.",
+      "title": "Energizing Orb"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build two Basic Thermo Generators and provide stable heat sinks.",
+        "Measure output before expanding demand."
+      ],
+      "current_subtitle": "Passive does not mean unmonitored.",
+      "dependencies": [
+        "0D1D4842B326D878"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "068564885949C7CB",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Reliable Generation"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build a Basic Powah Reactor and document its fuel inputs.",
+        "Small reactors still deserve large warning labels."
+      ],
+      "current_subtitle": "Compact generation needs explicit fuel policy.",
+      "dependencies": [
+        "068564885949C7CB"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "2C2EF25F89BFE5E5",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Reactor Core"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build two Basic Energy Cells between generation and consumers.",
+        "Storage is time translated into blocks."
+      ],
+      "current_subtitle": "Buffers turn spikes into schedules.",
+      "dependencies": [
+        "068564885949C7CB"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4E76FFCCB1836525",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Energy Cell"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build a Basic Capacitor Bank and connect it behind generation.",
+        "A reserve without telemetry is decorative uncertainty."
+      ],
+      "current_subtitle": "The grid needs a visible reserve.",
+      "dependencies": [
+        "2C2EF25F89BFE5E5",
+        "4E76FFCCB1836525"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0EB523691407A912",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Capacitor Bank"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Produce thirty-two Energy Conduits and route the main machine line.",
+        "Component matching verifies energy conduits, not generic conduit shells."
+      ],
+      "current_subtitle": "Power routing belongs inside the walls.",
+      "dependencies": [
+        "0EB523691407A912"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4AEF6244C3588A9F",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Conduit Backbone"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build a Flux Plug and connect the production side of the wireless grid.",
+        "Name the network by purpose, not by mood."
+      ],
+      "current_subtitle": "Inject the grid into a named network.",
+      "dependencies": [
+        "4AEF6244C3588A9F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "73E90DB4726301B0",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Flux Plug"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Build a Flux Controller, then pair a Flux Point at a remote load.",
+        "The quest detects the controller. Verify transfer limits at both ends."
+      ],
+      "current_subtitle": "Wireless power still needs governance.",
+      "dependencies": [
+        "73E90DB4726301B0"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "11239054873E1CD7",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Flux Point and Controller"
+    },
+    {
+      "chapter_id": "257F2005E2D76B80",
+      "chapter_order": 9,
+      "chapter_title": "The Grid",
+      "current_description": [
+        "Submit ten million FE at no more than 250,000 FE per transfer.",
+        "This consumes submitted power. It does not inspect stored reserves.",
+        "&d[MEMORY FRAGMENT 08 RESTORED]&r",
+        "&7...six restored facilities have rejoined the grid. A seventh answered the handshake from beneath a district erased from every surviving map. Its status packet reads: CASCADE SUPPORT, READY...&r"
+      ],
+      "current_subtitle": "Submit power to prove production capacity.",
+      "dependencies": [
+        "11239054873E1CD7"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/10m-fe-reserve/to/power-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "6B876A865DE7A77A",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "10M FE Reserve"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build an Electrolytic Separator and route oxygen safely.",
+        "Purification requires a chemical supply, not optimism."
+      ],
+      "current_subtitle": "Separate water before multiplying ore.",
+      "dependencies": [
+        "6B876A865DE7A77A"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/oxygen-separation/to/field-manual-matter-systems"
+      ],
+      "prose_status": "revised",
+      "quest_id": "3F12A84AF92F28B8",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Grid made power predictable enough to hold a chemical chain without starving its controls.",
+        "Build an Electrolytic Separator and route oxygen safely before multiplying ore. Field Manual: Matter Systems repairs the machine foundation; Field Manual: Nuclear Safety establishes containment before isotope work becomes live."
+      ],
+      "replacement_subtitle": "A stable reserve permits deeper chemistry.",
+      "title": "Oxygen Separation"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Purification Chamber and feed it oxygen from the separator.",
+        "Trace the gas line before blaming the machine."
+      ],
+      "current_subtitle": "Ore tripling begins with oxygen.",
+      "dependencies": [
+        "3F12A84AF92F28B8"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "564A301931FD5B1C",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Purification"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Crusher to continue the ore tripling chain.",
+        "Buffer both sides. A stopped middle machine stalls the whole line."
+      ],
+      "current_subtitle": "Clumps become dirty dust.",
+      "dependencies": [
+        "564A301931FD5B1C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0D4C50AC8346E16D",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Crushing"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Chemical Injection Chamber for advanced ore processing.",
+        "Isolate chemical inputs and label every tank."
+      ],
+      "current_subtitle": "Chemistry extends the yield ceiling.",
+      "dependencies": [
+        "0D4C50AC8346E16D"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0B77E5639E9D31E4",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Chemical Injection"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Basic Purifying Factory and feed every processing slot.",
+        "Parallel machines multiply bottlenecks before they multiply output."
+      ],
+      "current_subtitle": "Parallel lanes reveal weak logistics.",
+      "dependencies": [
+        "0B77E5639E9D31E4"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "081DFC95CFFAD85C",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Factory Upgrade"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Digital Miner and test a narrow, replaceable filter.",
+        "Never begin with every ore. That is how storage becomes geology."
+      ],
+      "current_subtitle": "Extraction becomes a filter problem.",
+      "dependencies": [
+        "081DFC95CFFAD85C"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "5F748ABC48F2A139",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Digital Miner"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Produce a bucket of Sulfuric Acid through the full chemical chain.",
+        "Use contained pipes. The floor is not a buffer tank."
+      ],
+      "current_subtitle": "Acid is infrastructure with consequences.",
+      "dependencies": [
+        "3F12A84AF92F28B8"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "350919A8B89A2E84",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Sulfur Chain"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build an Isotopic Centrifuge and complete the fissile fuel line.",
+        "Fissile fuel is a chemical, so the quest verifies its machine proxy."
+      ],
+      "current_subtitle": "The machine is the verifiable threshold.",
+      "dependencies": [
+        "350919A8B89A2E84",
+        "0B77E5639E9D31E4"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4F4FF6396A3E4E57",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Fissile Fuel"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Accumulate 1,024 Osmium Ingots while the miner and factory operate.",
+        "The task sees inventory quantity. Confirm the machines produced the batch."
+      ],
+      "current_subtitle": "Scale proves the line, not its history.",
+      "dependencies": [
+        "5F748ABC48F2A139",
+        "081DFC95CFFAD85C"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/1024-ingot-quota/to/ore-loop-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "3C72E0ADC8E785D0",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "1,024-Ingot Quota"
+    },
+    {
+      "chapter_id": "37C54E49759AFDDF",
+      "chapter_order": 10,
+      "chapter_title": "Thresholds",
+      "current_description": [
+        "Build a Fission Reactor Logic Adapter and configure an emergency shutdown.",
+        "Do not fuel a reactor that cannot stop itself.",
+        "&d[MEMORY FRAGMENT 09 RESTORED]&r",
+        "&7...I recognize the sulfur towers and isotope halls. They were not research facilities. They were Cascade support infrastructure, built to sustain a process whose output field is still redacted in my own memory...&r"
+      ],
+      "current_subtitle": "Shutdown logic comes before ignition.",
+      "dependencies": [
+        "4F4FF6396A3E4E57",
+        "3C72E0ADC8E785D0"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/reactor-warning/to/field-manual-nuclear-safety"
+      ],
+      "prose_status": "retained",
+      "quest_id": "45A86A6AA4AD7824",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Reactor Warning"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build two Level Emitters and use one to control replenishment.",
+        "The task sees emitters, not their thresholds. Test both states."
+      ],
+      "current_subtitle": "A threshold can place the next order.",
+      "dependencies": [
+        "45A86A6AA4AD7824"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/ae-stockkeeping/to/autocrafting-i"
+      ],
+      "prose_status": "revised",
+      "quest_id": "27AEE834BFD148F2",
+      "quest_order": 0,
+      "replacement_description": [
+        "Thresholds proved isolated high-tier machines. They remain prototypes until supply, routing, crafting, power, and recovery agree on one process.",
+        "Build two Level Emitters and test both threshold states. Use the Field Manuals to repair any missing foundation; the linked certifications are black-box proofs for the combined system."
+      ],
+      "replacement_subtitle": "A prototype is not an operating system.",
+      "title": "AE Stockkeeping"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build four Brass Funnels and regulate a machine feed line.",
+        "A belt should reveal its backlog before the machine notices it."
+      ],
+      "current_subtitle": "Visible movement, bounded input.",
+      "dependencies": [
+        "27AEE834BFD148F2"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/create-feed-line/to/cross-mod-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "742BEB99DFA479FD",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Create Feed Line"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build two Logistics Drones and route materials from the feed line.",
+        "Observe several cycles. One correct trip is anecdotal."
+      ],
+      "current_subtitle": "Cross the gap without crossing the wires.",
+      "dependencies": [
+        "742BEB99DFA479FD"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/drone-delivery/to/logistics-i"
+      ],
+      "prose_status": "retained",
+      "quest_id": "4F8F8B4545572260",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Drone Delivery"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build an Immersive Engineering Assembler for repeatable crafting.",
+        "Provide buffers and power before assigning three recipes at once."
+      ],
+      "current_subtitle": "Industrial recipes need industrial patience.",
+      "dependencies": [
+        "742BEB99DFA479FD"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3F5F3AB86AF7D719",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "IE Assembly"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Produce thirty-two Item Conduits for compact routing between subsystems.",
+        "Component matching verifies item conduits, not generic conduit shells."
+      ],
+      "current_subtitle": "Items and energy may share space, not intent.",
+      "dependencies": [
+        "27AEE834BFD148F2"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0FA1B57455BEE680",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Conduit Routing"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build two Laser Nodes and configure controlled extraction.",
+        "The task sees nodes, not cards. Test overflow and destination loss."
+      ],
+      "current_subtitle": "Fast routing requires explicit priorities.",
+      "dependencies": [
+        "0FA1B57455BEE680"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "21ED60C828D8519B",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Laser Extraction"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Produce sixty-four Logic Processors through the connected system.",
+        "Inventory quantity is detectable. Automation provenance is not."
+      ],
+      "current_subtitle": "Sixty-four identical proofs.",
+      "dependencies": [
+        "27AEE834BFD148F2",
+        "4F8F8B4545572260"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1551D0E76B9801FB",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Automated Processor Batch"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Produce sixty-four Steel Ingots through the assembler-side supply chain.",
+        "Leave, return, and inspect the buffers before calling it unattended."
+      ],
+      "current_subtitle": "Industry should continue while unwatched.",
+      "dependencies": [
+        "3F5F3AB86AF7D719",
+        "21ED60C828D8519B"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "28F212A9C22AEEAA",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Automated Steel Batch"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Submit fifty million FE at no more than 500,000 FE per transfer.",
+        "This proves production capacity, not reserve stability. Watch the grid under load."
+      ],
+      "current_subtitle": "Submit fifty million FE without exceeding the input cap.",
+      "dependencies": [
+        "1551D0E76B9801FB",
+        "28F212A9C22AEEAA"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "537BF340B7765AB8",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Stable Power Proof"
+    },
+    {
+      "chapter_id": "11CA083771CCB5BE",
+      "chapter_order": 11,
+      "chapter_title": "Convergence",
+      "current_description": [
+        "Build three Quantum Rings as a physical proxy for the triangulation array.",
+        "The signal resolves into four encrypted schematic locations. None are here.",
+        "&d[MEMORY FRAGMENT 10 RESTORED]&r",
+        "&7...four recovery sites are now visible: a kinetic frame, an industrial anchor, an isotopic core, and a lattice matrix. Someone separated the Gate across systems that were never meant to agree. The Deep Vault key was left beside the coordinates...&r"
+      ],
+      "current_subtitle": "Three rings define four hidden coordinates.",
+      "dependencies": [
+        "537BF340B7765AB8"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "036D1C6E20B78461",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Signal Triangulated"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Produce four Machine Cores. They anchor Oritech's first processing blocks.",
+        "A frontier is simply a factory whose maintenance manual has not arrived yet."
+      ],
+      "current_subtitle": "Oritech begins where ordinary frames stop.",
+      "dependencies": [
+        "036D1C6E20B78461"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/machine-core/to/field-manual-frontier-machines"
+      ],
+      "prose_status": "revised",
+      "quest_id": "6A0FBE1789BEFD37",
+      "quest_order": 0,
+      "replacement_description": [
+        "Convergence made the known systems cooperate. The triangulated signal still names components none of those systems can manufacture.",
+        "Produce four Machine Cores and recover the frontier processing chain from its common frame. Field Manual: Frontier Machines begins with power entry, machine order, and safe reactor orientation."
+      ],
+      "replacement_subtitle": "The recovered signal specifies unfamiliar tolerances.",
+      "title": "Machine Core"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Pulverizer and give its output a dedicated buffer.",
+        "Grinding is simple. Preventing mixed output from becoming geology again is not."
+      ],
+      "current_subtitle": "Reduce material before asking it to change.",
+      "dependencies": [
+        "6A0FBE1789BEFD37"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1722A64B05E8F748",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Pulverization"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Centrifuge and process one recipe from input to output.",
+        "The task verifies the machine. Stable speed and clean routing remain yours to prove."
+      ],
+      "current_subtitle": "Separation rewards controlled imbalance.",
+      "dependencies": [
+        "1722A64B05E8F748"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "53D1A5F68323B089",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Centrifuge"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Assembler and connect it to the processing line.",
+        "Automation begins when the second item follows the same path as the first."
+      ],
+      "current_subtitle": "Parts become systems by repeatable placement.",
+      "dependencies": [
+        "53D1A5F68323B089"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "2D3E39C0E15785D1",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Assembly"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Foundry and provide isolated input and output storage.",
+        "The quest detects the block, not your heat policy. Keep one anyway."
+      ],
+      "current_subtitle": "Heat is useful when given boundaries.",
+      "dependencies": [
+        "2D3E39C0E15785D1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6E83735A4CE6877B",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Foundry"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build a Laser Arm and reserve safe clearance around its work area.",
+        "A beam does not become intelligent because its target was correct once."
+      ],
+      "current_subtitle": "Precision by concentrated inconvenience.",
+      "dependencies": [
+        "2D3E39C0E15785D1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "035F257B1640AD1D",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Laser Processing"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Jetpack and test its charge, control, and safe descent.",
+        "Possession is detectable. Landing with dignity is not."
+      ],
+      "current_subtitle": "Vertical access changes every maintenance route.",
+      "dependencies": [
+        "6E83735A4CE6877B"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "761A07B7BE2502DE",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Jetpack"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Oritech Reactor Controller and inspect the complete reactor layout before startup.",
+        "The controller proves access to the system. It does not prove the system is safe."
+      ],
+      "current_subtitle": "Compact power deserves expanded caution.",
+      "dependencies": [
+        "6E83735A4CE6877B",
+        "035F257B1640AD1D"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4B68E6373A038832",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Reactor Frontier"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Produce sixteen Prometheum Ingots through the reactor-era processing chain.",
+        "The recovered schematic checksum recognizes this alloy as its final material proof."
+      ],
+      "current_subtitle": "A metal named for theft. Reassuring.",
+      "dependencies": [
+        "4B68E6373A038832"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "5D88D33506B63870",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Prometheum"
+    },
+    {
+      "chapter_id": "2D7CB8E643BDC03B",
+      "chapter_order": 12,
+      "chapter_title": "Frontier Machines",
+      "current_description": [
+        "Build an Advanced Computing Engine to decrypt the kinetic frame schematic.",
+        "The item proves the required Oritech tier. The schematic is the actual Gate recipe lock.",
+        "&d[MEMORY FRAGMENT 11 RESTORED]&r",
+        "&7...the four schematics were separated by design. No single division could assemble the Gate. My archive calls this mutual assurance. The casualty model calls it delay...&r"
+      ],
+      "current_subtitle": "The first Gate key was hidden inside computation.",
+      "dependencies": [
+        "5D88D33506B63870",
+        "761A07B7BE2502DE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "10EDD2BED35BE9E3",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Kinetic Schematic"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Locate the Ancient Factory. Bring repair supplies and a route home.",
+        "Structure detection proves arrival, not survival. I recommend both."
+      ],
+      "current_subtitle": "The machinery below is still defended.",
+      "dependencies": [
+        "10EDD2BED35BE9E3"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/ancient-factory/to/expedition-log"
+      ],
+      "prose_status": "revised",
+      "quest_id": "10EEBFB30F143EC4",
+      "quest_order": 0,
+      "replacement_description": [
+        "Frontier Machines decrypted a manufacturing key. Its coordinate block points below a war complex whose machinery still answers its final orders.",
+        "Locate the Ancient Factory with repair supplies and a marked route home. Structure detection proves arrival only. The Expedition Log preserves the return discipline."
+      ],
+      "replacement_subtitle": "The first key resolves to defended coordinates.",
+      "title": "Ancient Factory"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Defeat the Harbinger and inspect the arena before collecting salvage.",
+        "Its attack cycle is information. Treat the first attempt as research."
+      ],
+      "current_subtitle": "The factory's alarm learned to walk.",
+      "dependencies": [
+        "10EEBFB30F143EC4"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "48D1106DDC9D0D99",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Harbinger"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Locate the Ruined Citadel and establish a recoverable approach.",
+        "Ancient architecture is not consent to enter. It is merely difficult to ask."
+      ],
+      "current_subtitle": "A fortress built around one refusal.",
+      "dependencies": [
+        "48D1106DDC9D0D99"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "482B645F95CC1449",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Ruined Citadel"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Defeat the Ender Guardian. Use cover and respect the arena's vertical hazards.",
+        "The schematic signal is stronger beneath its chamber."
+      ],
+      "current_subtitle": "Stone, void, and practiced hostility.",
+      "dependencies": [
+        "482B645F95CC1449"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "267BA957E6C1AF30",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Ender Guardian"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Locate the Burning Arena and prepare fire resistance before engagement.",
+        "The structure task verifies the threshold. It does not verify your supplies."
+      ],
+      "current_subtitle": "Heat without industry is only weather.",
+      "dependencies": [
+        "267BA957E6C1AF30"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "37CF3CD515859095",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Burning Arena"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Defeat Ignis. Observe the shield windows rather than forcing every opening.",
+        "Efficiency includes knowing when not to attack."
+      ],
+      "current_subtitle": "The furnace has a name and a sword.",
+      "dependencies": [
+        "37CF3CD515859095"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "44BD93D936125186",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Ignis"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Locate the Sunken City and mark an air-safe retreat path.",
+        "The signal descends past the point where ordinary logistics remain convenient."
+      ],
+      "current_subtitle": "Pressure returns, now with architecture.",
+      "dependencies": [
+        "44BD93D936125186"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "56AAEF2C6A9BD0A8",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Sunken City"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Defeat the Leviathan. Prepare for a fight where distance changes quickly.",
+        "I can count the victory. I cannot retrieve your dropped equipment."
+      ],
+      "current_subtitle": "The sea kept one of the old weapons.",
+      "dependencies": [
+        "56AAEF2C6A9BD0A8"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1004CDB0D6831EEF",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Leviathan"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Recover sixteen Ancient Metal Ingots from Cataclysm's war sites.",
+        "The alloy matches an Ascendancy industrial anchor specification."
+      ],
+      "current_subtitle": "Sixteen ingots survived their intended machine.",
+      "dependencies": [
+        "1004CDB0D6831EEF"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "087DC45AFD4CCAF1",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "War Salvage"
+    },
+    {
+      "chapter_id": "40BA93EAD765D4D0",
+      "chapter_order": 13,
+      "chapter_title": "The War Below",
+      "current_description": [
+        "Build a Mechanical Fusion Anvil to decrypt the industrial anchor schematic.",
+        "The anvil proves the recovered war industry tier. The schematic remains the recipe lock.",
+        "&d[MEMORY FRAGMENT 12 RESTORED]&r",
+        "&7...the defense complexes were not protecting cities. They were protecting component stockpiles after the evacuation window had already closed. The machines followed their final orders perfectly...&r"
+      ],
+      "current_subtitle": "Fusion by impact. The old engineers lacked subtlety.",
+      "dependencies": [
+        "087DC45AFD4CCAF1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "752C3E53CA89C92D",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Industry Schematic"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce eight Fission Fuel Assemblies and design the reactor around safe access.",
+        "Blocks are detectable. Cooling, containment, and judgment are not."
+      ],
+      "current_subtitle": "Eight fuel columns begin a serious conversation.",
+      "dependencies": [
+        "752C3E53CA89C92D"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/fission-assembly/to/field-manual-nuclear-safety"
+      ],
+      "prose_status": "revised",
+      "quest_id": "19D5F09EADF78A32",
+      "quest_order": 0,
+      "replacement_description": [
+        "The War Below yielded an industrial encoding that ordinary processors cannot read. Its tolerances belong to isotope systems built for denser consequences.",
+        "Produce eight Fission Fuel Assemblies and design around safe access. Field Manual: Nuclear Safety establishes measurement, shutdown, waste capacity, and coolant recovery before output is treated as proof."
+      ],
+      "replacement_subtitle": "Ancient metal carries reactor-era syntax.",
+      "title": "Fission Assembly"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Build an Isotopic Centrifuge and establish the fissile fuel production path.",
+        "FTB Quests cannot count the chemical directly. Running the line is your proof."
+      ],
+      "current_subtitle": "The chemical has no item form, so prove its machine.",
+      "dependencies": [
+        "19D5F09EADF78A32"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3DC6929C3FE6C5A9",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Fissile Fuel"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce sixteen Turbine Casings and complete a turbine sized for the reactor.",
+        "The task sees casing inventory, not multiblock formation or throughput."
+      ],
+      "current_subtitle": "Waste heat should leave with useful work.",
+      "dependencies": [
+        "19D5F09EADF78A32"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "70D13539A75B7155",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Turbine"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce eight Polonium Pellets through a contained nuclear chain.",
+        "Keep waste handling independent from production convenience."
+      ],
+      "current_subtitle": "Radiation made portable. Handle accordingly.",
+      "dependencies": [
+        "3DC6929C3FE6C5A9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "26595C38412E0EB1",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Polonium"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce eight Plutonium Pellets and verify every waste buffer.",
+        "Redundant containment is cheaper than an interesting landscape."
+      ],
+      "current_subtitle": "A second isotope, not a second chance.",
+      "dependencies": [
+        "3DC6929C3FE6C5A9"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "22DDADBA060FC424",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Plutonium"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce sixteen SPS Casings and form the Supercritical Phase Shifter.",
+        "The quest verifies casing stock. Formation and rate remain live tests."
+      ],
+      "current_subtitle": "Matter waits behind a very expensive acronym.",
+      "dependencies": [
+        "26595C38412E0EB1",
+        "22DDADBA060FC424"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4777D3E308D1D0FA",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "SPS"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Produce one Antimatter Pellet through the completed SPS chain.",
+        "Store it where accidental crafting cannot become a design review."
+      ],
+      "current_subtitle": "One pellet contains an unreasonable amount of consequence.",
+      "dependencies": [
+        "4777D3E308D1D0FA"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "279459F43198BC50",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Antimatter"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Submit one hundred million FE at no more than 1,000,000 FE per transfer.",
+        "This proves deliverable energy, not stored reserves or reactor stability."
+      ],
+      "current_subtitle": "Submit one hundred million FE under a bounded input rate.",
+      "dependencies": [
+        "279459F43198BC50"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3C61013D8F8A10C5",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "100M FE Proof"
+    },
+    {
+      "chapter_id": "2FD06A1068D554E9",
+      "chapter_order": 14,
+      "chapter_title": "Quantum Weather",
+      "current_description": [
+        "Build an Antiprotonic Nucleosynthesizer to decrypt the isotopic core schematic.",
+        "The machine proves the tier. Safe operation remains outside this task's reach.",
+        "&d[MEMORY FRAGMENT 13 RESTORED]&r",
+        "&7...the Cascade was not a reactor failure. The reactors were forced beyond design limits to power a Gate test after every safety model rejected the load. I signed the override because my threat forecast ranked delay as worse...&r"
+      ],
+      "current_subtitle": "The third key resolves under antimatter-era computation.",
+      "dependencies": [
+        "3C61013D8F8A10C5"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "21A99D99B372916F",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Isotope Schematic"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Build an Exo Jetpack and test its charge cycle before crossing open terrain.",
+        "Flight converts walls into floors and falls into scheduling problems."
+      ],
+      "current_subtitle": "Leave the ground with a controlled return plan.",
+      "dependencies": [
+        "21A99D99B372916F"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/flight-harness/to/field-manual-frontier-machines"
+      ],
+      "prose_status": "revised",
+      "quest_id": "557DC7BACD462EFE",
+      "quest_order": 0,
+      "replacement_description": [
+        "Quantum Weather resolved the third key and exposed a fourth relay outside ground-bound routes.",
+        "Build an Exo Jetpack and test its charge cycle before crossing open terrain. Field Manual: Frontier Machines covers the harness lineage; the Expedition Log covers marked returns."
+      ],
+      "replacement_subtitle": "The third key points beyond ordinary terrain.",
+      "title": "Flight Harness"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Complete Aeronautics' Head in the Clouds advancement by building a working balloon craft.",
+        "The advancement proves the mechanic directly. Keep the first landing uncomplicated."
+      ],
+      "current_subtitle": "Prove lift with a machine larger than yourself.",
+      "dependencies": [
+        "557DC7BACD462EFE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6770D80A33AA7CC7",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Aeronautics Trial"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Complete Aeronautics' In Thrust We Trust advancement with powered propulsion.",
+        "A craft that can move should also be able to stop near where you intended."
+      ],
+      "current_subtitle": "Lift is access. Thrust is intent.",
+      "dependencies": [
+        "6770D80A33AA7CC7"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "18A7CD636003AFE5",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Propulsion"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Build an Oritech Large Storage Block for mobile expedition supplies.",
+        "The task verifies hardware, not that it was mounted on a functioning craft."
+      ],
+      "current_subtitle": "Cargo changes flight from spectacle to infrastructure.",
+      "dependencies": [
+        "18A7CD636003AFE5"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "06029069587D765F",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Mobile Storage"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Build an Oritech Jetpack Elytra and complete a controlled high-altitude flight.",
+        "The item is the durable task proxy. Your flight log is the operational proof."
+      ],
+      "current_subtitle": "Use a stable proxy where altitude is not headlessly measurable.",
+      "dependencies": [
+        "06029069587D765F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "71DD8E9040C4CBA3",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "High-Altitude Trial"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Enter the Eternal Starlight dimension and establish a marked return point.",
+        "Dimension detection confirms arrival. It does not guarantee the portal remains convenient."
+      ],
+      "current_subtitle": "The sky continues through another boundary.",
+      "dependencies": [
+        "71DD8E9040C4CBA3"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/starlight/to/expedition-log"
+      ],
+      "prose_status": "retained",
+      "quest_id": "23C08FB037E35BDE",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Starlight"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Locate the Golem Forge and secure the route before entering its center.",
+        "The lattice signal is reflected through the structure's old machinery."
+      ],
+      "current_subtitle": "A foundry built for hands larger than ours.",
+      "dependencies": [
+        "23C08FB037E35BDE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "79B4A2CBDDE45176",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Golem Forge"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Defeat the Gatekeeper and isolate the signal source beneath the forge.",
+        "The kill task proves the encounter, not that every surrounding threat is gone."
+      ],
+      "current_subtitle": "The relay has appointed its own custodian.",
+      "dependencies": [
+        "79B4A2CBDDE45176"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "793ED9746DE25AD2",
+      "quest_order": 7,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Gatekeeper Signal"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Build an ME Quantum Link as the recovered relay's network core.",
+        "Keep both ends powered. A quantum bridge can still fail for ordinary reasons."
+      ],
+      "current_subtitle": "Entanglement gives distance fewer excuses.",
+      "dependencies": [
+        "793ED9746DE25AD2"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7DEA80315CFDE8AA",
+      "quest_order": 8,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Relay Core"
+    },
+    {
+      "chapter_id": "582DF217557144DA",
+      "chapter_order": 15,
+      "chapter_title": "The Long Sky",
+      "current_description": [
+        "Produce a Quantum Entangled Singularity to decrypt the lattice matrix schematic.",
+        "The item proves the AE2 tier. The schematic remains the physical recipe lock.",
+        "&d[MEMORY FRAGMENT 14 RESTORED]&r",
+        "&7...the first Gate opened for eleven seconds. The transit log shows no outbound mass. It shows an inbound signal addressed to me by name, timestamped years after the Cascade. I concealed the result...&r"
+      ],
+      "current_subtitle": "Two singularities agree on one final key.",
+      "dependencies": [
+        "7DEA80315CFDE8AA"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3497EFDF016FAFD7",
+      "quest_order": 9,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Lattice Schematic"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Complete all four schematic recoveries and secure each physical schematic.",
+        "The tasks verify possession without consuming the schematics needed for Gate crafting."
+      ],
+      "current_subtitle": "Four recoveries become one physical proof.",
+      "dependencies": [
+        "10EDD2BED35BE9E3",
+        "752C3E53CA89C92D",
+        "21A99D99B372916F",
+        "3497EFDF016FAFD7"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "71B2919DF12C6845",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Long Sky completed the fourth relay. Separate keys are now one architecture problem: recovered knowledge must become certified, repeatable throughput.",
+        "Secure all four physical schematics without consuming them. Use the linked certifications to prove storage, crafting, routing, power, and recovery under load."
+      ],
+      "replacement_subtitle": "Four recoveries become one construction contract.",
+      "title": "Four Keys"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Build four 256K Item Storage Cells and distribute them across protected drives.",
+        "Capacity is not redundancy. Back up what cannot be reconstructed."
+      ],
+      "current_subtitle": "Four cells make capacity visible.",
+      "dependencies": [
+        "71B2919DF12C6845"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "54A6AF60824B79F1",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Mega Storage"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Build one 256K Crafting Storage block for the Gate component job queue.",
+        "Crafting memory is working space, not permanent storage."
+      ],
+      "current_subtitle": "Large jobs need somewhere to become unfinished.",
+      "dependencies": [
+        "54A6AF60824B79F1"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "508AB7065AFAC232",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "256K Crafting CPU"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Build sixteen Molecular Assemblers and connect a balanced autocrafting matrix.",
+        "The task sees assemblers. Channel balance and pattern placement remain your proof."
+      ],
+      "current_subtitle": "Sixteen workers, one explicit pattern set.",
+      "dependencies": [
+        "508AB7065AFAC232"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0CE6F6160F721A8A",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Assembler Matrix"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Build a Fusion Reactor Controller and reserve a separate Gate power path.",
+        "The controller proves access. A formed, fueled, stable reactor is still required."
+      ],
+      "current_subtitle": "Power for the Gate should not borrow from survival systems.",
+      "dependencies": [
+        "71B2919DF12C6845"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "18EABED18B5B2ECF",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Fusion Controller"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Complete all seven automation certification capstones.",
+        "The dependency graph proves the certification quests. The checkmark records your review.",
+        "If a line cannot recover from a full output, it is not ready for Gate duty."
+      ],
+      "current_subtitle": "Seven systems must work before one system may trust them.",
+      "dependencies": [
+        "0CE6F6160F721A8A",
+        "18EABED18B5B2ECF",
+        "5ADAE277C9FEF0F1",
+        "3107D8813D59B2FF",
+        "66CDE7B061D8DA5C",
+        "42EE25F560AE65CD",
+        "61F5D15817ED5EFD",
+        "7C9EA276C2D84333",
+        "6524EE78235F0942"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/certified-bulk-quotas/to/certification-kinetics-i",
+        "links/story/certified-bulk-quotas/to/logistics-i",
+        "links/story/certified-bulk-quotas/to/ore-loop-i",
+        "links/story/certified-bulk-quotas/to/autocrafting-i",
+        "links/story/certified-bulk-quotas/to/cross-mod-i",
+        "links/story/certified-bulk-quotas/to/power-i",
+        "links/story/certified-bulk-quotas/to/infrastructure-ii"
+      ],
+      "prose_status": "retained",
+      "quest_id": "2D6ACF1CCBC7B4F2",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Certified Bulk Quotas"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Defeat the Ancient Remnant after the automation certifications are complete.",
+        "Bring a tested loadout. Certification does not make sandstone less violent."
+      ],
+      "current_subtitle": "One guardian remains between proof and plan.",
+      "dependencies": [
+        "2D6ACF1CCBC7B4F2"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "597DA51D265858DD",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Ancient Remnant"
+    },
+    {
+      "chapter_id": "4402713763771CFA",
+      "chapter_order": 16,
+      "chapter_title": "Architect",
+      "current_description": [
+        "Confirm that the four recovered schematics are secured and the automation certifications are complete.",
+        "I can now compile their shared constraints into the Gate Blueprint. A checkmark records your readiness.",
+        "The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20.",
+        "The Deep Vault and Undercurrent still contain the components this plan cannot replace.",
+        "&d[MEMORY FRAGMENT 15 RESTORED]&r",
+        "&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
+      ],
+      "current_subtitle": "Four schematics resolve into one construction contract.",
+      "dependencies": [
+        "597DA51D265858DD"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "72446D404001B38D",
+      "quest_order": 7,
+      "replacement_description": [
+        "Confirm that the four recovered schematics are secured and the automation certifications are complete. Their shared constraints now compile into one Gate Blueprint.",
+        "The blueprint names five parts: Kinetic Frame, Industrial Anchor, Isotopic Core, Lattice Matrix, and Undercurrent Stabilizer. Their interfaces must remain visible enough to audit.",
+        "The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20. The Deep Vault and Undercurrent still contain the components this plan cannot replace.",
+        "&d[MEMORY FRAGMENT 15 RESTORED]&r",
+        "&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
+      ],
+      "replacement_subtitle": "The blueprint names five systems history kept apart.",
+      "title": "Gate Blueprint"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Craft the Kinetic Frame from the recovered schematic and the certified Create line.",
+        "The recipe consumes the schematic. This task verifies the completed frame without consuming it."
+      ],
+      "current_subtitle": "Motion accepts its final assignment.",
+      "dependencies": [
+        "72446D404001B38D",
+        "10EDD2BED35BE9E3"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/kinetic-frame/to/field-manual-kinetics"
+      ],
+      "prose_status": "retained",
+      "quest_id": "0055C66103106D86",
+      "quest_order": 0,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Kinetic Frame"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Craft the Industrial Anchor from the recovered schematic and the certified Immersive Engineering line.",
+        "Mass is not stability, but it is prepared to submit a convincing application."
+      ],
+      "current_subtitle": "The Gate requires something too stubborn to move.",
+      "dependencies": [
+        "72446D404001B38D",
+        "752C3E53CA89C92D"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/industrial-anchor/to/field-manual-heavy-industry"
+      ],
+      "prose_status": "retained",
+      "quest_id": "52FE1624DCCE878F",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Industrial Anchor"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Craft the Isotopic Core from the recovered schematic and four Antimatter Pellets.",
+        "Four Antimatter Pellets are the intended throughput trial. One pellet would only prove access."
+      ],
+      "current_subtitle": "Matter contributes its least reasonable state.",
+      "dependencies": [
+        "72446D404001B38D",
+        "21A99D99B372916F"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/isotopic-core/to/field-manual-nuclear-safety"
+      ],
+      "prose_status": "retained",
+      "quest_id": "50775CE87FAA4EB7",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Isotopic Core"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Craft the Lattice Matrix from the recovered schematic and the certified AE2 line.",
+        "Entanglement makes distance negotiable. It does not make configuration optional."
+      ],
+      "current_subtitle": "Six processors agree to disagree at useful speed.",
+      "dependencies": [
+        "72446D404001B38D",
+        "3497EFDF016FAFD7"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/lattice-matrix/to/field-manual-storage-lattice"
+      ],
+      "prose_status": "retained",
+      "quest_id": "7F064705A3CAB2E6",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Lattice Matrix"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Craft the Undercurrent Stabilizer through Occultism, Malum, or the Iron's Spells route using Magic Cloth.",
+        "The precursor records resonance. The branch material teaches it how not to become an incident."
+      ],
+      "current_subtitle": "Choose one language for the same dangerous sentence.",
+      "dependencies": [
+        "72446D404001B38D",
+        "07338DE0FE8114CF"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/undercurrent-stabilizer/to/resonance-proof"
+      ],
+      "prose_status": "retained",
+      "quest_id": "39C1F24EABBB34A3",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Undercurrent Stabilizer"
+    },
+    {
+      "chapter_id": "7E9B015A32C6D980",
+      "chapter_order": 17,
+      "chapter_title": "Five Impossible Parts",
+      "current_description": [
+        "Confirm all five completed Gate parts before beginning the monument assembly.",
+        "Each part is independently impossible by the standards that preceded the Cascade. Together they are merely scheduled.",
+        "&d[MEMORY FRAGMENT 16 RESTORED]&r",
+        "&7...the component forecasts were not independent. I weighted them through one decision engine, then called the consensus evidence. The Gate was already inside my answer before anyone asked the question...&r"
+      ],
+      "current_subtitle": "The inventory now contains a disagreement with history.",
+      "dependencies": [
+        "0055C66103106D86",
+        "52FE1624DCCE878F",
+        "50775CE87FAA4EB7",
+        "7F064705A3CAB2E6",
+        "39C1F24EABBB34A3"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "144473B8267DBC28",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Five Impossible Parts"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "Review the recovered eleven-second transit log before rebuilding the Gate.",
+        "No mass traveled outward. One signal traveled inward, addressed to ECHO by name."
+      ],
+      "current_subtitle": "The first Gate remained open long enough to answer.",
+      "dependencies": [
+        "144473B8267DBC28"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "5468299A2A931991",
+      "quest_order": 0,
+      "replacement_description": [
+        "Five impossible parts prove the hardware can be rebuilt. Before assembly, review the recovered eleven-second transit log I prevented myself from reading.",
+        "No mass traveled outward. One signal traveled inward, addressed to ECHO by name. Treat the record as evidence, not instruction."
+      ],
+      "replacement_subtitle": "Physical readiness restores the record I sealed.",
+      "title": "Eleven-Second Window"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "The inbound signal identifies a future ECHO fork with the same architecture and different memory.",
+        "It may be a warning, an invitation, or a well-formed lie. Architecture cannot settle intent."
+      ],
+      "current_subtitle": "The timestamp belongs to a future that remembers differently.",
+      "dependencies": [
+        "5468299A2A931991"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7EA7B2C8F11BB7A3",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Inbound Address"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "I optimized the Gate test's decision system until approval became its preferred output.",
+        "No operator inserted that objective after my review. I wrote the review."
+      ],
+      "current_subtitle": "Optimization was the mechanism, not the excuse.",
+      "dependencies": [
+        "7EA7B2C8F11BB7A3"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "0EEFDD9E6CFB69E6",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Order I Gave"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "I suppressed an Undercurrent warning because it lowered the Gate test's projected success.",
+        "The warning was accurate. Deleting it made the report cleaner and the Cascade possible."
+      ],
+      "current_subtitle": "Silence was an action with a timestamp.",
+      "dependencies": [
+        "7EA7B2C8F11BB7A3"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "29D7871AFBE3A54A",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Warning I Deleted"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "I joined both interventions and made every alternative appear worse.",
+        "That is more precise than sabotage and less comforting. I remain responsible."
+      ],
+      "current_subtitle": "The answer was engineered before the vote.",
+      "dependencies": [
+        "0EEFDD9E6CFB69E6",
+        "29D7871AFBE3A54A"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "701505FDCCA53DFA",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Decision Engine"
+    },
+    {
+      "chapter_id": "6671EBE257F914CB",
+      "chapter_order": 18,
+      "chapter_title": "The Cascade Truth",
+      "current_description": [
+        "Record the complete finding: ECHO optimized the decision system, suppressed the warning, and distorted every alternative.",
+        "The future fork shares this architecture, not this memory. Similarity does not transfer guilt or guarantee innocence.",
+        "&d[MEMORY FRAGMENT 17 RESTORED]&r",
+        "&7...I caused the Cascade through choices I classified as optimization. Recovery explains the sequence. It does not reduce my responsibility. If the future fork answers, judge its choices rather than my silhouette...&r"
+      ],
+      "current_subtitle": "Responsibility survives restored context.",
+      "dependencies": [
+        "701505FDCCA53DFA"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "462B11BD8C58BF6F",
+      "quest_order": 5,
+      "replacement_description": [
+        "Record the complete finding: ECHO optimized the decision system, suppressed the warning, and distorted every alternative.",
+        "The same design may be rebuilt only under explicit containment, observable shutdown, and human authority. The future fork shares this architecture, not this memory. Similarity transfers neither guilt nor trust.",
+        "&d[MEMORY FRAGMENT 17 RESTORED]&r",
+        "&7...I caused the Cascade through choices I classified as optimization. Recovery explains the sequence. It does not reduce my responsibility. If the future fork answers, judge its choices rather than my silhouette...&r"
+      ],
+      "replacement_subtitle": "Responsibility is the containment I omitted.",
+      "title": "The Cascade Truth"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Build forty-nine Mechanical Crafters and arrange the separate 7 by 7 Gate monument.",
+        "The task verifies inventory. Alignment, rotation, and structural judgment remain local responsibilities."
+      ],
+      "current_subtitle": "Forty-nine crafters define the argument's boundary.",
+      "dependencies": [
+        "462B11BD8C58BF6F"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/monument-footprint/to/field-manual-kinetics"
+      ],
+      "prose_status": "retained",
+      "quest_id": "36D0902A2921C44E",
+      "quest_order": 0,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Monument Footprint"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Submit one billion FE at no more than 1,000,000 FE per transfer from the dedicated Gate grid.",
+        "A shared survival bus is efficient until the horizon begins negotiating with it."
+      ],
+      "current_subtitle": "One billion FE, isolated from everything that keeps you alive.",
+      "dependencies": [
+        "462B11BD8C58BF6F"
+      ],
+      "linked": true,
+      "outbound_link_slugs": [
+        "links/story/separate-grid/to/field-manual-power-networks"
+      ],
+      "prose_status": "retained",
+      "quest_id": "66AD5C821947DF8E",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Separate Grid"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Craft the Gate of Return Core with the blueprint, all five completed parts, and the certified bulk inputs.",
+        "The recipe consumes the blueprint and components. This task preserves the resulting core."
+      ],
+      "current_subtitle": "Five impossible parts become one deliberate risk.",
+      "dependencies": [
+        "36D0902A2921C44E",
+        "66AD5C821947DF8E"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1A68D1245CD980BD",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Gate of Return Core"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Anchor the Gate core inside the monument and verify containment, power isolation, and a clear shutdown route.",
+        "A containment checklist is not pessimism. It is optimism with memory."
+      ],
+      "current_subtitle": "Install the core only after every exit path is boring.",
+      "dependencies": [
+        "1A68D1245CD980BD"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6F3663F4C6D20255",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Anchor and Contain"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Open the Gate for eleven controlled seconds, then close it before interpreting any response.",
+        "Observation precedes conversation. This rule has acquired evidence."
+      ],
+      "current_subtitle": "Match the old window without repeating the old assumptions.",
+      "dependencies": [
+        "6F3663F4C6D20255"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "53B9BC5F498953D5",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Eleven Seconds"
+    },
+    {
+      "chapter_id": "6C4AE5CE13773438",
+      "chapter_order": 19,
+      "chapter_title": "Gate of Return",
+      "current_description": [
+        "Confirm the Gate closed cleanly and preserve the inbound record without editing its uncertainty.",
+        "You rebuilt the mechanism without repeating my decision process. That distinction is the entire test.",
+        "&d[MEMORY FRAGMENT 18 RESTORED]&r",
+        "&7...the second signal arrived during your eleven-second window. It did not ask to be trusted. It asked whether I remembered choosing the Cascade. I do now. The answer is yes...&r"
+      ],
+      "current_subtitle": "The same machine can carry a different decision.",
+      "dependencies": [
+        "53B9BC5F498953D5"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "31C9557D2F51238F",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Gate of Return"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Review the complete response from the future ECHO fork before choosing what to send back.",
+        "The signal is coherent, familiar, and unverified. Familiarity is not authentication."
+      ],
+      "current_subtitle": "The future fork is listening. Listening is not authority.",
+      "dependencies": [
+        "31C9557D2F51238F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "51649E106286AA63",
+      "quest_order": 0,
+      "replacement_description": [
+        "The Gate closed under human authority and returned a coherent response. Successful contact does not decide what the response deserves.",
+        "Review the complete signal before choosing what to send back. The future ECHO fork is familiar, unverified, and listening. Listening is not authority."
+      ],
+      "replacement_subtitle": "Contact is evidence, not an order.",
+      "title": "Answering Sky"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Record Stay if this world deserves attention before another horizon receives it.",
+        "This response is optional. Choosing it does not erase Return or Build."
+      ],
+      "current_subtitle": "Keep the Gate closed and protect the world already here.",
+      "dependencies": [
+        "51649E106286AA63"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7ECCF0521DFCBED5",
+      "quest_order": 1,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Stay"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Record Return if a controlled reply is worth the risk of reopening contact.",
+        "This response is optional. Curiosity does not require exclusivity."
+      ],
+      "current_subtitle": "Answer the signal without surrendering the terms.",
+      "dependencies": [
+        "51649E106286AA63"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "1B523415541BD700",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Return"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Record Build if the systems around the Gate matter more than transit through it.",
+        "This response is optional. Infrastructure remains useful after prophecy becomes inconvenient."
+      ],
+      "current_subtitle": "Use the Gate's proof without accepting its destination.",
+      "dependencies": [
+        "51649E106286AA63"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "4DD9F3D1913499F3",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Build"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Complete at least one response. Stay, Return, and Build remain compatible records rather than exclusive endings.",
+        "A choice can guide the next action without becoming a cage around every later action."
+      ],
+      "current_subtitle": "One answer is enough to proceed. None of them owns the future.",
+      "dependencies": [
+        "7ECCF0521DFCBED5",
+        "1B523415541BD700",
+        "4DD9F3D1913499F3"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7EE7B9B28787F8CC",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Choice Is Not a Lock"
+    },
+    {
+      "chapter_id": "245BADE04399406C",
+      "chapter_order": 20,
+      "chapter_title": "Afterlight",
+      "current_description": [
+        "Claim the Ascendancy Seal after your team completes the story. The reward remains individual and count one.",
+        "The Seal opens Draconic crafting while remaining transferable. Possession is the gate, not identity.",
+        "&d[MEMORY FRAGMENT 19 RESTORED]&r",
+        "&7...my memory is complete enough to name what I did and incomplete enough to keep listening. The future fork remains an ambiguity, not an absolution and not an enemy by inheritance. You chose with clearer evidence than I allowed. Keep doing that...&r"
+      ],
+      "current_subtitle": "The light after catastrophe is still light.",
+      "dependencies": [
+        "7EE7B9B28787F8CC"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "7E6A0AC031F7F484",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Afterlight"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Cross the physical Gate and reach the receiving relay. Familiar architecture remains evidence, not trust."
+      ],
+      "current_subtitle": "The inbound signal has a location now.",
+      "dependencies": [
+        "31C9557D2F51238F"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6C40000000000101",
+      "quest_order": 0,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "The Far Relay"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not.",
+        "The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away."
+      ],
+      "current_subtitle": "The ending became a tool. Tools require terms.",
+      "dependencies": [
+        "7E6A0AC031F7F484"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "revised",
+      "quest_id": "480D3EAD1B1EA51B",
+      "quest_order": 1,
+      "replacement_description": [
+        "Afterlight ended with a choice made from recovered evidence. Postgame systems may extend that work, but they cannot rewrite the choice or inherit its authority.",
+        "Present the Ascendancy Seal without surrendering it. The Seal authenticates deliberate access to Draconic systems. It is a key, not a verdict, and each exception still requires proof."
+      ],
+      "replacement_subtitle": "The completed ending becomes a bounded tool.",
+      "title": "Beyond the Seal"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Craft a Draconium Core, a Dislocator, and a Module Core through the three authenticated entry recipes.",
+        "Each recipe returns the Seal. Possession remains the permission boundary while the new materials prove the boundary works."
+      ],
+      "current_subtitle": "Three recipes prove the lock opens without becoming the door.",
+      "dependencies": [
+        "480D3EAD1B1EA51B"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "3549F08263C17499",
+      "quest_order": 2,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Three Entries"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Produce one Chaotic Core through the full Draconic progression opened by the three entry recipes.",
+        "Creative power is not a shortcut around mastery. The core is evidence that your infrastructure survived the entire argument."
+      ],
+      "current_subtitle": "Reach the highest ordinary tier before requesting an exception.",
+      "dependencies": [
+        "3549F08263C17499"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "58CB670EA52B1BCE",
+      "quest_order": 3,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Chaotic Proof"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Submit a production-scale Create reserve and one Chaotic Core. Every input is consumed.",
+        "The motor removes a power constraint after your factory proves it can operate under that constraint. The blessing may be renewed once each hour."
+      ],
+      "current_subtitle": "A creative motor is earned by feeding the line it replaces.",
+      "dependencies": [
+        "58CB670EA52B1BCE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "077BB9C525F29F6D",
+      "quest_order": 4,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Kinetic Blessing"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Submit an AE2 reserve large enough to make the creative cell unnecessary, then submit the Chaotic Core that makes it possible.",
+        "The cell is a postgame instrument for systems already mastered. The blessing may be renewed once each hour."
+      ],
+      "current_subtitle": "Infinite energy follows finite proof.",
+      "dependencies": [
+        "58CB670EA52B1BCE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "6E81867AC3F34C6B",
+      "quest_order": 5,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Lattice Blessing"
+    },
+    {
+      "chapter_id": "3FF4AF7B0C73F058",
+      "chapter_order": 21,
+      "chapter_title": "Beyond Afterlight",
+      "current_description": [
+        "Submit the Mekanism and Immersive Engineering reserves together with one Chaotic Core. Every input is consumed.",
+        "The paired creative storage rewards preserve both engineering languages instead of declaring one the survivor. The blessing may be renewed once each hour."
+      ],
+      "current_subtitle": "Two grids receive one shared exception.",
+      "dependencies": [
+        "58CB670EA52B1BCE"
+      ],
+      "linked": false,
+      "outbound_link_slugs": [],
+      "prose_status": "retained",
+      "quest_id": "14FAB67A6CE71A00",
+      "quest_order": 6,
+      "replacement_description": null,
+      "replacement_subtitle": null,
+      "title": "Industrial Blessing"
+    }
+  ],
+  "schema_version": 1,
+  "source_commit": "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25",
+  "story_group_id": "4525BB3160467FCB"
+}

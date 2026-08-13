@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .builder import ChapterSpec, GroupSpec, QuestSpec, RewardSpec, SnbtLong, TaskSpec
+from .story_cohesion import apply_manual_return_links
 
 
 FIELD_MANUALS = GroupSpec(
@@ -920,7 +921,9 @@ def _build_manual(manual: _Manual, order_index: int) -> ChapterSpec:
 
 
 def build_field_manuals() -> tuple[ChapterSpec, ...]:
-    return tuple(
-        _build_manual(manual, order_index)
-        for order_index, manual in enumerate(_MANUALS)
+    return apply_manual_return_links(
+        tuple(
+            _build_manual(manual, order_index)
+            for order_index, manual in enumerate(_MANUALS)
+        )
     )

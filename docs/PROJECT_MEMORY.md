@@ -311,3 +311,39 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/afterlight_quests/quest_build_transaction.py`, `tools/tests/test_quest_build_transaction.py`, `docs/PROJECT_MEMORY.md`
 - **Impact:** The secret scanner no longer confuses a cryptographic filesystem-state suffix with credential material, and the whole-build transaction test remains exact after optional manuals and generalized commodities were integrated.
 - **Follow-up:** Re-run the focused transaction, repository scan, release-policy regression, memory contract, and the complete suite after final Task 8 generation removes the deliberate audit drift.
+
+### MEM-2026-08-13-025
+
+- **Date:** 2026-08-13
+- **Category:** issue
+- **Status:** resolved
+- **Subsystem:** FTB Quests, Task 7 external link validation
+- **Summary:** Task 7 adds valid links to legacy and not-yet-generated manual quests, but the old committed-corpus regeneration helper did not declare those exact external target IDs when it intentionally excluded manual chapters.
+- **Evidence:** The first combined run ended with `Ran 222 tests in 30.157s` and three errors, including unresolved target `70380821D8D0339D`. After deriving the external ID universe from unmanaged committed quests plus excluded manual quests, the complete suite reached only the two expected Task 8 generated-corpus drift assertions.
+- **Files or Commit:** `tools/tests/test_afterlight_quests.py`
+- **Impact:** Source-level link validation now resolves the approved cross-boundary graph and fails on actual generated drift instead of an incomplete test target universe. Production already supplies exact unmanaged IDs.
+- **Follow-up:** Task 8 must generate the manuals, Story links, localization, and audits together, then restore the committed-corpus byte-identity tests.
+
+### MEM-2026-08-13-026
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Local Task 7 verification wrapper
+- **Summary:** Verification helper attempts hit a disallowed force-removal cleanup form, zsh's read-only `status` variable, an unmatched optional wildcard, an unescaped backtick pattern, and the machine's runtime-less system Java stub.
+- **Evidence:** The first wrapper was rejected before execution. The second printed `Ran 111 tests in 30.337s` and `OK`, then ended with `read-only variable: status`. Later probes printed `no matches found: requirements*`, `unmatched "`, and `Unable to locate a Java Runtime`. Replacing cleanup with `unlink`, using `run_code`, discovering optional files through `find`, single-quoting the backtick pattern, and prepending `$JAVA_HOME/bin` produced clean reruns, including `Ran 111 tests in 31.164s`, `OK`, exit 0, and no temporary link.
+- **Files or Commit:** `docs/PROJECT_MEMORY.md`
+- **Impact:** Repository files and generated quest data were unaffected, and the reusable verification form now preserves the test exit code without leaving local runtime fixtures attached.
+- **Follow-up:** Use `unlink` for the temporary ignored runtime link, avoid reserved zsh parameter names, discover optional paths without bare globs, single-quote patterns containing backticks, and prepend `$JAVA_HOME/bin` for Java tooling.
+
+### MEM-2026-08-13-027
+
+- **Date:** 2026-08-13
+- **Category:** success
+- **Status:** resolved
+- **Subsystem:** FTB Quests, Story cohesion source contract
+- **Summary:** Task 7 source declarations now classify all 170 Story quests, revise exactly 20 transitions, compile exactly 39 outbound links and 19 manual returns, and preserve optional navigation, stable identities, dependencies, tasks, rewards, and completion shapes.
+- **Evidence:** The focused suite ended with `Ran 14 tests in 4.349s` and `OK`, including two independent temporary roots with byte-identical first and second generations. The full relevant source matrix ended with `Ran 111 tests in 31.164s` and `OK`. The complete quest run ended with `Ran 225 tests in 34.845s` and only two expected Task 8 generated-corpus drift failures, with two authenticated-live skips.
+- **Files or Commit:** `tools/afterlight_quests/story_cohesion.py`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/field_manuals.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/fixtures/quests/story-audit.json`, `tools/tests/test_story_cohesion_task7.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Story technology transitions are cohesive and staged while field manuals remain optional guided branches. This is a source and temporary-generation guarantee, not a committed generated-corpus or released-runtime guarantee.
+- **Follow-up:** Task 8 must generate and validate the committed corpus, acquisition audit, pack gates, server boot, and release evidence before this source-level result can become verified.

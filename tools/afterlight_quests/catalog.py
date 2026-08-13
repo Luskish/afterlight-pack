@@ -18,6 +18,7 @@ from .builder import (
     TaskSpec,
 )
 from .field_manuals import FIELD_MANUALS, build_field_manuals
+from .story_cohesion import apply_managed_story_cohesion
 
 
 STORY = GroupSpec("story", "The Story", "4525BB3160467FCB")
@@ -3137,7 +3138,7 @@ def build_catalog() -> list[ChapterSpec]:
         replace(chapter, order_index=chapter.order_index + 1)
         for chapter in story
     ]
-    return [
+    return list(apply_managed_story_cohesion([
         *story,
         *field_manuals,
         logistics,
@@ -3153,4 +3154,4 @@ def build_catalog() -> list[ChapterSpec]:
         *deep_vault,
         *atlas,
         echo_protocols,
-    ]
+    ]))

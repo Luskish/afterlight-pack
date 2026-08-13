@@ -196,7 +196,7 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** failure
-- **Status:** verified
+- **Status:** resolved
 - **Subsystem:** FTB Quests, legacy story overlays
 - **Summary:** Private artifact and rollback-created directory cleanup now ends with atomic, lossless retention instead of pathname unlink or rmdir. Verified owned records are reusable and bounded, while unexpected recovery remains explicit and blocks residue growth.
 - **Evidence:** Independent Fix Round 3 re-review reproduced `FINAL_UNLINK_THIRD_PARTY_DELETED True`, `FINAL_UNLINK_WARNINGS 0`, `FINAL_UNLINK_RECOVERY_PATHS 0`, `FINAL_RMDIR_MODE_DIRECTORY_DELETED True`, and `FINAL_RMDIR_MODE_SURFACED False`. Fix Round 4 direct final-syscall and repeated-retention tests first ended with `Ran 3 tests in 0.030s` and `FAILED (failures=3)`. The in-root recovery retry test separately failed before fail-closed snapshot detection. After correction, `python3 -m unittest tools.tests.test_quest_build_transaction` ended with `Ran 50 tests in 11.714s` and `OK`; the relevant Story compatibility, QuestLink, overlay, QuestCompiler, and memory suite ended with `Ran 160 tests in 9.963s` and `OK (skipped=2)`. Compile, diff, no-em-dash, and generated-corpus guards passed.
@@ -234,8 +234,20 @@ Every event uses the following fields. Update the original event when its status
 - **Category:** addition
 - **Status:** resolved
 - **Subsystem:** FTB Quests, deterministic generated inventory
-- **Summary:** A standalone hash tool records every generated quest file plus the two exact generated audit scripts by relative path, mode, size, and SHA-256, including files not tracked by Git.
-- **Evidence:** The red run ended with `Ran 5 tests in 0.001s` and `FAILED (errors=5)` because the tool did not exist. After implementation, the focused run ended with `Ran 5 tests in 0.017s` and `OK`, covering complete recursive inventory, untracked-file detection, missing or extra audit rejection, link and nonregular-file rejection, output isolation, canonical JSON, and directory mode.
+- **Summary:** A standalone snapshot tool copies every generated quest file plus the two exact generated audit scripts and records canonical relative path, mode, size, SHA-256, and Git state, including ignored and untracked files.
+- **Evidence:** The first red run ended with `Ran 5 tests in 0.001s` and `FAILED (errors=5)` because the tool did not exist. Blueprint review then found that the first manifest-only implementation omitted source bytes, atomic publication, source-mutation detection, nested output-parent symlink rejection, and repeatability coverage. After correction, `python3 -m unittest tools.tests.test_hash_generated_quests -v` ended with `Ran 10 tests in 0.962s` and `OK`; diff and U+2014 scans were clean.
 - **Files or Commit:** `tools/hash-generated-quests.py`, `tools/tests/test_hash_generated_quests.py`, and `docs/PROJECT_MEMORY.md`
-- **Impact:** Consecutive quest builds can compare the complete generated filesystem rather than relying on Git state or timestamps.
+- **Impact:** Consecutive quest builds can compare complete mode-preserving filesystem snapshots rather than relying on Git state, timestamps, or a digest-only manifest, and publication fails closed on source mutation or an unsafe destination.
 - **Follow-up:** Run the tool after both final Task 8 build passes and require byte-identical inventory manifests before Packwiz refresh.
+
+### MEM-2026-08-13-019
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** accepted
+- **Subsystem:** Prism client-smoke automation
+- **Summary:** Official Prism Launcher 11.0.3 cannot satisfy the proposed sterile offline direct-launch probe because Offline accounts are excluded from ownership and the first-run setup gate requires an ownership-valid account before CLI launch proceeds.
+- **Evidence:** The exact 11.0.3 macOS asset matched size `43608206`, SHA-256 `b8e06ef55ec78fceddfa9f4270b3d4d93f2606b83f70ad6a2c6dde90f2b65408`, arm64 architecture, strict signature, identifier, team, and leaf authority. Three disposable-root probes loaded the explicit data root and candidate instance but produced no game child; the final result was `PRISM DIRECT PROBE: missing-game-child`. Exact tagged source shows the setup predicate calls `anyAccountIsValid()`, which calls `ownsMinecraft()`, while Offline accounts always return false.
+- **Files or Commit:** `.superpowers/sdd/2026-08-13-afterlight-story-cohesion/task-8-client-blueprint.md`, `docs/PROJECT_MEMORY.md`
+- **Impact:** This impossible credential-free probe must not be presented as client acceptance or added as a mandatory gauntlet step. The established install, static, server-boot, and manual real-account client checks remain the truthful release evidence.
+- **Follow-up:** Revisit only after an official Prism change enables direct Offline startup, or use an explicitly user-operated real-account smoke without copying, fabricating, or retaining credentials.

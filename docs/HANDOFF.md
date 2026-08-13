@@ -27,9 +27,15 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Integration commit: `66eac04ecaa2160a392b57da1fcc1b311f15a9a6`.
 - Remote `dev` duplicate design lineage was reconciled without changing pack bytes in merge commit `5bba025182ebba312c29b998c6a50ccd897bdee1`.
 - The integrated preflight passed 522 authenticated tests and printed `SERVER BOOT: OK` before the version-only RC1 preparation.
-- Candidate `2cb2f152b244d5fba0b18f716c2e087758ad2b4c` passed a full local gauntlet, but independent review found release-control gaps. That candidate is obsolete and must not be promoted.
+- Accepted RC1 commit: `fc3bb555f240e7d8a51d30570404413305bf5b9f`.
+- Immutable RC1 tag: `v1.0.0-rc.1`.
+- Exact accepted `dev` CI succeeded: `https://github.com/Luskish/afterlight-pack/actions/runs/31647867896`.
+- Exact `main` CI: `https://github.com/Luskish/afterlight-pack/actions/runs/31652482458`.
+- Accepted receipt SHA-256: `ac459fa94c98207b6124ab46f9233cfd1e80e2c5929d3eed191c661c4919f4fa`.
+- Accepted transcript SHA-256: `c3568ffd29e2410025e17e14ad22bf514f8521fb885227f394784036fabb5f92`.
+- Shane authorized an expedited acceptance on 2026-08-12. The duplicate second local artifact build and duplicate local post-generation CurseForge scan were omitted only after exact artifact bytes matched the successful exact-SHA `dev` CI build. Pages parity, two launcher installation paths, checksums, archive CRCs, backup, and production verification remained required.
 - Release hardening now includes replacement-ref-resistant CurseForge and Modrinth commit-tree reconciliation, an upstream-verified 140-record Modrinth manifest lock, typed, quoted, and oversized credential detection, exact automated evidence binding, direct explicit-refspec pushes to one captured production URL, HTTPS-only ordinary and cache-busted Pages parity, rejection of unexpected installed files, accepted-versus-hosted client mod-set and complete payload equality, numeric release ownership without automatic deletion, and authenticated plus unauthenticated byte verification.
-- A fresh full gauntlet, exact branch CI, promotion, publication, portal selection, and VPS rollout remain pending until recorded below.
+- Publication, portal selection, and VPS rollout remain pending until recorded below.
 
 ## Signal Companion
 

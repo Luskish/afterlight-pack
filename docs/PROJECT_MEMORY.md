@@ -40,7 +40,7 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** failure
-- **Status:** verified
+- **Status:** resolved
 - **Subsystem:** Signal companion networking
 - **Summary:** ECHO Pin and Claim actions disconnected clients because the server attempted to encode an invalid custom payload.
 - **Evidence:** Client disconnect reports named `minecraft:custom_payload`; the Signal 0.2.1 focused tests and dedicated-server boot passed after the payload fix. Released-client Pin and Claim confirmation remains pending.

@@ -551,3 +551,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `pack.toml`, `index.toml`, `config/ftbquests/quests`, `kubejs`, `tools/afterlight_quests`, `tools/rc_hygiene.py`, and the associated test corpus
 - **Impact:** The candidate is ready for an exact-head release gauntlet and promotion without changing player quest identities or current production state.
 - **Follow-up:** Commit the exact bytes, run `tools/release-gauntlet.sh` against that commit, and publish only after exact-head CI succeeds.
+
+### MEM-2026-08-13-045
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Exact-head release gauntlet portability
+- **Summary:** The first RC2 exact-head gauntlet stopped in the initial clean-worktree unit suite because one static commodity evidence test used ignored `server-test` jars without declaring itself as an authenticated live-install test.
+- **Evidence:** `tools/release-gauntlet.sh 3c0178463ef84a10b86acb090490b9a4b022e6d7` ended with `Ran 931 tests in 645.002s` and `FAILED (errors=1, skipped=77)`. The only error was `missing installed jar for c:foods/bread: server-test/mods/ftb-filter-system-neoforge-21.1.4.jar` from `test_static_runtime_evidence_proves_tags_and_producers`. The gauntlet intentionally runs a clean suite before creating `server-test`, while `tools/server-test.sh` later reruns the suite with a fresh authenticated install. After applying the existing live-install decorator, the focused clean mode ended with `OK (skipped=1)`, and the same focused test with `AFTERLIGHT_REQUIRE_LIVE_TESTS=1` plus the authenticated run ID ended with `Ran 1 test in 0.530s` and `OK`.
+- **Files or Commit:** `tools/tests/test_afterlight_quests.py` and `tools/release-gauntlet.sh`
+- **Impact:** No pack, artifact, production server, or player data changed. The failure prevented acceptance before any push or publication.
+- **Follow-up:** Commit the correction and rerun the exact-head gauntlet. Promote only if the new receipt is accepted.

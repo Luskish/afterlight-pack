@@ -1333,6 +1333,7 @@ class CommonCommodityFixtureTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, f"{task_id}.*{classification}"):
                     self.load(path)
 
+    @requires_live_install(ROOT)
     def test_static_runtime_evidence_proves_tags_and_producers(self) -> None:
         manifest = self.load(runtime=True)
         for declaration in manifest.declarations:

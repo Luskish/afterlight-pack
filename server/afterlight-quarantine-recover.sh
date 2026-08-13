@@ -44,7 +44,18 @@ authority_command() {
 }
 
 run_bounded() {
-  "$SAFETY_HELPER" run-command --timeout "$COMMAND_TIMEOUT" -- "$@"
+  run_bounded_with_timeout "$COMMAND_TIMEOUT" "$@"
+}
+
+run_bounded_with_timeout() {
+  local timeout=$1
+  shift
+  "$SAFETY_HELPER" run-command --timeout "$timeout" -- "$@"
+}
+
+run_operator_start() {
+  local timeout=$((COMMAND_TIMEOUT + 2 * HEALTH_TIMEOUT))
+  run_bounded_with_timeout "$timeout" "$OPERATOR" start
 }
 
 acquire_lock() {
@@ -206,7 +217,7 @@ main() {
     return 0
   fi
   export AFTERLIGHT_RECOVERY_TRANSACTION_ID=$transaction_id
-  run_bounded "$OPERATOR" start
+  run_operator_start
   local minecraft_id backup_id started_at
   minecraft_id=$(compose ps -q minecraft) || return 1
   [[ "$minecraft_id" =~ ^[0-9a-f]{12,64}$ ]] || return 1
@@ -227,7 +238,7 @@ main() {
   run_bounded "$PROGRESS_GUARD" compare \
     --world "$DATA_DIR/world" \
     --snapshot "$snapshot_dir/progress" >/dev/null
-  run_bounded "$OPERATOR" start
+  run_operator_start
   run_bounded "$OPERATOR" status
   backup_id=$(compose ps -q backup) || return 1
   [[ "$backup_id" =~ ^[0-9a-f]{12,64}$ ]] || return 1

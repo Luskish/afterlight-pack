@@ -29,7 +29,10 @@ SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 SAFE_MOD_FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._+()'&@#=-]{0,246}[.]jar$")
-MAX_STATE_BYTES = 64 * 1024
+MAX_SERVER_MOD_RECORDS = 512
+MAX_SERVER_MOD_MANIFEST_BYTES = 256 * 1024
+MAX_STATE_METADATA_BYTES = 64 * 1024
+MAX_STATE_BYTES = 2 * MAX_SERVER_MOD_MANIFEST_BYTES + MAX_STATE_METADATA_BYTES
 MAX_RECEIPT_BYTES = 32 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024 * 1024
 MAX_MOD_METADATA_BYTES = 1024 * 1024
@@ -65,6 +68,16 @@ def identity(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
         metadata.st_gid,
         metadata.st_nlink,
         metadata.st_size,
+    )
+
+
+def stable_directory_identity(before: os.stat_result, after: os.stat_result) -> bool:
+    return (
+        stat.S_ISDIR(before.st_mode)
+        and stat.S_ISDIR(after.st_mode)
+        and identity(before) == identity(after)
+        and mode_of(before) == mode_of(after)
+        and before.st_mtime_ns == after.st_mtime_ns
     )
 
 
@@ -252,6 +265,8 @@ def require_state_directory(arguments: argparse.Namespace, *, create: bool) -> P
 def validate_server_mod_manifest(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise SafetyError("accepted server mod manifest is invalid")
+    if len(value) > MAX_SERVER_MOD_RECORDS:
+        raise SafetyError("accepted server mod manifest exceeds the record limit")
     previous = ""
     validated: list[dict[str, Any]] = []
     for record in value:
@@ -284,6 +299,8 @@ def validate_server_mod_manifest(value: Any) -> list[dict[str, Any]]:
             raise SafetyError("accepted server mod manifest is invalid")
         previous = filename
         validated.append(record)
+    if len(canonical_json_bytes(validated)) > MAX_SERVER_MOD_MANIFEST_BYTES:
+        raise SafetyError("accepted server mod manifest exceeds the size limit")
     return validated
 
 
@@ -481,6 +498,14 @@ def read_state(arguments: argparse.Namespace) -> dict[str, Any]:
     return validate_state(parse_json(payload, "transaction authority"), arguments)
 
 
+def state_payload(value: dict[str, Any], arguments: argparse.Namespace) -> bytes:
+    validate_state(value, arguments)
+    payload = canonical_json_bytes(value)
+    if len(payload) > MAX_STATE_BYTES:
+        raise SafetyError("transaction authority exceeds the size limit")
+    return payload
+
+
 def command_authority_create(arguments: argparse.Namespace) -> int:
     require_state_directory(arguments, create=True)
     marker = state_path(arguments)
@@ -522,10 +547,9 @@ def command_authority_create(arguments: argparse.Namespace) -> int:
             "backup": {"restart_disabled": False, "stopped": False},
         },
     }
-    validate_state(value, arguments)
     atomic_write(
         marker,
-        canonical_json_bytes(value),
+        state_payload(value, arguments),
         mode=arguments.state_file_mode,
         owner_uid=arguments.owner_uid,
         group_gid=arguments.group_gid,
@@ -575,10 +599,9 @@ def command_authority_update(arguments: argparse.Namespace) -> int:
             value["containers"][arguments.service]["restart_disabled"] = arguments.restart_disabled
         if arguments.stopped is not None:
             value["containers"][arguments.service]["stopped"] = arguments.stopped
-    validate_state(value, arguments)
     atomic_write(
         state_path(arguments),
-        canonical_json_bytes(value),
+        state_payload(value, arguments),
         mode=arguments.state_file_mode,
         owner_uid=arguments.owner_uid,
         group_gid=arguments.group_gid,
@@ -2499,7 +2522,7 @@ def hash_tree(root: Path) -> str:
         if path.is_symlink():
             raise SafetyError("tree contains a link")
         if path.is_dir():
-            records.append([relative, "directory", mode_of(metadata), metadata.st_uid, metadata.st_gid])
+            records.append([relative, "directory", mode_of(metadata)])
         elif path.is_file():
             if metadata.st_nlink != 1:
                 raise SafetyError("tree file link count must equal one")
@@ -2692,7 +2715,7 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("live release revision is invalid")
     repository = require_canonical_absolute(Path(arguments.repository), "repository")
     data = require_canonical_absolute(Path(arguments.data), "server data")
-    require_directory(
+    data_metadata = require_directory(
         data,
         "server data",
         owner_uid=arguments.data_owner_uid,
@@ -2751,34 +2774,104 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
             parsed_manifest = parsed_manifest.get("server_mods")
         expected_manifest = validate_server_mod_manifest(parsed_manifest)
     expected_mods = {record["filename"]: record for record in expected_manifest}
-    mods_root = data / "mods"
     actual_mods: set[str] = set()
-    for path in mods_root.iterdir():
-        metadata = path.lstat()
-        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
-            raise SafetyError("live server mod inventory contains an unsafe entry")
-        actual_mods.add(path.name)
-        expected = expected_mods.get(path.name)
-        if expected is None:
-            continue
-        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(path, flags)
+    directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        data_descriptor = os.open(data, directory_flags)
+    except OSError as error:
+        raise SafetyError("live server data root could not be opened safely") from error
+    try:
+        opened_data = os.fstat(data_descriptor)
+        if not stable_directory_identity(data_metadata, opened_data):
+            raise SafetyError("live server data root identity changed during open")
         try:
-            opened = os.fstat(descriptor)
-            if identity(opened) != identity(metadata):
-                raise SafetyError("live server mod identity changed during open")
-            digest = hashlib.new(expected["hash_format"])
-            size = 0
-            while chunk := os.read(descriptor, 1024 * 1024):
-                digest.update(chunk)
-                size += len(chunk)
-            after = os.fstat(descriptor)
-            if identity(after) != identity(opened) or after.st_mtime_ns != opened.st_mtime_ns:
-                raise SafetyError("live server mod identity changed during verification")
+            mods_metadata = os.stat("mods", dir_fd=data_descriptor, follow_symlinks=False)
+        except OSError as error:
+            raise SafetyError("live server mod root is unavailable") from error
+        if (
+            not stat.S_ISDIR(mods_metadata.st_mode)
+            or mods_metadata.st_uid != arguments.data_owner_uid
+            or mods_metadata.st_gid != arguments.data_group_gid
+            or mode_of(mods_metadata) not in SAFE_DIRECTORY_MODES
+        ):
+            raise SafetyError("live server mod root is unsafe")
+        try:
+            mods_descriptor = os.open("mods", directory_flags, dir_fd=data_descriptor)
+        except OSError as error:
+            raise SafetyError("live server mod root could not be opened safely") from error
+        try:
+            opened_mods = os.fstat(mods_descriptor)
+            if not stable_directory_identity(mods_metadata, opened_mods):
+                raise SafetyError("live server mod root identity changed during open")
+            try:
+                names = sorted(os.listdir(mods_descriptor))
+            except OSError as error:
+                raise SafetyError("live server mod inventory could not be listed safely") from error
+            for name in names:
+                try:
+                    metadata = os.stat(name, dir_fd=mods_descriptor, follow_symlinks=False)
+                except OSError as error:
+                    raise SafetyError("live server mod inventory changed during traversal") from error
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                    raise SafetyError("live server mod inventory contains an unsafe entry")
+                actual_mods.add(name)
+                expected = expected_mods.get(name)
+                if expected is None:
+                    continue
+                flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+                try:
+                    descriptor = os.open(name, flags, dir_fd=mods_descriptor)
+                except OSError as error:
+                    raise SafetyError("live server mod could not be opened safely") from error
+                try:
+                    opened = os.fstat(descriptor)
+                    if identity(opened) != identity(metadata) or mode_of(opened) != mode_of(metadata):
+                        raise SafetyError("live server mod identity changed during open")
+                    digest = hashlib.new(expected["hash_format"])
+                    size = 0
+                    while chunk := os.read(descriptor, 1024 * 1024):
+                        digest.update(chunk)
+                        size += len(chunk)
+                    after = os.fstat(descriptor)
+                    if (
+                        identity(after) != identity(opened)
+                        or mode_of(after) != mode_of(opened)
+                        or after.st_mtime_ns != opened.st_mtime_ns
+                    ):
+                        raise SafetyError("live server mod identity changed during verification")
+                finally:
+                    os.close(descriptor)
+                if size != expected["size"] or digest.hexdigest() != expected["hash"]:
+                    raise SafetyError("live server mod digest or size differs from acceptance")
+            mods_after = os.fstat(mods_descriptor)
+            try:
+                mods_path_after = os.stat("mods", dir_fd=data_descriptor, follow_symlinks=False)
+            except OSError as error:
+                raise SafetyError("live server mod root changed during verification") from error
+            if (
+                not stable_directory_identity(opened_mods, mods_after)
+                or not stable_directory_identity(opened_mods, mods_path_after)
+            ):
+                raise SafetyError("live server mod root identity changed during verification")
         finally:
-            os.close(descriptor)
-        if size != expected["size"] or digest.hexdigest() != expected["hash"]:
-            raise SafetyError("live server mod digest or size differs from acceptance")
+            os.close(mods_descriptor)
+        data_after = os.fstat(data_descriptor)
+        try:
+            data_path_after = data.lstat()
+        except OSError as error:
+            raise SafetyError("live server data root changed during verification") from error
+        if (
+            not stable_directory_identity(opened_data, data_after)
+            or not stable_directory_identity(opened_data, data_path_after)
+        ):
+            raise SafetyError("live server data root identity changed during verification")
+    finally:
+        os.close(data_descriptor)
     if actual_mods != set(expected_mods):
         raise SafetyError("live server mod inventory differs from accepted checkout")
     container_id = getattr(arguments, "container_id", None)
@@ -2820,6 +2913,13 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("candidate container log acquisition timed out") from error
     if logs.returncode != 0:
         raise SafetyError("candidate container log acquisition failed")
+    post_log_container = inspect_container(inspected_id, timeout=30)
+    post_log_status, post_log_health = container_health_status(post_log_container)
+    post_log_state = post_log_container["State"]
+    if post_log_status != "running" or post_log_health != "healthy":
+        raise SafetyError("candidate container state changed during log acquisition")
+    if post_log_state.get("StartedAt") != inspected_start:
+        raise SafetyError("candidate container start identity changed during log acquisition")
     log_payload = logs.stdout + logs.stderr
     if len(log_payload) > MAX_LOG_BYTES:
         raise SafetyError("candidate container log evidence exceeds the size limit")

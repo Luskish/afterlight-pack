@@ -263,3 +263,27 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `server/afterlight-ingress-boot-gate.sh`, `server/afterlight-quarantine-recover.sh`, `server/afterlight-server.sh`, `server/afterlight-maintenance.sh`, `server/docker-compose.transaction.yml`, `server/systemd/afterlight-ingress-boot-gate.service`, `server/systemd/afterlight-quarantine-gate.service`, focused tests, and safe server documentation
 - **Impact:** Pending authority is durable before protected mutation; boot and partial Docker failures remain discoverably closed; rollback archive bytes and complete inventory remain descriptor-bound; progress and marker reads bind ownership, links, and identity; all mutating operators share one no-follow lock; accepted release, live mods, quests, and logs are proven; and signals terminate children while allowing bounded rollback cleanup.
 - **Follow-up:** Renumber this temporary event during controller integration, run `systemd-analyze verify` in disposable Linux when available, and require a fresh independent rereview with Critical 0 and Important 0 before integration or deployment.
+
+### MEM-2026-08-13-901
+
+- **Date:** 2026-08-13
+- **Category:** vulnerability
+- **Status:** resolved
+- **Subsystem:** Quest-safe deployment rereview 2, temporary controller-renumberable event
+- **Summary:** Task 9 rereview 2 found an address-family ingress bypass plus release-policy, ownership, runtime-directory, lock-authentication, backup-readiness, canonical-path, world-identity, live-attestation, recovery-resumption, and snapshot-retention gaps; one explicit root control plane and unprivileged data identity now enforce those boundaries.
+- **Evidence:** Independent RED artifacts recorded expected failures for IPv4 publication, the real policy URL, distinct control and runtime identities, one runtime-directory owner, forged lock environment, backup health, canonical paths, world descriptor identity, jar digest and size, candidate-bound logs, positive quest counts, severity-first errors, resumable restoration, no-snapshot authority, and locked retention. Final same-session runs ended with `Ran 18 tests in 2.800s` and `OK`, `Ran 29 tests in 220.594s` and `OK`, and `Ran 80 tests in 66.082s` and `OK`. Compose rendering, Bash syntax, ShellCheck, Python compilation, diff validation, Unicode validation, protected-scope validation, and `VERIFY: ALL GREEN` also passed.
+- **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-safety-contract.sh`, `server/afterlight-progress-guard.py`, server control and recovery scripts, `server/docker-compose.yml`, root-owned systemd units, snapshot-retention units, `tools/server-mod-manifest-lock.json`, `tools/tests/test_task9_rereview2.py`, bounded server tests, and safe server documentation
+- **Impact:** Production publishes only the intended IPv4 game endpoints, mutating operations authenticate one inherited no-follow lock, root owns host control state, explicit numeric runtime identity owns data, receipts and live evidence bind accepted bytes, and phase-aware recovery resumes safe partial states while failing closed on ambiguity.
+- **Follow-up:** Renumber this temporary event during controller integration and run the unchanged units through `systemd-analyze verify` on a disposable Linux host before deployment.
+
+### MEM-2026-08-13-902
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** investigating
+- **Subsystem:** Release-candidate server boot hygiene, temporary controller-renumberable event
+- **Summary:** The mandatory server boot gate stops before Minecraft because the unchanged base commit's generated quest item audit digest differs from the canonical builder output.
+- **Evidence:** `BOOT_TIMEOUT=600 ./tools/server-test.sh` passed manifest, server-mod lock, provenance, and seal-source checks, then printed `RC HYGIENE: FAILED: installed quest audit differs from canonical post-nonce builder bytes`. A direct comparison proved the protected quest corpus and generated audit were unchanged from `HEAD`, while the committed audit digest and current canonical builder digest differ.
+- **Files or Commit:** `config/ftbquests/quests`, `kubejs/server_scripts/afterlight/generated_quest_item_audit.js`, and `tools/server-test.sh`; no protected file is part of the Task 9 diff
+- **Impact:** This branch cannot claim `SERVER BOOT: OK` or merge to `main` until the generated quest audit is reconciled in a separately scoped quest-generation task.
+- **Follow-up:** Regenerate and review the compiler-managed quest outputs in their owning task, then rerun the full server boot gate before integration.

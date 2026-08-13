@@ -80,6 +80,12 @@ class FriendServerTests(unittest.TestCase):
         self.quarantine_dir.mkdir(mode=0o750)
         self.runtime_dir.mkdir(mode=0o750)
         self.snapshot_root.mkdir(mode=0o700)
+        self.test_contract = self.temp_path / ".afterlight-safety-test-contract"
+        self.test_contract.write_text(
+            "AFTERLIGHT SAFETY TEST CONTRACT v1\n",
+            encoding="utf-8",
+        )
+        self.test_contract.chmod(0o600)
         self._write_env()
         self._install_fakes()
 
@@ -87,6 +93,7 @@ class FriendServerTests(unittest.TestCase):
         self.environment.update(
             {
                 "PATH": f"{self.fake_bin}:{self.environment['PATH']}",
+                "AFTERLIGHT_SAFETY_TEST_ROOT": str(self.temp_path),
                 "AFTERLIGHT_ENV_FILE": str(self.env_file),
                 "AFTERLIGHT_HEALTH_TIMEOUT": "0",
                 "FAKE_DOCKER_LOG": str(self.docker_log),
@@ -272,6 +279,8 @@ class FriendServerTests(unittest.TestCase):
             f"DATA_DIR={data_value}",
             f"BACKUP_DIR={backup_value}",
             f"SECRETS_DIR={secrets_value}",
+            f"AFTERLIGHT_DATA_UID={os.getuid()}",
+            f"AFTERLIGHT_DATA_GID={os.getgid()}",
         ]
         if init_memory is not None:
             assignments.append(f"AFTERLIGHT_INIT_MEMORY={init_memory}")
@@ -405,8 +414,8 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(source.count("restart: unless-stopped"), 2)
         self.assertNotIn("25575:", source)
         self.assertRegex(source, r"(?m)^name: afterlight$")
-        self.assertRegex(source, r'(?m)^\s+- "25565:25565/tcp"$')
-        self.assertRegex(source, r'(?m)^\s+- "24454:24454/udp"$')
+        self.assertRegex(source, r'(?m)^\s+- "0[.]0[.]0[.]0:25565:25565/tcp"$')
+        self.assertRegex(source, r'(?m)^\s+- "0[.]0[.]0[.]0:24454:24454/udp"$')
         self.assertIn("INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}", source)
         self.assertIn("MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}", source)
         self.assertIn("mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}", source)
@@ -417,6 +426,8 @@ class FriendServerTests(unittest.TestCase):
             "DATA_DIR=/srv/afterlight/data\n"
             "BACKUP_DIR=/srv/afterlight/backups\n"
             "SECRETS_DIR=/etc/afterlight/secrets\n"
+            "AFTERLIGHT_DATA_UID=1000\n"
+            "AFTERLIGHT_DATA_GID=1000\n"
             "AFTERLIGHT_INIT_MEMORY=4G\n"
             "AFTERLIGHT_MAX_MEMORY=10G\n"
             "AFTERLIGHT_MEMORY_LIMIT=13G\n"
@@ -526,19 +537,14 @@ class FriendServerTests(unittest.TestCase):
         self.assertRegex(docs, r"(?i)immutable.*packwiz.*revision")
         self.assertRegex(docs, r"(?i)preflight.*world/level\.dat")
         for command in (
-            "cp server/.env.example server/.env",
-            "AFTERLIGHT_USER=$(id -un)",
-            "AFTERLIGHT_GROUP=$(id -gn)",
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
-            "umask 077",
-            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
-            "chmod 0600 /etc/afterlight/secrets/rcon_password",
-            "server/afterlight-server.sh doctor",
-            "server/afterlight-server.sh start",
-            "server/afterlight-server.sh backup",
-            "server/afterlight-server.sh update",
-            "server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm",
+            "AFTERLIGHT_DATA_UID=$(id -u afterlight)",
+            "AFTERLIGHT_DATA_GID=$(id -g afterlight)",
+            'sudo install -d -o "$AFTERLIGHT_DATA_UID" -g "$AFTERLIGHT_DATA_GID" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            "sudo /opt/afterlight/server/afterlight-server.sh doctor",
+            "sudo /opt/afterlight/server/afterlight-server.sh start",
+            "sudo /opt/afterlight/server/afterlight-server.sh backup",
+            "sudo /opt/afterlight/server/afterlight-server.sh update",
+            "sudo /opt/afterlight/server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm",
         ):
             self.assertIn(command, docs)
         self.assertIn("25565/tcp", docs)
@@ -550,27 +556,21 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("sysstat", docs)
         self.assertIn("sar -u 1 5", docs)
 
-    def test_setup_assigns_restrictive_paths_to_normal_operator(self) -> None:
+    def test_setup_assigns_root_control_and_unprivileged_data_identity(self) -> None:
         required_commands = (
-            "AFTERLIGHT_USER=$(id -un)",
-            "AFTERLIGHT_GROUP=$(id -gn)",
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
-            'sudo install -d -o "$AFTERLIGHT_USER" -g "$AFTERLIGHT_GROUP" -m 0700 /etc/afterlight/secrets',
-            "umask 077",
-            "openssl rand -base64 36 > /etc/afterlight/secrets/rcon_password",
-            "chmod 0600 /etc/afterlight/secrets/rcon_password",
+            "root-only host control plane",
+            "AFTERLIGHT_DATA_UID=$(id -u afterlight)",
+            "AFTERLIGHT_DATA_GID=$(id -g afterlight)",
+            'sudo install -d -o "$AFTERLIGHT_DATA_UID" -g "$AFTERLIGHT_DATA_GID" -m 0750 /srv/afterlight/data /srv/afterlight/backups',
+            "sudo install -d -o root -g root -m 0700 /etc/afterlight/secrets",
         )
-        for path in (ROOT / "docs" / "SERVER.md", SERVER_DIR / "README.md"):
-            with self.subTest(path=path):
-                source = path.read_text(encoding="utf-8")
-                for command in required_commands:
-                    self.assertIn(command, source)
-                self.assertNotIn("| sudo tee", source)
-                self.assertNotIn("sudo chmod 0600", source)
-                self.assertRegex(
-                    source,
-                    r"(?i)normal dedicated operator.*access to Docker",
-                )
+        runbook = (SERVER_DIR / "README.md").read_text(encoding="utf-8")
+        for command in required_commands:
+            self.assertIn(command, runbook)
+        self.assertNotIn("| sudo tee", runbook)
+        operations = (ROOT / "docs" / "SERVER.md").read_text(encoding="utf-8")
+        self.assertRegex(runbook, r"(?i)root-only host control plane")
+        self.assertRegex(operations, r"(?i)root-only host control plane")
 
     def test_unknown_command_fails_with_usage(self) -> None:
         result = self._run_operator("not-a-command")
@@ -633,7 +633,10 @@ class FriendServerTests(unittest.TestCase):
                 self._write_env(data_dir=unsafe_data)
                 result = self._run_operator("doctor")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(EXPECTED_PATH_GRAMMAR, result.stderr)
+                self.assertRegex(
+                    result.stderr,
+                    rf"{re.escape(EXPECTED_PATH_GRAMMAR)}|canonical safety contract",
+                )
                 self.assertEqual(self._docker_calls(), [])
 
     def test_docs_publish_the_exact_conservative_path_grammar(self) -> None:
@@ -1046,26 +1049,22 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(self._docker_calls(), [])
 
     def test_rollback_rejects_unwritable_data_parent_before_stop(self) -> None:
-        data_parent = self.temp_path / "locked-parent"
-        data_parent.mkdir()
-        data_dir = data_parent / "data"
-        (data_dir / "world").mkdir(parents=True)
-        level_file = data_dir / "world" / "level.dat"
+        (self.data_dir / "world").mkdir(parents=True)
+        level_file = self.data_dir / "world" / "level.dat"
         level_file.write_text("current world\n", encoding="utf-8")
-        self._write_env(data_dir=data_dir)
         archive = self._make_backup_archive()
 
-        data_parent.chmod(0o555)
+        self.temp_path.chmod(0o555)
         try:
             result = self._run_operator("rollback", str(archive), "--confirm")
         finally:
-            data_parent.chmod(0o755)
+            self.temp_path.chmod(0o700)
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("data parent", result.stderr.lower())
         self.assertNotIn(("stop", "backup", "minecraft"), self._compose_commands())
         self.assertEqual(level_file.read_text(encoding="utf-8"), "current world\n")
-        self.assertEqual(list(self.temp_path.glob("locked-parent/data.rescue-*")), [])
+        self.assertEqual(list(self.temp_path.glob("data.rescue-*")), [])
 
     def test_rollback_renames_data_restores_and_never_invokes_rm(self) -> None:
         (self.data_dir / "world").mkdir()

@@ -427,6 +427,13 @@ def collect_state(world: Path) -> State:
         world,
         os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
     )
+    opened_world = os.fstat(world_fd)
+    if (opened_world.st_dev, opened_world.st_ino) != (
+        world_metadata.st_dev,
+        world_metadata.st_ino,
+    ):
+        os.close(world_fd)
+        raise GuardError("world root identity changed during open")
     records: list[dict[str, str]] = []
     filesystem: list[dict[str, str | int]] = [
         filesystem_record("world", "directory", world_metadata)

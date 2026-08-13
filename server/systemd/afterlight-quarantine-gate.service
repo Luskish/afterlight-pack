@@ -7,6 +7,8 @@ Before=afterlight-maintenance.timer
 
 [Service]
 Type=oneshot
+User=root
+Group=root
 ExecStart=/opt/afterlight/server/afterlight-quarantine-gate.sh
 RemainAfterExit=yes
 UMask=0077

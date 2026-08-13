@@ -4,21 +4,10 @@ set -Eeuo pipefail
 umask 077
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 TRANSACTION_COMPOSE_FILE="$SCRIPT_DIR/docker-compose.transaction.yml"
-ENV_FILE=${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}
-OPERATOR=${AFTERLIGHT_OPERATOR:-$SCRIPT_DIR/afterlight-server.sh}
-PROGRESS_GUARD=${AFTERLIGHT_PROGRESS_GUARD:-$SCRIPT_DIR/afterlight-progress-guard.py}
-SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
-RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
-RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
-LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
-SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
-SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
-STATE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
-STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
-STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
 ACCEPTED_RECEIPT=${AFTERLIGHT_ACCEPTED_RECEIPT:-}
 ACCEPTED_RECEIPT_SHA256=${AFTERLIGHT_ACCEPTED_RECEIPT_SHA256:-}
 HEALTH_TIMEOUT=${AFTERLIGHT_HEALTH_TIMEOUT:-600}
@@ -26,15 +15,12 @@ POLL_INTERVAL=${AFTERLIGHT_POLL_INTERVAL:-2}
 COMMAND_TIMEOUT=${AFTERLIGHT_COMMAND_TIMEOUT:-120}
 TRANSACTION_TIMEOUT=${AFTERLIGHT_TRANSACTION_TIMEOUT:-3600}
 CLEANUP_TIMEOUT=${AFTERLIGHT_CLEANUP_TIMEOUT:-300}
-RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
+IMMUTABLE_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
 PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?([A-Za-z0-9_, ]*)$'
 
 EXPECTED_SHA=""
 PRIOR_SHA=""
 ACTIVE_SHA=""
-DATA_DIR=""
-BACKUP_DIR=""
-SECRETS_DIR=""
 MINECRAFT_ID=""
 BACKUP_ID=""
 SNAPSHOT_DIR=""
@@ -48,6 +34,7 @@ SNAPSHOT_READY=0
 BACKUP_VERIFIED=0
 TRANSACTION_COMPLETE=0
 CLEANUP_ACTIVE=0
+SERVER_MOD_MANIFEST_JSON=""
 
 usage() {
   printf '%s\n' \
@@ -92,25 +79,14 @@ run_bounded() {
 derive_security_identity() {
   [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
   [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
-  LOCK_OWNER_UID=${AFTERLIGHT_LOCK_OWNER_UID:-$(path_uid "$RUNTIME_DIR")}
-  LOCK_GROUP_GID=${AFTERLIGHT_LOCK_GROUP_GID:-$(path_gid "$RUNTIME_DIR")}
-  STATE_OWNER_UID=${AFTERLIGHT_STATE_OWNER_UID:-$(id -u)}
-  STATE_GROUP_GID=${AFTERLIGHT_STATE_GROUP_GID:-$LOCK_GROUP_GID}
-  SNAPSHOT_OWNER_UID=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(path_uid "$SNAPSHOT_ROOT")}
-  SNAPSHOT_GROUP_GID=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(path_gid "$SNAPSHOT_ROOT")}
+  [[ $(path_uid "$RUNTIME_DIR") == "$CONTROL_UID" && $(path_gid "$RUNTIME_DIR") == "$CONTROL_GID" ]] ||
+    fail "Runtime directory owner or group is invalid"
+  [[ $(path_uid "$SNAPSHOT_ROOT") == "$CONTROL_UID" && $(path_gid "$SNAPSHOT_ROOT") == "$CONTROL_GID" ]] ||
+    fail "Snapshot root owner or group is invalid"
 }
 
 state_arguments() {
-  printf '%s\0' \
-    --state-dir "$STATE_DIR" \
-    --state-dir-mode "$STATE_DIR_MODE" \
-    --state-file-mode "$STATE_FILE_MODE" \
-    --owner-uid "$STATE_OWNER_UID" \
-    --group-gid "$STATE_GROUP_GID" \
-    --snapshot-owner-uid "$SNAPSHOT_OWNER_UID" \
-    --snapshot-group-gid "$SNAPSHOT_GROUP_GID" \
-    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
-    --canonical-snapshot-root "$SNAPSHOT_ROOT"
+  afterlight_state_arguments
 }
 
 authority_command() {
@@ -128,32 +104,25 @@ authority_update() {
 }
 
 acquire_shared_lock() {
-  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then
-    return 0
-  fi
   derive_security_identity || return 1
-  exec "$SAFETY_HELPER" lock-run \
-    --runtime-dir "$RUNTIME_DIR" \
-    --runtime-mode "$RUNTIME_MODE" \
-    --lock-mode "$LOCK_MODE" \
-    --timeout "$TRANSACTION_TIMEOUT" \
-    --termination-grace "$CLEANUP_TIMEOUT" \
-    --owner-uid "$LOCK_OWNER_UID" \
-    --group-gid "$LOCK_GROUP_GID" \
-    -- "$0" "$@"
+  afterlight_verify_or_reexec_lock "$TRANSACTION_TIMEOUT" "$CLEANUP_TIMEOUT" "$@"
 }
 
 load_paths() {
   [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "Environment file is missing or unsafe"
-  local assignment
+  local assignment configured_data=$DATA_DIR configured_backup=$BACKUP_DIR configured_secrets=$SECRETS_DIR
   local data_seen=0
   local backup_seen=0
   local secrets_seen=0
+  local data_uid_seen=0
+  local data_gid_seen=0
   while IFS= read -r assignment || [[ -n "$assignment" ]]; do
     case "$assignment" in
       DATA_DIR=*) ((data_seen += 1)); DATA_DIR=${assignment#DATA_DIR=} ;;
       BACKUP_DIR=*) ((backup_seen += 1)); BACKUP_DIR=${assignment#BACKUP_DIR=} ;;
       SECRETS_DIR=*) ((secrets_seen += 1)); SECRETS_DIR=${assignment#SECRETS_DIR=} ;;
+      AFTERLIGHT_DATA_UID=*) ((data_uid_seen += 1)); DATA_OWNER_UID=${assignment#AFTERLIGHT_DATA_UID=} ;;
+      AFTERLIGHT_DATA_GID=*) ((data_gid_seen += 1)); DATA_GROUP_GID=${assignment#AFTERLIGHT_DATA_GID=} ;;
       AFTERLIGHT_INIT_MEMORY=*|AFTERLIGHT_MAX_MEMORY=*|AFTERLIGHT_MEMORY_LIMIT=*) ;;
       *) fail "Environment file contains an unsupported assignment"; return 1 ;;
     esac
@@ -162,6 +131,10 @@ load_paths() {
     fail "Environment paths must each be assigned exactly once"
     return 1
   fi
+  [[ "$DATA_DIR" == "$configured_data" && "$BACKUP_DIR" == "$configured_backup" && "$SECRETS_DIR" == "$configured_secrets" ]] || {
+    fail "Environment paths differ from the canonical safety contract"
+    return 1
+  }
   local configured_path
   for configured_path in "$DATA_DIR" "$BACKUP_DIR" "$SECRETS_DIR"; do
     [[ "$configured_path" == /* && "$configured_path" != "/" ]] || {
@@ -173,16 +146,38 @@ load_paths() {
       return 1
     }
   done
-  DATA_OWNER_UID=$(path_uid "$DATA_DIR")
-  DATA_GROUP_GID=$(path_gid "$DATA_DIR")
+  if [[ "$data_uid_seen" -ne "$data_gid_seen" ]]; then
+    fail "Data UID and GID must either both be present or both be absent"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -gt 1 || "$data_gid_seen" -gt 1 ]]; then
+    fail "Data UID and GID must each be assigned at most once"
+    return 1
+  fi
+  [[ "$data_uid_seen" -eq 1 && "$data_gid_seen" -eq 1 ]] || {
+    fail "Data UID and GID must each be assigned exactly once"
+    return 1
+  }
+  [[ "$DATA_OWNER_UID" =~ ^[0-9]+$ && "$DATA_GROUP_GID" =~ ^[0-9]+$ ]] || {
+    fail "Data UID and GID must be nonnegative integers"
+    return 1
+  }
+  [[ $(path_uid "$DATA_DIR") == "$DATA_OWNER_UID" && $(path_gid "$DATA_DIR") == "$DATA_GROUP_GID" ]] || {
+    fail "Data directory owner or group differs from the explicit runtime identity"
+    return 1
+  }
+  [[ $(path_uid "$BACKUP_DIR") == "$DATA_OWNER_UID" && $(path_gid "$BACKUP_DIR") == "$DATA_GROUP_GID" ]] || {
+    fail "Backup directory owner or group differs from the explicit runtime identity"
+    return 1
+  }
+  [[ $(path_uid "$SECRETS_DIR") == "$CONTROL_UID" && $(path_gid "$SECRETS_DIR") == "$CONTROL_GID" ]] || {
+    fail "Secrets directory owner or group differs from the control identity"
+    return 1
+  }
   DATA_PARENT=$(dirname "$DATA_DIR")
   DATA_PARENT_UID=$(path_uid "$DATA_PARENT")
   DATA_PARENT_GID=$(path_gid "$DATA_PARENT")
-  local expected_parent_uid=${AFTERLIGHT_DATA_PARENT_UID:-$DATA_PARENT_UID}
-  if [[ $(id -u) -eq 0 ]]; then
-    expected_parent_uid=${AFTERLIGHT_DATA_PARENT_UID:-0}
-  fi
-  [[ "$DATA_PARENT_UID" == "$expected_parent_uid" ]] || {
+  [[ "$DATA_PARENT_UID" == "$CONTROL_UID" && "$DATA_PARENT_GID" == "$CONTROL_GID" ]] || {
     fail "Data parent must have the configured canonical owner"
     return 1
   }
@@ -195,7 +190,7 @@ load_paths() {
 }
 
 compose() {
-  AFTERLIGHT_PACKWIZ_URL="$RAW_PACK_URL_PREFIX/$ACTIVE_SHA/pack.toml" \
+  AFTERLIGHT_PACKWIZ_URL="$IMMUTABLE_PACK_URL_PREFIX/$ACTIVE_SHA/pack.toml" \
     run_bounded docker compose \
     --project-name afterlight \
     --env-file "$ENV_FILE" \
@@ -294,10 +289,19 @@ remove_gate() {
 
 write_pack_sha() {
   local pack_sha=$1
-  local temporary="$DATA_DIR/.afterlight-pack-sha.tmp.$$"
-  printf '%s\n' "$pack_sha" > "$temporary"
-  run_bounded mv "$temporary" "$DATA_DIR/.afterlight-pack-sha"
-  [[ "$(cat "$DATA_DIR/.afterlight-pack-sha")" == "$pack_sha" ]]
+  run_bounded "$SAFETY_HELPER" release-marker-write \
+    --data "$DATA_DIR" \
+    --revision "$pack_sha" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID" || return 1
+  [[ "$(read_pack_sha)" == "$pack_sha" ]]
+}
+
+read_pack_sha() {
+  run_bounded "$SAFETY_HELPER" release-marker-read \
+    --data "$DATA_DIR" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID"
 }
 
 verify_stopped() {
@@ -316,16 +320,22 @@ stop_minecraft_cleanly() {
 }
 
 verify_live_release() {
+  local pack_sha=$1 container_id=$2 started_at=$3
   run_bounded "$SAFETY_HELPER" live-verify \
     --repository "$REPOSITORY_ROOT" \
     --data "$DATA_DIR" \
-    --expected-sha "$1" >/dev/null
+    --expected-sha "$pack_sha" \
+    --container-id "$container_id" \
+    --started-at "$started_at" \
+    --data-owner-uid "$DATA_OWNER_UID" \
+    --data-group-gid "$DATA_GROUP_GID" \
+    --server-mod-manifest-json "$SERVER_MOD_MANIFEST_JSON" >/dev/null
 }
 
 start_minecraft() {
   local pack_sha=$1
-  local expected_url="$RAW_PACK_URL_PREFIX/$pack_sha/pack.toml"
-  local configured_urls
+  local expected_url="$IMMUTABLE_PACK_URL_PREFIX/$pack_sha/pack.toml"
+  local configured_urls started_at
   ACTIVE_SHA=$pack_sha
   compose up -d --force-recreate minecraft || return 1
   MINECRAFT_ID=$(compose ps -q minecraft) || return 1
@@ -337,7 +347,8 @@ start_minecraft() {
   ) || return 1
   [[ "$configured_urls" == "$expected_url" ]] || return 1
   write_pack_sha "$pack_sha" || return 1
-  verify_live_release "$pack_sha" || return 1
+  started_at=$(run_bounded docker inspect --format '{{.State.StartedAt}}' "$MINECRAFT_ID") || return 1
+  verify_live_release "$pack_sha" "$MINECRAFT_ID" "$started_at" || return 1
 }
 
 verify_integrity_files() {
@@ -350,10 +361,12 @@ verify_integrity_files() {
 create_snapshot() {
   local stamp progress_snapshot
   stamp=$(date -u +%Y%m%dT%H%M%SZ)
-  SNAPSHOT_DIR="$SNAPSHOT_ROOT/quest-update-$stamp-$TRANSACTION_ID"
-  run_bounded mkdir -m 0700 "$SNAPSHOT_DIR" || return 1
+  SNAPSHOT_DIR=$(run_bounded "$SAFETY_HELPER" snapshot-create \
+    --snapshot-root "$SNAPSHOT_ROOT" \
+    --name "quest-update-$stamp-$TRANSACTION_ID" \
+    --owner-uid "$CONTROL_UID" \
+    --group-gid "$CONTROL_GID") || return 1
   progress_snapshot="$SNAPSHOT_DIR/progress"
-  run_bounded mkdir -m 0700 "$progress_snapshot" || return 1
   run_bounded "$PROGRESS_GUARD" snapshot \
     --world "$DATA_DIR/world" \
     --output "$progress_snapshot" || return 1
@@ -372,8 +385,8 @@ create_verified_archive() {
     --source "$DATA_DIR" \
     --archive "$ARCHIVE_PATH" \
     --receipt "$ARCHIVE_RECEIPT" \
-    --owner-uid "$SNAPSHOT_OWNER_UID" \
-    --group-gid "$SNAPSHOT_GROUP_GID" \
+    --owner-uid "$CONTROL_UID" \
+    --group-gid "$CONTROL_GID" \
     --source-owner-uid "$DATA_OWNER_UID" \
     --source-group-gid "$DATA_GROUP_GID" >/dev/null || return 1
   BACKUP_VERIFIED=1
@@ -392,14 +405,15 @@ restore_verified_archive() {
     --destination "$staging" \
     --activate-current "$DATA_DIR" \
     --rescue "$rescue" \
-    --owner-uid "$SNAPSHOT_OWNER_UID" \
-    --group-gid "$SNAPSHOT_GROUP_GID" \
+    --resume \
+    --owner-uid "$CONTROL_UID" \
+    --group-gid "$CONTROL_GID" \
     --parent-owner-uid "$DATA_PARENT_UID" \
     --parent-group-gid "$DATA_PARENT_GID" \
     --destination-owner-uid "$DATA_OWNER_UID" \
     --destination-group-gid "$DATA_GROUP_GID" || return 1
   [[ -s "$DATA_DIR/world/level.dat" ]] || return 1
-  [[ "$(cat "$DATA_DIR/.afterlight-pack-sha")" == "$PRIOR_SHA" ]] || return 1
+  [[ "$(read_pack_sha)" == "$PRIOR_SHA" ]] || return 1
 }
 
 compare_progress() {
@@ -519,16 +533,27 @@ verify_release_acceptance() {
     fail "Accepted release receipt digest is invalid"
     return 1
   }
-  local receipt_uid receipt_gid
-  receipt_uid=$(path_uid "$ACCEPTED_RECEIPT") || return 1
-  receipt_gid=$(path_gid "$ACCEPTED_RECEIPT") || return 1
-  run_bounded "$SAFETY_HELPER" receipt-verify \
+  [[ $(path_uid "$ACCEPTED_RECEIPT") == "$CONTROL_UID" && $(path_gid "$ACCEPTED_RECEIPT") == "$CONTROL_GID" ]] || {
+    fail "Accepted release receipt owner or group is invalid"
+    return 1
+  }
+  local observed_manifest
+  observed_manifest=$(run_bounded "$SAFETY_HELPER" receipt-verify \
     --repository "$REPOSITORY_ROOT" \
     --receipt "$ACCEPTED_RECEIPT" \
     --receipt-sha256 "$ACCEPTED_RECEIPT_SHA256" \
     --expected-sha "$EXPECTED_SHA" \
-    --receipt-owner-uid "$receipt_uid" \
-    --receipt-group-gid "$receipt_gid" >/dev/null
+    --receipt-owner-uid "$CONTROL_UID" \
+    --receipt-group-gid "$CONTROL_GID") || return 1
+  [[ -n "$observed_manifest" ]] || {
+    fail "Accepted server mod manifest is missing"
+    return 1
+  }
+  if [[ -n "$SERVER_MOD_MANIFEST_JSON" && "$SERVER_MOD_MANIFEST_JSON" != "$observed_manifest" ]]; then
+    fail "Accepted server mod manifest changed during transaction"
+    return 1
+  fi
+  SERVER_MOD_MANIFEST_JSON=$observed_manifest
 }
 
 main() {
@@ -540,6 +565,7 @@ main() {
     return 1
   fi
   EXPECTED_SHA=$1
+  afterlight_require_control_root || return 1
   if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
     fail "EXPECTED_SHA must be 40 lowercase hexadecimal characters"
     return 1
@@ -554,7 +580,7 @@ main() {
     return 1
   }
   local command_name
-  for command_name in awk cat date docker git id iptables mkdir mv sed sha256sum stat; do
+  for command_name in awk date docker git id iptables sed sha256sum stat; do
     require_command "$command_name" || return 1
   done
   [[ -x "$OPERATOR" ]] || { fail "Operator preflight command is unavailable"; return 1; }
@@ -578,7 +604,7 @@ main() {
       return 1
     fi
   fi
-  PRIOR_SHA=$(cat "$DATA_DIR/.afterlight-pack-sha") || return 1
+  PRIOR_SHA=$(read_pack_sha) || return 1
   [[ "$PRIOR_SHA" =~ ^[0-9a-f]{40}$ ]] || {
     fail "Prior pack SHA marker is invalid"
     return 1
@@ -601,7 +627,11 @@ main() {
     --expected-sha "$EXPECTED_SHA" \
     --prior-sha "$PRIOR_SHA" \
     --snapshot-root "$SNAPSHOT_ROOT" \
-    --receipt-sha256 "$ACCEPTED_RECEIPT_SHA256") || return 1
+    --receipt-sha256 "$ACCEPTED_RECEIPT_SHA256" \
+    --data-root "$DATA_DIR" \
+    --data-owner-uid "$DATA_OWNER_UID" \
+    --data-group-gid "$DATA_GROUP_GID" \
+    --server-mod-manifest-json "$SERVER_MOD_MANIFEST_JSON") || return 1
   GATE_COMMENT="afterlight-quest-update-$EXPECTED_SHA-$TRANSACTION_ID"
   authority_update --phase gate-installing || return 1
   ensure_gate || { fail "Firewall gate insertion failed"; return 1; }
@@ -625,7 +655,7 @@ main() {
     fail "Direct backup authentication failed"
     return 1
   fi
-  authority_update --phase candidate-starting || return 1
+  authority_update --phase candidate-starting --data-mutated true || return 1
   if ! start_minecraft "$EXPECTED_SHA"; then
     fail "Candidate start or accepted release verification failed"
     return 1
@@ -654,14 +684,21 @@ main() {
     return 1
   fi
   BACKUP_ID=$(compose ps -q backup) || return 1
-  [[ -n "$BACKUP_ID" && "$(container_health "$BACKUP_ID")" == "running|healthy" ]] || {
+  if [[ -z "$BACKUP_ID" ]] || ! wait_healthy "$BACKUP_ID"; then
     fail "Backup service did not become healthy"
     return 1
-  }
+  fi
   verify_integrity_files || { fail "Whitelist integrity verification failed"; return 1; }
-  verify_live_release "$EXPECTED_SHA" || { fail "Final accepted release verification failed"; return 1; }
+  local final_started_at
+  final_started_at=$(run_bounded docker inspect --format '{{.State.StartedAt}}' "$MINECRAFT_ID") || return 1
+  verify_live_release "$EXPECTED_SHA" "$MINECRAFT_ID" "$final_started_at" || { fail "Final accepted release verification failed"; return 1; }
   verify_release_acceptance || { fail "Final accepted release receipt verification failed"; return 1; }
   authority_update --phase release-proven || return 1
+  run_bounded "$SAFETY_HELPER" snapshot-complete \
+    --snapshot "$SNAPSHOT_DIR" \
+    --transaction-id "$TRANSACTION_ID" \
+    --owner-uid "$CONTROL_UID" \
+    --group-gid "$CONTROL_GID" || return 1
   restore_restart_policies || { fail "Container restart policy restoration failed"; return 1; }
   remove_gate || return 1
   authority_command authority-complete --transaction-id "$TRANSACTION_ID" || return 1

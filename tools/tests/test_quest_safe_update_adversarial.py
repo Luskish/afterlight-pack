@@ -704,14 +704,13 @@ class ReviewRegressionTests(unittest.TestCase):
     def test_i5_real_receipt_verifier_binds_release_ci_assets_and_clean_checkout(self) -> None:
         repository = self.temp_path / "repository"
         repository.mkdir()
+        (repository / "tools").mkdir()
         (repository / "pack.toml").write_text("name = 'fixture'\n", encoding="utf-8")
         (repository / "index.toml").write_text("hash-format = 'sha256'\n", encoding="utf-8")
         self._git(repository, "init", "-q")
         self._git(repository, "config", "user.name", "AFTERLIGHT Test")
         self._git(repository, "config", "user.email", "afterlight@example.invalid")
-        self._git(repository, "add", "pack.toml", "index.toml")
-        self._git(repository, "commit", "-qm", "fixture")
-        revision = self._git(repository, "rev-parse", "HEAD")
+        revision = ""
 
         accepted = self.temp_path / "accepted"
         public = accepted / "public"
@@ -749,10 +748,10 @@ class ReviewRegressionTests(unittest.TestCase):
                             }
                         ]
                     }
-                elif path == f"/raw/{revision}/pack.toml":
+                elif path == "/policy/pack.toml":
                     self._bytes((repository / "pack.toml").read_bytes())
                     return
-                elif path == f"/raw/{revision}/index.toml":
+                elif path == "/policy/index.toml":
                     self._bytes((repository / "index.toml").read_bytes())
                     return
                 else:
@@ -776,7 +775,14 @@ class ReviewRegressionTests(unittest.TestCase):
         thread.start()
         self.addCleanup(httpd.shutdown)
         base = f"http://127.0.0.1:{httpd.server_port}"
-        pack_url = f"{base}/raw/{revision}/pack.toml"
+        pack_url = f"{base}/policy/pack.toml"
+        (repository / "tools" / "release-policy.env").write_text(
+            f"RELEASE_PACK_URL={pack_url}\n",
+            encoding="utf-8",
+        )
+        self._git(repository, "add", ".")
+        self._git(repository, "commit", "-qm", "fixture")
+        revision = self._git(repository, "rev-parse", "HEAD")
         release_metadata = {
             "format": 3,
             "git_sha": revision,
@@ -834,7 +840,6 @@ class ReviewRegressionTests(unittest.TestCase):
             str(os.getgid()),
         ]
         environment = os.environ | {
-            "AFTERLIGHT_RAW_RELEASE_ROOT": f"{base}/raw",
             "AFTERLIGHT_GITHUB_API_ROOT": f"{base}/api",
         }
         accepted_result = subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
@@ -849,12 +854,44 @@ class ReviewRegressionTests(unittest.TestCase):
         repository = self.temp_path / "live-repository"
         quests = repository / "config" / "ftbquests" / "quests"
         mods = repository / "mods"
+        tools = repository / "tools"
         quests.mkdir(parents=True)
         mods.mkdir()
+        tools.mkdir()
+        jar_payload = b"jar"
+        jar_hash = hashlib.sha512(jar_payload).hexdigest()
         (repository / "pack.toml").write_text("name = 'fixture'\n", encoding="utf-8")
         (repository / "index.toml").write_text("hash-format = 'sha256'\n", encoding="utf-8")
         (quests / "chapter.snbt").write_text("{id:'fixture'}\n", encoding="utf-8")
-        (mods / "fixture.pw.toml").write_text('filename = "fixture.jar"\nside = "both"\n', encoding="utf-8")
+        (mods / "fixture.pw.toml").write_text(
+            'filename = "fixture.jar"\n'
+            'side = "both"\n\n'
+            '[download]\n'
+            'url = "https://example.invalid/fixture.jar"\n'
+            'hash-format = "sha512"\n'
+            f'hash = "{jar_hash}"\n',
+            encoding="utf-8",
+        )
+        (tools / "server-mod-manifest-lock.json").write_text(
+            json.dumps(
+                {
+                    "files": [
+                        {
+                            "filename": "fixture.jar",
+                            "hash": jar_hash,
+                            "hash_format": "sha512",
+                            "metadata_path": "mods/fixture.pw.toml",
+                            "size": len(jar_payload),
+                        }
+                    ],
+                    "format": 1,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         self._git(repository, "init", "-q")
         self._git(repository, "config", "user.name", "AFTERLIGHT Test")
         self._git(repository, "config", "user.email", "afterlight@example.invalid")
@@ -864,13 +901,15 @@ class ReviewRegressionTests(unittest.TestCase):
         data = self.temp_path / "live-data"
         shutil.copytree(quests, data / "config" / "ftbquests" / "quests")
         (data / "mods").mkdir(parents=True)
-        (data / "mods" / "fixture.jar").write_bytes(b"jar")
+        (data / "mods" / "fixture.jar").write_bytes(jar_payload)
         (data / "logs").mkdir()
         (data / "logs" / "latest.log").write_text(
             "Loaded 1 chapter groups, 2 chapters, 3 quests, 0 reward tables\n",
             encoding="utf-8",
         )
-        (data / ".afterlight-pack-sha").write_text(f"{revision}\n", encoding="ascii")
+        marker = data / ".afterlight-pack-sha"
+        marker.write_text(f"{revision}\n", encoding="ascii")
+        marker.chmod(0o600)
         command = [
             sys.executable,
             str(SAFETY_HELPER),
@@ -881,6 +920,14 @@ class ReviewRegressionTests(unittest.TestCase):
             str(data),
             "--expected-sha",
             revision,
+            "--container-id",
+            "a" * 64,
+            "--started-at",
+            "2000-01-01T00:00:00Z",
+            "--data-owner-uid",
+            str(os.getuid()),
+            "--data-group-gid",
+            str(os.getgid()),
         ]
         valid = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(valid.returncode, 0, valid.stderr)

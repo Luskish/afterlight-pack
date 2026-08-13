@@ -4,19 +4,9 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
-OPERATOR=${AFTERLIGHT_OPERATOR:-$SCRIPT_DIR/afterlight-server.sh}
-RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
-QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
-SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
-RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
-LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
-STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
-STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
-SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
-SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 MIN_UPTIME_SECONDS=${AFTERLIGHT_MIN_UPTIME_SECONDS:-72000}
-ENV_FILE="$SCRIPT_DIR/.env"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?([A-Za-z0-9_, ]*)$'
 
@@ -45,40 +35,19 @@ stat_value() {
 }
 
 acquire_shared_lock() {
-  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then return 0; fi
   [[ -x "$SAFETY_HELPER" ]] || fail "Safety helper is unavailable"
   [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
-  local owner_uid group_gid
-  owner_uid=${AFTERLIGHT_LOCK_OWNER_UID:-$(stat_value '%u' "$RUNTIME_DIR")}
-  group_gid=${AFTERLIGHT_LOCK_GROUP_GID:-$(stat_value '%g' "$RUNTIME_DIR")}
-  exec "$SAFETY_HELPER" lock-run \
-    --runtime-dir "$RUNTIME_DIR" \
-    --runtime-mode "$RUNTIME_MODE" \
-    --lock-mode "$LOCK_MODE" \
-    --owner-uid "$owner_uid" \
-    --group-gid "$group_gid" \
-    -- "$0" "$@"
+  afterlight_verify_or_reexec_lock 3600 300 "$@"
 }
 
 verify_no_transaction_authority() {
   [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || fail "Transaction authority directory is missing or unsafe"
   [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
-  local state_owner state_group snapshot_owner snapshot_group
-  state_owner=${AFTERLIGHT_STATE_OWNER_UID:-$(stat_value '%u' "$QUARANTINE_DIR")}
-  state_group=${AFTERLIGHT_STATE_GROUP_GID:-$(stat_value '%g' "$QUARANTINE_DIR")}
-  snapshot_owner=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(stat_value '%u' "$SNAPSHOT_ROOT")}
-  snapshot_group=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(stat_value '%g' "$SNAPSHOT_ROOT")}
+  local -a common=()
+  while IFS= read -r -d '' value; do common+=("$value"); done < <(afterlight_state_arguments)
   local authority_status=0
   if "$SAFETY_HELPER" authority-status \
-    --state-dir "$QUARANTINE_DIR" \
-    --state-dir-mode "$STATE_DIR_MODE" \
-    --state-file-mode "$STATE_FILE_MODE" \
-    --owner-uid "$state_owner" \
-    --group-gid "$state_group" \
-    --snapshot-owner-uid "$snapshot_owner" \
-    --snapshot-group-gid "$snapshot_group" \
-    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
-    --canonical-snapshot-root "$SNAPSHOT_ROOT" >/dev/null 2>&1; then
+    "${common[@]}" >/dev/null 2>&1; then
     fail "Maintenance rejected because a quest update transaction is active"
     return 1
   else
@@ -176,6 +145,8 @@ main() {
   local players
   local started_at
   local started_epoch
+
+  afterlight_require_control_root || return 1
 
   if [[ "$#" -gt 1 ]]; then
     fail "Usage: server/afterlight-maintenance.sh [idle|scheduled]"

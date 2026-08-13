@@ -36,12 +36,19 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.backup_path = self.temp_path / "backups" / "verified.tar.zst"
         self.backup_path.parent.mkdir()
         self.operator = self.temp_path / "operator"
+        self.test_contract = self.temp_path / ".afterlight-safety-test-contract"
+        self.test_contract.write_text(
+            "AFTERLIGHT SAFETY TEST CONTRACT v1\n",
+            encoding="utf-8",
+        )
+        self.test_contract.chmod(0o600)
         self._install_fakes()
 
         self.environment = os.environ.copy()
         self.environment.update(
             {
                 "PATH": f"{self.fake_bin}:{self.environment['PATH']}",
+                "AFTERLIGHT_SAFETY_TEST_ROOT": str(self.temp_path),
                 "AFTERLIGHT_OPERATOR": str(self.operator),
                 "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
                 "FAKE_BACKUP_PATH": str(self.backup_path),
@@ -594,16 +601,17 @@ class ServerMaintenanceTests(unittest.TestCase):
         for expected in (
             "Description=AFTERLIGHT daily warned server restart",
             "ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh",
-            "User=afterlight",
-            "SupplementaryGroups=docker",
+            "User=root",
+            "Group=root",
             "WorkingDirectory=/opt/afterlight",
-            "RuntimeDirectory=afterlight",
             "NoNewPrivileges=true",
             "ProtectSystem=strict",
             "ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled",
             "TimeoutStartSec=infinity",
         ):
             self.assertIn(expected, service)
+        self.assertNotIn("RuntimeDirectory=afterlight", service)
+        self.assertNotIn("SupplementaryGroups=docker", service)
         self.assertNotIn("ConditionPathIsExecutable", service)
         self.assertNotIn("TimeoutStartSec=20min", service)
         self.assertNotIn("AFTERLIGHT_MIN_UPTIME_SECONDS", service)

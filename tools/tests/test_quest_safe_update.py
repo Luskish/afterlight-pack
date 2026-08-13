@@ -328,9 +328,11 @@ class QuestSafeUpdateTests(unittest.TestCase):
         (self.data_dir / "usercache.json").write_text(
             '[{"name":"test-only-private-identity"}]\n', encoding="utf-8"
         )
-        (self.data_dir / ".afterlight-pack-sha").write_text(
+        pack_marker = self.data_dir / ".afterlight-pack-sha"
+        pack_marker.write_text(
             f"{PRIOR_SHA}\n", encoding="utf-8"
         )
+        pack_marker.chmod(0o600)
         (self.secrets_dir / "rcon_password").write_text(
             "test-secret\n", encoding="utf-8"
         )
@@ -338,7 +340,9 @@ class QuestSafeUpdateTests(unittest.TestCase):
         self.env_file.write_text(
             f"DATA_DIR={self.data_dir}\n"
             f"BACKUP_DIR={self.backup_dir}\n"
-            f"SECRETS_DIR={self.secrets_dir}\n",
+            f"SECRETS_DIR={self.secrets_dir}\n"
+            f"AFTERLIGHT_DATA_UID={os.getuid()}\n"
+            f"AFTERLIGHT_DATA_GID={os.getgid()}\n",
             encoding="utf-8",
         )
         self.state_file = self.temp_path / "docker-state.json"
@@ -365,11 +369,18 @@ class QuestSafeUpdateTests(unittest.TestCase):
         self.accepted_receipt = self.temp_path / "gauntlet-receipt.json"
         self.accepted_receipt.write_text("{}\n", encoding="utf-8")
         self.accepted_receipt.chmod(0o600)
+        self.test_contract = self.temp_path / ".afterlight-safety-test-contract"
+        self.test_contract.write_text(
+            "AFTERLIGHT SAFETY TEST CONTRACT v1\n",
+            encoding="utf-8",
+        )
+        self.test_contract.chmod(0o600)
         self._install_fakes()
         self.environment = os.environ.copy()
         self.environment.update(
             {
                 "PATH": f"{self.fake_bin}:{self.environment['PATH']}",
+                "AFTERLIGHT_SAFETY_TEST_ROOT": str(self.temp_path),
                 "AFTERLIGHT_ENV_FILE": str(self.env_file),
                 "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
                 "AFTERLIGHT_SNAPSHOT_ROOT": str(self.snapshot_root),
@@ -426,6 +437,7 @@ class QuestSafeUpdateTests(unittest.TestCase):
                   printf '%s\n' 'ERROR: repository HEAD does not equal the accepted release' >&2
                   exit 1
                 fi
+                if [ "${{FAKE_SAFETY_VERIFY_EXIT:-0}}" -eq 0 ]; then printf '%s\n' '[]'; fi
                 exit "${{FAKE_SAFETY_VERIFY_EXIT:-0}}"
                 ;;
               live-verify)

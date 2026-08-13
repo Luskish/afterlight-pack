@@ -2,28 +2,15 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-ENV_FILE="${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
 CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
 MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
 RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
-QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
-SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
-RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
-RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
-LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
-STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
-STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
-SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
-SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
-
-DATA_DIR=""
-BACKUP_DIR=""
-SECRETS_DIR=""
 AFTERLIGHT_INIT_MEMORY=4G
 AFTERLIGHT_MAX_MEMORY=10G
 AFTERLIGHT_MEMORY_LIMIT=13G
@@ -56,25 +43,16 @@ derive_lock_identity() {
   [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
   [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || fail "Transaction authority directory is missing or unsafe"
   [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
-  LOCK_OWNER_UID=${AFTERLIGHT_LOCK_OWNER_UID:-$(stat_value '%u' "$RUNTIME_DIR")}
-  LOCK_GROUP_GID=${AFTERLIGHT_LOCK_GROUP_GID:-$(stat_value '%g' "$RUNTIME_DIR")}
-  STATE_OWNER_UID=${AFTERLIGHT_STATE_OWNER_UID:-$(stat_value '%u' "$QUARANTINE_DIR")}
-  STATE_GROUP_GID=${AFTERLIGHT_STATE_GROUP_GID:-$(stat_value '%g' "$QUARANTINE_DIR")}
-  SNAPSHOT_OWNER_UID=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(stat_value '%u' "$SNAPSHOT_ROOT")}
-  SNAPSHOT_GROUP_GID=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(stat_value '%g' "$SNAPSHOT_ROOT")}
+  [[ $(stat_value '%u' "$RUNTIME_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$RUNTIME_DIR") == "$CONTROL_GID" ]] ||
+    fail "Runtime directory owner or group is invalid"
+  [[ $(stat_value '%u' "$QUARANTINE_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$QUARANTINE_DIR") == "$CONTROL_GID" ]] ||
+    fail "Transaction authority directory owner or group is invalid"
+  [[ $(stat_value '%u' "$SNAPSHOT_ROOT") == "$CONTROL_UID" && $(stat_value '%g' "$SNAPSHOT_ROOT") == "$CONTROL_GID" ]] ||
+    fail "Snapshot root owner or group is invalid"
 }
 
 state_arguments() {
-  printf '%s\0' \
-    --state-dir "$QUARANTINE_DIR" \
-    --state-dir-mode "$STATE_DIR_MODE" \
-    --state-file-mode "$STATE_FILE_MODE" \
-    --owner-uid "$STATE_OWNER_UID" \
-    --group-gid "$STATE_GROUP_GID" \
-    --snapshot-owner-uid "$SNAPSHOT_OWNER_UID" \
-    --snapshot-group-gid "$SNAPSHOT_GROUP_GID" \
-    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
-    --canonical-snapshot-root "$SNAPSHOT_ROOT"
+  afterlight_state_arguments
 }
 
 authority_command() {
@@ -86,15 +64,8 @@ authority_command() {
 }
 
 acquire_mutation_lock() {
-  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then return 0; fi
   derive_lock_identity || return 1
-  exec "$SAFETY_HELPER" lock-run \
-    --runtime-dir "$RUNTIME_DIR" \
-    --runtime-mode "$RUNTIME_MODE" \
-    --lock-mode "$LOCK_MODE" \
-    --owner-uid "$LOCK_OWNER_UID" \
-    --group-gid "$LOCK_GROUP_GID" \
-    -- "$0" "$@"
+  afterlight_verify_or_reexec_lock 3600 300 "$@"
 }
 
 verify_mutation_authority() {
@@ -172,14 +143,17 @@ validate_memory_budget() {
 }
 
 load_paths() {
-  [[ -f "$ENV_FILE" ]] || fail "Environment file not found: $ENV_FILE"
+  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "Environment file not found or unsafe: $ENV_FILE"
 
+  local configured_data=$DATA_DIR configured_backup=$BACKUP_DIR configured_secrets=$SECRETS_DIR
   local data_seen=0
   local backup_seen=0
   local secrets_seen=0
   local init_memory_seen=0
   local max_memory_seen=0
   local memory_limit_seen=0
+  local data_uid_seen=0
+  local data_gid_seen=0
   local assignment
   while IFS= read -r assignment || [[ -n "$assignment" ]]; do
     case "$assignment" in
@@ -231,6 +205,14 @@ load_paths() {
         AFTERLIGHT_MEMORY_LIMIT=${assignment#AFTERLIGHT_MEMORY_LIMIT=}
         memory_limit_seen=1
         ;;
+      AFTERLIGHT_DATA_UID=*)
+        ((data_uid_seen += 1))
+        DATA_OWNER_UID=${assignment#AFTERLIGHT_DATA_UID=}
+        ;;
+      AFTERLIGHT_DATA_GID=*)
+        ((data_gid_seen += 1))
+        DATA_GROUP_GID=${assignment#AFTERLIGHT_DATA_GID=}
+        ;;
       *)
         fail "Invalid assignment in $ENV_FILE: $assignment"
         return 1
@@ -248,6 +230,26 @@ load_paths() {
   fi
   if [[ "$secrets_seen" -ne 1 || -z "$SECRETS_DIR" ]]; then
     fail "SECRETS_DIR must be assigned once"
+    return 1
+  fi
+  if [[ "$DATA_DIR" != "$configured_data" || "$BACKUP_DIR" != "$configured_backup" || "$SECRETS_DIR" != "$configured_secrets" ]]; then
+    fail "Environment paths differ from the canonical safety contract"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -ne "$data_gid_seen" ]]; then
+    fail "Data UID and GID must either both be present or both be absent"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -gt 1 || "$data_gid_seen" -gt 1 ]]; then
+    fail "Data UID and GID must each be assigned at most once"
+    return 1
+  fi
+  if [[ "$data_uid_seen" -ne 1 || "$data_gid_seen" -ne 1 ]]; then
+    fail "Data UID and GID must each be assigned exactly once"
+    return 1
+  fi
+  if [[ ! ${DATA_OWNER_UID:-} =~ ^[0-9]+$ || ! ${DATA_GROUP_GID:-} =~ ^[0-9]+$ ]]; then
+    fail "Data UID and GID must be nonnegative integers"
     return 1
   fi
   validate_configured_path_syntax DATA_DIR "$DATA_DIR" || return 1
@@ -309,11 +311,12 @@ use_pack_sha() {
 
 write_pack_sha() {
   local pack_sha=$1
-  local marker_path="$DATA_DIR/$PACK_SHA_FILE_NAME"
-  local temporary_path="$DATA_DIR/.${PACK_SHA_FILE_NAME}.tmp.$$"
   use_pack_sha "$pack_sha" || return 1
-  printf '%s\n' "$pack_sha" > "$temporary_path" || return 1
-  mv "$temporary_path" "$marker_path"
+  "$SAFETY_HELPER" release-marker-write \
+    --data "$DATA_DIR" \
+    --revision "$pack_sha" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID"
 }
 
 tree_pack_sha() {
@@ -413,12 +416,30 @@ validate_writable_dirs() {
       return 1
     fi
   done
+  if [[ $(stat_value '%u' "$DATA_DIR") != "$DATA_OWNER_UID" || $(stat_value '%g' "$DATA_DIR") != "$DATA_GROUP_GID" ]]; then
+    fail "DATA_DIR owner or group differs from the explicit runtime identity"
+    return 1
+  fi
+  if [[ $(stat_value '%u' "$BACKUP_DIR") != "$DATA_OWNER_UID" || $(stat_value '%g' "$BACKUP_DIR") != "$DATA_GROUP_GID" ]]; then
+    fail "BACKUP_DIR owner or group differs from the explicit runtime identity"
+    return 1
+  fi
+  local data_parent
+  data_parent=$(dirname "$DATA_DIR")
+  if [[ $(stat_value '%u' "$data_parent") != "$CONTROL_UID" || $(stat_value '%g' "$data_parent") != "$CONTROL_GID" ]]; then
+    fail "DATA_DIR parent owner or group differs from the control identity"
+    return 1
+  fi
   if [[ ! -d "$SECRETS_DIR" ]]; then
     fail "Secrets directory does not exist: $SECRETS_DIR"
     return 1
   fi
   if [[ -L "$SECRETS_DIR" ]]; then
     fail "Secrets directory must not be a symlink: $SECRETS_DIR"
+    return 1
+  fi
+  if [[ $(stat_value '%u' "$SECRETS_DIR") != "$CONTROL_UID" || $(stat_value '%g' "$SECRETS_DIR") != "$CONTROL_GID" ]]; then
+    fail "SECRETS_DIR owner or group differs from the control identity"
     return 1
   fi
 }
@@ -861,6 +882,7 @@ main() {
     usage
     return 1
   fi
+  afterlight_require_control_root || return 1
   case "$command_name" in
     start|stop|backup|update|rollback)
       [[ -x "$SAFETY_HELPER" ]] || { fail "Safety helper is unavailable"; return 1; }

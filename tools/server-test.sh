@@ -355,6 +355,14 @@ if ! (cd "$DIR" && "$JAVA" -jar packwiz-installer-bootstrap.jar --bootstrap-no-u
   exit 7
 fi
 assert_manifest_unchanged
+python3 tools/build_server_mod_manifest_lock.py \
+  --repository . \
+  --installed-mods "$DIR/mods" \
+  --output "$DIR/server-mod-manifest-lock.json"
+if ! cmp -s tools/server-mod-manifest-lock.json "$DIR/server-mod-manifest-lock.json"; then
+  echo "FAIL: server mod manifest lock differs from the clean Packwiz install"
+  exit 7
+fi
 python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR" | tee "$DIR/afterlight-provenance.txt"
 python3 tools/rc_hygiene.py verify-seal-sources --root . --install "$DIR"
 

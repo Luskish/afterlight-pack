@@ -4,17 +4,9 @@ set -Eeuo pipefail
 umask 077
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-ENV_FILE=${AFTERLIGHT_ENV_FILE:-$SCRIPT_DIR/.env}
-SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$SCRIPT_DIR/afterlight-safety.py}
-RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
-RUNTIME_MODE=${AFTERLIGHT_RUNTIME_MODE:-750}
-LOCK_MODE=${AFTERLIGHT_LOCK_MODE:-660}
-STATE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
-STATE_DIR_MODE=${AFTERLIGHT_STATE_DIR_MODE:-750}
-STATE_FILE_MODE=${AFTERLIGHT_STATE_FILE_MODE:-640}
-SNAPSHOT_ROOT=${AFTERLIGHT_SNAPSHOT_ROOT:-/var/lib/afterlight/quest-update-snapshots}
-SNAPSHOT_ROOT_MODE=${AFTERLIGHT_SNAPSHOT_ROOT_MODE:-700}
 ATTEMPTS=${AFTERLIGHT_QUARANTINE_GATE_ATTEMPTS:-30}
 INTERVAL=${AFTERLIGHT_QUARANTINE_GATE_INTERVAL:-2}
 COMMAND_TIMEOUT=${AFTERLIGHT_COMMAND_TIMEOUT:-120}
@@ -34,25 +26,16 @@ stat_value() {
 derive_identity() {
   [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
   [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
-  LOCK_OWNER_UID=${AFTERLIGHT_LOCK_OWNER_UID:-$(stat_value '%u' "$RUNTIME_DIR")}
-  LOCK_GROUP_GID=${AFTERLIGHT_LOCK_GROUP_GID:-$(stat_value '%g' "$RUNTIME_DIR")}
-  STATE_OWNER_UID=${AFTERLIGHT_STATE_OWNER_UID:-$(stat_value '%u' "$STATE_DIR")}
-  STATE_GROUP_GID=${AFTERLIGHT_STATE_GROUP_GID:-$(stat_value '%g' "$STATE_DIR")}
-  SNAPSHOT_OWNER_UID=${AFTERLIGHT_SNAPSHOT_OWNER_UID:-$(stat_value '%u' "$SNAPSHOT_ROOT")}
-  SNAPSHOT_GROUP_GID=${AFTERLIGHT_SNAPSHOT_GROUP_GID:-$(stat_value '%g' "$SNAPSHOT_ROOT")}
+  [[ $(stat_value '%u' "$RUNTIME_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$RUNTIME_DIR") == "$CONTROL_GID" ]] ||
+    fail "Runtime directory owner or group is invalid"
+  [[ $(stat_value '%u' "$STATE_DIR") == "$CONTROL_UID" && $(stat_value '%g' "$STATE_DIR") == "$CONTROL_GID" ]] ||
+    fail "State directory owner or group is invalid"
+  [[ $(stat_value '%u' "$SNAPSHOT_ROOT") == "$CONTROL_UID" && $(stat_value '%g' "$SNAPSHOT_ROOT") == "$CONTROL_GID" ]] ||
+    fail "Snapshot root owner or group is invalid"
 }
 
 state_arguments() {
-  printf '%s\0' \
-    --state-dir "$STATE_DIR" \
-    --state-dir-mode "$STATE_DIR_MODE" \
-    --state-file-mode "$STATE_FILE_MODE" \
-    --owner-uid "$STATE_OWNER_UID" \
-    --group-gid "$STATE_GROUP_GID" \
-    --snapshot-owner-uid "$SNAPSHOT_OWNER_UID" \
-    --snapshot-group-gid "$SNAPSHOT_GROUP_GID" \
-    --snapshot-root-mode "$SNAPSHOT_ROOT_MODE" \
-    --canonical-snapshot-root "$SNAPSHOT_ROOT"
+  afterlight_state_arguments
 }
 
 authority_command() {
@@ -68,16 +51,8 @@ run_bounded() {
 }
 
 acquire_shared_lock() {
-  if [[ ${AFTERLIGHT_LOCK_HELD:-0} == 1 ]]; then return 0; fi
   derive_identity || return 1
-  exec "$SAFETY_HELPER" lock-run \
-    --runtime-dir "$RUNTIME_DIR" \
-    --runtime-mode "$RUNTIME_MODE" \
-    --lock-mode "$LOCK_MODE" \
-    --timeout "$TRANSACTION_TIMEOUT" \
-    --owner-uid "$LOCK_OWNER_UID" \
-    --group-gid "$LOCK_GROUP_GID" \
-    -- "$0" "$@"
+  afterlight_verify_or_reexec_lock "$TRANSACTION_TIMEOUT" 120 "$@"
 }
 
 compose() {
@@ -158,6 +133,7 @@ reconcile_service() {
 }
 
 main() {
+  afterlight_require_control_root || return 1
   [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ && "$INTERVAL" =~ ^[0-9]+$ &&
      "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || {
     fail "Quarantine gate timing values are invalid"

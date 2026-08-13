@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import fcntl
 import hashlib
 import json
 import os
 import re
-import shutil
 import signal
 import stat
 import subprocess
@@ -30,9 +30,13 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 MAX_STATE_BYTES = 64 * 1024
 MAX_RECEIPT_BYTES = 32 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024 * 1024
+MAX_MOD_METADATA_BYTES = 1024 * 1024
 TERMINATION_GRACE_SECONDS = 5.0
 DEFAULT_COMMAND_TIMEOUT_SECONDS = 120.0
 DEFAULT_TRANSACTION_TIMEOUT_SECONDS = 3600.0
+SAFE_DIRECTORY_MODES = {
+    mode for mode in range(0o700, 0o777 + 1) if mode & 0o022 == 0
+}
 
 
 class SafetyError(RuntimeError):
@@ -243,6 +247,68 @@ def require_state_directory(arguments: argparse.Namespace, *, create: bool) -> P
     return directory
 
 
+def validate_server_mod_manifest(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise SafetyError("accepted server mod manifest is invalid")
+    previous = ""
+    validated: list[dict[str, Any]] = []
+    for record in value:
+        if not isinstance(record, dict) or set(record) != {
+            "filename",
+            "hash_format",
+            "hash",
+            "size",
+        }:
+            raise SafetyError("accepted server mod manifest is invalid")
+        filename = record["filename"]
+        hash_format = record["hash_format"]
+        digest = record["hash"]
+        size = record["size"]
+        expected_lengths = {"sha1": 40, "sha256": 64, "sha512": 128}
+        if (
+            not isinstance(filename, str)
+            or not SAFE_NAME.fullmatch(filename)
+            or filename <= previous
+            or hash_format not in expected_lengths
+            or not isinstance(digest, str)
+            or not re.fullmatch(
+                rf"[0-9a-f]{{{expected_lengths.get(hash_format, 0)}}}",
+                digest,
+            )
+            or not isinstance(size, int)
+            or isinstance(size, bool)
+            or size <= 0
+        ):
+            raise SafetyError("accepted server mod manifest is invalid")
+        previous = filename
+        validated.append(record)
+    return validated
+
+
+def validate_original_data_record(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"path", "root", "marker"}:
+        raise SafetyError("original data authority is invalid")
+    path = value["path"]
+    if not isinstance(path, str):
+        raise SafetyError("original data authority is invalid")
+    require_canonical_absolute(Path(path), "original data authority path", exists=False)
+    for label in ("root", "marker"):
+        record = value[label]
+        expected = {"device", "inode", "uid", "gid", "mode", "nlink"}
+        if label == "marker":
+            expected |= {"size", "sha256"}
+        if not isinstance(record, dict) or set(record) != expected:
+            raise SafetyError("original data authority is invalid")
+        numeric = expected - {"sha256"}
+        if any(not isinstance(record[field], int) for field in numeric):
+            raise SafetyError("original data authority is invalid")
+        if label == "marker" and not SHA256.fullmatch(str(record["sha256"])):
+            raise SafetyError("original data authority is invalid")
+    return value
+
+
 def validate_state(value: Any, arguments: argparse.Namespace) -> dict[str, Any]:
     required = {
         "format",
@@ -257,7 +323,12 @@ def validate_state(value: Any, arguments: argparse.Namespace) -> dict[str, Any]:
         "receipt_sha256",
         "containers",
     }
-    if not isinstance(value, dict) or set(value) != required:
+    optional = {"data_mutated", "original_data", "server_mods"}
+    if (
+        not isinstance(value, dict)
+        or not required.issubset(value)
+        or set(value) - required - optional
+    ):
         raise SafetyError("transaction authority schema is invalid")
     if value["format"] != STATE_FORMAT:
         raise SafetyError("transaction authority format is invalid")
@@ -316,7 +387,67 @@ def validate_state(value: Any, arguments: argparse.Namespace) -> dict[str, Any]:
             raise SafetyError("transaction container state is invalid")
         if not all(isinstance(child[key], bool) for key in child):
             raise SafetyError("transaction container state is invalid")
+    validate_original_data_record(value.get("original_data"))
+    validate_server_mod_manifest(value.get("server_mods", []))
+    if not isinstance(value.get("data_mutated", True), bool):
+        raise SafetyError("transaction data mutation state is invalid")
     return value
+
+
+def capture_original_data(arguments: argparse.Namespace) -> dict[str, Any] | None:
+    if arguments.data_root is None:
+        return None
+    if arguments.data_owner_uid is None or arguments.data_group_gid is None:
+        raise SafetyError("original data identity is incomplete")
+    data = require_canonical_absolute(Path(arguments.data_root), "original data root")
+    root = require_directory(
+        data,
+        "original data root",
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes=SAFE_DIRECTORY_MODES,
+    )
+    marker_path = data / ".afterlight-pack-sha"
+    marker_fd, marker = open_regular_nofollow(
+        marker_path,
+        "original release marker",
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes={0o600},
+        max_bytes=128,
+    )
+    try:
+        payload = read_pinned(
+            marker_fd,
+            marker,
+            "original release marker",
+            max_bytes=128,
+        )
+    finally:
+        os.close(marker_fd)
+    if payload != f"{arguments.prior_sha}\n".encode("ascii"):
+        raise SafetyError("original release marker differs from prior revision")
+    return {
+        "path": str(data),
+        "root": {
+            "device": root.st_dev,
+            "inode": root.st_ino,
+            "uid": root.st_uid,
+            "gid": root.st_gid,
+            "mode": mode_of(root),
+            "nlink": root.st_nlink,
+        },
+        "marker": {
+            "device": marker.st_dev,
+            "inode": marker.st_ino,
+            "uid": marker.st_uid,
+            "gid": marker.st_gid,
+            "mode": mode_of(marker),
+            "nlink": marker.st_nlink,
+            "size": marker.st_size,
+            "sha256": digest_bytes(payload),
+        },
+    }
 
 
 def read_state(arguments: argparse.Namespace) -> dict[str, Any]:
@@ -347,6 +478,13 @@ def command_authority_create(arguments: argparse.Namespace) -> int:
     if marker.exists() or marker.is_symlink():
         raise SafetyError("transaction authority is already active")
     transaction_id = os.urandom(16).hex()
+    server_mods: list[dict[str, Any]] = []
+    if arguments.server_mod_manifest_json is not None:
+        try:
+            manifest_value = json.loads(arguments.server_mod_manifest_json)
+        except json.JSONDecodeError as error:
+            raise SafetyError("accepted server mod manifest is invalid") from error
+        server_mods = validate_server_mod_manifest(manifest_value)
     value = {
         "format": STATE_FORMAT,
         "transaction_id": transaction_id,
@@ -358,6 +496,9 @@ def command_authority_create(arguments: argparse.Namespace) -> int:
         "snapshot_dir": None,
         "snapshot_root": str(Path(arguments.snapshot_root)),
         "receipt_sha256": arguments.receipt_sha256,
+        "data_mutated": False,
+        "original_data": capture_original_data(arguments),
+        "server_mods": server_mods,
         "containers": {
             "minecraft": {"restart_disabled": False, "stopped": False},
             "backup": {"restart_disabled": False, "stopped": False},
@@ -385,7 +526,11 @@ def command_authority_status(arguments: argparse.Namespace) -> int:
         return 3
     value = read_state(arguments)
     if arguments.field is not None:
-        print(value[arguments.field])
+        field_value = value.get(arguments.field)
+        if isinstance(field_value, (dict, list)):
+            sys.stdout.buffer.write(canonical_json_bytes(field_value))
+        else:
+            print(field_value)
     elif arguments.print_json:
         sys.stdout.buffer.write(canonical_json_bytes(value))
     else:
@@ -403,6 +548,8 @@ def command_authority_update(arguments: argparse.Namespace) -> int:
         value["phase"] = arguments.phase
     if arguments.snapshot_dir is not None:
         value["snapshot_dir"] = arguments.snapshot_dir
+    if arguments.data_mutated is not None:
+        value["data_mutated"] = arguments.data_mutated
     if arguments.service is not None:
         if arguments.restart_disabled is not None:
             value["containers"][arguments.service]["restart_disabled"] = arguments.restart_disabled
@@ -440,6 +587,369 @@ def command_authority_complete(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def command_recovery_original_verify(arguments: argparse.Namespace) -> int:
+    value = read_state(arguments)
+    if value["transaction_id"] != arguments.transaction_id:
+        raise SafetyError("transaction authority identifier mismatch")
+    if value.get("data_mutated", True):
+        raise SafetyError("original data recovery is forbidden after protected mutation")
+    recorded = validate_original_data_record(value.get("original_data"))
+    if recorded is None:
+        raise SafetyError("original data recovery authority is missing")
+    data = require_canonical_absolute(Path(arguments.data), "original recovery data")
+    if str(data) != recorded["path"]:
+        raise SafetyError("original recovery data path differs from authority")
+    root = require_directory(
+        data,
+        "original recovery data",
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes={recorded["root"]["mode"]},
+    )
+    actual_root = {
+        "device": root.st_dev,
+        "inode": root.st_ino,
+        "uid": root.st_uid,
+        "gid": root.st_gid,
+        "mode": mode_of(root),
+        "nlink": root.st_nlink,
+    }
+    if actual_root != recorded["root"]:
+        raise SafetyError("original recovery data identity changed")
+    marker_fd, marker = open_regular_nofollow(
+        data / ".afterlight-pack-sha",
+        "original recovery release marker",
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes={recorded["marker"]["mode"]},
+        max_bytes=128,
+    )
+    try:
+        payload = read_pinned(
+            marker_fd,
+            marker,
+            "original recovery release marker",
+            max_bytes=128,
+        )
+    finally:
+        os.close(marker_fd)
+    actual_marker = {
+        "device": marker.st_dev,
+        "inode": marker.st_ino,
+        "uid": marker.st_uid,
+        "gid": marker.st_gid,
+        "mode": mode_of(marker),
+        "nlink": marker.st_nlink,
+        "size": marker.st_size,
+        "sha256": digest_bytes(payload),
+    }
+    if actual_marker != recorded["marker"]:
+        raise SafetyError("original recovery release marker identity changed")
+    if payload != f"{value['prior_sha']}\n".encode("ascii"):
+        raise SafetyError("original recovery release marker differs from prior revision")
+    print(value["prior_sha"])
+    return 0
+
+
+def command_snapshot_create(arguments: argparse.Namespace) -> int:
+    root = require_canonical_absolute(Path(arguments.snapshot_root), "snapshot root")
+    require_directory(
+        root,
+        "snapshot root",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={0o700},
+    )
+    name = arguments.name
+    if not SAFE_NAME.fullmatch(name) or not name.startswith("quest-update-"):
+        raise SafetyError("snapshot name is invalid")
+    destination = root / name
+    if destination.exists() or destination.is_symlink():
+        raise SafetyError("snapshot already exists")
+    root_fd = os.open(
+        root,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    snapshot_fd: int | None = None
+    progress_created = False
+    try:
+        os.mkdir(name, 0o700, dir_fd=root_fd)
+        if os.geteuid() == 0:
+            os.chown(
+                name,
+                arguments.owner_uid,
+                arguments.group_gid,
+                dir_fd=root_fd,
+                follow_symlinks=False,
+            )
+        snapshot_fd = os.open(
+            name,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=root_fd,
+        )
+        try:
+            os.mkdir("progress", 0o700, dir_fd=snapshot_fd)
+            progress_created = True
+            if os.geteuid() == 0:
+                os.chown(
+                    "progress",
+                    arguments.owner_uid,
+                    arguments.group_gid,
+                    dir_fd=snapshot_fd,
+                    follow_symlinks=False,
+                )
+            os.fsync(snapshot_fd)
+        finally:
+            os.close(snapshot_fd)
+            snapshot_fd = None
+        os.fsync(root_fd)
+    except BaseException:
+        if progress_created:
+            cleanup_fd = snapshot_fd
+            if cleanup_fd is None:
+                try:
+                    cleanup_fd = os.open(
+                        name,
+                        os.O_RDONLY
+                        | getattr(os, "O_DIRECTORY", 0)
+                        | getattr(os, "O_NOFOLLOW", 0),
+                        dir_fd=root_fd,
+                    )
+                except OSError:
+                    cleanup_fd = None
+            if cleanup_fd is not None:
+                try:
+                    os.rmdir("progress", dir_fd=cleanup_fd)
+                    os.fsync(cleanup_fd)
+                except OSError:
+                    pass
+                finally:
+                    os.close(cleanup_fd)
+        try:
+            os.rmdir(name, dir_fd=root_fd)
+        except OSError:
+            pass
+        os.fsync(root_fd)
+        raise
+    finally:
+        os.close(root_fd)
+    require_directory(
+        destination,
+        "snapshot",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={0o700},
+    )
+    print(destination)
+    return 0
+
+
+def command_release_marker_write(arguments: argparse.Namespace) -> int:
+    if not SHA40.fullmatch(arguments.revision):
+        raise SafetyError("release marker revision is invalid")
+    data = require_canonical_absolute(Path(arguments.data), "server data")
+    require_directory(
+        data,
+        "server data",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes=SAFE_DIRECTORY_MODES,
+    )
+    atomic_write(
+        data / ".afterlight-pack-sha",
+        f"{arguments.revision}\n".encode("ascii"),
+        mode=0o600,
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        replace=True,
+    )
+    return 0
+
+
+def command_release_marker_read(arguments: argparse.Namespace) -> int:
+    data = require_canonical_absolute(Path(arguments.data), "server data")
+    require_directory(
+        data,
+        "server data",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes=SAFE_DIRECTORY_MODES,
+    )
+    descriptor, metadata = open_regular_nofollow(
+        data / ".afterlight-pack-sha",
+        "release marker",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={0o600},
+        max_bytes=41,
+    )
+    try:
+        payload = read_pinned(
+            descriptor,
+            metadata,
+            "release marker",
+            max_bytes=41,
+        )
+    finally:
+        os.close(descriptor)
+    if not re.fullmatch(rb"[0-9a-f]{40}\n", payload):
+        raise SafetyError("release marker payload is invalid")
+    sys.stdout.buffer.write(payload)
+    return 0
+
+
+def command_snapshot_complete(arguments: argparse.Namespace) -> int:
+    snapshot = require_canonical_absolute(Path(arguments.snapshot), "completed snapshot")
+    require_directory(
+        snapshot,
+        "completed snapshot",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={0o700},
+    )
+    transaction_id = arguments.transaction_id
+    if not re.fullmatch(r"[0-9a-f]{32}", transaction_id):
+        raise SafetyError("completed snapshot transaction identifier is invalid")
+    completed_at = arguments.completed_at
+    if completed_at is None:
+        completed_at = int(time.time())
+    if completed_at < 0:
+        raise SafetyError("completed snapshot time is invalid")
+    atomic_write(
+        snapshot / "retention.json",
+        canonical_json_bytes(
+            {
+                "format": "afterlight.snapshot-retention.v1",
+                "status": "successful",
+                "transaction_id": transaction_id,
+                "completed_at": completed_at,
+            }
+        ),
+        mode=0o600,
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        replace=False,
+    )
+    return 0
+
+
+def remove_owned_tree(
+    parent_fd: int,
+    name: str,
+    *,
+    owner_uid: int,
+    group_gid: int,
+    label: str,
+) -> None:
+    directory_fd = os.open(
+        name,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+        dir_fd=parent_fd,
+    )
+    try:
+        metadata = os.fstat(directory_fd)
+        if metadata.st_uid != owner_uid or metadata.st_gid != group_gid:
+            raise SafetyError(f"{label} owner or group is invalid")
+        for child in safe_children(directory_fd):
+            child_metadata = os.stat(child, dir_fd=directory_fd, follow_symlinks=False)
+            if child_metadata.st_uid != owner_uid or child_metadata.st_gid != group_gid:
+                raise SafetyError(f"{label} entry owner or group is invalid")
+            if stat.S_ISDIR(child_metadata.st_mode):
+                remove_owned_tree(
+                    directory_fd,
+                    child,
+                    owner_uid=owner_uid,
+                    group_gid=group_gid,
+                    label=label,
+                )
+            elif stat.S_ISREG(child_metadata.st_mode) and child_metadata.st_nlink == 1:
+                os.unlink(child, dir_fd=directory_fd)
+            else:
+                raise SafetyError(f"{label} contains an unsafe entry")
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    os.rmdir(name, dir_fd=parent_fd)
+    os.fsync(parent_fd)
+
+
+def command_snapshot_prune(arguments: argparse.Namespace) -> int:
+    root = require_canonical_absolute(Path(arguments.snapshot_root), "snapshot root")
+    require_directory(
+        root,
+        "snapshot root",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={0o700},
+    )
+    if arguments.older_than < 0:
+        raise SafetyError("snapshot retention threshold is invalid")
+    root_fd = os.open(
+        root,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    removed: list[str] = []
+    try:
+        for name in safe_children(root_fd):
+            if not name.startswith("quest-update-"):
+                continue
+            metadata = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+            if not stat.S_ISDIR(metadata.st_mode):
+                raise SafetyError("snapshot retention root contains an unsafe entry")
+            snapshot = root / name
+            marker_path = snapshot / "retention.json"
+            try:
+                marker_fd, marker_metadata = open_regular_nofollow(
+                    marker_path,
+                    "snapshot retention marker",
+                    owner_uid=arguments.owner_uid,
+                    group_gid=arguments.group_gid,
+                    modes={0o600},
+                    max_bytes=MAX_STATE_BYTES,
+                )
+            except SafetyError:
+                continue
+            try:
+                marker_payload = read_pinned(
+                    marker_fd,
+                    marker_metadata,
+                    "snapshot retention marker",
+                    max_bytes=MAX_STATE_BYTES,
+                )
+                marker = parse_json(marker_payload, "snapshot retention marker")
+            finally:
+                os.close(marker_fd)
+            if (
+                not isinstance(marker, dict)
+                or set(marker) != {
+                    "completed_at",
+                    "format",
+                    "status",
+                    "transaction_id",
+                }
+                or marker_payload != canonical_json_bytes(marker)
+                or marker.get("format") != "afterlight.snapshot-retention.v1"
+                or marker.get("status") != "successful"
+                or not isinstance(marker.get("completed_at"), int)
+                or isinstance(marker.get("completed_at"), bool)
+                or not re.fullmatch(r"[0-9a-f]{32}", str(marker.get("transaction_id", "")))
+                or marker["completed_at"] >= arguments.older_than
+            ):
+                continue
+            remove_owned_tree(
+                root_fd,
+                name,
+                owner_uid=arguments.owner_uid,
+                group_gid=arguments.group_gid,
+                label="snapshot retention tree",
+            )
+            removed.append(name)
+    finally:
+        os.close(root_fd)
+    print(canonical_json_bytes({"removed": removed}).decode("utf-8"), end="")
+    return 0
+
+
 def secure_lock_descriptor(arguments: argparse.Namespace) -> int:
     runtime = Path(arguments.runtime_dir)
     require_directory(
@@ -450,11 +960,22 @@ def secure_lock_descriptor(arguments: argparse.Namespace) -> int:
         modes={arguments.runtime_mode},
     )
     lock_path = runtime / "maintenance.lock"
-    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+    flags = os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
+    created = False
     try:
-        descriptor = os.open(lock_path, flags, arguments.lock_mode)
+        descriptor = os.open(
+            lock_path,
+            flags | os.O_CREAT | os.O_EXCL,
+            arguments.lock_mode,
+        )
+        created = True
+    except FileExistsError:
+        try:
+            descriptor = os.open(lock_path, flags)
+        except OSError as error:
+            raise SafetyError("maintenance lock could not be opened safely") from error
     except OSError as error:
         raise SafetyError("maintenance lock could not be opened safely") from error
     try:
@@ -464,16 +985,16 @@ def secure_lock_descriptor(arguments: argparse.Namespace) -> int:
             raise SafetyError("maintenance lock must be a regular file")
         if (metadata.st_dev, metadata.st_ino) != (path_metadata.st_dev, path_metadata.st_ino):
             raise SafetyError("maintenance lock identity changed during open")
-        if metadata.st_uid != arguments.owner_uid or metadata.st_gid != arguments.group_gid:
-            if metadata.st_size == 0 and os.geteuid() == 0:
+        if created:
+            if os.geteuid() == 0:
                 os.fchown(descriptor, arguments.owner_uid, arguments.group_gid)
-                metadata = os.fstat(descriptor)
-            else:
-                raise SafetyError("maintenance lock owner or group is invalid")
+            os.fchmod(descriptor, arguments.lock_mode)
+            metadata = os.fstat(descriptor)
+        if metadata.st_uid != arguments.owner_uid or metadata.st_gid != arguments.group_gid:
+            raise SafetyError("maintenance lock owner or group is invalid")
         if metadata.st_nlink != 1:
             raise SafetyError("maintenance lock link count must equal one")
-        os.fchmod(descriptor, arguments.lock_mode)
-        if mode_of(os.fstat(descriptor)) != arguments.lock_mode:
+        if mode_of(metadata) != arguments.lock_mode:
             raise SafetyError("maintenance lock mode is invalid")
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -485,12 +1006,49 @@ def secure_lock_descriptor(arguments: argparse.Namespace) -> int:
         raise
 
 
+def verify_inherited_lock_descriptor(arguments: argparse.Namespace) -> int:
+    runtime = Path(arguments.runtime_dir)
+    require_directory(
+        runtime,
+        "runtime directory",
+        owner_uid=arguments.owner_uid,
+        group_gid=arguments.group_gid,
+        modes={arguments.runtime_mode},
+    )
+    lock_path = runtime / "maintenance.lock"
+    try:
+        descriptor = int(arguments.lock_fd)
+    except (TypeError, ValueError) as error:
+        raise SafetyError("inherited maintenance lock descriptor is invalid") from error
+    if descriptor < 0:
+        raise SafetyError("inherited maintenance lock descriptor is invalid")
+    try:
+        metadata = os.fstat(descriptor)
+        path_metadata = lock_path.lstat()
+    except OSError as error:
+        raise SafetyError("inherited maintenance lock descriptor is unavailable") from error
+    if not stat.S_ISREG(metadata.st_mode):
+        raise SafetyError("inherited maintenance lock must be a regular file")
+    if (metadata.st_dev, metadata.st_ino) != (path_metadata.st_dev, path_metadata.st_ino):
+        raise SafetyError("inherited maintenance lock identity is invalid")
+    if metadata.st_uid != arguments.owner_uid or metadata.st_gid != arguments.group_gid:
+        raise SafetyError("inherited maintenance lock owner or group is invalid")
+    if metadata.st_nlink != 1 or mode_of(metadata) != arguments.lock_mode:
+        raise SafetyError("inherited maintenance lock metadata is invalid")
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as error:
+        raise SafetyError("inherited maintenance lock is not held by this process") from error
+    return descriptor
+
+
 def run_controlled_process(
     command: list[str],
     *,
     environment: dict[str, str],
     timeout_seconds: float,
     termination_grace_seconds: float = TERMINATION_GRACE_SECONDS,
+    pass_fds: tuple[int, ...] = (),
 ) -> int:
     if not command:
         raise SafetyError("controlled process requires a command")
@@ -498,7 +1056,12 @@ def run_controlled_process(
         raise SafetyError("controlled process timeout is invalid")
     if not 0 < termination_grace_seconds <= 3600:
         raise SafetyError("controlled process termination grace is invalid")
-    child = subprocess.Popen(command, env=environment, start_new_session=True)
+    child = subprocess.Popen(
+        command,
+        env=environment,
+        start_new_session=True,
+        pass_fds=pass_fds,
+    )
     received_signal: int | None = None
     timed_out = False
     deadline = time.monotonic() + timeout_seconds
@@ -559,10 +1122,20 @@ def run_controlled_process(
 
 
 def command_run(arguments: argparse.Namespace) -> int:
+    pass_fds: tuple[int, ...] = ()
+    inherited_lock = os.environ.get("AFTERLIGHT_LOCK_FD")
+    if inherited_lock is not None:
+        try:
+            lock_fd = int(inherited_lock)
+            os.fstat(lock_fd)
+        except (TypeError, ValueError, OSError) as error:
+            raise SafetyError("inherited maintenance lock descriptor is unavailable") from error
+        pass_fds = (lock_fd,)
     return run_controlled_process(
         arguments.command,
         environment=os.environ.copy(),
         timeout_seconds=arguments.timeout,
+        pass_fds=pass_fds,
     )
 
 
@@ -571,16 +1144,24 @@ def command_lock_run(arguments: argparse.Namespace) -> int:
         raise SafetyError("lock-run requires a command")
     descriptor = secure_lock_descriptor(arguments)
     environment = os.environ.copy()
-    environment["AFTERLIGHT_LOCK_HELD"] = "1"
+    environment.pop("AFTERLIGHT_LOCK_HELD", None)
+    environment["AFTERLIGHT_LOCK_FD"] = str(descriptor)
+    os.set_inheritable(descriptor, True)
     try:
         return run_controlled_process(
             arguments.command,
             environment=environment,
             timeout_seconds=arguments.timeout,
             termination_grace_seconds=arguments.termination_grace,
+            pass_fds=(descriptor,),
         )
     finally:
         os.close(descriptor)
+
+
+def command_lock_verify(arguments: argparse.Namespace) -> int:
+    verify_inherited_lock_descriptor(arguments)
+    return 0
 
 
 def safe_children(directory_fd: int) -> list[str]:
@@ -711,7 +1292,7 @@ def command_archive_create(arguments: argparse.Namespace) -> int:
         "archive source",
         owner_uid=arguments.source_owner_uid,
         group_gid=arguments.source_group_gid,
-        modes=set(range(0o700, 0o777 + 1)),
+        modes=SAFE_DIRECTORY_MODES,
     )
     archive_path = require_canonical_absolute(Path(arguments.archive), "archive path", exists=False)
     receipt_path = require_canonical_absolute(Path(arguments.receipt), "archive receipt path", exists=False)
@@ -732,6 +1313,15 @@ def command_archive_create(arguments: argparse.Namespace) -> int:
     archive_fd = os.open(archive_path, flags, 0o600)
     inventory = [inventory_record(".", "directory", source_metadata, None)]
     try:
+        if os.geteuid() == 0:
+            os.fchown(archive_fd, arguments.owner_uid, arguments.group_gid)
+        archive_owner = os.fstat(archive_fd)
+        if (
+            archive_owner.st_uid != arguments.owner_uid
+            or archive_owner.st_gid != arguments.group_gid
+        ):
+            raise SafetyError("archive owner or group could not be established")
+        os.fchmod(archive_fd, 0o600)
         source_fd = os.open(
             source,
             os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
@@ -887,6 +1477,105 @@ def file_digest_from_fd(descriptor: int) -> str:
     return digest.hexdigest()
 
 
+def activate_verified_destination(
+    destination: Path,
+    current: Path,
+    rescue: Path,
+    receipt: dict[str, Any],
+    *,
+    parent_owner_uid: int,
+    parent_group_gid: int,
+    resume: bool,
+) -> None:
+    if current.parent != destination.parent or rescue.parent != destination.parent:
+        raise SafetyError("restore activation paths must share the pinned parent")
+    parent = destination.parent
+    parent_metadata = require_directory(
+        parent,
+        "restore activation parent",
+        owner_uid=parent_owner_uid,
+        group_gid=parent_group_gid,
+        modes=SAFE_DIRECTORY_MODES,
+    )
+    if mode_of(parent_metadata) & 0o022:
+        raise SafetyError("restore parent must not be group or other writable")
+    destination_exists = destination.exists() and not destination.is_symlink()
+    current_exists = current.exists() and not current.is_symlink()
+    rescue_exists = rescue.exists() and not rescue.is_symlink()
+    if any(path.is_symlink() for path in (destination, current, rescue)):
+        raise SafetyError("restore activation path must not be a link")
+    if resume and current_exists and rescue_exists and not destination_exists:
+        if collect_restored_inventory(current) != receipt["inventory"]:
+            raise SafetyError("activated restore differs from authenticated receipt")
+        fsync_directory(parent)
+        return
+    if not destination_exists:
+        raise SafetyError("verified restore staging is missing")
+    if collect_restored_inventory(destination) != receipt["inventory"]:
+        raise SafetyError("restore staging differs from authenticated receipt")
+    if current_exists and rescue_exists:
+        raise SafetyError("restore activation state is ambiguous")
+    if not current_exists and not rescue_exists:
+        raise SafetyError("restore activation has neither current nor rescue data")
+    parent_fd = os.open(
+        parent,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        destination_metadata = os.stat(
+            destination.name,
+            dir_fd=parent_fd,
+            follow_symlinks=False,
+        )
+        if current_exists:
+            current_metadata = os.stat(
+                current.name,
+                dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+            if not stat.S_ISDIR(current_metadata.st_mode):
+                raise SafetyError("current restore root must be a directory")
+            os.rename(
+                current.name,
+                rescue.name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+            os.fsync(parent_fd)
+        elif not resume or not rescue_exists:
+            raise SafetyError("restore activation state is not resumable")
+        try:
+            os.rename(
+                destination.name,
+                current.name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+        except BaseException:
+            if current_exists:
+                os.rename(
+                    rescue.name,
+                    current.name,
+                    src_dir_fd=parent_fd,
+                    dst_dir_fd=parent_fd,
+                )
+                os.fsync(parent_fd)
+            raise
+        os.fsync(parent_fd)
+        activated = os.stat(
+            current.name,
+            dir_fd=parent_fd,
+            follow_symlinks=False,
+        )
+        if (activated.st_dev, activated.st_ino) != (
+            destination_metadata.st_dev,
+            destination_metadata.st_ino,
+        ):
+            raise SafetyError("activated restore identity differs from verified staging")
+    finally:
+        os.close(parent_fd)
+
+
 def command_archive_restore(arguments: argparse.Namespace) -> int:
     archive_path = Path(arguments.archive)
     receipt_path = Path(arguments.receipt)
@@ -896,9 +1585,10 @@ def command_archive_restore(arguments: argparse.Namespace) -> int:
         "restore parent",
         owner_uid=arguments.parent_owner_uid,
         group_gid=arguments.parent_group_gid,
-        modes=set(range(0o700, 0o777 + 1)),
+        modes=SAFE_DIRECTORY_MODES,
     )
-    if destination.exists() or destination.is_symlink():
+    destination_preexisting = destination.exists() or destination.is_symlink()
+    if destination_preexisting and not arguments.resume:
         raise SafetyError("restore destination already exists")
     receipt_fd, receipt_metadata = open_regular_nofollow(
         receipt_path,
@@ -947,6 +1637,78 @@ def command_archive_restore(arguments: argparse.Namespace) -> int:
         os.close(archive_fd)
         raise SafetyError("archive digest does not match authenticated receipt")
     records = {record["path"]: record for record in receipt["inventory"]}
+    if arguments.resume:
+        if arguments.activate_current is None or arguments.rescue is None:
+            os.close(archive_fd)
+            raise SafetyError("resumable restore requires current and rescue paths")
+        current = require_canonical_absolute(
+            Path(arguments.activate_current),
+            "current data root",
+            exists=False,
+        )
+        rescue = require_canonical_absolute(
+            Path(arguments.rescue),
+            "restore rescue path",
+            exists=False,
+        )
+        current_exists = current.exists() and not current.is_symlink()
+        rescue_exists = rescue.exists() and not rescue.is_symlink()
+        if current.is_symlink() or rescue.is_symlink() or destination.is_symlink():
+            os.close(archive_fd)
+            raise SafetyError("resumable restore path must not be a link")
+        if current_exists and rescue_exists and not destination_preexisting:
+            try:
+                activate_verified_destination(
+                    destination,
+                    current,
+                    rescue,
+                    receipt,
+                    parent_owner_uid=arguments.parent_owner_uid,
+                    parent_group_gid=arguments.parent_group_gid,
+                    resume=True,
+                )
+                return 0
+            finally:
+                os.close(archive_fd)
+        if destination_preexisting:
+            try:
+                complete_inventory = collect_restored_inventory(destination)
+            except SafetyError:
+                complete_inventory = None
+            if complete_inventory == receipt["inventory"]:
+                try:
+                    activate_verified_destination(
+                        destination,
+                        current,
+                        rescue,
+                        receipt,
+                        parent_owner_uid=arguments.parent_owner_uid,
+                        parent_group_gid=arguments.parent_group_gid,
+                        resume=True,
+                    )
+                    return 0
+                finally:
+                    os.close(archive_fd)
+            if current_exists == rescue_exists:
+                os.close(archive_fd)
+                raise SafetyError("partial restore staging has an ambiguous activation state")
+            parent_fd = os.open(
+                destination.parent,
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+            )
+            try:
+                remove_owned_tree(
+                    parent_fd,
+                    destination.name,
+                    owner_uid=arguments.destination_owner_uid,
+                    group_gid=arguments.destination_group_gid,
+                    label="partial restore staging",
+                )
+            finally:
+                os.close(parent_fd)
+            destination_preexisting = False
     try:
         destination.mkdir(mode=0o700)
         if os.geteuid() == 0:
@@ -1059,77 +1821,193 @@ def command_archive_restore(arguments: argparse.Namespace) -> int:
                 "restore rescue path",
                 exists=False,
             )
-            if current.parent != destination.parent or rescue.parent != destination.parent:
-                raise SafetyError("restore activation paths must share the pinned parent")
-            if rescue.exists() or rescue.is_symlink():
-                raise SafetyError("restore rescue path already exists")
-            parent_metadata = destination.parent.lstat()
-            if parent_metadata.st_uid != arguments.parent_owner_uid:
-                raise SafetyError("restore parent owner changed before activation")
-            if mode_of(parent_metadata) & 0o022:
-                raise SafetyError("restore parent must not be group or other writable")
-            parent_fd = os.open(
-                destination.parent,
-                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+            activate_verified_destination(
+                destination,
+                current,
+                rescue,
+                receipt,
+                parent_owner_uid=arguments.parent_owner_uid,
+                parent_group_gid=arguments.parent_group_gid,
+                resume=arguments.resume,
             )
-            try:
-                current_metadata = os.stat(
-                    current.name,
-                    dir_fd=parent_fd,
-                    follow_symlinks=False,
-                )
-                destination_metadata = os.stat(
-                    destination.name,
-                    dir_fd=parent_fd,
-                    follow_symlinks=False,
-                )
-                if not stat.S_ISDIR(current_metadata.st_mode) or not stat.S_ISDIR(destination_metadata.st_mode):
-                    raise SafetyError("restore activation roots must be directories")
-                os.rename(
-                    current.name,
-                    rescue.name,
-                    src_dir_fd=parent_fd,
-                    dst_dir_fd=parent_fd,
-                )
-                os.fsync(parent_fd)
-                try:
-                    os.rename(
-                        destination.name,
-                        current.name,
-                        src_dir_fd=parent_fd,
-                        dst_dir_fd=parent_fd,
-                    )
-                except BaseException:
-                    os.rename(
-                        rescue.name,
-                        current.name,
-                        src_dir_fd=parent_fd,
-                        dst_dir_fd=parent_fd,
-                    )
-                    os.fsync(parent_fd)
-                    raise
-                os.fsync(parent_fd)
-                activated = os.stat(
-                    current.name,
-                    dir_fd=parent_fd,
-                    follow_symlinks=False,
-                )
-                if (activated.st_dev, activated.st_ino) != (
-                    destination_metadata.st_dev,
-                    destination_metadata.st_ino,
-                ):
-                    raise SafetyError("activated restore identity differs from verified staging")
-            finally:
-                os.close(parent_fd)
         fsync_directory(destination.parent)
         return 0
     except BaseException:
-        if destination.exists() and not destination.is_symlink():
-            shutil.rmtree(destination)
-            fsync_directory(destination.parent)
+        if (
+            not destination_preexisting
+            and destination.exists()
+            and not destination.is_symlink()
+        ):
+            parent_fd = os.open(
+                destination.parent,
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+            )
+            try:
+                remove_owned_tree(
+                    parent_fd,
+                    destination.name,
+                    owner_uid=arguments.destination_owner_uid,
+                    group_gid=arguments.destination_group_gid,
+                    label="failed restore staging",
+                )
+            finally:
+                os.close(parent_fd)
         raise
     finally:
         os.close(archive_fd)
+
+
+def read_repository_file(repository: Path, relative: str, label: str) -> bytes:
+    relative_path = PurePosixPath(relative)
+    if relative_path.is_absolute() or any(
+        part in {"", ".", ".."} or not SAFE_NAME.fullmatch(part)
+        for part in relative_path.parts
+    ):
+        raise SafetyError(f"{label} path is invalid")
+    path = repository.joinpath(*relative_path.parts)
+    path_status = path.lstat()
+    descriptor, metadata = open_regular_nofollow(
+        path,
+        label,
+        owner_uid=path_status.st_uid,
+        group_gid=path_status.st_gid,
+        modes={mode_of(path_status)},
+        max_bytes=MAX_MOD_METADATA_BYTES,
+    )
+    try:
+        return read_pinned(
+            descriptor,
+            metadata,
+            label,
+            max_bytes=MAX_MOD_METADATA_BYTES,
+        )
+    finally:
+        os.close(descriptor)
+
+
+def release_policy_pack_url(repository: Path) -> str:
+    payload = read_repository_file(
+        repository,
+        "tools/release-policy.env",
+        "accepted release policy",
+    )
+    try:
+        lines = payload.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise SafetyError("accepted release policy is not UTF-8") from error
+    values: dict[str, str] = {}
+    for line in lines:
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise SafetyError("accepted release policy is invalid")
+        key, value = line.split("=", 1)
+        if not re.fullmatch(r"[A-Z][A-Z0-9_]*", key) or not value or key in values:
+            raise SafetyError("accepted release policy is invalid")
+        values[key] = value
+    pack_url = values.get("RELEASE_PACK_URL")
+    if not isinstance(pack_url, str):
+        raise SafetyError("accepted release policy Packwiz URL is missing")
+    parsed = urllib.parse.urlsplit(pack_url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or not parsed.path.endswith("/pack.toml")
+    ):
+        raise SafetyError("accepted release policy Packwiz URL is invalid")
+    return pack_url
+
+
+def accepted_server_mod_manifest(repository: Path) -> list[dict[str, Any]]:
+    mods_root = repository / "mods"
+    if not mods_root.is_dir() or mods_root.is_symlink():
+        return []
+    lock_payload = read_repository_file(
+        repository,
+        "tools/server-mod-manifest-lock.json",
+        "accepted server-mod size lock",
+    )
+    try:
+        size_lock = json.loads(lock_payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise SafetyError("accepted server-mod size lock is invalid") from error
+    if (
+        not isinstance(size_lock, dict)
+        or size_lock.get("format") != 1
+        or not isinstance(size_lock.get("files"), list)
+    ):
+        raise SafetyError("accepted server-mod size lock is invalid")
+    lock_by_metadata: dict[str, dict[str, Any]] = {}
+    for record in size_lock["files"]:
+        if not isinstance(record, dict) or set(record) != {
+            "filename",
+            "hash",
+            "hash_format",
+            "metadata_path",
+            "size",
+        }:
+            raise SafetyError("accepted server-mod size lock is invalid")
+        metadata_path = record.get("metadata_path")
+        if not isinstance(metadata_path, str) or metadata_path in lock_by_metadata:
+            raise SafetyError("accepted server-mod size lock is invalid")
+        lock_by_metadata[metadata_path] = record
+
+    result: list[dict[str, Any]] = []
+    expected_metadata_paths: set[str] = set()
+    for metadata_path in sorted(mods_root.glob("*.pw.toml")):
+        relative = metadata_path.relative_to(repository).as_posix()
+        payload = read_repository_file(repository, relative, "accepted Packwiz mod metadata")
+        try:
+            metadata = tomllib.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+            raise SafetyError("accepted Packwiz mod metadata is invalid") from error
+        if metadata.get("side", "both") == "client":
+            continue
+        filename = metadata.get("filename")
+        download = metadata.get("download")
+        if (
+            not isinstance(filename, str)
+            or not SAFE_NAME.fullmatch(filename)
+            or not isinstance(download, dict)
+        ):
+            raise SafetyError("accepted Packwiz mod metadata is invalid")
+        hash_format = download.get("hash-format")
+        digest = download.get("hash")
+        expected_length = {"sha1": 40, "sha256": 64, "sha512": 128}.get(hash_format)
+        if (
+            expected_length is None
+            or not isinstance(digest, str)
+            or not re.fullmatch(rf"[0-9a-f]{{{expected_length}}}", digest)
+        ):
+            raise SafetyError("accepted Packwiz mod digest is invalid")
+        record = lock_by_metadata.get(relative)
+        if (
+            not isinstance(record, dict)
+            or record.get("filename") != filename
+            or record.get("hash_format") != hash_format
+            or record.get("hash") != digest
+            or not isinstance(record.get("size"), int)
+            or isinstance(record.get("size"), bool)
+            or record["size"] <= 0
+        ):
+            raise SafetyError("accepted server-mod size identity is invalid")
+        expected_metadata_paths.add(relative)
+        result.append(
+            {
+                "filename": filename,
+                "hash_format": hash_format,
+                "hash": digest,
+                "size": record["size"],
+            }
+        )
+    if set(lock_by_metadata) != expected_metadata_paths:
+        raise SafetyError("accepted server-mod size lock inventory differs from Packwiz")
+    result.sort(key=lambda record: record["filename"])
+    return validate_server_mod_manifest(result)
 
 
 def command_receipt_verify(arguments: argparse.Namespace) -> int:
@@ -1169,15 +2047,11 @@ def command_receipt_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("accepted release receipt format is invalid")
     if receipt.get("git_sha") != arguments.expected_sha:
         raise SafetyError("accepted release receipt revision mismatch")
-    raw_root = os.environ.get(
-        "AFTERLIGHT_RAW_RELEASE_ROOT",
-        "https://raw.githubusercontent.com/Luskish/afterlight-pack",
-    ).rstrip("/")
     api_root = os.environ.get(
         "AFTERLIGHT_GITHUB_API_ROOT",
         "https://api.github.com/repos/Luskish/afterlight-pack",
     ).rstrip("/")
-    expected_url = f"{raw_root}/{arguments.expected_sha}/pack.toml"
+    expected_url = release_policy_pack_url(repository)
     if receipt.get("pack_url") != expected_url:
         raise SafetyError("accepted release receipt Packwiz URL mismatch")
     head = subprocess.run(
@@ -1384,8 +2258,13 @@ def command_receipt_verify(arguments: argparse.Namespace) -> int:
             )
         finally:
             os.close(local_descriptor)
+        remote_url = (
+            expected_url
+            if relative == "pack.toml"
+            else urllib.parse.urljoin(expected_url, "index.toml")
+        )
         request = urllib.request.Request(
-            f"{raw_root}/{arguments.expected_sha}/{relative}",
+            remote_url,
             headers={"User-Agent": "AFTERLIGHT-deployment-verifier/1"},
         )
         try:
@@ -1395,7 +2274,8 @@ def command_receipt_verify(arguments: argparse.Namespace) -> int:
             raise SafetyError("published Packwiz verification failed") from error
         if remote != local:
             raise SafetyError("published Packwiz bytes differ from accepted checkout")
-    print(arguments.receipt_sha256)
+    server_mods = accepted_server_mod_manifest(repository)
+    print(canonical_json_bytes(server_mods).decode("utf-8"), end="")
     return 0
 
 
@@ -1431,6 +2311,13 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("live release revision is invalid")
     repository = require_canonical_absolute(Path(arguments.repository), "repository")
     data = require_canonical_absolute(Path(arguments.data), "server data")
+    require_directory(
+        data,
+        "server data",
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes=SAFE_DIRECTORY_MODES,
+    )
     head = subprocess.run(
         ["git", "-C", str(repository), "rev-parse", "--verify", "HEAD^{commit}"],
         capture_output=True,
@@ -1448,38 +2335,41 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
     if head.returncode != 0 or head.stdout.strip() != arguments.expected_sha or clean.returncode != 0 or clean.stdout:
         raise SafetyError("live release checkout is not the exact clean accepted revision")
     marker_path = data / ".afterlight-pack-sha"
-    marker_status = marker_path.lstat()
     marker_descriptor, marker_metadata = open_regular_nofollow(
         marker_path,
         "live release marker",
-        owner_uid=marker_status.st_uid,
-        group_gid=marker_status.st_gid,
-        modes={mode_of(marker_status)},
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+        modes={0o600},
         max_bytes=128,
     )
     try:
-        marker = read_pinned(
+        marker_payload = read_pinned(
             marker_descriptor,
             marker_metadata,
             "live release marker",
             max_bytes=128,
-        ).decode("ascii").strip()
+        )
     finally:
         os.close(marker_descriptor)
-    if marker != arguments.expected_sha:
+    if marker_payload != f"{arguments.expected_sha}\n".encode("ascii"):
         raise SafetyError("live release marker differs from the accepted revision")
     expected_quests = repository / "config" / "ftbquests" / "quests"
     installed_quests = data / "config" / "ftbquests" / "quests"
     if hash_tree(expected_quests) != hash_tree(installed_quests):
         raise SafetyError("live quest corpus differs from accepted checkout")
-    expected_mods: set[str] = set()
-    for metadata_path in sorted((repository / "mods").glob("*.pw.toml")):
-        metadata = tomllib.loads(metadata_path.read_text(encoding="utf-8"))
-        if metadata.get("side", "both") != "client":
-            filename = metadata.get("filename")
-            if not isinstance(filename, str) or not SAFE_NAME.fullmatch(filename):
-                raise SafetyError("accepted server mod inventory is invalid")
-            expected_mods.add(filename)
+    manifest_json = getattr(arguments, "server_mod_manifest_json", None)
+    if manifest_json is None:
+        expected_manifest = accepted_server_mod_manifest(repository)
+    else:
+        try:
+            parsed_manifest = json.loads(manifest_json)
+        except json.JSONDecodeError as error:
+            raise SafetyError("accepted server mod manifest is invalid") from error
+        if isinstance(parsed_manifest, dict):
+            parsed_manifest = parsed_manifest.get("server_mods")
+        expected_manifest = validate_server_mod_manifest(parsed_manifest)
+    expected_mods = {record["filename"]: record for record in expected_manifest}
     mods_root = data / "mods"
     actual_mods: set[str] = set()
     for path in mods_root.iterdir():
@@ -1487,14 +2377,50 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
             raise SafetyError("live server mod inventory contains an unsafe entry")
         actual_mods.add(path.name)
-    if actual_mods != expected_mods:
+        expected = expected_mods.get(path.name)
+        if expected is None:
+            continue
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        try:
+            opened = os.fstat(descriptor)
+            if identity(opened) != identity(metadata):
+                raise SafetyError("live server mod identity changed during open")
+            digest = hashlib.new(expected["hash_format"])
+            size = 0
+            while chunk := os.read(descriptor, 1024 * 1024):
+                digest.update(chunk)
+                size += len(chunk)
+            after = os.fstat(descriptor)
+            if identity(after) != identity(opened) or after.st_mtime_ns != opened.st_mtime_ns:
+                raise SafetyError("live server mod identity changed during verification")
+        finally:
+            os.close(descriptor)
+        if size != expected["size"] or digest.hexdigest() != expected["hash"]:
+            raise SafetyError("live server mod digest or size differs from acceptance")
+    if actual_mods != set(expected_mods):
         raise SafetyError("live server mod inventory differs from accepted checkout")
+    container_id = getattr(arguments, "container_id", None)
+    started_at = getattr(arguments, "started_at", None)
+    if not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{12,64}", container_id):
+        raise SafetyError("candidate container identity is invalid")
+    if not isinstance(started_at, str):
+        raise SafetyError("candidate container start time is invalid")
+    try:
+        parsed_start = datetime.datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise SafetyError("candidate container start time is invalid") from error
+    if parsed_start.tzinfo is None:
+        raise SafetyError("candidate container start time is invalid")
+    started_ns = int(parsed_start.timestamp() * 1_000_000_000)
     log_path = data / "logs" / "latest.log"
     log_descriptor = os.open(log_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
         log_metadata = os.fstat(log_descriptor)
         if not stat.S_ISREG(log_metadata.st_mode) or log_metadata.st_nlink != 1 or log_metadata.st_size > MAX_LOG_BYTES:
             raise SafetyError("live server log identity is invalid")
+        if log_metadata.st_mtime_ns < started_ns:
+            raise SafetyError("live server log predates the candidate container start")
         log_payload = read_pinned(
             log_descriptor,
             log_metadata,
@@ -1508,11 +2434,18 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
     except UnicodeDecodeError as error:
         raise SafetyError("live server log is not UTF-8") from error
     load_pattern = re.compile(
-        r"Loaded [0-9]+ chapter groups, [0-9]+ chapters, [0-9]+ quests, [0-9]+ reward tables"
+        r"Loaded ([0-9]+) chapter groups, ([0-9]+) chapters, ([0-9]+) quests, ([0-9]+) reward tables"
     )
-    if load_pattern.search(log_text) is None:
+    load_match = load_pattern.search(log_text)
+    if load_match is None:
         raise SafetyError("live FTB Quests load evidence is missing")
-    if re.search(r"(?i)FTB Quests.*(?:ERROR|FATAL)", log_text):
+    if any(int(value) <= 0 for value in load_match.groups()[:3]):
+        raise SafetyError("live FTB Quests load evidence requires positive quest counts")
+    if any(
+        "ftb quests" in line.casefold()
+        and re.search(r"(?i)(?:^|[^a-z])(?:ERROR|FATAL)(?:[^a-z]|$)", line)
+        for line in log_text.splitlines()
+    ):
         raise SafetyError("live FTB Quests load evidence contains an error")
     print(
         canonical_json_bytes(
@@ -1556,6 +2489,14 @@ def build_parser() -> argparse.ArgumentParser:
     lock.add_argument("command", nargs=argparse.REMAINDER)
     lock.set_defaults(handler=command_lock_run)
 
+    lock_verify = subparsers.add_parser("lock-verify")
+    lock_verify.add_argument("--runtime-dir", type=Path, required=True)
+    lock_verify.add_argument("--runtime-mode", type=lambda value: int(value, 8), default=0o700)
+    lock_verify.add_argument("--lock-mode", type=lambda value: int(value, 8), default=0o600)
+    lock_verify.add_argument("--lock-fd", required=True)
+    add_identity_arguments(lock_verify)
+    lock_verify.set_defaults(handler=command_lock_verify)
+
     run = subparsers.add_parser("run-command")
     run.add_argument("--timeout", type=float, default=DEFAULT_COMMAND_TIMEOUT_SECONDS)
     run.add_argument("command", nargs=argparse.REMAINDER)
@@ -1567,6 +2508,10 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--prior-sha", required=True)
     create.add_argument("--snapshot-root", type=Path, required=True)
     create.add_argument("--receipt-sha256", required=True)
+    create.add_argument("--data-root", type=Path)
+    create.add_argument("--data-owner-uid", type=int)
+    create.add_argument("--data-group-gid", type=int)
+    create.add_argument("--server-mod-manifest-json")
     create.set_defaults(handler=command_authority_create)
 
     status_parser = subparsers.add_parser("authority-status")
@@ -1574,7 +2519,18 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument("--print-json", action="store_true")
     status_parser.add_argument(
         "--field",
-        choices=("transaction_id", "status", "phase", "gate_comment", "expected_sha", "prior_sha", "snapshot_dir"),
+        choices=(
+            "transaction_id",
+            "status",
+            "phase",
+            "gate_comment",
+            "expected_sha",
+            "prior_sha",
+            "snapshot_dir",
+            "original_data",
+            "server_mods",
+            "data_mutated",
+        ),
     )
     status_parser.set_defaults(handler=command_authority_status)
 
@@ -1584,6 +2540,7 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--status", choices=("pending", "quarantine"))
     update.add_argument("--phase")
     update.add_argument("--snapshot-dir")
+    update.add_argument("--data-mutated", type=lambda value: value == "true")
     update.add_argument("--service", choices=("minecraft", "backup"))
     update.add_argument("--restart-disabled", type=lambda value: value == "true")
     update.add_argument("--stopped", type=lambda value: value == "true")
@@ -1593,6 +2550,44 @@ def build_parser() -> argparse.ArgumentParser:
     add_state_arguments(complete)
     complete.add_argument("--transaction-id", required=True)
     complete.set_defaults(handler=command_authority_complete)
+
+    recovery_original = subparsers.add_parser("recovery-original-verify")
+    add_state_arguments(recovery_original)
+    recovery_original.add_argument("--transaction-id", required=True)
+    recovery_original.add_argument("--data", type=Path, required=True)
+    recovery_original.add_argument("--data-owner-uid", type=int, required=True)
+    recovery_original.add_argument("--data-group-gid", type=int, required=True)
+    recovery_original.set_defaults(handler=command_recovery_original_verify)
+
+    snapshot_create = subparsers.add_parser("snapshot-create")
+    snapshot_create.add_argument("--snapshot-root", type=Path, required=True)
+    snapshot_create.add_argument("--name", required=True)
+    add_identity_arguments(snapshot_create)
+    snapshot_create.set_defaults(handler=command_snapshot_create)
+
+    release_marker = subparsers.add_parser("release-marker-write")
+    release_marker.add_argument("--data", type=Path, required=True)
+    release_marker.add_argument("--revision", required=True)
+    add_identity_arguments(release_marker)
+    release_marker.set_defaults(handler=command_release_marker_write)
+
+    release_marker_read = subparsers.add_parser("release-marker-read")
+    release_marker_read.add_argument("--data", type=Path, required=True)
+    add_identity_arguments(release_marker_read)
+    release_marker_read.set_defaults(handler=command_release_marker_read)
+
+    snapshot_complete = subparsers.add_parser("snapshot-complete")
+    snapshot_complete.add_argument("--snapshot", type=Path, required=True)
+    snapshot_complete.add_argument("--transaction-id", required=True)
+    snapshot_complete.add_argument("--completed-at", type=int)
+    add_identity_arguments(snapshot_complete)
+    snapshot_complete.set_defaults(handler=command_snapshot_complete)
+
+    snapshot_prune = subparsers.add_parser("snapshot-prune")
+    snapshot_prune.add_argument("--snapshot-root", type=Path, required=True)
+    snapshot_prune.add_argument("--older-than", type=int, required=True)
+    add_identity_arguments(snapshot_prune)
+    snapshot_prune.set_defaults(handler=command_snapshot_prune)
 
     archive_create = subparsers.add_parser("archive-create")
     archive_create.add_argument("--source", type=Path, required=True)
@@ -1609,6 +2604,7 @@ def build_parser() -> argparse.ArgumentParser:
     archive_restore.add_argument("--destination", type=Path, required=True)
     archive_restore.add_argument("--activate-current", type=Path)
     archive_restore.add_argument("--rescue", type=Path)
+    archive_restore.add_argument("--resume", action="store_true")
     add_identity_arguments(archive_restore)
     archive_restore.add_argument("--parent-owner-uid", type=int)
     archive_restore.add_argument("--parent-group-gid", type=int)
@@ -1629,6 +2625,11 @@ def build_parser() -> argparse.ArgumentParser:
     live.add_argument("--repository", type=Path, required=True)
     live.add_argument("--data", type=Path, required=True)
     live.add_argument("--expected-sha", required=True)
+    live.add_argument("--container-id", required=True)
+    live.add_argument("--started-at", required=True)
+    live.add_argument("--data-owner-uid", type=int, required=True)
+    live.add_argument("--data-group-gid", type=int, required=True)
+    live.add_argument("--server-mod-manifest-json")
     live.set_defaults(handler=command_live_verify)
     return parser
 

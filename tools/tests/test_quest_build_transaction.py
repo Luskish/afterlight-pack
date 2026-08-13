@@ -1706,6 +1706,24 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
         "67C126F7B1338CB1",
         "0B7C7859EBD6EFF3",
     )
+    STORY_COHESION_CHAPTERS = (
+        "257F2005E2D76B80",
+        "2D7CB8E643BDC03B",
+        "2FD06A1068D554E9",
+        "37C54E49759AFDDF",
+        "40BA93EAD765D4D0",
+        "4402713763771CFA",
+        "45491A24F6B8C192",
+        "4C01977EF77930A6",
+        "52EF477C2D995F40",
+        "5538973B3F8B1C72",
+        "582DF217557144DA",
+        "584A7E77CC881049",
+        "6C4AE5CE13773438",
+        "738C49C0D9F98BBC",
+        "770DAD173D9C234B",
+        "7E9B015A32C6D980",
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -1916,7 +1934,14 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
                 "_unlink_artifact",
                 side_effect=fail_once,
             ):
-                result = self.quests.write_catalog(catalog, quest_root)
+                result = self.quests.write_catalog(
+                    catalog,
+                    quest_root,
+                    legacy_quest_ids=self.build_script._legacy_quest_ids(
+                        quest_root,
+                        catalog,
+                    ),
+                )
 
             self.assertTrue(failed)
             self.assertTrue(result.committed)
@@ -2262,6 +2287,10 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
                         *(
                             f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                             for chapter_id in self.MANUAL_CHAPTERS
+                        ),
+                        *(
+                            f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
+                            for chapter_id in self.STORY_COHESION_CHAPTERS
                         ),
                         "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
                         "config/ftbquests/quests/chapters/5B93C6934B230CFB.snbt",

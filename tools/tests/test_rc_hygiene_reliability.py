@@ -2019,7 +2019,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         self.assertEqual(158, hygiene.REVIEWED_SERVER_ARTIFACT_COUNT)
         self.assertEqual(
-            "edd124473b7646a0b91c0f3d6ae664ef2f021cfb062da6ce4510ed0e9399f225",
+            "d2046b987739bb9139016a6ce33f6a89e1b1f4e011624ea37940f088a4a8594c",
             hygiene.REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256,
         )
         self.assertEqual(

@@ -611,3 +611,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/tests/test_manual_acquisition.py` and `tools/tests/test_manual_acquisition_rc.py`
 - **Impact:** Manual-acquisition fixtures now use a real platform temp root on macOS and Linux without weakening symlink rejection. No pack content, quest identity, artifact, production service, or player state changed.
 - **Follow-up:** Push the corrected exact head, require green Linux CI and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.
+
+### MEM-2026-08-13-050
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** GitHub Actions Docker Compose fixture
+- **Summary:** The third pushed RC2 candidate passed all Python, Packwiz, and dedicated-server gates on Ubuntu, then the read-only Compose render failed because its generated environment omitted the required unprivileged data UID and GID introduced by the hardened production configuration.
+- **Evidence:** GitHub Actions run `31745692999` marked `Python tests`, `Verify pack`, and `Headless server boot smoke test` successful, then `Render Docker Compose config` failed with `required variable AFTERLIGHT_DATA_UID is missing a value`. A workflow policy regression was written first and failed on both missing assignments. Adding fixed nonroot fixture values made all six workflow policy tests pass, and the exact local Compose commands ended with services `minecraft` and `backup` and exit 0.
+- **Files or Commit:** `.github/workflows/pack-ci.yml` and `tools/tests/test_release_artifacts.py`
+- **Impact:** CI now renders the hardened Compose model with an explicitly unprivileged fixture identity. No production credentials, pack content, quest identity, artifact, production service, or player state changed.
+- **Follow-up:** Push the corrected exact head, require green Linux CI and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.

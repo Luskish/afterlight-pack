@@ -43,7 +43,7 @@ jobs:
           mkdir -p "$temporary_root/data" "$temporary_root/backups" "$temporary_root/secrets"
           printf 'ci-rcon-password\n' > "$temporary_root/secrets/rcon_password"
           chmod 600 "$temporary_root/secrets/rcon_password"
-          printf 'DATA_DIR=%s\nBACKUP_DIR=%s\nSECRETS_DIR=%s\n' \
+          printf 'AFTERLIGHT_DATA_UID=1000\nAFTERLIGHT_DATA_GID=1000\nDATA_DIR=%s\nBACKUP_DIR=%s\nSECRETS_DIR=%s\n' \
             "$temporary_root/data" \
             "$temporary_root/backups" \
             "$temporary_root/secrets" \

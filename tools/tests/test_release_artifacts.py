@@ -4017,6 +4017,11 @@ class ReleaseWorkflowPolicyTests(unittest.TestCase):
             shellcheck_step,
         )
 
+    def test_compose_render_supplies_unprivileged_data_identity(self):
+        compose_step = self._step_block("Render Docker Compose config")
+        self.assertIn("AFTERLIGHT_DATA_UID=1000", compose_step)
+        self.assertIn("AFTERLIGHT_DATA_GID=1000", compose_step)
+
     def test_pull_requests_keep_all_read_only_verification_steps(self):
         required_steps = (
             "Python tests",

@@ -34,6 +34,25 @@ The first three values in `server/.env` must remain exact absolute host paths ma
 
 The three optional memory values use positive whole gigabytes. `AFTERLIGHT_INIT_MEMORY` must not exceed `AFTERLIGHT_MAX_MEMORY`, and `AFTERLIGHT_MEMORY_LIMIT` must leave at least 2 GiB above the maximum Java heap for native JVM memory. The portable defaults are `4G`, `10G`, and `13G`. A dedicated host with about 24 GiB usable RAM can use `6G`, `14G`, and `17G` while retaining operating-system and backup headroom.
 
+## Performance Guardrails
+
+The Minecraft service sets `mem_swappiness: 1`, the lowest value production Docker Compose reliably carries into the container. Runtime verification must show both Docker HostConfig and the cgroup at `1`. Do not change this value to `0` until the production Compose implementation preserves numeric zero instead of inheriting the host default. Keep the container memory limit at least 2 GiB above the maximum Java heap. Do not replace the Java 21 G1 defaults, change ServerCore gameplay settings, disable synchronous chunk writes, or reduce view and simulation distance without a Spark profile showing a sustained bottleneck.
+
+Install `sysstat` for low-overhead host history. The production VPS collects every five minutes and retains 28 days. Confirm package-specific scheduling and retention after installation, then use these live samples when diagnosing performance:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends sysstat
+sudo systemctl enable --now sysstat
+sar -u 1 5
+sar -r 1 5
+sar -q 1 5
+sar -d 1 5
+sar -n DEV 1 5
+```
+
+Use Spark for Minecraft tick, entity, heap, and garbage-collection evidence. Capture profiles during normal multiplayer activity rather than tuning from an idle server. Keep Chunky pregeneration deferred until the current world and pack release are accepted for longer-term play.
+
 ## Firewall
 
 Confirm the currently working SSH port before changing UFW. Set `SSH_PORT` to that existing port, then allow SSH before enabling the default deny policy:

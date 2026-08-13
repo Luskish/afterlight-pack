@@ -21,6 +21,8 @@ server/afterlight-server.sh start
 
 Each path value in `server/.env` must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected so the operator and Docker Compose read identical literal paths. Memory values use positive whole gigabytes. Initial memory cannot exceed the maximum heap, and the container limit must leave at least 2 GiB above that heap.
 
+The Minecraft service sets `mem_swappiness: 1`, the lowest value production Docker Compose reliably enforces. Numeric zero currently inherits the host default instead. Install `sysstat` on the host and use `sar -u 1 5` for a live CPU sample. Use Spark during real multiplayer activity before changing heap, garbage collection, view distance, simulation distance, or ServerCore gameplay settings.
+
 Populate the Minecraft whitelist before sharing the server address. RCON `25575` must never be forwarded.
 
 The operator command pins each start to the repository's immutable Packwiz revision and records it as `DATA_DIR/.afterlight-pack-sha`. `start` refuses an existing world from another or unknown revision, so use `update` after changing the checkout. Backups are accepted only when they contain that marker plus a nonempty `world/level.dat`.

@@ -388,6 +388,7 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}", source)
         self.assertIn("MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}", source)
         self.assertIn("mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}", source)
+        self.assertRegex(source, r"(?m)^    mem_swappiness: 1$")
 
     def test_operator_owned_inputs_match_the_approved_values(self) -> None:
         expected_env = (
@@ -523,6 +524,9 @@ class FriendServerTests(unittest.TestCase):
         self.assertIn("default deny incoming", docs)
         self.assertRegex(docs, r"(?i)RCON `25575` must never be forwarded")
         self.assertRegex(docs, r"(?i)whitelist.*before.*address")
+        self.assertIn("mem_swappiness: 1", docs)
+        self.assertIn("sysstat", docs)
+        self.assertIn("sar -u 1 5", docs)
 
     def test_setup_assigns_restrictive_paths_to_normal_operator(self) -> None:
         required_commands = (

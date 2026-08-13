@@ -30,6 +30,7 @@ services:
       retries: 48
       start_period: 2m
     mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}
+    mem_swappiness: 1
     stop_grace_period: 2m
   backup:
     image: itzg/mc-backup:2026.8.0@sha256:ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32

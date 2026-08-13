@@ -443,3 +443,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/tests/test_manual_acquisition.py` and `docs/PROJECT_MEMORY.md`
 - **Impact:** Runtime parser tests now follow the exact fixture-bound declaration count and will detect future contract changes without a stale duplicated constant.
 - **Follow-up:** Final generation must clear the remaining seven failures and one error attributed to the intentionally stale generated corpus and audit.
+
+### MEM-2026-08-13-036
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** FTB Quests, runtime commodity tag ordering
+- **Summary:** The first bed contract listed Aether's Skyroot Bed after the Minecraft beds even though the runtime audit sorts resolved registry members lexicographically before exact comparison.
+- **Evidence:** The new sorted-and-unique regression ended with `FAILED (failures=1)` for `minecraft:beds`, showing `aether:skyroot_bed` belonged first. Reordering the frozen expected members made the focused runtime-contract tests pass.
+- **Files or Commit:** `tools/afterlight_quests/builder.py`, `tools/tests/test_afterlight_quests.py`, `tools/tests/test_manual_acquisition.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** The generated runtime audit will compare the exact installed bed tag without falsely rejecting a correct server because of declaration ordering.
+- **Follow-up:** Require the fresh dedicated-server commodity transcript after final generation.

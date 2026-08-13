@@ -70,6 +70,7 @@ COMMODITY_EXPECTED_TAG_MEMBERS = {
         "pneumaticcraft:sourdough_bread",
     ),
     "minecraft:beds": (
+        "aether:skyroot_bed",
         "minecraft:black_bed",
         "minecraft:blue_bed",
         "minecraft:brown_bed",
@@ -86,7 +87,6 @@ COMMODITY_EXPECTED_TAG_MEMBERS = {
         "minecraft:red_bed",
         "minecraft:white_bed",
         "minecraft:yellow_bed",
-        "aether:skyroot_bed",
     ),
     "c:ingots/steel": (
         "immersiveengineering:ingot_steel",

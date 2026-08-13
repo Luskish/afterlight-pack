@@ -1390,6 +1390,11 @@ class CommonCommodityCompilerTests(unittest.TestCase):
             repository_root=ROOT,
         )
 
+    def test_runtime_expected_tag_members_are_sorted_and_unique(self) -> None:
+        for tag, members in self.builder.COMMODITY_EXPECTED_TAG_MEMBERS.items():
+            with self.subTest(tag=tag):
+                self.assertEqual(members, tuple(sorted(set(members))))
+
     def baseline(self) -> dict[str, object]:
         return json.loads(self.BASELINE_PATH.read_text(encoding="utf-8"))["corpus"]
 

@@ -958,7 +958,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             "TAG c:foods/bread minecraft:bread,pneumaticcraft:sourdough_bread",
             "PRODUCER c:foods/bread minecraft:bread OK",
             "PRODUCER c:foods/bread pneumaticcraft:sourdough_bread OK",
-            "TAG minecraft:beds minecraft:black_bed,minecraft:blue_bed,minecraft:brown_bed,minecraft:cyan_bed,minecraft:gray_bed,minecraft:green_bed,minecraft:light_blue_bed,minecraft:light_gray_bed,minecraft:lime_bed,minecraft:magenta_bed,minecraft:orange_bed,minecraft:pink_bed,minecraft:purple_bed,minecraft:red_bed,minecraft:white_bed,minecraft:yellow_bed,aether:skyroot_bed",
+            "TAG minecraft:beds aether:skyroot_bed,minecraft:black_bed,minecraft:blue_bed,minecraft:brown_bed,minecraft:cyan_bed,minecraft:gray_bed,minecraft:green_bed,minecraft:light_blue_bed,minecraft:light_gray_bed,minecraft:lime_bed,minecraft:magenta_bed,minecraft:orange_bed,minecraft:pink_bed,minecraft:purple_bed,minecraft:red_bed,minecraft:white_bed,minecraft:yellow_bed",
             "PRODUCER minecraft:beds minecraft:red_bed OK",
             "PRODUCER minecraft:beds aether:skyroot_bed OK",
             "TAG c:ingots/steel immersiveengineering:ingot_steel,mekanism:ingot_steel,modern_industrialization:steel_ingot,oritech:biosteel_ingot,oritech:steel_ingot",

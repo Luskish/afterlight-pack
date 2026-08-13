@@ -1,12 +1,12 @@
 name = "AFTERLIGHT"
 author = "Shane + ECHO"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "0971355a4fa74cc2a9a54a79e3a56dc559dc91a6284f606b4f6ec3a662206acb"
+hash = "877ca3f924ae3f70c7e87b2832f9eedcb647f820c26fa9d8f94a739433a9d393"
 
 [versions]
 minecraft = "1.21.1"

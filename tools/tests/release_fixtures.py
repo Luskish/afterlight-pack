@@ -490,7 +490,11 @@ def write_release_policy(path: Path) -> None:
         f'RELEASE_PACKWIZ_INSTALLER_VERSION="{INSTALLER_VERSION}"\n'
         f'RELEASE_PACKWIZ_INSTALLER_SIZE="{len(INSTALLER_BYTES)}"\n'
         "RELEASE_PACKWIZ_INSTALLER_SHA256="
-        f'"{hashlib.sha256(INSTALLER_BYTES).hexdigest()}"\n',
+        f'"{hashlib.sha256(INSTALLER_BYTES).hexdigest()}"\n'
+        'RELEASE_SIGNAL_SOURCE_SHA="a3d95a74a56855a026f9f2786f1e925065a3b151"\n'
+        'RELEASE_SIGNAL_JAR_SHA256="81387eff5e6f5dad555a936d605c114af8fff1cf69778251cc3a7ec660f15947"\n'
+        'RELEASE_SIGNAL_JAR_SHA512="902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f"\n'
+        'RELEASE_SIGNAL_EVIDENCE_CI_URL="https://github.com/Luskish/afterlight-signal/actions/runs/31588113497"\n',
         encoding="utf-8",
     )
 

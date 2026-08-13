@@ -1,6 +1,6 @@
 # AFTERLIGHT Handoff Guide
 
-This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex after publishing and deploying `1.0.0-rc.1`.
+This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex while preparing the `1.0.0-rc.2` client hotfix.
 
 ## Hard rules the prompts assume (also in AGENTS.md)
 
@@ -18,9 +18,9 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 
 ## Current Release
 
-- Pack worktree: `/private/tmp/afterlight-echo-signal-reliquary-20260811`.
-- Working branch: `codex/echo-signal-reliquary`.
-- Target version: `1.0.0-rc.1`.
+- Pack worktree: `/private/tmp/afterlight-release-dev-8ec43b76969ada8dd5d1f0986777d886db0fa1cd`.
+- Working branch: `dev`.
+- Target version: `1.0.0-rc.2`.
 - Minecraft: `1.21.1`.
 - NeoForge: `21.1.248`.
 - Java: `21`.
@@ -40,6 +40,7 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Published at: `2026-08-13T00:11:21Z`.
 - Release evidence documentation commit on `dev`: `7dc4d8eb16a1c8916a58d164c98b7a365346f191`.
 - Publication, live portal selection, and the transactional VPS rollout completed on 2026-08-12 Eastern time.
+- RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
 
 ## Signal Companion
 
@@ -51,6 +52,14 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Release JAR SHA-512: `902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f`.
 - Main evidence CI: `https://github.com/Luskish/afterlight-signal/actions/runs/31588113497`.
 - The tag remains on the immutable source commit, while `main` contains the evidence-only child.
+- Signal `0.2.1` immutable source: `707e70af31f5eb75163c8c790c422b8cf819d6a2`.
+- Signal `0.2.1` evidence child and current `main`: `54e9d4818256b13968984d013a784499d50b4f0e`.
+- Signal `0.2.1` release: `https://github.com/Luskish/afterlight-signal/releases/tag/v0.2.1`.
+- Signal `0.2.1` JAR SHA-256: `72ea6c6f544e48d45bf66cc74a1e21f58d7cfbf42f743454aaaadefec5c6b1de`.
+- Signal `0.2.1` JAR SHA-512: `5f9a440835b8d922e681e6213c05f4532123b912d2f04972d7a5854c237e129c4f3fa25a72fdd32f6f797b1d23f6f05a46203a89c0c27ad8dab2a81122ab84c4`.
+- Signal exact-source Linux CI: `https://github.com/Luskish/afterlight-signal/actions/runs/31661780459`.
+- Signal exact-source visual CI: `https://github.com/Luskish/afterlight-signal/actions/runs/31662097316`.
+- Signal evidence `main` CI succeeded: `https://github.com/Luskish/afterlight-signal/actions/runs/31662706615`.
 
 ## Delivered Experience
 
@@ -87,13 +96,13 @@ Capture the exact printed receipt SHA-256. Then push the feature branch and requ
 tools/promote-release.sh "$SHA" "$RECEIPT_SHA256" --confirm
 ```
 
-The promoter must push branches and the tag directly to the captured production URL, prove HTTPS-only ordinary bare and cache-busted Pages parity, derive accepted client mod-set and complete Packwiz payload SHA-256 values from a clean local install with no unexpected installed files, require a clean production Pages install to match both, and check Pages parity again before creating the tag. The accepted `.mrpack` must match `tools/modrinth-manifest-lock.json`, whose 140 records were independently checked against 138 Modrinth API records and two streamed GitHub release JARs. Populate `docs/releases/1.0.0-rc.1.md` and this handoff with exact prepublication evidence, commit only those documentation files as a distinct child on `dev`, push them, and require exact documentation CI. The publisher machine-checks every canonical evidence line and accepts only that pushed documentation descendant while requiring publication tooling to remain identical to the accepted SHA. Then publish:
+The promoter must push branches and the tag directly to the captured production URL, prove HTTPS-only ordinary bare and cache-busted Pages parity, derive accepted client mod-set and complete Packwiz payload SHA-256 values from a clean local install with no unexpected installed files, require a clean production Pages install to match both, and check Pages parity again before creating the tag. The accepted `.mrpack` must match `tools/modrinth-manifest-lock.json`, whose 140 records bind the reviewed Modrinth and direct-download files. Populate `docs/releases/1.0.0-rc.2.md` and this handoff with exact prepublication evidence, commit only those documentation files as a distinct child on `dev`, push them, and require exact documentation CI. The publisher machine-checks every canonical evidence line and accepts only that pushed documentation descendant while requiring publication tooling to remain identical to the accepted SHA. Then publish:
 
 ```bash
-tools/publish-release.sh "$SHA" 1.0.0-rc.1 "$RECEIPT_SHA256" --prerelease --confirm
+tools/publish-release.sh "$SHA" 1.0.0-rc.2 "$RECEIPT_SHA256" --prerelease --confirm
 ```
 
-The publisher creates an ID-owned draft, verifies all five assets through authenticated asset-ID downloads, never automatically deletes a release, and then repeats equality through unauthenticated downloads. Any failure after creation preserves the exact numeric release for manual inspection. Confirm that `https://rl-labs.org/afterlight/` selects RC1.
+The publisher creates an ID-owned draft, verifies all five assets through authenticated asset-ID downloads, never automatically deletes a release, and then repeats equality through unauthenticated downloads. Any failure after creation preserves the exact numeric release for manual inspection. Confirm that `https://rl-labs.org/afterlight/` selects RC2.
 
 ## VPS Production State
 
@@ -141,5 +150,5 @@ Use the same skills-first, fail-closed workflow. Require exact command evidence,
 Use this prompt in a new Codex task if recovery is needed:
 
 ```text
-Open /private/tmp/afterlight-echo-signal-reliquary-20260811 and read /private/tmp/afterlight-echo-signal-reliquary-20260811/AGENTS.md plus /private/tmp/afterlight-echo-signal-reliquary-20260811/docs/HANDOFF.md. Invoke every applicable skill before acting. Continue the first incomplete item in the handoff. Never use em dashes. Do not touch the dirty checkout at /Users/shaneliszewski/MinecraftTest. Do not update the VPS until the exact release is published, no players are online, and a verified backup exists. Run every required gate and report failures verbatim.
+Open /private/tmp/afterlight-release-dev-8ec43b76969ada8dd5d1f0986777d886db0fa1cd and read its AGENTS.md plus docs/HANDOFF.md. Invoke every applicable skill before acting. Continue the RC2 release from the first incomplete gate. Never use em dashes. Do not touch the dirty checkout at /Users/shaneliszewski/MinecraftTest. Do not update the VPS until the exact release is published, no players are online, and a verified backup exists. Run every required gate and report failures verbatim.
 ```

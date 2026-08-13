@@ -1673,18 +1673,18 @@ class SignalRuntimeIdentityTests(unittest.TestCase):
     def test_current_signal_runtime_files_are_indexed_and_deterministic(self) -> None:
         hygiene = hygiene_module()
         result = hygiene.verify_signal_runtime_identity(ROOT)
-        self.assertEqual(result["version"], "1.0.0-rc.1")
+        self.assertEqual(result["version"], "1.0.0-rc.2")
         self.assertEqual(result["route_segments"], 21)
         self.assertEqual(result["route_quests"], 169)
         self.assertEqual(result["terminal_quest"], "31C9557D2F51238F")
         self.assertEqual(result["signal_side"], "both")
         self.assertEqual(
             result["signal_url"],
-            "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/afterlight-signal-0.2.0%2B1.21.1.jar",
+            "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.1/afterlight-signal-0.2.1%2B1.21.1.jar",
         )
         self.assertEqual(
             result["signal_sha512"],
-            "902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f",
+            "5f9a440835b8d922e681e6213c05f4532123b912d2f04972d7a5854c237e129c4f3fa25a72fdd32f6f797b1d23f6f05a46203a89c0c27ad8dab2a81122ab84c4",
         )
 
 
@@ -3165,7 +3165,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "e948bbc39c6fc2178da72165cb008cce17b007f84422ba0e7b99eb9d60afb1ca",
+                "4997a610c1a1b971ae08819f968c1a3e6b60860c13bbed319748e7d500c5ca76",
                 238,
             ),
         )
@@ -4058,7 +4058,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "86e2d18e17df0cc9f64ab8b2c09b8d961d29804682567bc5e055f737c27494dd",
+            "f59a78fb30d9615eb6a51274a592354b0f9f47daa4d0b96ae330cb7a8340f4f1",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

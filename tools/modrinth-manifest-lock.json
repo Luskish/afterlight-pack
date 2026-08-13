@@ -50,15 +50,15 @@
     },
     {
       "downloads": [
-        "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/afterlight-signal-0.2.0%2B1.21.1.jar"
+        "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.1/afterlight-signal-0.2.1%2B1.21.1.jar"
       ],
-      "fileSize": 2116417,
+      "fileSize": 2116477,
       "hashes": {
-        "sha1": "76f03ec79eef2bc8fe6a854997c7019e57dcd1f1",
-        "sha512": "902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f"
+        "sha1": "6cf925748b05e8867ac5b9d78c1c2a8c6c46c7b6",
+        "sha512": "5f9a440835b8d922e681e6213c05f4532123b912d2f04972d7a5854c237e129c4f3fa25a72fdd32f6f797b1d23f6f05a46203a89c0c27ad8dab2a81122ab84c4"
       },
       "metadata_path": "mods/afterlight-signal.pw.toml",
-      "path": "mods/afterlight-signal-0.2.0+1.21.1.jar"
+      "path": "mods/afterlight-signal-0.2.1+1.21.1.jar"
     },
     {
       "downloads": [

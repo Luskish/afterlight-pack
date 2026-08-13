@@ -473,6 +473,64 @@ class ReleasePublicationTests(unittest.TestCase):
             r"\]\s*&&\s*\[\s*!\s*-L\b.*\]\s*\|\|",
         )
 
+    def test_signal_evidence_comes_from_trusted_release_policy(self):
+        alternate_source = "7" * 40
+        alternate_sha256 = "8" * 64
+        alternate_sha512 = "9" * 128
+        alternate_ci = (
+            "https://github.com/Luskish/afterlight-signal/actions/runs/424242"
+        )
+        policy_path = self.root / "tools" / "release-policy.env"
+        policy_path.write_text(
+            policy_path.read_text(encoding="utf-8")
+            + f'RELEASE_SIGNAL_SOURCE_SHA="{alternate_source}"\n'
+            + f'RELEASE_SIGNAL_JAR_SHA256="{alternate_sha256}"\n'
+            + f'RELEASE_SIGNAL_JAR_SHA512="{alternate_sha512}"\n'
+            + f'RELEASE_SIGNAL_EVIDENCE_CI_URL="{alternate_ci}"\n',
+            encoding="utf-8",
+        )
+        automated = (
+            self._valid_automated_evidence()
+            .replace(
+                "a3d95a74a56855a026f9f2786f1e925065a3b151",
+                alternate_source,
+            )
+            .replace(
+                "81387eff5e6f5dad555a936d605c114af8fff1cf69778251cc3a7ec660f15947",
+                alternate_sha256,
+            )
+            .replace(
+                "902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f",
+                alternate_sha512,
+            )
+            .replace(
+                "https://github.com/Luskish/afterlight-signal/actions/runs/31588113497",
+                alternate_ci,
+            )
+        )
+        self._write_release_note(VERSION, automated)
+
+        result = self._run()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_rejects_malformed_signal_release_policy(self):
+        policy_path = self.root / "tools" / "release-policy.env"
+        policy_path.write_text(
+            policy_path.read_text(encoding="utf-8")
+            + 'RELEASE_SIGNAL_SOURCE_SHA="not-a-commit"\n'
+            + 'RELEASE_SIGNAL_JAR_SHA256="not-a-digest"\n'
+            + 'RELEASE_SIGNAL_JAR_SHA512="not-a-digest"\n'
+            + 'RELEASE_SIGNAL_EVIDENCE_CI_URL="https://attacker.invalid/run"\n',
+            encoding="utf-8",
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Signal release policy", result.stderr)
+        self.assertFalse(self._create_calls())
+
     def test_rejects_dirty_policy_before_sourcing_trusted_values(self):
         marker = self.root / "policy-sourced"
         policy_path = self.root / "tools" / "release-policy.env"

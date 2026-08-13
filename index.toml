@@ -6,7 +6,7 @@ hash = "bf5f6f38e05ab96ee07b12659daf9e05d70f88bcfd7d3206ca57df362ca21a9c"
 
 [[files]]
 file = "config/afterlight/pack_version.txt"
-hash = "8e3ccfbe492191dbb919be7b4ef3d93bd88f92b1d99532b25ba19c5ad9f1f722"
+hash = "0c654c00f94741d78169de333d4d9e866be0667b41f9c54cafe3c6b700b15a43"
 
 [[files]]
 file = "config/alexsmobs-common.toml"
@@ -558,7 +558,7 @@ hash = "9d05c0640f055f769c0c1ab640e75f316f768293728cfe4c3e7505d5becae725"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-hash = "01f0164ba24600111ea3cd130dba5cf7740bb49d816de581cae3f3950b0afa7a"
+hash = "d25c3e9879a6ecf58db0955354dcdf768939b4d99397b663059c5317363b53a4"
 
 [[files]]
 file = "kubejs/server_scripts/afterlight/loot_chits.js"
@@ -590,7 +590,7 @@ metafile = true
 
 [[files]]
 file = "mods/afterlight-signal.pw.toml"
-hash = "4479be8d182eaa2f3ea3aec5286dc340080debfdbfffd8cbc0645eacfce872c9"
+hash = "b9e781056af10420c5a8a3d27cbfb5b1a5db1fe806fba55497648893176b10c2"
 metafile = true
 
 [[files]]

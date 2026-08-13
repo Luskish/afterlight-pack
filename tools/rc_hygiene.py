@@ -989,7 +989,7 @@ def verify_signal_runtime_identity(
     descriptor = _read_toml(descriptor_path)
     if descriptor.get("name") != "AFTERLIGHT Signal":
         raise VerificationError("AFTERLIGHT Signal descriptor name changed")
-    if descriptor.get("filename") != "afterlight-signal-0.2.0+1.21.1.jar":
+    if descriptor.get("filename") != "afterlight-signal-0.2.1+1.21.1.jar":
         raise VerificationError("AFTERLIGHT Signal descriptor filename changed")
     if descriptor.get("side") != "both":
         raise VerificationError("AFTERLIGHT Signal descriptor side must be both")
@@ -997,8 +997,8 @@ def verify_signal_runtime_identity(
     if not isinstance(download, dict):
         raise VerificationError("AFTERLIGHT Signal descriptor has no download table")
     signal_url = (
-        "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.0/"
-        "afterlight-signal-0.2.0%2B1.21.1.jar"
+        "https://github.com/Luskish/afterlight-signal/releases/download/v0.2.1/"
+        "afterlight-signal-0.2.1%2B1.21.1.jar"
     )
     if download.get("url") != signal_url:
         raise VerificationError("AFTERLIGHT Signal descriptor URL changed")
@@ -3914,7 +3914,7 @@ SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "86e2d18e17df0cc9f64ab8b2c09b8d961d29804682567bc5e055f737c27494dd"
+    "f59a78fb30d9615eb6a51274a592354b0f9f47daa4d0b96ae330cb7a8340f4f1"
 )
 SEAL_RENDERED_CODE_RELATIVES = frozenset(
     {

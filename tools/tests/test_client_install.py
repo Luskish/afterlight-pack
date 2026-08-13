@@ -207,7 +207,7 @@ class ClientInventoryTests(unittest.TestCase):
         searchables = "Searchables-neoforge-1.21.1-1.0.2.jar"
         ftb_ultimine = "ftb-ultimine-neoforge-2101.1.15.jar"
         lootr = "lootr-neoforge-1.21.1-1.11.38.123.jar"
-        afterlight_signal = "afterlight-signal-0.2.0+1.21.1.jar"
+        afterlight_signal = "afterlight-signal-0.2.1+1.21.1.jar"
         veinminer = "veinminer-neoforge-2.11.2+1.21.1.jar"
         veinminer_hotkey = "veinminer-client-neoforge-2.11.2+1.21.1.jar"
         self.assertIn(smartbrainlib, client_required)

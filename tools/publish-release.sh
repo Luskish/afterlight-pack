@@ -147,6 +147,17 @@ require_release_evidence_line() {
   [ "$count" -eq 1 ] || fail "release evidence is missing, duplicated, or fabricated"
 }
 
+validate_signal_release_policy() {
+  [[ "$RELEASE_SIGNAL_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] ||
+    fail "Signal release policy source SHA is malformed"
+  [[ "$RELEASE_SIGNAL_JAR_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
+    fail "Signal release policy SHA-256 is malformed"
+  [[ "$RELEASE_SIGNAL_JAR_SHA512" =~ ^[0-9a-f]{128}$ ]] ||
+    fail "Signal release policy SHA-512 is malformed"
+  [[ "$RELEASE_SIGNAL_EVIDENCE_CI_URL" =~ ^https://github\.com/Luskish/afterlight-signal/actions/runs/[1-9][0-9]*$ ]] ||
+    fail "Signal release policy CI URL is malformed"
+}
+
 validate_release_evidence() {
   local transcript_sha256 pack_sha256 index_sha256
   local receipt_public_records
@@ -174,10 +185,10 @@ PY
   require_release_evidence_line "- Exact \`main\` CI URL: \`$MAIN_CI_URL\`"
   require_release_evidence_line "- GitHub Pages \`pack.toml\` SHA-256: \`$pack_sha256\`"
   require_release_evidence_line "- GitHub Pages \`index.toml\` SHA-256: \`$index_sha256\`"
-  require_release_evidence_line "- Signal source: \`a3d95a74a56855a026f9f2786f1e925065a3b151\`"
-  require_release_evidence_line "- Signal release JAR SHA-256: \`81387eff5e6f5dad555a936d605c114af8fff1cf69778251cc3a7ec660f15947\`"
-  require_release_evidence_line "- Signal release JAR SHA-512: \`902d3f64ac6f2e3302da26daefa29cfd03e19f39d293daa81da7b04cb3f115d3e0ed933da189f2622bd1284e6a3292fd7a4ddc6f8c115e3e43d2123e56f7d74f\`"
-  require_release_evidence_line "- Signal evidence CI: \`https://github.com/Luskish/afterlight-signal/actions/runs/31588113497\`"
+  require_release_evidence_line "- Signal source: \`$RELEASE_SIGNAL_SOURCE_SHA\`"
+  require_release_evidence_line "- Signal release JAR SHA-256: \`$RELEASE_SIGNAL_JAR_SHA256\`"
+  require_release_evidence_line "- Signal release JAR SHA-512: \`$RELEASE_SIGNAL_JAR_SHA512\`"
+  require_release_evidence_line "- Signal evidence CI: \`$RELEASE_SIGNAL_EVIDENCE_CI_URL\`"
   while IFS=$'\t' read -r public_name public_sha256 public_size; do
     require_release_evidence_line "- \`$public_name\`: SHA-256 \`$public_sha256\`, size \`$public_size\` bytes."
   done <<< "$receipt_public_records"
@@ -293,6 +304,7 @@ git diff --quiet "$SHA" "$HEAD_SHA" -- \
   fail "trusted publication tooling differs from the accepted SHA"
 # shellcheck disable=SC1091
 source tools/release-policy.env
+validate_signal_release_policy
 CURRENT_VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pack.toml", "rb"))["version"])')
 [ "$CURRENT_VERSION" = "$VERSION" ] || fail "pack.toml version does not match requested version"
 ACCEPTED_VERSION=$(git show "$SHA:pack.toml" | python3 -c 'import sys,tomllib; print(tomllib.load(sys.stdin.buffer)["version"])')

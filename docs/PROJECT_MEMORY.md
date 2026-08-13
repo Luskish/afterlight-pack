@@ -196,10 +196,34 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** failure
-- **Status:** verified
+- **Status:** investigating
 - **Subsystem:** FTB Quests, legacy story overlays
-- **Summary:** Legacy overlays and managed quest builds now use one identity-keyed repository lock, candidate-only build orchestration, verified atomic exchange or no-replace promotion, ownership-aware rollback and cleanup, and durable prior managed ownership authenticated from sanitized no-replace Git object reads.
-- **Evidence:** Independent Fix Round 1 review reproduced data loss and stale success with `COMMIT_RACE_CLOBBERED True`, `ROLLBACK_CLOBBERED_THIRD_PARTY True`, `PARTIAL_BUILD_DELETED_VICTIM True`, `SYMLINK_ACCEPTED_AND_REPLACED True`, `HARDLINK_NOOP_VIOLATION True True`, `CLEANUP_FAILURE_REPORTED_SUCCESS True`, and `NON_TARGET_RACE_STALE_AUDIT True`. Fix Round 2 red suites then reproduced post-exchange loss, raced-name deletion, alias lock bypass, unreported cleanup residue, process-only removal authority, hostile Git environment and replace-ref authorization, missing-state first-build failure, hidden created-directory third-party children, and private artifact payload or mode deletion. Same-session green evidence is `Ran 42 tests in 10.824s`, `OK` for the full transaction and whole-build suite, plus `Ran 159 tests in 8.724s`, `OK (skipped=2)` for Story compatibility, QuestLink, legacy overlays, QuestCompiler, and project-memory contracts. Compile, diff check, generated-corpus diff, and U+2014 scans passed. No generated quest corpus changed.
+- **Summary:** Legacy overlays and managed quest builds have candidate-only orchestration, atomic promotion, durable Git-backed ownership, and broad adversarial coverage, but destructive private cleanup still has a final verification-to-delete race.
+- **Evidence:** Independent Fix Round 1 review reproduced data loss and stale success with `COMMIT_RACE_CLOBBERED True`, `ROLLBACK_CLOBBERED_THIRD_PARTY True`, `PARTIAL_BUILD_DELETED_VICTIM True`, `SYMLINK_ACCEPTED_AND_REPLACED True`, `HARDLINK_NOOP_VIOLATION True True`, `CLEANUP_FAILURE_REPORTED_SUCCESS True`, and `NON_TARGET_RACE_STALE_AUDIT True`. Fix Round 2 suites passed 42 transaction tests and 159 relevant tests with 2 authenticated-live skips. Independent Fix Round 2 re-review then reproduced `PRIVATE_THIRD_PARTY_DELETED True` and `DIR_MODE_DRIFT_DELETED True` by racing private artifact unlink and private created-directory removal after their final verification reads.
 - **Files or Commit:** `tools/afterlight_quests/quest_build_transaction.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/builder.py`, `tools/build-quests.py`, `tools/tests/test_quest_build_transaction.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
-- **Impact:** Downstream quest tasks may use the guarded overlay and catalog interfaces. Reported rollback failures retain and identify unresolved recovery objects instead of overwriting third-party state, while committed cleanup warnings remain distinct results that direct and orchestration callers must inspect.
-- **Follow-up:** Task 7 may populate only the declared immutable overlay entries. Task 8 remains responsible for the one generated-corpus build and commit.
+- **Impact:** Downstream overlay use remains blocked because a concurrent private-object replacement or mode change can be deleted while cleanup reports success.
+- **Follow-up:** Add boundary injections immediately before unlink and rmdir, bind deletion to the verified object, and restore `verified` only after a clean independent rereview.
+
+### MEM-2026-08-13-016
+
+- **Date:** 2026-08-13
+- **Category:** vulnerability
+- **Status:** resolved
+- **Subsystem:** FTB Quests, story compatibility allowlists
+- **Summary:** The compatibility comparator had assigned the manual and Certification group ID to the Story constant, so it rejected approved Story prose while allowing unrelated manual prose and granted order changes to the wrong semantic scope.
+- **Evidence:** The focused pre-fix probe reported two Story prose mismatches while accepting manual prose and order changes. The red regression ended with `Ran 2 tests in 0.175s` and `FAILED (failures=2)`. After splitting Story group `4525BB3160467FCB` from manual and Certification group `4A20F33642175B95`, the complete compatibility and memory run ended with `Ran 35 tests in 1.406s` and `OK`.
+- **Files or Commit:** `tools/afterlight_quests/compatibility.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Existing subtitle and description changes are accepted only for actual Story quests, while the group title and approved order changes are accepted only for the manual and Certification group.
+- **Follow-up:** Keep Task 7 prose and Task 4 order overlays in separate explicit manifests and re-run the frozen-corpus comparator after generation.
+
+### MEM-2026-08-13-017
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Production read-only audit tooling
+- **Summary:** Early operator audit probes hit Git repository trust, shell quoting, zsh variable shadowing, and command-policy errors before corrected read-only commands completed the audit.
+- **Evidence:** The failed probes produced a Git safe-directory rejection, two malformed byte-sum commands, command-not-found output after a loop variable replaced shell PATH, and one rejected command that unnecessarily included cleanup. Corrected read-only probes completed without changing production state.
+- **Files or Commit:** `docs/PROJECT_MEMORY.md`
+- **Impact:** No server, world, quest progress, firewall, service, or release state changed, and future audits have searchable warnings against these four operator-tooling mistakes.
+- **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never name a zsh loop variable `path`, and omit cleanup from read-only probes.

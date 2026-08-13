@@ -10,7 +10,8 @@ from typing import Any
 from .builder import _parse_snbt
 
 
-STORY_GROUP_ID = "4A20F33642175B95"
+STORY_GROUP_ID = "4525BB3160467FCB"
+MANUAL_GROUP_ID = "4A20F33642175B95"
 FILTER_ITEM_ID = "ftbfiltersystem:smart_filter"
 FILTER_COMPONENT = "ftbfiltersystem:filter"
 TAG_PATTERN = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
@@ -135,7 +136,7 @@ def _render_value(value: object) -> str:
 
 def _story_localization_change_paths(corpus: Mapping[str, object]) -> set[str]:
     allowed = {
-        f"$.language.en_us.chapter_group.{STORY_GROUP_ID}.title",
+        f"$.language.en_us.chapter_group.{MANUAL_GROUP_ID}.title",
     }
     chapters = corpus.get("chapters")
     if not isinstance(chapters, Mapping):
@@ -637,7 +638,7 @@ def compare_quest_corpus(
                 if (
                     role == "chapter"
                     and key == "order_index"
-                    and expected.get("group") == STORY_GROUP_ID
+                    and expected.get("group") == MANUAL_GROUP_ID
                 ):
                     continue
                 compare_value(

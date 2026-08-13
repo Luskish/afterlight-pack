@@ -42,7 +42,8 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
     )
     QUEST_ROOT = ROOT / "config" / "ftbquests" / "quests"
-    STORY_GROUP_ID = "4A20F33642175B95"
+    STORY_GROUP_ID = "4525BB3160467FCB"
+    MANUAL_GROUP_ID = "4A20F33642175B95"
     IDENTITY_KINDS = (
         "chapter_group",
         "chapter",
@@ -489,15 +490,21 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         baseline = self._baseline()
         current = copy.deepcopy(baseline)
         current["language"]["en_us"][
-            f"chapter_group.{self.STORY_GROUP_ID}.title"
-        ] = "Story Signal"
+            f"chapter_group.{self.MANUAL_GROUP_ID}.title"
+        ] = "Field Manuals & Certifications"
+
+        manual_chapter = next(
+            chapter
+            for chapter in current["chapters"].values()
+            if chapter["group"] == self.MANUAL_GROUP_ID
+        )
+        manual_chapter["order_index"] = "10"
 
         story_chapter_name, story_chapter = next(
             (name, chapter)
             for name, chapter in current["chapters"].items()
             if chapter["group"] == self.STORY_GROUP_ID
         )
-        story_chapter["order_index"] = "10"
         story_quest_id = story_chapter["quests"][0]["id"]
         current["language"]["en_us"][
             f"quest.{story_quest_id}.quest_subtitle"
@@ -515,6 +522,73 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
 
         self.assertEqual(
             compare(baseline, current, commodity_replacements={}),
+            [],
+        )
+
+    def test_story_and_manual_allowlists_do_not_cross_group_boundaries(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._baseline()
+        story_chapter_name, story_chapter = next(
+            (name, chapter)
+            for name, chapter in baseline["chapters"].items()
+            if chapter["group"] == self.STORY_GROUP_ID
+        )
+        manual_chapter_name, manual_chapter = next(
+            (name, chapter)
+            for name, chapter in baseline["chapters"].items()
+            if chapter["group"] == self.MANUAL_GROUP_ID
+        )
+        story_quest_id = story_chapter["quests"][0]["id"]
+        manual_quest_id = manual_chapter["quests"][0]["id"]
+
+        accepted_story_prose = copy.deepcopy(baseline)
+        accepted_story_prose["language"]["en_us"][
+            f"quest.{story_quest_id}.quest_desc"
+        ] = ["Changed Story description"]
+        self.assertEqual(
+            compare(baseline, accepted_story_prose, commodity_replacements={}),
+            [],
+        )
+
+        rejected_changes = (
+            (
+                "manual prose",
+                lambda corpus: corpus["language"]["en_us"].__setitem__(
+                    f"quest.{manual_quest_id}.quest_desc",
+                    ["Changed manual description"],
+                ),
+                f"quest.{manual_quest_id}.quest_desc",
+            ),
+            (
+                "story order",
+                lambda corpus: corpus["chapters"][story_chapter_name].__setitem__(
+                    "order_index", "99"
+                ),
+                f"$.chapters.{story_chapter_name}.order_index",
+            ),
+            (
+                "story group title",
+                lambda corpus: corpus["language"]["en_us"].__setitem__(
+                    f"chapter_group.{self.STORY_GROUP_ID}.title",
+                    "Changed Story group title",
+                ),
+                f"chapter_group.{self.STORY_GROUP_ID}.title",
+            ),
+        )
+        for label, mutate, expected_path in rejected_changes:
+            with self.subTest(label=label):
+                current = copy.deepcopy(baseline)
+                mutate(current)
+                errors = compare(baseline, current, commodity_replacements={})
+                self.assertTrue(
+                    any(expected_path in error for error in errors),
+                    errors,
+                )
+
+        accepted_manual_order = copy.deepcopy(baseline)
+        accepted_manual_order["chapters"][manual_chapter_name]["order_index"] = "99"
+        self.assertEqual(
+            compare(baseline, accepted_manual_order, commodity_replacements={}),
             [],
         )
 

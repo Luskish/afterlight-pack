@@ -6441,7 +6441,7 @@ class QuestCompilerTests(unittest.TestCase):
             )
             self.assertEqual(list(quest_root.rglob("*.tmp")), [])
 
-    def test_writer_rejects_stale_managed_removal_requests(self) -> None:
+    def test_writer_removes_only_outputs_from_trusted_prior_catalog(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             quest_root = self.make_quest_root(Path(temp_dir))
             unmanaged = quest_root / "chapters" / "2AAAAAAAAAAAAAAA.snbt"
@@ -6457,12 +6457,229 @@ class QuestCompilerTests(unittest.TestCase):
                 (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
             )
 
+            self.quests.write_catalog([], quest_root)
+
+            self.assertFalse(managed_chapter.exists())
+            self.assertNotIn(
+                managed_key,
+                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+            )
+            self.assertEqual(unmanaged.read_text(encoding="utf-8"), "unmanaged\n")
+
+    def test_writer_rejects_drift_or_poison_before_trusted_removal(self) -> None:
+        for case in ("chapter drift", "localization drift", "state poison"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
+                quest_root = self.make_quest_root(Path(temp_dir))
+                catalog = self.make_catalog()
+                chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+                language_path = quest_root / "lang" / "en_us.snbt"
+                state_path = quest_root / ".afterlight-managed.json"
+                self.quests.write_catalog(catalog, quest_root)
+
+                if case == "chapter drift":
+                    chapter_path.write_text(
+                        chapter_path.read_text(encoding="utf-8") + "# drift\n",
+                        encoding="utf-8",
+                    )
+                    expected = "trusted managed chapter drift"
+                elif case == "localization drift":
+                    language_path.write_text(
+                        language_path.read_text(encoding="utf-8").replace(
+                            catalog[0].title,
+                            "Third Party Title",
+                            1,
+                        ),
+                        encoding="utf-8",
+                    )
+                    expected = "trusted managed localization drift"
+                else:
+                    state = json.loads(state_path.read_text(encoding="utf-8"))
+                    state["chapters"].append("2AAAAAAAAAAAAAAA")
+                    state_path.write_text(
+                        json.dumps(state, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    expected = "unknown prior managed chapter"
+
+                before = {
+                    path.relative_to(quest_root).as_posix(): path.read_bytes()
+                    for path in sorted(quest_root.rglob("*"))
+                    if path.is_file()
+                }
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.quests.write_catalog([], quest_root)
+                after = {
+                    path.relative_to(quest_root).as_posix(): path.read_bytes()
+                    for path in sorted(quest_root.rglob("*"))
+                    if path.is_file()
+                }
+                self.assertEqual(after, before)
+
+    def test_writer_uses_git_owned_bytes_after_process_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            catalog = self.make_catalog()
+            chapter_path = quest_root / "chapters" / f"{catalog[0].id}.snbt"
+            self.quests.write_catalog(catalog, quest_root)
+            subprocess.run(["git", "init", "-q"], cwd=base, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=base, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "fixture"],
+                cwd=base,
+                check=True,
+            )
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.fspath(TOOLS)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from pathlib import Path; "
+                        "from afterlight_quests import write_catalog; "
+                        "write_catalog([], Path(__import__('sys').argv[1]))"
+                    ),
+                    os.fspath(quest_root),
+                ],
+                cwd=base,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(chapter_path.exists())
+            self.assertNotIn(
+                f"chapter.{catalog[0].id}.title",
+                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+            )
+
+    def test_writer_allows_first_catalog_when_git_head_has_no_managed_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            subprocess.run(["git", "init", "-q"], cwd=base, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=base, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "fixture without state"],
+                cwd=base,
+                check=True,
+            )
+            catalog = self.make_catalog()
+
+            result = self.quests.write_catalog(catalog, quest_root)
+
+            self.assertTrue(result.committed)
+            self.assertTrue(
+                (quest_root / "chapters" / f"{catalog[0].id}.snbt").is_file()
+            )
+
+    def test_writer_rejects_malformed_tracked_managed_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            state_path = quest_root / ".afterlight-managed.json"
+            state_path.write_text("{not valid JSON}\n", encoding="utf-8")
+            subprocess.run(["git", "init", "-q"], cwd=base, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=base, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "malformed managed state"],
+                cwd=base,
+                check=True,
+            )
             before = {
                 path.relative_to(quest_root).as_posix(): path.read_bytes()
                 for path in sorted(quest_root.rglob("*"))
                 if path.is_file()
             }
-            with self.assertRaisesRegex(ValueError, "unknown prior managed chapter"):
+
+            with self.assertRaisesRegex(ValueError, "invalid managed quest state Git"):
+                self.quests.write_catalog(self.make_catalog(), quest_root)
+
+            after = {
+                path.relative_to(quest_root).as_posix(): path.read_bytes()
+                for path in sorted(quest_root.rglob("*"))
+                if path.is_file()
+            }
+            self.assertEqual(after, before)
+
+    def test_writer_rejects_unreadable_tracked_managed_state_blob(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            quest_root = self.make_quest_root(base)
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            subprocess.run(["git", "init", "-q"], cwd=base, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=base,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=base, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "managed state fixture"],
+                cwd=base,
+                check=True,
+            )
+            state_relative = (
+                quest_root / ".afterlight-managed.json"
+            ).relative_to(base).as_posix()
+            object_id = subprocess.run(
+                ["git", "rev-parse", f"HEAD:{state_relative}"],
+                cwd=base,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            object_path = base / ".git" / "objects" / object_id[:2] / object_id[2:]
+            self.assertTrue(object_path.is_file())
+            object_path.unlink()
+            before = {
+                path.relative_to(quest_root).as_posix(): path.read_bytes()
+                for path in sorted(quest_root.rglob("*"))
+                if path.is_file()
+            }
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "trusted managed Git object is not a blob",
+            ):
                 self.quests.write_catalog([], quest_root)
 
             after = {
@@ -6471,12 +6688,270 @@ class QuestCompilerTests(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(after, before)
-            self.assertTrue(managed_chapter.exists())
-            self.assertIn(
-                managed_key,
-                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+
+    def test_hostile_git_environment_cannot_authorize_managed_removal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            repository = base / "repository"
+            quest_root = self.make_quest_root(repository)
+            subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=repository,
+                check=True,
             )
-            self.assertEqual(unmanaged.read_text(encoding="utf-8"), "unmanaged\n")
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "trusted fixture without state"],
+                cwd=repository,
+                check=True,
+            )
+
+            victim_id = "2AAAAAAAAAAAAAAA"
+            victim = quest_root / "chapters" / f"{victim_id}.snbt"
+            victim_payload = (
+                "{\n"
+                f'\tfilename: "{victim_id}"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                f'\tid: "{victim_id}"\n'
+                "\torder_index: 98\n"
+                "\tquest_links: [ ]\n"
+                "\tquests: [ ]\n"
+                "}\n"
+            ).encode("utf-8")
+            victim.write_bytes(victim_payload)
+            victim_key = f"chapter.{victim_id}.title"
+            language_path = quest_root / "lang" / "en_us.snbt"
+            language_path.write_text(
+                language_path.read_text(encoding="utf-8").rstrip()[:-1]
+                + f'\n\t{victim_key}: "Poisoned Ownership"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+            poisoned_state = json.dumps(
+                {
+                    "version": 1,
+                    "chapters": [victim_id],
+                    "localization_keys": [victim_key],
+                },
+                indent=2,
+                sort_keys=True,
+            ) + "\n"
+            (quest_root / ".afterlight-managed.json").write_text(
+                poisoned_state,
+                encoding="utf-8",
+            )
+
+            hostile = base / "hostile"
+            shutil.copytree(repository, hostile, ignore=shutil.ignore_patterns(".git"))
+            subprocess.run(["git", "init", "-q"], cwd=hostile, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=hostile,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=hostile,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=hostile, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "hostile ownership"],
+                cwd=hostile,
+                check=True,
+            )
+
+            environment = dict(os.environ)
+            environment.update(
+                {
+                    "GIT_DIR": os.fspath(hostile / ".git"),
+                    "GIT_WORK_TREE": os.fspath(repository),
+                    "GIT_OBJECT_DIRECTORY": os.fspath(hostile / ".git" / "objects"),
+                    "GIT_ALTERNATE_OBJECT_DIRECTORIES": os.fspath(
+                        hostile / ".git" / "objects"
+                    ),
+                    "PYTHONPATH": os.fspath(TOOLS),
+                }
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from pathlib import Path; "
+                        "from afterlight_quests import write_catalog; "
+                        "write_catalog([], Path(__import__('sys').argv[1]))"
+                    ),
+                    os.fspath(quest_root),
+                ],
+                cwd=repository,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_bytes(), victim_payload)
+            self.assertEqual(
+                (quest_root / ".afterlight-managed.json").read_text(encoding="utf-8"),
+                poisoned_state,
+            )
+
+    def test_git_replace_ref_cannot_authorize_managed_removal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = Path(temp_dir)
+            quest_root = self.make_quest_root(repository)
+            subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "trusted fixture without state"],
+                cwd=repository,
+                check=True,
+            )
+            trusted_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            victim_id = "2AAAAAAAAAAAAAAA"
+            victim = quest_root / "chapters" / f"{victim_id}.snbt"
+            victim_payload = (
+                "{\n"
+                f'\tfilename: "{victim_id}"\n'
+                '\tgroup: "4525BB3160467FCB"\n'
+                f'\tid: "{victim_id}"\n'
+                "\torder_index: 98\n"
+                "\tquest_links: [ ]\n"
+                "\tquests: [ ]\n"
+                "}\n"
+            ).encode("utf-8")
+            victim.write_bytes(victim_payload)
+            victim_key = f"chapter.{victim_id}.title"
+            language_path = quest_root / "lang" / "en_us.snbt"
+            language_path.write_text(
+                language_path.read_text(encoding="utf-8").rstrip()[:-1]
+                + f'\n\t{victim_key}: "Replace Ownership"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+            poisoned_state = json.dumps(
+                {
+                    "version": 1,
+                    "chapters": [victim_id],
+                    "localization_keys": [victim_key],
+                },
+                indent=2,
+                sort_keys=True,
+            ) + "\n"
+            (quest_root / ".afterlight-managed.json").write_text(
+                poisoned_state,
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "replacement ownership"],
+                cwd=repository,
+                check=True,
+            )
+            replacement_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            subprocess.run(
+                ["git", "reset", "--hard", "-q", trusted_head],
+                cwd=repository,
+                check=True,
+            )
+            victim.parent.mkdir(parents=True, exist_ok=True)
+            victim.write_bytes(victim_payload)
+            language_path.write_text(
+                language_path.read_text(encoding="utf-8").rstrip()[:-1]
+                + f'\n\t{victim_key}: "Replace Ownership"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+            (quest_root / ".afterlight-managed.json").write_text(
+                poisoned_state,
+                encoding="utf-8",
+            )
+            subprocess.run(
+                ["git", "replace", trusted_head, replacement_head],
+                cwd=repository,
+                check=True,
+            )
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.fspath(TOOLS)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from pathlib import Path; "
+                        "from afterlight_quests import write_catalog; "
+                        "write_catalog([], Path(__import__('sys').argv[1]))"
+                    ),
+                    os.fspath(quest_root),
+                ],
+                cwd=repository,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_bytes(), victim_payload)
+            self.assertEqual(
+                (quest_root / ".afterlight-managed.json").read_text(encoding="utf-8"),
+                poisoned_state,
+            )
+
+    def test_same_inode_alias_reuses_trusted_prior_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            repository = base / "repository"
+            quest_root = self.make_quest_root(repository)
+            alias = repository.with_name(repository.name.upper())
+            try:
+                alias_status = alias.stat()
+            except FileNotFoundError:
+                self.skipTest("temporary filesystem is case-sensitive")
+            repository_status = repository.stat()
+            if (repository_status.st_dev, repository_status.st_ino) != (
+                alias_status.st_dev,
+                alias_status.st_ino,
+            ):
+                self.skipTest("case alias does not resolve to the same inode")
+            catalog = self.make_catalog()
+            self.quests.write_catalog(catalog, quest_root)
+            alias_quest_root = alias / quest_root.relative_to(repository)
+
+            self.quests.write_catalog([], alias_quest_root)
+
+            self.assertFalse(
+                (quest_root / "chapters" / f"{catalog[0].id}.snbt").exists()
+            )
 
     def test_validator_accepts_valid_generated_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

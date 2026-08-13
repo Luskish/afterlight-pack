@@ -8,13 +8,16 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import tempfile
+import threading
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from .quest_build_transaction import (
+    PromotionResult,
     QuestBuildTransaction,
     candidate_workspace,
     is_quest_transaction_artifact,
@@ -46,6 +49,17 @@ DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
 PROGRESSION_MODES = frozenset({"linear", "flexible"})
+
+
+@dataclass(frozen=True)
+class _ManagedOwnership:
+    state_text: str
+    chapter_payloads: tuple[tuple[str, str], ...]
+    localization_blocks: tuple[tuple[str, tuple[str, ...]], ...]
+
+
+_TRUSTED_MANAGED_OWNERSHIP: dict[tuple[int, int, int | None], _ManagedOwnership] = {}
+_TRUSTED_MANAGED_OWNERSHIP_LOCK = threading.Lock()
 
 VANILLA_ITEM_ALLOWLIST = frozenset(
     {
@@ -799,30 +813,41 @@ def _atomic_write(path: Path, content: str) -> None:
         temp_path.unlink(missing_ok=True)
 
 
+def _parse_managed_state(
+    text: str,
+    source: Path | str,
+) -> tuple[set[str], set[str]]:
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid managed quest state {source}: {error}") from error
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError(f"invalid managed quest state {source}: expected version 1 object")
+    chapters = data.get("chapters")
+    localization_keys = data.get("localization_keys")
+    if not isinstance(chapters, list) or not all(isinstance(value, str) for value in chapters):
+        raise ValueError(f"invalid managed chapter list in {source}")
+    if not isinstance(localization_keys, list) or not all(
+        isinstance(value, str) for value in localization_keys
+    ):
+        raise ValueError(f"invalid managed localization list in {source}")
+    if len(chapters) != len(set(chapters)):
+        raise ValueError(f"duplicate managed chapter in {source}")
+    if len(localization_keys) != len(set(localization_keys)):
+        raise ValueError(f"duplicate managed localization key in {source}")
+    for chapter_id in chapters:
+        _require_signed_safe_ftb_identity(chapter_id, f"managed chapter in {source}")
+    return set(chapters), set(localization_keys)
+
+
 def _load_managed_state(path: Path) -> tuple[set[str], set[str]]:
     if not path.exists():
         return set(), set()
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
         raise ValueError(f"invalid managed quest state {path}: {error}") from error
-    if not isinstance(data, dict) or data.get("version") != 1:
-        raise ValueError(f"invalid managed quest state {path}: expected version 1 object")
-    chapters = data.get("chapters")
-    localization_keys = data.get("localization_keys")
-    if not isinstance(chapters, list) or not all(isinstance(value, str) for value in chapters):
-        raise ValueError(f"invalid managed chapter list in {path}")
-    if not isinstance(localization_keys, list) or not all(
-        isinstance(value, str) for value in localization_keys
-    ):
-        raise ValueError(f"invalid managed localization list in {path}")
-    if len(chapters) != len(set(chapters)):
-        raise ValueError(f"duplicate managed chapter in {path}")
-    if len(localization_keys) != len(set(localization_keys)):
-        raise ValueError(f"duplicate managed localization key in {path}")
-    for chapter_id in chapters:
-        _require_signed_safe_ftb_identity(chapter_id, f"managed chapter in {path}")
-    return set(chapters), set(localization_keys)
+    return _parse_managed_state(text, path)
 
 
 def _managed_state(chapters: Iterable[str], localization_keys: Iterable[str]) -> str:
@@ -837,6 +862,241 @@ def _managed_state(chapters: Iterable[str], localization_keys: Iterable[str]) ->
     ) + "\n"
 
 
+def _managed_ownership_key(repository_root: Path) -> tuple[int, int, int | None]:
+    absolute = Path(os.path.abspath(repository_root))
+    status = absolute.lstat()
+    if stat.S_ISLNK(status.st_mode) or not stat.S_ISDIR(status.st_mode):
+        raise ValueError(f"unsafe managed ownership root: {absolute}")
+    return (
+        status.st_dev,
+        status.st_ino,
+        (
+            int(getattr(status, "st_birthtime") * 1_000_000_000)
+            if hasattr(status, "st_birthtime")
+            else None
+        ),
+    )
+
+
+def _git_command(
+    repository_root: Path,
+    arguments: Sequence[str],
+) -> subprocess.CompletedProcess[bytes]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "LC_ALL": "C",
+        }
+    )
+    return subprocess.run(
+        [
+            "git",
+            "--no-replace-objects",
+            "--literal-pathspecs",
+            "-C",
+            os.fspath(repository_root),
+            *arguments,
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=environment,
+    )
+
+
+def _git_single_line(payload: bytes, label: str) -> str:
+    if not payload.endswith(b"\n") or b"\n" in payload[:-1] or b"\0" in payload:
+        raise ValueError(f"trusted managed Git {label} is malformed")
+    try:
+        return payload[:-1].decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"trusted managed Git {label} is not UTF-8") from error
+
+
+def _git_object_id(payload: bytes, label: str) -> str:
+    value = _git_single_line(payload, label)
+    if re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) is None:
+        raise ValueError(f"trusted managed Git {label} is not an object ID: {value!r}")
+    return value
+
+
+def _git_blob(
+    repository_root: Path,
+    commit: str,
+    relative_path: str,
+) -> tuple[str, bytes] | None:
+    if re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", commit) is None:
+        raise ValueError(f"trusted managed Git commit is malformed: {commit!r}")
+    if (
+        not relative_path
+        or relative_path.startswith("/")
+        or "\0" in relative_path
+        or any(part in {"", ".", ".."} for part in relative_path.split("/"))
+    ):
+        raise ValueError(f"trusted managed Git path is unsafe: {relative_path!r}")
+    tree_result = _git_command(
+        repository_root,
+        ["ls-tree", "-z", "--full-tree", commit, "--", relative_path],
+    )
+    if tree_result.returncode != 0:
+        raise ValueError(
+            "trusted managed Git tree cannot be read: "
+            f"{commit}:{relative_path}: "
+            + tree_result.stderr.decode("utf-8", errors="replace").strip()
+        )
+    if not tree_result.stdout:
+        return None
+    records = tree_result.stdout.split(b"\0")
+    if records[-1] != b"" or len(records) != 2:
+        raise ValueError(
+            f"trusted managed Git tree entry is malformed: {commit}:{relative_path}"
+        )
+    try:
+        metadata, raw_path = records[0].split(b"\t", 1)
+        mode, object_type, raw_object_id = metadata.split(b" ")
+    except ValueError as error:
+        raise ValueError(
+            f"trusted managed Git tree entry is malformed: {commit}:{relative_path}"
+        ) from error
+    if raw_path != os.fsencode(relative_path):
+        raise ValueError(
+            f"trusted managed Git tree returned a different path: {raw_path!r}"
+        )
+    if mode not in {b"100644", b"100755"} or object_type != b"blob":
+        raise ValueError(
+            f"trusted managed Git path is not a regular blob: {relative_path}"
+        )
+    object_id = _git_object_id(raw_object_id + b"\n", "blob object ID")
+    type_result = _git_command(repository_root, ["cat-file", "-t", object_id])
+    if type_result.returncode != 0 or type_result.stdout != b"blob\n":
+        raise ValueError(
+            f"trusted managed Git object is not a blob: {object_id} {relative_path}"
+        )
+    payload_result = _git_command(repository_root, ["cat-file", "blob", object_id])
+    if payload_result.returncode != 0:
+        raise ValueError(
+            f"trusted managed Git blob cannot be read: {object_id} {relative_path}"
+        )
+    size_result = _git_command(repository_root, ["cat-file", "-s", object_id])
+    if size_result.returncode != 0 or int(size_result.stdout.strip()) != len(
+        payload_result.stdout
+    ):
+        raise ValueError(
+            f"trusted managed Git blob size mismatch: {object_id} {relative_path}"
+        )
+    return object_id, payload_result.stdout
+
+
+def _git_managed_ownership(repository_root: Path) -> _ManagedOwnership | None:
+    top_level_result = _git_command(repository_root, ["rev-parse", "--show-toplevel"])
+    if top_level_result.returncode != 0:
+        return None
+    top_level = Path(
+        os.path.abspath(_git_single_line(top_level_result.stdout, "top-level path"))
+    )
+    repository_status = Path(os.path.abspath(repository_root)).lstat()
+    top_level_status = top_level.lstat()
+    if (repository_status.st_dev, repository_status.st_ino) != (
+        top_level_status.st_dev,
+        top_level_status.st_ino,
+    ):
+        raise ValueError(
+            f"managed ownership Git root does not match repository root: {top_level}"
+        )
+    head_result = _git_command(repository_root, ["rev-parse", "--verify", "HEAD^{commit}"])
+    if head_result.returncode != 0:
+        return None
+    commit = _git_object_id(head_result.stdout, "HEAD commit ID")
+    quest_prefix = "config/ftbquests/quests"
+    state_blob = _git_blob(
+        repository_root,
+        commit,
+        f"{quest_prefix}/{MANAGED_STATE_NAME}",
+    )
+    if state_blob is None:
+        return None
+    _, state_payload = state_blob
+    try:
+        state_text = state_payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("trusted managed Git state is not UTF-8") from error
+    chapters, localization_keys = _parse_managed_state(
+        state_text,
+        f"Git {commit}:{quest_prefix}/{MANAGED_STATE_NAME}",
+    )
+    chapter_payloads: list[tuple[str, str]] = []
+    for chapter_id in sorted(chapters):
+        relative_path = f"{quest_prefix}/chapters/{chapter_id}.snbt"
+        chapter_blob = _git_blob(repository_root, commit, relative_path)
+        if chapter_blob is None:
+            raise ValueError(
+                f"trusted managed Git object is missing: {commit}:{relative_path}"
+            )
+        _, payload = chapter_blob
+        try:
+            chapter_payloads.append((chapter_id, payload.decode("utf-8")))
+        except UnicodeDecodeError as error:
+            raise ValueError(
+                f"trusted managed Git chapter is not UTF-8: {relative_path}"
+            ) from error
+    language_relative = f"{quest_prefix}/lang/en_us.snbt"
+    language_blob = _git_blob(repository_root, commit, language_relative)
+    if language_blob is None:
+        raise ValueError(
+            f"trusted managed Git object is missing: {commit}:{language_relative}"
+        )
+    _, language_payload = language_blob
+    try:
+        language_text = language_payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("trusted managed Git language is not UTF-8") from error
+    _, language_blocks = _split_language_entries(language_text)
+    localization_blocks: list[tuple[str, tuple[str, ...]]] = []
+    for key in sorted(localization_keys):
+        if key not in language_blocks:
+            raise ValueError(
+                f"trusted managed Git language key is missing: {language_relative}: {key}"
+            )
+        localization_blocks.append((key, tuple(language_blocks[key])))
+    return _ManagedOwnership(
+        state_text=state_text,
+        chapter_payloads=tuple(chapter_payloads),
+        localization_blocks=tuple(localization_blocks),
+    )
+
+
+def _trusted_managed_ownership(
+    repository_root: Path,
+    quest_root: Path,
+) -> _ManagedOwnership | None:
+    state_path = quest_root / MANAGED_STATE_NAME
+    current_state = state_path.read_text(encoding="utf-8") if state_path.exists() else None
+    git_ownership = _git_managed_ownership(repository_root)
+    if git_ownership is not None and git_ownership.state_text == current_state:
+        return git_ownership
+    key = _managed_ownership_key(repository_root)
+    with _TRUSTED_MANAGED_OWNERSHIP_LOCK:
+        process_ownership = _TRUSTED_MANAGED_OWNERSHIP.get(key)
+    if process_ownership is not None and process_ownership.state_text == current_state:
+        return process_ownership
+    return None
+
+
+def _remember_managed_ownership(
+    repository_root: Path,
+    ownership: _ManagedOwnership,
+) -> None:
+    key = _managed_ownership_key(repository_root)
+    with _TRUSTED_MANAGED_OWNERSHIP_LOCK:
+        _TRUSTED_MANAGED_OWNERSHIP[key] = ownership
+
+
 def normalize_quest_corpus_ids(quest_root: Path) -> int:
     return _normalize_quest_corpus_ids_transaction(quest_root)
 
@@ -847,7 +1107,8 @@ def write_catalog(
     *,
     legacy_quest_ids: Iterable[str] = (),
     transaction: QuestBuildTransaction | None = None,
-) -> list[Path]:
+) -> PromotionResult:
+    """Write a catalog and return committed cleanup warnings with list compatibility."""
     repository_root = quest_root.parents[2]
     frozen_catalog = copy.deepcopy(tuple(catalog))
     frozen_legacy_ids = tuple(legacy_quest_ids)
@@ -861,11 +1122,16 @@ def write_catalog(
             )
     transaction.require_root(repository_root)
     if transaction.is_workspace(repository_root):
-        return _write_catalog_workspace(
+        written, _ = _write_catalog_workspace(
             frozen_catalog,
             quest_root,
             legacy_quest_ids=frozen_legacy_ids,
+            trusted_prior=_trusted_managed_ownership(
+                transaction.repository_root,
+                quest_root,
+            ),
         )
+        return PromotionResult(written)
     return _write_catalog_transactional(
         frozen_catalog,
         quest_root,
@@ -880,8 +1146,9 @@ def _write_catalog_transactional(
     *,
     legacy_quest_ids: Iterable[str],
     transaction: QuestBuildTransaction,
-) -> list[Path]:
+) -> PromotionResult:
     repository_root = quest_root.parents[2]
+    trusted_prior = _trusted_managed_ownership(repository_root, quest_root)
     frozen = transaction.freeze(quest_build_dependency_roots(repository_root))
     output_roots = (
         quest_root,
@@ -895,20 +1162,26 @@ def _write_catalog_transactional(
         candidate_quest_root = (
             candidate_root / quest_root.relative_to(repository_root)
         )
-        _write_catalog_workspace(
+        _, ownership = _write_catalog_workspace(
             catalog,
             candidate_quest_root,
             legacy_quest_ids=legacy_quest_ids,
+            trusted_prior=trusted_prior,
         )
         writes, deletions = frozen.candidate_changes(
             candidate_root,
             output_roots,
         )
-    transaction.promote_bytes(writes, frozen, deletions=deletions)
-    return [
-        quest_root / "chapters" / f"{chapter.id}.snbt"
-        for chapter in catalog
-    ]
+    promotion = transaction.promote_bytes(writes, frozen, deletions=deletions)
+    _remember_managed_ownership(repository_root, ownership)
+    return PromotionResult(
+        (
+            quest_root / "chapters" / f"{chapter.id}.snbt"
+            for chapter in catalog
+        ),
+        cleanup_warnings=promotion.cleanup_warnings,
+        recovery_paths=promotion.recovery_paths,
+    )
 
 
 def _write_catalog_workspace(
@@ -916,7 +1189,8 @@ def _write_catalog_workspace(
     quest_root: Path,
     *,
     legacy_quest_ids: Iterable[str] = (),
-) -> list[Path]:
+    trusted_prior: _ManagedOwnership | None = None,
+) -> tuple[list[Path], _ManagedOwnership]:
     resolved_quest_links = _validate_catalog(
         catalog,
         legacy_quest_ids=legacy_quest_ids,
@@ -932,20 +1206,48 @@ def _write_catalog_workspace(
     old_chapters, old_localization_keys = _load_managed_state(state_path)
     current_chapters = {chapter.id for chapter in catalog}
     localization_entries = _localization_entries(catalog)
-    unknown_chapters = sorted(old_chapters - current_chapters)
-    if unknown_chapters:
-        raise ValueError(
-            "unknown prior managed chapter removal request: "
-            + ", ".join(unknown_chapters)
+    removed_chapters = old_chapters - current_chapters
+    removed_localization = old_localization_keys - set(localization_entries)
+    if removed_chapters or removed_localization:
+        current_state_text = state_path.read_text(encoding="utf-8")
+        if trusted_prior is None:
+            if removed_chapters:
+                raise ValueError(
+                    "unknown prior managed chapter: "
+                    f"{sorted(removed_chapters)[0]}"
+                )
+            raise ValueError(
+                "unknown prior managed localization: "
+                f"{sorted(removed_localization)[0]}"
+            )
+        if trusted_prior.state_text != current_state_text:
+            raise ValueError(f"trusted managed state mismatch: {state_path}")
+        trusted_chapters = dict(trusted_prior.chapter_payloads)
+        trusted_localization = dict(trusted_prior.localization_blocks)
+        if old_chapters != set(trusted_chapters) or old_localization_keys != set(
+            trusted_localization
+        ):
+            raise ValueError(f"trusted managed state mismatch: {state_path}")
+        for chapter_id in sorted(removed_chapters):
+            chapter_path = quest_root / "chapters" / f"{chapter_id}.snbt"
+            try:
+                current_payload = chapter_path.read_text(encoding="utf-8")
+            except OSError as error:
+                raise ValueError(
+                    f"trusted managed chapter drift: {chapter_path}: {error}"
+                ) from error
+            if current_payload != trusted_chapters[chapter_id]:
+                raise ValueError(f"trusted managed chapter drift: {chapter_path}")
+        language_path = quest_root / "lang" / "en_us.snbt"
+        current_language_for_trust = language_path.read_text(encoding="utf-8")
+        _, current_blocks_for_trust = _split_language_entries(
+            current_language_for_trust
         )
-    unknown_localization = sorted(
-        old_localization_keys - set(localization_entries)
-    )
-    if unknown_localization:
-        raise ValueError(
-            "unknown prior managed localization removal request: "
-            + ", ".join(unknown_localization)
-        )
+        for key in sorted(removed_localization):
+            if tuple(current_blocks_for_trust.get(key, ())) != trusted_localization[key]:
+                raise ValueError(
+                    f"trusted managed localization drift: {language_path}: {key}"
+                )
     normalize_quest_corpus_ids(quest_root)
     old_chapters, old_localization_keys = _load_managed_state(state_path)
     lang_path = quest_root / "lang" / "en_us.snbt"
@@ -958,6 +1260,8 @@ def _write_catalog_workspace(
     }
 
     written: list[Path] = []
+    for chapter_id in sorted(removed_chapters):
+        (quest_root / "chapters" / f"{chapter_id}.snbt").unlink()
     for chapter in catalog:
         chapter_path = quest_root / "chapters" / f"{chapter.id}.snbt"
         _atomic_write(chapter_path, rendered_chapters[chapter.id])
@@ -973,12 +1277,13 @@ def _write_catalog_workspace(
         _merge_language(
             current_language,
             managed_entries,
-            (),
+            removed_localization,
         ),
     )
+    state_text = _managed_state(current_chapters, current_localization_keys)
     _atomic_write(
         state_path,
-        _managed_state(current_chapters, current_localization_keys),
+        state_text,
     )
     _atomic_write(
         quest_root.parents[2]
@@ -988,7 +1293,20 @@ def _write_catalog_workspace(
         / "generated_quest_item_audit.js",
         _render_quest_item_audit(quest_root),
     )
-    return written
+    ownership = _ManagedOwnership(
+        state_text=state_text,
+        chapter_payloads=tuple(sorted(rendered_chapters.items())),
+        localization_blocks=tuple(
+            sorted(
+                (
+                    key,
+                    tuple(_render_language_entry(key, localization_entries[key])),
+                )
+                for key in current_localization_keys
+            )
+        ),
+    )
+    return written, ownership
 
 
 def _language_keys(path: Path) -> set[str]:

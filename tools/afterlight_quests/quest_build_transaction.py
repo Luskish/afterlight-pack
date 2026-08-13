@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ctypes
 import fcntl
-import hashlib
 import os
 import shutil
 import stat
@@ -21,7 +20,7 @@ RENAME_SWAP = 0x00000002
 RENAME_EXCL = 0x00000004
 
 
-_ACTIVE_ROOTS: set[Path] = set()
+_ACTIVE_ROOTS: set[tuple[int, int]] = set()
 _ACTIVE_ROOTS_LOCK = threading.Lock()
 
 
@@ -77,15 +76,18 @@ class _NodeState:
     payload: bytes | None
 
 
-@dataclass(frozen=True)
+@dataclass
 class _Artifact:
     path: Path
     parent_fd: int
     name: str
-    state: _NodeState
+    created_state: _NodeState
+    state: _NodeState | None = None
+    present: bool = True
+    retain: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass
 class _CommitRecord:
     target: Path
     parent_fd: int
@@ -93,7 +95,32 @@ class _CommitRecord:
     original: _NodeState | None
     installed: _NodeState | None
     backup: _Artifact | None
+    stage: _Artifact | None
     operation: str
+    phase: str = "pending"
+
+
+@dataclass
+class _CreatedDirectory:
+    path: Path
+    parent_fd: int
+    name: str
+    state: _NodeState | None = None
+    phase: str = "public"
+
+
+class PromotionResult(list[Path]):
+    def __init__(
+        self,
+        paths: Iterable[Path],
+        *,
+        cleanup_warnings: Iterable[BaseException] = (),
+        recovery_paths: Iterable[Path] = (),
+    ) -> None:
+        super().__init__(paths)
+        self.committed = True
+        self.cleanup_warnings = tuple(cleanup_warnings)
+        self.recovery_paths = tuple(dict.fromkeys(recovery_paths))
 
 
 class QuestBuildRollbackError(RuntimeError):
@@ -187,6 +214,30 @@ def _states_match(expected: _NodeState, actual: _NodeState) -> bool:
     return expected == actual
 
 
+def _same_identity(expected: _NodeState, actual: _NodeState) -> bool:
+    return (
+        expected.kind,
+        expected.device,
+        expected.inode,
+        expected.mode,
+        expected.uid,
+        expected.gid,
+        expected.links,
+        expected.flags,
+        expected.birth_ns,
+    ) == (
+        actual.kind,
+        actual.device,
+        actual.inode,
+        actual.mode,
+        actual.uid,
+        actual.gid,
+        actual.links,
+        actual.flags,
+        actual.birth_ns,
+    )
+
+
 def _fsync_directory_fd(descriptor: int) -> None:
     os.fsync(descriptor)
 
@@ -261,6 +312,7 @@ def _open_parent(
     target: Path,
     *,
     create: bool,
+    created_registry: list[_CreatedDirectory] | None = None,
 ) -> tuple[int, tuple[tuple[Path, _NodeState], ...]]:
     relative = _relative_to_root(root, target)
     descriptor = os.dup(root_fd)
@@ -275,9 +327,21 @@ def _open_parent(
                 if not create:
                     raise
                 os.mkdir(component, 0o755, dir_fd=descriptor)
-                _fsync_directory_fd(descriptor)
+                created_record = _CreatedDirectory(
+                    path=current,
+                    parent_fd=(
+                        os.dup(descriptor)
+                        if created_registry is not None
+                        else -1
+                    ),
+                    name=component,
+                )
+                if created_registry is not None:
+                    created_registry.append(created_record)
                 status = os.stat(component, dir_fd=descriptor, follow_symlinks=False)
-                created.append((current, _node_state(status, None)))
+                created_record.state = _node_state(status, None)
+                created.append((current, created_record.state))
+                _fsync_directory_fd(descriptor)
             if stat.S_ISLNK(status.st_mode):
                 raise ValueError(f"symlinked parent component is not allowed: {current}")
             if not stat.S_ISDIR(status.st_mode):
@@ -325,6 +389,35 @@ def _read_regular_at(parent_fd: int, name: str, path: Path) -> _NodeState | None
         return after_state
     finally:
         os.close(descriptor)
+
+
+def _read_any_at(parent_fd: int, name: str, path: Path) -> _NodeState | None:
+    try:
+        status = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    if stat.S_ISREG(status.st_mode):
+        descriptor = os.open(name, _file_flags(), dir_fd=parent_fd)
+        try:
+            before = os.fstat(descriptor)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(descriptor, 1024 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            after = os.fstat(descriptor)
+            before_state = _node_state(before, b"".join(chunks))
+            after_state = _node_state(after, before_state.payload)
+            if not _states_match(before_state, after_state):
+                raise ValueError(f"quest transaction object changed while reading: {path}")
+            return after_state
+        finally:
+            os.close(descriptor)
+    if stat.S_ISLNK(status.st_mode):
+        target = os.readlink(name, dir_fd=parent_fd)
+        return _node_state(status, os.fsencode(target))
+    return _node_state(status, None)
 
 
 def _read_path(path: Path) -> _NodeState:
@@ -779,6 +872,7 @@ def _create_artifact(
     uid: int,
     gid: int,
     kind: str,
+    registry: list[_Artifact],
 ) -> _Artifact:
     name = f".{target_name}.afterlight-{kind}-{uuid.uuid4().hex}"
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -786,29 +880,37 @@ def _create_artifact(
         flags |= os.O_NOFOLLOW
     descriptor = os.open(name, flags, 0o600, dir_fd=parent_fd)
     path = parent_path / name
+    created_state = _node_state(os.fstat(descriptor), b"")
+    artifact = _Artifact(
+        path=path,
+        parent_fd=parent_fd,
+        name=name,
+        created_state=created_state,
+    )
+    registry.append(artifact)
     try:
         view = memoryview(payload)
         written = 0
         while written < len(view):
             written += os.write(descriptor, view[written:])
+            artifact.state = _node_state(
+                os.fstat(descriptor),
+                bytes(view[:written]),
+            )
         current = os.fstat(descriptor)
         if current.st_uid != uid or current.st_gid != gid:
             os.fchown(descriptor, uid, gid)
+            artifact.state = _node_state(os.fstat(descriptor), payload)
         os.fchmod(descriptor, mode)
+        artifact.state = _node_state(os.fstat(descriptor), payload)
         os.fsync(descriptor)
         status = os.fstat(descriptor)
-        _require_same_device(os.fstat(parent_fd), status, path)
         state = _node_state(status, payload)
+        artifact.state = state
+        _require_same_device(os.fstat(parent_fd), status, path)
         if state.links != 1 or state.kind != "file":
             raise ValueError(f"invalid quest transaction stage: {path}")
-        return _Artifact(path=path, parent_fd=parent_fd, name=name, state=state)
-    except BaseException:
-        try:
-            os.unlink(name, dir_fd=parent_fd)
-            _fsync_directory_fd(parent_fd)
-        except OSError:
-            pass
-        raise
+        return artifact
     finally:
         os.close(descriptor)
 
@@ -818,34 +920,66 @@ def _unlink_artifact(parent_fd: int, name: str) -> None:
     _fsync_directory_fd(parent_fd)
 
 
+def _artifact_current_state(artifact: _Artifact) -> _NodeState | None:
+    return _read_any_at(artifact.parent_fd, artifact.name, artifact.path)
+
+
+def _cleanup_private_artifact(artifact: _Artifact) -> None:
+    if not artifact.present:
+        return
+    current = _artifact_current_state(artifact)
+    if current is None:
+        artifact.present = False
+        return
+    expected = artifact.state or artifact.created_state
+    if not _states_match(expected, current):
+        artifact.retain = True
+        raise ValueError(f"quest transaction lost private artifact ownership: {artifact.path}")
+    try:
+        _unlink_artifact(artifact.parent_fd, artifact.name)
+    except BaseException:
+        if _artifact_current_state(artifact) is None:
+            artifact.present = False
+        raise
+    artifact.present = False
+
+
 class QuestBuildTransaction:
     def __init__(self, repository_root: Path) -> None:
-        self.repository_root = _absolute_existing_directory(repository_root)
+        self.repository_root = Path(os.path.abspath(repository_root))
         self._root_fd: int | None = None
         self._lock_fd: int | None = None
+        self._root_identity: tuple[int, int] | None = None
+        self._registered_identity: tuple[int, int] | None = None
+        self._lock_acquired = False
         self._active = False
-        self._workspace_roots: set[Path] = set()
+        self._workspace_roots: dict[tuple[int, int], Path] = {}
 
     def __enter__(self) -> QuestBuildTransaction:
-        with _ACTIVE_ROOTS_LOCK:
-            if self.repository_root in _ACTIVE_ROOTS:
-                raise RuntimeError(
-                    f"reentrant quest build transaction is not allowed: {self.repository_root}"
-                )
-            _ACTIVE_ROOTS.add(self.repository_root)
-        lock_directory = Path(tempfile.gettempdir()) / "afterlight-quest-build-locks"
-        lock_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        lock_directory_status = lock_directory.lstat()
-        if (
-            stat.S_ISLNK(lock_directory_status.st_mode)
-            or not stat.S_ISDIR(lock_directory_status.st_mode)
-            or lock_directory_status.st_uid != os.geteuid()
-        ):
-            self._release()
-            raise ValueError(f"unsafe quest build lock directory: {lock_directory}")
-        key = hashlib.sha256(os.fsencode(self.repository_root)).hexdigest()
-        lock_path = lock_directory / f"{key}.lock"
         try:
+            self.repository_root = _absolute_existing_directory(self.repository_root)
+            self._root_fd = _open_root(self.repository_root)
+            root_status = os.fstat(self._root_fd)
+            self._root_identity = (root_status.st_dev, root_status.st_ino)
+            with _ACTIVE_ROOTS_LOCK:
+                if self._root_identity in _ACTIVE_ROOTS:
+                    raise RuntimeError(
+                        "reentrant quest build transaction is not allowed for "
+                        f"repository identity {self._root_identity}: {self.repository_root}"
+                    )
+                _ACTIVE_ROOTS.add(self._root_identity)
+                self._registered_identity = self._root_identity
+            lock_directory = Path(tempfile.gettempdir()) / "afterlight-quest-build-locks"
+            lock_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            lock_directory_status = lock_directory.lstat()
+            if (
+                stat.S_ISLNK(lock_directory_status.st_mode)
+                or not stat.S_ISDIR(lock_directory_status.st_mode)
+                or lock_directory_status.st_uid != os.geteuid()
+            ):
+                raise ValueError(f"unsafe quest build lock directory: {lock_directory}")
+            key = f"{self._root_identity[0]:x}-{self._root_identity[1]:x}"
+            lock_path = lock_directory / f"{key}.lock"
             lock_flags = os.O_RDWR | os.O_CREAT
             if hasattr(os, "O_NOFOLLOW"):
                 lock_flags |= os.O_NOFOLLOW
@@ -854,30 +988,69 @@ class QuestBuildTransaction:
             if not stat.S_ISREG(lock_status.st_mode) or lock_status.st_nlink != 1:
                 raise ValueError(f"unsafe quest build lock file: {lock_path}")
             fcntl.flock(self._lock_fd, fcntl.LOCK_EX)
-            self._root_fd = _open_root(self.repository_root)
+            self._lock_acquired = True
+            current_root = os.fstat(self._root_fd)
+            if (current_root.st_dev, current_root.st_ino) != self._root_identity:
+                raise ValueError(f"repository root changed during lock entry: {self.repository_root}")
             self._active = True
             return self
-        except BaseException:
-            self._release()
+        except BaseException as error:
+            try:
+                self._release()
+            except BaseException as cleanup_error:
+                raise QuestBuildRollbackError(
+                    error,
+                    unresolved_paths=(),
+                    recovery_paths=(),
+                    cleanup_errors=(cleanup_error,),
+                ) from error
             raise
 
     def __exit__(self, error_type, error, traceback) -> None:
-        self._release()
+        try:
+            self._release()
+        except BaseException as cleanup_error:
+            if error is None:
+                raise
+            raise QuestBuildRollbackError(
+                error,
+                unresolved_paths=(),
+                recovery_paths=(),
+                cleanup_errors=(cleanup_error,),
+            ) from error
 
     def _release(self) -> None:
         self._active = False
         self._workspace_roots.clear()
+        errors: list[BaseException] = []
         if self._root_fd is not None:
-            os.close(self._root_fd)
+            try:
+                os.close(self._root_fd)
+            except BaseException as error:
+                errors.append(error)
             self._root_fd = None
         if self._lock_fd is not None:
             try:
-                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
-            finally:
+                if self._lock_acquired:
+                    fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
+            except BaseException as error:
+                errors.append(error)
+            try:
                 os.close(self._lock_fd)
-                self._lock_fd = None
+            except BaseException as error:
+                errors.append(error)
+            self._lock_fd = None
+        self._lock_acquired = False
         with _ACTIVE_ROOTS_LOCK:
-            _ACTIVE_ROOTS.discard(self.repository_root)
+            if self._registered_identity is not None:
+                _ACTIVE_ROOTS.discard(self._registered_identity)
+        self._registered_identity = None
+        self._root_identity = None
+        if errors:
+            raise RuntimeError(
+                "quest build lock cleanup failure: "
+                + "; ".join(str(error) for error in errors)
+            )
 
     def _require_active(self) -> None:
         if not self._active or self._root_fd is None:
@@ -886,7 +1059,13 @@ class QuestBuildTransaction:
     def require_root(self, repository_root: Path) -> None:
         self._require_active()
         candidate = _absolute_existing_directory(repository_root)
-        if candidate != self.repository_root and candidate not in self._workspace_roots:
+        descriptor = _open_root(candidate)
+        try:
+            status = os.fstat(descriptor)
+            identity = (status.st_dev, status.st_ino)
+        finally:
+            os.close(descriptor)
+        if identity != self._root_identity and identity not in self._workspace_roots:
             raise ValueError(
                 "mismatched repository root for quest build transaction: "
                 f"expected {self.repository_root}, found {candidate}"
@@ -895,21 +1074,40 @@ class QuestBuildTransaction:
     def authorize_workspace(self, repository_root: Path) -> None:
         self._require_active()
         candidate = _absolute_existing_directory(repository_root)
-        if candidate == self.repository_root:
+        descriptor = _open_root(candidate)
+        try:
+            status = os.fstat(descriptor)
+            identity = (status.st_dev, status.st_ino)
+        finally:
+            os.close(descriptor)
+        if identity == self._root_identity:
             raise ValueError("repository root cannot be registered as a candidate workspace")
-        if candidate in self._workspace_roots:
+        if identity in self._workspace_roots:
             raise RuntimeError(f"reentrant quest candidate workspace: {candidate}")
-        self._workspace_roots.add(candidate)
+        self._workspace_roots[identity] = candidate
 
     def revoke_workspace(self, repository_root: Path) -> None:
-        candidate = Path(os.path.abspath(repository_root))
-        if candidate not in self._workspace_roots:
+        candidate = _absolute_existing_directory(repository_root)
+        descriptor = _open_root(candidate)
+        try:
+            status = os.fstat(descriptor)
+            identity = (status.st_dev, status.st_ino)
+        finally:
+            os.close(descriptor)
+        if identity not in self._workspace_roots:
             raise ValueError(f"unknown quest candidate workspace: {candidate}")
-        self._workspace_roots.remove(candidate)
+        del self._workspace_roots[identity]
 
     def is_workspace(self, repository_root: Path) -> bool:
         self._require_active()
-        return Path(os.path.abspath(repository_root)) in self._workspace_roots
+        candidate = _absolute_existing_directory(repository_root)
+        descriptor = _open_root(candidate)
+        try:
+            status = os.fstat(descriptor)
+            identity = (status.st_dev, status.st_ino)
+        finally:
+            os.close(descriptor)
+        return identity in self._workspace_roots
 
     def freeze(self, roots: Iterable[Path]) -> FrozenRepository:
         self._require_active()
@@ -949,7 +1147,7 @@ class QuestBuildTransaction:
         *,
         deletions: Iterable[Path] = (),
         post_validate: Callable[[], None] | None = None,
-    ) -> list[Path]:
+    ) -> PromotionResult:
         self._require_active()
         if frozen.repository_root != self.repository_root:
             raise ValueError("mismatched frozen repository root")
@@ -963,20 +1161,18 @@ class QuestBuildTransaction:
             if post_validate is not None:
                 post_validate()
                 frozen.assert_matches()
-            return []
+            return PromotionResult(())
 
         root_fd = self._root_fd
         assert root_fd is not None
         originals: dict[Path, _NodeState | None] = {}
         parent_handles: dict[Path, int] = {}
-        created_directories: dict[Path, _NodeState] = {}
+        created_records: list[_CreatedDirectory] = []
         stages: dict[Path, _Artifact] = {}
         new_recoveries: dict[Path, _Artifact] = {}
-        extra_artifacts: list[_Artifact] = []
+        artifacts: list[_Artifact] = []
         commits: list[_CommitRecord] = []
         changed: list[Path] = []
-        cleanup_errors: list[BaseException] = []
-        promotion_complete = False
 
         try:
             for raw_path, raw_plan in sorted(writes.items(), key=lambda item: str(item[0])):
@@ -985,14 +1181,14 @@ class QuestBuildTransaction:
                 target_name = relative.name
                 parent_path = path.parent
                 if parent_path not in parent_handles:
-                    parent_fd, created = _open_parent(
+                    parent_fd, _ = _open_parent(
                         self.repository_root,
                         root_fd,
                         path,
                         create=True,
+                        created_registry=created_records,
                     )
                     parent_handles[parent_path] = parent_fd
-                    created_directories.update(created)
                 parent_fd = parent_handles[parent_path]
                 original = _read_regular_at(parent_fd, target_name, path)
                 originals[path] = original
@@ -1026,6 +1222,7 @@ class QuestBuildTransaction:
                     plan.uid,
                     plan.gid,
                     "stage",
+                    artifacts,
                 )
                 stages[path] = stage
                 if original is None:
@@ -1038,6 +1235,7 @@ class QuestBuildTransaction:
                         plan.uid,
                         plan.gid,
                         "recovery",
+                        artifacts,
                     )
                 changed.append(path)
 
@@ -1045,36 +1243,26 @@ class QuestBuildTransaction:
                 relative = _relative_to_root(self.repository_root, path)
                 parent_path = path.parent
                 if parent_path not in parent_handles:
-                    parent_fd, created = _open_parent(
+                    parent_fd, _ = _open_parent(
                         self.repository_root,
                         root_fd,
                         path,
                         create=False,
                     )
                     parent_handles[parent_path] = parent_fd
-                    created_directories.update(created)
                 parent_fd = parent_handles[parent_path]
                 original = _read_regular_at(parent_fd, relative.name, path)
                 if original is None:
                     raise ValueError(f"quest transaction deletion target is missing: {path}")
                 originals[path] = original
-                stage = _create_artifact(
-                    parent_fd,
-                    parent_path,
-                    relative.name,
-                    b"",
-                    original.mode,
-                    original.uid,
-                    original.gid,
-                    "delete",
-                )
-                stages[path] = stage
                 changed.append(path)
 
-            ignored = {
-                *(artifact.path for artifact in stages.values()),
-                *(artifact.path for artifact in new_recoveries.values()),
+            created_directories = {
+                record.path: record.state
+                for record in created_records
+                if record.state is not None
             }
+            ignored = {artifact.path for artifact in artifacts if artifact.present}
             frozen.assert_matches(
                 added_directories=created_directories,
                 ignored=ignored,
@@ -1082,67 +1270,68 @@ class QuestBuildTransaction:
 
             for path in changed:
                 original = originals[path]
-                stage = stages[path]
                 target_name = path.name
                 if path in deletion_paths:
                     assert original is not None
-                    _atomic_exchange(stage.parent_fd, stage.name, target_name)
-                    _fsync_directory_fd(stage.parent_fd)
-                    swapped_out = _read_regular_at(
-                        stage.parent_fd,
-                        stage.name,
-                        stage.path,
+                    parent_fd = parent_handles[path.parent]
+                    backup_name = (
+                        f".{target_name}.afterlight-delete-{uuid.uuid4().hex}"
                     )
-                    if swapped_out is None or not _states_match(original, swapped_out):
-                        mismatch_error = ValueError(
+                    backup = _Artifact(
+                        path=path.parent / backup_name,
+                        parent_fd=parent_fd,
+                        name=backup_name,
+                        created_state=original,
+                        state=original,
+                        present=False,
+                    )
+                    artifacts.append(backup)
+                    record = _CommitRecord(
+                        target=path,
+                        parent_fd=parent_fd,
+                        target_name=target_name,
+                        original=original,
+                        installed=None,
+                        backup=backup,
+                        stage=None,
+                        operation="delete",
+                    )
+                    commits.append(record)
+                    _atomic_no_replace(parent_fd, target_name, backup_name)
+                    record.phase = "promoted"
+                    backup.present = True
+                    _fsync_directory_fd(parent_fd)
+                    moved = _read_any_at(parent_fd, backup_name, backup.path)
+                    public = _read_any_at(parent_fd, target_name, path)
+                    if moved is None or not _states_match(original, moved) or public is not None:
+                        if moved is not None:
+                            backup.state = moved
+                        mismatch = ValueError(
                             f"quest transaction target changed after preflight: {path}"
                         )
-                        try:
-                            _atomic_exchange(stage.parent_fd, stage.name, target_name)
-                            _fsync_directory_fd(stage.parent_fd)
-                        except BaseException as rollback_error:
-                            raise QuestBuildRollbackError(
-                                mismatch_error,
-                                unresolved_paths=(path,),
-                                recovery_paths=(stage.path,),
-                                rollback_errors=(rollback_error,),
-                            ) from mismatch_error
-                        raise mismatch_error
-                    installed = _read_regular_at(
-                        stage.parent_fd,
-                        target_name,
-                        path,
-                    )
-                    if installed is None or not _states_match(stage.state, installed):
-                        raise QuestBuildRollbackError(
-                            ValueError(
-                                f"quest transaction deletion marker changed: {path}"
-                            ),
-                            unresolved_paths=(path,),
-                            recovery_paths=(stage.path,),
-                        )
-                    commits.append(
-                        _CommitRecord(
-                            target=path,
-                            parent_fd=stage.parent_fd,
-                            target_name=target_name,
-                            original=original,
-                            installed=installed,
-                            backup=_Artifact(
-                                path=stage.path,
-                                parent_fd=stage.parent_fd,
-                                name=stage.name,
-                                state=swapped_out,
-                            ),
-                            operation="delete-staged",
-                        )
-                    )
+                        self._restore_moved_name(record, backup, moved, mismatch)
+                        raise mismatch
                     continue
+                stage = stages[path]
+                assert stage.state is not None
                 if original is None:
+                    record = _CommitRecord(
+                        target=path,
+                        parent_fd=stage.parent_fd,
+                        target_name=target_name,
+                        original=None,
+                        installed=stage.state,
+                        backup=new_recoveries[path],
+                        stage=stage,
+                        operation="create",
+                    )
+                    commits.append(record)
                     _atomic_no_replace(stage.parent_fd, stage.name, target_name)
+                    record.phase = "promoted"
+                    stage.present = False
                     _fsync_directory_fd(stage.parent_fd)
-                    installed = _read_regular_at(stage.parent_fd, target_name, path)
-                    if installed is None or not _states_match(stage.state, installed):
+                    installed = _read_any_at(stage.parent_fd, target_name, path)
+                    if installed is None or not _states_match(record.installed, installed):
                         raise QuestBuildRollbackError(
                             ValueError(
                                 f"quest transaction installed file changed: {path}"
@@ -1150,140 +1339,45 @@ class QuestBuildTransaction:
                             unresolved_paths=(path,),
                             recovery_paths=(new_recoveries[path].path,),
                         )
-                    commits.append(
-                        _CommitRecord(
-                            target=path,
-                            parent_fd=stage.parent_fd,
-                            target_name=target_name,
-                            original=None,
-                            installed=installed,
-                            backup=new_recoveries[path],
-                            operation="create",
-                        )
-                    )
                     continue
 
+                record = _CommitRecord(
+                    target=path,
+                    parent_fd=stage.parent_fd,
+                    target_name=target_name,
+                    original=original,
+                    installed=stage.state,
+                    backup=stage,
+                    stage=stage,
+                    operation="replace",
+                )
+                commits.append(record)
                 _atomic_exchange(stage.parent_fd, stage.name, target_name)
+                record.phase = "promoted"
+                stage.state = original
                 _fsync_directory_fd(stage.parent_fd)
-                swapped_out = _read_regular_at(stage.parent_fd, stage.name, stage.path)
-                if swapped_out is None or not _states_match(original, swapped_out):
+                swapped_out = _read_any_at(stage.parent_fd, stage.name, stage.path)
+                installed = _read_any_at(stage.parent_fd, target_name, path)
+                if (
+                    swapped_out is None
+                    or not _states_match(original, swapped_out)
+                    or installed is None
+                    or not _states_match(record.installed, installed)
+                ):
                     mismatch_error = ValueError(
                         f"quest transaction target changed after preflight: {path}"
                     )
-                    try:
-                        _atomic_exchange(stage.parent_fd, stage.name, target_name)
-                        _fsync_directory_fd(stage.parent_fd)
-                    except BaseException as rollback_error:
-                        raise QuestBuildRollbackError(
-                            mismatch_error,
-                            unresolved_paths=(path,),
-                            recovery_paths=(stage.path,),
-                            rollback_errors=(rollback_error,),
-                        ) from mismatch_error
+                    if swapped_out is not None:
+                        stage.state = swapped_out
+                    self._restore_exchange(record, swapped_out, mismatch_error)
                     raise mismatch_error
-                installed = _read_regular_at(stage.parent_fd, target_name, path)
-                if installed is None or not _states_match(stage.state, installed):
-                    raise QuestBuildRollbackError(
-                        ValueError(f"quest transaction installed file changed: {path}"),
-                        unresolved_paths=(path,),
-                        recovery_paths=(stage.path,),
-                    )
-                backup = _Artifact(
-                    path=stage.path,
-                    parent_fd=stage.parent_fd,
-                    name=stage.name,
-                    state=swapped_out,
-                )
-                commits.append(
-                    _CommitRecord(
-                        target=path,
-                        parent_fd=stage.parent_fd,
-                        target_name=target_name,
-                        original=original,
-                        installed=installed,
-                        backup=backup,
-                        operation="replace",
-                    )
-                )
-
-            for index, record in enumerate(tuple(commits)):
-                if record.operation != "delete-staged":
-                    continue
-                removal = _create_artifact(
-                    record.parent_fd,
-                    record.target.parent,
-                    record.target_name,
-                    b"",
-                    0o600,
-                    os.geteuid(),
-                    os.getegid(),
-                    "remove",
-                )
-                extra_artifacts.append(removal)
-                exchanged = False
-                try:
-                    _atomic_exchange(
-                        record.parent_fd,
-                        removal.name,
-                        record.target_name,
-                    )
-                    exchanged = True
-                    _fsync_directory_fd(record.parent_fd)
-                    swapped_marker = _read_regular_at(
-                        record.parent_fd,
-                        removal.name,
-                        removal.path,
-                    )
-                    if (
-                        swapped_marker is None
-                        or record.installed is None
-                        or not _states_match(record.installed, swapped_marker)
-                    ):
-                        raise ValueError(
-                            f"quest transaction lost deletion ownership: {record.target}"
-                        )
-                    _unlink_artifact(record.parent_fd, record.target_name)
-                    commits[index] = _CommitRecord(
-                        target=record.target,
-                        parent_fd=record.parent_fd,
-                        target_name=record.target_name,
-                        original=record.original,
-                        installed=None,
-                        backup=record.backup,
-                        operation="delete",
-                    )
-                    exchanged = False
-                    _unlink_artifact(record.parent_fd, removal.name)
-                except BaseException as deletion_error:
-                    if exchanged:
-                        try:
-                            _atomic_exchange(
-                                record.parent_fd,
-                                removal.name,
-                                record.target_name,
-                            )
-                            _fsync_directory_fd(record.parent_fd)
-                            exchanged = False
-                        except BaseException as exchange_back_error:
-                            recovery_paths = [removal.path]
-                            if record.backup is not None:
-                                recovery_paths.append(record.backup.path)
-                            raise QuestBuildRollbackError(
-                                deletion_error,
-                                unresolved_paths=(record.target,),
-                                recovery_paths=recovery_paths,
-                                rollback_errors=(exchange_back_error,),
-                            ) from deletion_error
-                    raise
 
             overrides = {
                 record.target: record.installed
                 for record in commits
             }
             recovery_paths = {
-                record.backup.path
-                for record in commits
-                if record.backup is not None
+                artifact.path for artifact in artifacts if artifact.present
             }
             frozen.assert_matches(
                 overrides=overrides,
@@ -1298,40 +1392,40 @@ class QuestBuildTransaction:
                     ignored=recovery_paths,
                 )
 
-            promotion_complete = True
             committed_cleanup_errors: list[BaseException] = []
             retained_recovery: list[Path] = []
-            for record in commits:
-                if record.backup is not None:
-                    try:
-                        _unlink_artifact(record.backup.parent_fd, record.backup.name)
-                    except BaseException as cleanup_error:
-                        committed_cleanup_errors.append(cleanup_error)
-                        if record.backup.path.exists():
-                            retained_recovery.append(record.backup.path)
-            if committed_cleanup_errors:
-                raise QuestBuildRollbackError(
-                    RuntimeError("quest transaction cleanup failure"),
-                    unresolved_paths=(),
-                    recovery_paths=retained_recovery,
-                    cleanup_errors=committed_cleanup_errors,
-                )
-            return changed
+            for artifact in artifacts:
+                try:
+                    _cleanup_private_artifact(artifact)
+                except BaseException as cleanup_error:
+                    committed_cleanup_errors.append(cleanup_error)
+                    if _artifact_current_state(artifact) is not None:
+                        artifact.retain = True
+                        retained_recovery.append(artifact.path)
+            return PromotionResult(
+                changed,
+                cleanup_warnings=committed_cleanup_errors,
+                recovery_paths=retained_recovery,
+            )
         except BaseException as error:
-            if promotion_complete:
-                raise
             if isinstance(error, QuestBuildRollbackError):
                 aggregate_primary = error.primary_error
                 unresolved = list(error.unresolved_paths)
                 recovery = list(error.recovery_paths)
                 rollback_errors = list(error.rollback_errors)
-                cleanup_errors.extend(error.cleanup_errors)
+                cleanup_errors = list(error.cleanup_errors)
             else:
                 aggregate_primary = error
                 unresolved = []
                 recovery = []
                 rollback_errors = []
-            owned_unresolved, owned_recovery, owned_rollback_errors = (
+                cleanup_errors = []
+            (
+                owned_unresolved,
+                owned_recovery,
+                owned_rollback_errors,
+                owned_cleanup_errors,
+            ) = (
                 self._rollback_committed(
                     commits,
                     skip_targets=frozenset(unresolved),
@@ -1340,48 +1434,33 @@ class QuestBuildTransaction:
             unresolved.extend(owned_unresolved)
             recovery.extend(owned_recovery)
             rollback_errors.extend(owned_rollback_errors)
+            cleanup_errors.extend(owned_cleanup_errors)
             protected_recovery = set(recovery)
-            for path, artifact in stages.items():
-                if any(record.target == path for record in commits):
-                    continue
-                if artifact.path in protected_recovery:
-                    continue
-                try:
-                    if artifact.path.exists():
-                        _unlink_artifact(artifact.parent_fd, artifact.name)
-                except BaseException as cleanup_error:
-                    cleanup_errors.append(cleanup_error)
-                    recovery.append(artifact.path)
-            for artifact in extra_artifacts:
-                if artifact.path in protected_recovery:
+            for artifact in artifacts:
+                if artifact.retain or artifact.path in protected_recovery:
+                    if _artifact_current_state(artifact) is not None:
+                        recovery.append(artifact.path)
                     continue
                 try:
-                    if artifact.path.exists():
-                        _unlink_artifact(artifact.parent_fd, artifact.name)
+                    _cleanup_private_artifact(artifact)
                 except BaseException as cleanup_error:
                     cleanup_errors.append(cleanup_error)
-                    recovery.append(artifact.path)
-            for path, artifact in new_recoveries.items():
-                if any(record.target == path for record in commits):
-                    continue
-                if artifact.path in protected_recovery:
-                    continue
-                try:
-                    if artifact.path.exists():
-                        _unlink_artifact(artifact.parent_fd, artifact.name)
-                except BaseException as cleanup_error:
-                    cleanup_errors.append(cleanup_error)
-                    recovery.append(artifact.path)
+                    if _artifact_current_state(artifact) is not None:
+                        artifact.retain = True
+                        recovery.append(artifact.path)
             if unresolved:
                 recovery.extend(
-                    path
-                    for path in created_directories
-                    if path.exists()
+                    record.path
+                    for record in created_records
+                    if record.phase != "removed"
                 )
             else:
-                cleanup_errors.extend(
-                    self._cleanup_created_directories(created_directories)
+                directory_errors, directory_recovery, directory_unresolved = (
+                    self._cleanup_created_directories(created_records)
                 )
+                cleanup_errors.extend(directory_errors)
+                recovery.extend(directory_recovery)
+                unresolved.extend(directory_unresolved)
             if (
                 isinstance(error, QuestBuildRollbackError)
                 or unresolved
@@ -1399,180 +1478,342 @@ class QuestBuildTransaction:
         finally:
             for descriptor in parent_handles.values():
                 os.close(descriptor)
+            for record in created_records:
+                os.close(record.parent_fd)
 
     def _rollback_committed(
         self,
         commits: Sequence[_CommitRecord],
         *,
         skip_targets: frozenset[Path] = frozenset(),
-    ) -> tuple[list[Path], list[Path], list[BaseException]]:
+    ) -> tuple[
+        list[Path],
+        list[Path],
+        list[BaseException],
+        list[BaseException],
+    ]:
         unresolved: list[Path] = []
         recovery: list[Path] = []
         rollback_errors: list[BaseException] = []
+        cleanup_errors: list[BaseException] = []
         for record in reversed(commits):
-            if record.target in skip_targets:
+            if record.target in skip_targets or record.phase in {"pending", "rolled-back"}:
+                continue
+            if record.phase == "unresolved":
+                unresolved.append(record.target)
+                if record.backup is not None and _artifact_current_state(record.backup) is not None:
+                    recovery.append(record.backup.path)
                 continue
             try:
                 self._rollback_record(record)
             except BaseException as error:
+                if record.phase == "rolled-back":
+                    cleanup_errors.append(error)
+                    continue
                 unresolved.append(record.target)
                 rollback_errors.append(error)
-                if record.backup is not None and record.backup.path.exists():
+                if record.backup is not None and _artifact_current_state(record.backup) is not None:
+                    record.backup.retain = True
                     recovery.append(record.backup.path)
-        return unresolved, recovery, rollback_errors
+                if record.stage is not None and _artifact_current_state(record.stage) is not None:
+                    record.stage.retain = True
+                    recovery.append(record.stage.path)
+        return unresolved, recovery, rollback_errors, cleanup_errors
 
     def _rollback_record(self, record: _CommitRecord) -> None:
         if record.operation == "delete":
             assert record.backup is not None
             assert record.original is not None
-            _atomic_no_replace(
-                record.parent_fd,
-                record.backup.name,
-                record.target_name,
-            )
-            _fsync_directory_fd(record.parent_fd)
-            restored = _read_regular_at(
-                record.parent_fd,
-                record.target_name,
-                record.target,
-            )
-            if restored is None or not _states_match(record.original, restored):
-                raise ValueError(
+            self._restore_moved_name(
+                record,
+                record.backup,
+                record.original,
+                ValueError(
                     f"quest transaction deletion rollback verification failed: {record.target}"
-                )
-            return
-
-        if record.operation == "delete-staged":
-            assert record.backup is not None
-            assert record.original is not None
-            _atomic_exchange(
-                record.parent_fd,
-                record.backup.name,
-                record.target_name,
+                ),
             )
-            _fsync_directory_fd(record.parent_fd)
-            swapped_marker = _read_regular_at(
-                record.parent_fd,
-                record.backup.name,
-                record.backup.path,
-            )
-            restored = _read_regular_at(
-                record.parent_fd,
-                record.target_name,
-                record.target,
-            )
-            if (
-                swapped_marker is None
-                or record.installed is None
-                or not _states_match(record.installed, swapped_marker)
-                or restored is None
-                or not _states_match(record.original, restored)
-            ):
-                _atomic_exchange(
-                    record.parent_fd,
-                    record.backup.name,
-                    record.target_name,
-                )
-                _fsync_directory_fd(record.parent_fd)
-                raise ValueError(
-                    f"quest transaction lost deletion rollback ownership: {record.target}"
-                )
-            _unlink_artifact(record.parent_fd, record.backup.name)
             return
 
         if record.operation == "replace":
             assert record.backup is not None
             assert record.original is not None
-            _atomic_exchange(
-                record.parent_fd,
-                record.backup.name,
-                record.target_name,
+            self._restore_exchange(
+                record,
+                record.original,
+                ValueError(f"quest transaction lost rollback ownership: {record.target}"),
             )
-            _fsync_directory_fd(record.parent_fd)
-            swapped_installed = _read_regular_at(
-                record.parent_fd,
-                record.backup.name,
-                record.backup.path,
+            return
+
+        assert record.stage is not None
+        assert record.installed is not None
+        stage = record.stage
+        try:
+            _atomic_no_replace(record.parent_fd, record.target_name, stage.name)
+            record.phase = "rollback-moved"
+            stage.present = True
+            stage.state = record.installed
+            sync_error: BaseException | None = None
+            try:
+                _fsync_directory_fd(record.parent_fd)
+            except BaseException as error:
+                sync_error = error
+            moved = _read_any_at(record.parent_fd, stage.name, stage.path)
+            if moved is not None and _states_match(record.installed, moved):
+                record.phase = "rolled-back"
+                if sync_error is not None:
+                    raise sync_error
+                return
+            if moved is not None:
+                stage.state = moved
+            ownership_error = ValueError(
+                f"quest transaction lost rollback ownership: {record.target}"
             )
-            restored = _read_regular_at(
+            self._restore_moved_name(record, stage, moved, ownership_error)
+            record.phase = "unresolved"
+            if record.backup is not None:
+                record.backup.retain = True
+            raise QuestBuildRollbackError(
+                ownership_error,
+                unresolved_paths=(record.target,),
+                recovery_paths=(record.backup.path,) if record.backup is not None else (),
+            ) from ownership_error
+        except FileNotFoundError as error:
+            record.phase = "unresolved"
+            if record.backup is not None:
+                record.backup.retain = True
+            raise QuestBuildRollbackError(
+                error,
+                unresolved_paths=(record.target,),
+                recovery_paths=(record.backup.path,) if record.backup is not None else (),
+            ) from error
+
+    def _restore_exchange(
+        self,
+        record: _CommitRecord,
+        desired_public: _NodeState | None,
+        primary_error: BaseException,
+    ) -> None:
+        assert record.backup is not None
+        assert record.installed is not None
+        backup = record.backup
+        try:
+            _atomic_exchange(record.parent_fd, backup.name, record.target_name)
+            record.phase = "reverse-swapped"
+            backup.state = record.installed
+            sync_error: BaseException | None = None
+            try:
+                _fsync_directory_fd(record.parent_fd)
+            except BaseException as error:
+                sync_error = error
+            public = _read_any_at(record.parent_fd, record.target_name, record.target)
+            private = _read_any_at(record.parent_fd, backup.name, backup.path)
+            if (
+                desired_public is not None
+                and public is not None
+                and _states_match(desired_public, public)
+                and private is not None
+                and _states_match(record.installed, private)
+            ):
+                record.phase = "rolled-back"
+                if sync_error is not None:
+                    raise sync_error
+                return
+
+            rollback_errors: list[BaseException] = []
+            if sync_error is not None:
+                rollback_errors.append(sync_error)
+            observed_public = public
+            observed_private = private
+            for _ in range(8):
+                if observed_public is None or observed_private is None:
+                    break
+                _atomic_exchange(record.parent_fd, backup.name, record.target_name)
+                record.phase = "correction-swapped"
+                correction_sync_error: BaseException | None = None
+                try:
+                    _fsync_directory_fd(record.parent_fd)
+                except BaseException as error:
+                    correction_sync_error = error
+                corrected_public = _read_any_at(
+                    record.parent_fd,
+                    record.target_name,
+                    record.target,
+                )
+                corrected_private = _read_any_at(
+                    record.parent_fd,
+                    backup.name,
+                    backup.path,
+                )
+                if correction_sync_error is not None:
+                    rollback_errors.append(correction_sync_error)
+                if (
+                    corrected_public is not None
+                    and corrected_private is not None
+                    and _states_match(observed_private, corrected_public)
+                    and _states_match(observed_public, corrected_private)
+                ):
+                    record.phase = "unresolved"
+                    backup.state = corrected_private
+                    backup.retain = True
+                    raise QuestBuildRollbackError(
+                        primary_error,
+                        unresolved_paths=(record.target,),
+                        recovery_paths=(backup.path,),
+                        rollback_errors=rollback_errors,
+                    ) from primary_error
+                observed_public = corrected_public
+                observed_private = corrected_private
+            record.phase = "unresolved"
+            backup.state = observed_private or backup.state
+            backup.retain = True
+            rollback_errors.append(
+                ValueError(
+                    f"quest transaction exchange reversal could not be proven: {record.target}"
+                )
+            )
+            raise QuestBuildRollbackError(
+                primary_error,
+                unresolved_paths=(record.target,),
+                recovery_paths=(backup.path,) if observed_private is not None else (),
+                rollback_errors=rollback_errors,
+            ) from primary_error
+        except QuestBuildRollbackError:
+            raise
+        except BaseException as rollback_error:
+            if record.phase == "rolled-back":
+                raise
+            record.phase = "unresolved"
+            backup.retain = True
+            raise QuestBuildRollbackError(
+                primary_error,
+                unresolved_paths=(record.target,),
+                recovery_paths=(backup.path,),
+                rollback_errors=(rollback_error,),
+            ) from primary_error
+
+    def _restore_moved_name(
+        self,
+        record: _CommitRecord,
+        artifact: _Artifact,
+        desired_public: _NodeState | None,
+        primary_error: BaseException,
+    ) -> None:
+        try:
+            _atomic_no_replace(record.parent_fd, artifact.name, record.target_name)
+            record.phase = "rolled-back"
+            artifact.present = False
+            sync_error: BaseException | None = None
+            try:
+                _fsync_directory_fd(record.parent_fd)
+            except BaseException as error:
+                sync_error = error
+            restored = _read_any_at(
                 record.parent_fd,
                 record.target_name,
                 record.target,
             )
             if (
-                swapped_installed is None
-                or record.installed is None
-                or not _states_match(record.installed, swapped_installed)
+                desired_public is None
                 or restored is None
-                or not _states_match(record.original, restored)
+                or not _states_match(desired_public, restored)
             ):
-                _atomic_exchange(
-                    record.parent_fd,
-                    record.backup.name,
-                    record.target_name,
-                )
-                _fsync_directory_fd(record.parent_fd)
+                record.phase = "unresolved"
                 raise ValueError(
-                    f"quest transaction lost rollback ownership: {record.target}"
+                    f"quest transaction moved-name restoration could not be proven: {record.target}"
                 )
-            _unlink_artifact(record.parent_fd, record.backup.name)
-            return
-
-        marker = _create_artifact(
-            record.parent_fd,
-            record.target.parent,
-            record.target_name,
-            b"",
-            0o600,
-            os.geteuid(),
-            os.getegid(),
-            "rollback",
-        )
-        try:
-            _atomic_exchange(record.parent_fd, marker.name, record.target_name)
-            _fsync_directory_fd(record.parent_fd)
-            swapped_installed = _read_regular_at(
-                record.parent_fd,
-                marker.name,
-                marker.path,
-            )
-            if (
-                swapped_installed is None
-                or record.installed is None
-                or not _states_match(record.installed, swapped_installed)
-            ):
-                _atomic_exchange(record.parent_fd, marker.name, record.target_name)
-                _fsync_directory_fd(record.parent_fd)
-                raise ValueError(
-                    f"quest transaction lost rollback ownership: {record.target}"
-                )
-            _unlink_artifact(record.parent_fd, record.target_name)
-            _unlink_artifact(record.parent_fd, marker.name)
-            if record.backup is not None:
-                _unlink_artifact(record.backup.parent_fd, record.backup.name)
-        except BaseException:
-            raise
+            if sync_error is not None:
+                raise sync_error
+        except BaseException as rollback_error:
+            if record.phase == "rolled-back":
+                raise
+            record.phase = "unresolved"
+            artifact.retain = True
+            raise QuestBuildRollbackError(
+                primary_error,
+                unresolved_paths=(record.target,),
+                recovery_paths=(artifact.path,) if artifact.present else (),
+                rollback_errors=(rollback_error,),
+            ) from primary_error
 
     def _cleanup_created_directories(
         self,
-        created: Mapping[Path, _NodeState],
-    ) -> list[BaseException]:
+        created: Sequence[_CreatedDirectory],
+    ) -> tuple[list[BaseException], list[Path], list[Path]]:
         errors: list[BaseException] = []
-        for path, expected in sorted(
-            created.items(), key=lambda item: len(item[0].parts), reverse=True
+        recovery: list[Path] = []
+        unresolved: list[Path] = []
+        for record in sorted(
+            created, key=lambda item: len(item.path.parts), reverse=True
         ):
+            private_name = (
+                f".{record.name}.afterlight-rollback-{uuid.uuid4().hex}"
+            )
+            private_path = record.path.parent / private_name
+            moved: _NodeState | None = None
             try:
-                current = _read_path(path)
-                if not _states_match(expected, current):
+                if record.state is None:
                     raise ValueError(
-                        f"quest transaction lost created-directory ownership: {path}"
+                        f"quest transaction has no created-directory identity: {record.path}"
                     )
-                path.rmdir()
-                parent_fd = os.open(path.parent, _directory_flags())
+                _atomic_no_replace(record.parent_fd, record.name, private_name)
+                record.phase = "moved-private"
+                _fsync_directory_fd(record.parent_fd)
+                moved = _read_any_at(record.parent_fd, private_name, private_path)
+                if moved is None or not _same_identity(record.state, moved):
+                    raise ValueError(
+                        f"quest transaction lost created-directory ownership: {record.path}"
+                    )
+                descriptor = os.open(private_name, _directory_flags(), dir_fd=record.parent_fd)
                 try:
-                    _fsync_directory_fd(parent_fd)
+                    if os.listdir(descriptor):
+                        raise ValueError(
+                            f"quest transaction created directory is not empty: {record.path}"
+                        )
                 finally:
-                    os.close(parent_fd)
+                    os.close(descriptor)
+                os.rmdir(private_name, dir_fd=record.parent_fd)
+                record.phase = "removed"
+                _fsync_directory_fd(record.parent_fd)
             except BaseException as error:
+                restore_error: BaseException | None = None
+                if record.phase == "moved-private":
+                    try:
+                        _atomic_no_replace(
+                            record.parent_fd,
+                            private_name,
+                            record.name,
+                        )
+                        record.phase = "public"
+                        _fsync_directory_fd(record.parent_fd)
+                        restored = _read_any_at(
+                            record.parent_fd,
+                            record.name,
+                            record.path,
+                        )
+                        expected_restored = moved
+                        if expected_restored is None:
+                            expected_restored = _read_any_at(
+                                record.parent_fd,
+                                record.name,
+                                record.path,
+                            )
+                        if (
+                            restored is None
+                            or expected_restored is None
+                            or not _same_identity(expected_restored, restored)
+                        ):
+                            raise ValueError(
+                                "quest transaction could not verify restored "
+                                f"created directory: {record.path}"
+                            )
+                    except BaseException as caught_restore_error:
+                        restore_error = caught_restore_error
                 errors.append(error)
-        return errors
+                unresolved.append(record.path)
+                if restore_error is not None:
+                    errors.append(restore_error)
+                if record.phase == "moved-private":
+                    recovery.append(private_path)
+                elif record.phase == "public":
+                    recovery.append(record.path)
+        return errors, recovery, unresolved

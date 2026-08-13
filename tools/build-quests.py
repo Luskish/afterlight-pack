@@ -13,6 +13,7 @@ from afterlight_quests import (
 )
 from afterlight_quests.builder import _parse_snbt
 from afterlight_quests.quest_build_transaction import (
+    PromotionResult,
     QuestBuildTransaction,
     candidate_workspace,
     quest_build_dependency_roots,
@@ -50,7 +51,7 @@ def _build_quests(
     root: Path,
     *,
     catalog: Sequence[ChapterSpec] | None = None,
-) -> list[Path]:
+) -> PromotionResult:
     quest_root = root / "config" / "ftbquests" / "quests"
     managed_catalog = copy.deepcopy(
         tuple(build_catalog() if catalog is None else catalog)
@@ -78,12 +79,19 @@ def _build_quests(
                 candidate_quest_root,
                 managed_catalog,
             )
-            write_catalog(
+            catalog_result = write_catalog(
                 managed_catalog,
                 candidate_quest_root,
                 legacy_quest_ids=legacy_quest_ids,
                 transaction=transaction,
             )
+            if catalog_result.cleanup_warnings:
+                raise RuntimeError(
+                    "candidate catalog write returned cleanup warnings: "
+                    + "; ".join(
+                        str(warning) for warning in catalog_result.cleanup_warnings
+                    )
+                )
             write_legacy_quest_overlays(
                 candidate_quest_root,
                 catalog=managed_catalog,
@@ -111,20 +119,35 @@ def _build_quests(
                     + "\n".join(promoted_errors)
                 )
 
-        transaction.promote_bytes(
+        promotion = transaction.promote_bytes(
             writes,
             frozen,
             deletions=deletions,
             post_validate=validate_promoted_corpus,
         )
-    return [
-        quest_root / "chapters" / f"{chapter.id}.snbt"
-        for chapter in managed_catalog
-    ]
+    return PromotionResult(
+        (
+            quest_root / "chapters" / f"{chapter.id}.snbt"
+            for chapter in managed_catalog
+        ),
+        cleanup_warnings=promotion.cleanup_warnings,
+        recovery_paths=promotion.recovery_paths,
+    )
 
 
 def main() -> int:
     written = _build_quests(ROOT)
+    if written.cleanup_warnings:
+        print(
+            "BUILD QUESTS: COMMITTED WITH CLEANUP WARNINGS "
+            f"({len(written.cleanup_warnings)} warnings, "
+            f"{len(written.recovery_paths)} retained recovery paths)"
+        )
+        for warning in written.cleanup_warnings:
+            print(f"CLEANUP WARNING: {warning}")
+        for path in written.recovery_paths:
+            print(f"RETAINED RECOVERY: {path}")
+        return 2
     print(f"BUILD QUESTS: OK ({len(written)} compiler-managed chapters written)")
     return 0
 

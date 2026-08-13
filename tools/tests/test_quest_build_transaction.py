@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import copy
 import os
 import importlib
 import importlib.util
 import json
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -48,8 +50,18 @@ class QuestBuildTransactionTests(unittest.TestCase):
         result: dict[str, tuple[object, ...]] = {}
         for path in sorted(root.rglob("*")):
             status = path.lstat()
-            kind = "file" if stat.S_ISREG(status.st_mode) else "directory"
-            payload = path.read_bytes() if kind == "file" else None
+            if stat.S_ISREG(status.st_mode):
+                kind = "file"
+                payload = path.read_bytes()
+            elif stat.S_ISDIR(status.st_mode):
+                kind = "directory"
+                payload = None
+            elif stat.S_ISLNK(status.st_mode):
+                kind = "symlink"
+                payload = os.readlink(path)
+            else:
+                kind = "other"
+                payload = None
             result[path.relative_to(root).as_posix()] = (
                 kind,
                 status.st_dev,
@@ -61,6 +73,60 @@ class QuestBuildTransactionTests(unittest.TestCase):
                 payload,
             )
         return result
+
+    @staticmethod
+    def path_identity(path: Path) -> tuple[object, ...]:
+        try:
+            status = path.lstat()
+        except FileNotFoundError:
+            return ("missing",)
+        if stat.S_ISREG(status.st_mode):
+            kind = "file"
+            payload: object = path.read_bytes()
+        elif stat.S_ISDIR(status.st_mode):
+            kind = "directory"
+            payload = tuple(sorted(child.name for child in path.iterdir()))
+        elif stat.S_ISLNK(status.st_mode):
+            kind = "symlink"
+            payload = os.readlink(path)
+        else:
+            kind = "other"
+            payload = None
+        return (
+            kind,
+            status.st_dev,
+            status.st_ino,
+            stat.S_IMODE(status.st_mode),
+            status.st_uid,
+            status.st_gid,
+            status.st_nlink,
+            payload,
+        )
+
+    def install_raced_object(self, path: Path, kind: str) -> tuple[object, ...]:
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+        if kind == "missing":
+            return self.path_identity(path)
+        if kind == "regular":
+            temporary = path.with_name(f".{path.name}.third-party")
+            temporary.write_bytes(b"third-party-regular\n")
+            os.replace(temporary, path)
+        elif kind == "symlink":
+            source = path.with_name(f".{path.name}.symlink-source")
+            source.write_bytes(b"third-party-symlink-source\n")
+            path.symlink_to(source.name)
+        elif kind == "hardlink":
+            source = path.with_name(f".{path.name}.hardlink-source")
+            source.write_bytes(b"third-party-hardlink\n")
+            os.link(source, path)
+        elif kind == "directory":
+            path.mkdir()
+        else:
+            self.fail(f"unknown raced object kind: {kind}")
+        return self.path_identity(path)
 
     def freeze(self, transaction, root: Path):
         return transaction.freeze((root / "config",))
@@ -76,6 +142,260 @@ class QuestBuildTransactionTests(unittest.TestCase):
                         pass
                 with self.assertRaisesRegex(ValueError, "mismatched repository root"):
                     transaction.require_root(other)
+
+    def test_repository_lock_rejects_same_inode_case_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, _, _ = self.make_root(Path(temp_dir))
+            alias = root.with_name(root.name.upper())
+            try:
+                alias_status = alias.stat()
+            except FileNotFoundError:
+                self.skipTest("temporary filesystem is case-sensitive")
+            root_status = root.stat()
+            if (root_status.st_dev, root_status.st_ino) != (
+                alias_status.st_dev,
+                alias_status.st_ino,
+            ):
+                self.skipTest("case alias does not resolve to the same inode")
+            with self.transaction_module.QuestBuildTransaction(root):
+                with self.assertRaisesRegex(RuntimeError, "reentrant"):
+                    with self.transaction_module.QuestBuildTransaction(alias):
+                        pass
+
+    def test_every_enter_failure_releases_process_lock_state(self) -> None:
+        cases = (
+            ("lock directory creation", Path, "mkdir", OSError("mkdir failed")),
+            ("lock directory inspection", Path, "lstat", OSError("lstat failed")),
+            (
+                "lock file open",
+                self.transaction_module.os,
+                "open",
+                OSError("lock open failed"),
+            ),
+            (
+                "filesystem lock",
+                self.transaction_module.fcntl,
+                "flock",
+                OSError("flock failed"),
+            ),
+            (
+                "root open",
+                self.transaction_module,
+                "_open_root",
+                OSError("root open failed"),
+            ),
+        )
+        for label, owner, attribute, injected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temp_dir:
+                root, _, _ = self.make_root(Path(temp_dir))
+                original = getattr(owner, attribute)
+
+                def fail_selected(*arguments, **keywords):
+                    if label == "lock file open":
+                        path = os.fspath(arguments[0])
+                        if not path.endswith(".lock"):
+                            return original(*arguments, **keywords)
+                    raise injected
+
+                with mock.patch.object(owner, attribute, side_effect=fail_selected):
+                    with self.assertRaisesRegex(OSError, str(injected)):
+                        with self.transaction_module.QuestBuildTransaction(root):
+                            pass
+                with self.transaction_module.QuestBuildTransaction(root):
+                    pass
+
+    def test_post_rename_fsync_failure_restores_exact_inventory(self) -> None:
+        for operation in ("replace", "create", "delete"):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                target = first if operation != "create" else first.with_name("new.snbt")
+                before = self.inventory(root)
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_fsync_directory_fd",
+                        side_effect=OSError("post-rename fsync failed"),
+                    ):
+                        with self.assertRaisesRegex(BaseException, "post-rename fsync"):
+                            if operation == "delete":
+                                transaction.promote_bytes({}, frozen, deletions=(target,))
+                            else:
+                                transaction.promote_bytes(
+                                    {target: b"transaction-output\n"},
+                                    frozen,
+                                )
+                self.assertEqual(self.inventory(root), before)
+
+    def test_actual_platform_exchange_races_preserve_every_public_object_type(self) -> None:
+        for kind in ("regular", "symlink", "hardlink", "directory", "missing"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                expected: tuple[object, ...] | None = None
+                raced = False
+                real_exchange = self.transaction_module._atomic_exchange
+
+                def race_then_exchange(parent_fd, staged_name, target_name):
+                    nonlocal expected, raced
+                    if not raced:
+                        raced = True
+                        expected = self.install_raced_object(first, kind)
+                    return real_exchange(parent_fd, staged_name, target_name)
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_atomic_exchange",
+                        side_effect=race_then_exchange,
+                    ):
+                        with self.assertRaises(BaseException):
+                            transaction.promote_bytes(
+                                {first: b"transaction-output\n"},
+                                frozen,
+                            )
+                self.assertTrue(raced)
+                self.assertEqual(self.path_identity(first), expected)
+
+    def test_actual_platform_rollback_exchange_preserves_every_public_object_type(self) -> None:
+        for kind in ("regular", "symlink", "hardlink", "directory", "missing"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                expected: tuple[object, ...] | None = None
+
+                def race_and_fail_validation() -> None:
+                    nonlocal expected
+                    expected = self.install_raced_object(first, kind)
+                    raise ValueError("post-validation race")
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with self.assertRaises(
+                        self.transaction_module.QuestBuildRollbackError
+                    ) as raised:
+                        transaction.promote_bytes(
+                            {first: b"transaction-output\n"},
+                            frozen,
+                            post_validate=race_and_fail_validation,
+                        )
+                self.assertEqual(self.path_identity(first), expected)
+                self.assertIn(first, raised.exception.unresolved_paths)
+                self.assertTrue(raised.exception.recovery_paths)
+                self.assertTrue(
+                    any(path.read_bytes() == b"first-original\n" for path in raised.exception.recovery_paths)
+                )
+
+    def test_exchange_back_boundary_preserves_latest_public_object_type(self) -> None:
+        for kind in ("regular", "symlink", "hardlink", "directory", "missing"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                real_exchange = self.transaction_module._atomic_exchange
+                exchange_count = 0
+                expected: tuple[object, ...] | None = None
+
+                def race_each_boundary(parent_fd, staged_name, target_name):
+                    nonlocal exchange_count, expected
+                    exchange_count += 1
+                    if exchange_count == 1:
+                        self.install_raced_object(first, "regular")
+                    elif exchange_count == 2:
+                        expected = self.install_raced_object(first, kind)
+                    return real_exchange(parent_fd, staged_name, target_name)
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_atomic_exchange",
+                        side_effect=race_each_boundary,
+                    ):
+                        with self.assertRaises(
+                            self.transaction_module.QuestBuildRollbackError
+                        ) as raised:
+                            transaction.promote_bytes(
+                                {first: b"transaction-output\n"},
+                                frozen,
+                            )
+
+                self.assertGreaterEqual(exchange_count, 2)
+                self.assertEqual(self.path_identity(first), expected)
+                self.assertIn(first, raised.exception.unresolved_paths)
+                self.assertTrue(raised.exception.recovery_paths)
+
+    def test_corrective_exchange_boundary_preserves_latest_public_object_type(self) -> None:
+        for kind in ("regular", "symlink", "hardlink", "directory", "missing"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                real_exchange = self.transaction_module._atomic_exchange
+                exchange_count = 0
+                expected: tuple[object, ...] | None = None
+
+                def race_corrective_exchange(parent_fd, staged_name, target_name):
+                    nonlocal exchange_count, expected
+                    exchange_count += 1
+                    if exchange_count == 3:
+                        expected = self.install_raced_object(first, kind)
+                    return real_exchange(parent_fd, staged_name, target_name)
+
+                def install_first_race() -> None:
+                    self.install_raced_object(first, "regular")
+                    raise ValueError("force rollback race")
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_atomic_exchange",
+                        side_effect=race_corrective_exchange,
+                    ):
+                        with self.assertRaises(
+                            self.transaction_module.QuestBuildRollbackError
+                        ) as raised:
+                            transaction.promote_bytes(
+                                {first: b"transaction-output\n"},
+                                frozen,
+                                post_validate=install_first_race,
+                            )
+
+                self.assertGreaterEqual(exchange_count, 3)
+                self.assertEqual(self.path_identity(first), expected)
+                self.assertIn(first, raised.exception.unresolved_paths)
+                self.assertTrue(raised.exception.recovery_paths)
+
+    def test_actual_platform_atomic_wrappers_exchange_and_no_replace(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            parent = Path(temp_dir)
+            left = parent / "left"
+            right = parent / "right"
+            destination = parent / "destination"
+            left.write_bytes(b"left")
+            right.write_bytes(b"right")
+            left_inode = left.stat().st_ino
+            right_inode = right.stat().st_ino
+            descriptor = os.open(parent, self.transaction_module._directory_flags())
+            try:
+                self.transaction_module._atomic_exchange(descriptor, left.name, right.name)
+                self.assertEqual((left.read_bytes(), left.stat().st_ino), (b"right", right_inode))
+                self.assertEqual((right.read_bytes(), right.stat().st_ino), (b"left", left_inode))
+                self.transaction_module._atomic_no_replace(
+                    descriptor,
+                    right.name,
+                    destination.name,
+                )
+                self.assertFalse(right.exists())
+                self.assertEqual((destination.read_bytes(), destination.stat().st_ino), (b"left", left_inode))
+                collision = parent / "collision"
+                collision.write_bytes(b"collision")
+                with self.assertRaises(FileExistsError):
+                    self.transaction_module._atomic_no_replace(
+                        descriptor,
+                        destination.name,
+                        collision.name,
+                    )
+                self.assertEqual(destination.read_bytes(), b"left")
+                self.assertEqual(collision.read_bytes(), b"collision")
+            finally:
+                os.close(descriptor)
 
     def test_race_after_final_recheck_is_exchanged_back_without_data_loss(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -287,18 +607,368 @@ class QuestBuildTransactionTests(unittest.TestCase):
                     "_unlink_artifact",
                     side_effect=fail_once,
                 ):
+                    result = transaction.promote_bytes({first: b"new\n"}, frozen)
+            self.assertTrue(failed)
+            self.assertTrue(result.committed)
+            self.assertTrue(result.cleanup_warnings)
+            self.assertEqual(first.read_bytes(), b"new\n")
+            self.assertEqual(len(result.recovery_paths), 1)
+            self.assertEqual(
+                result.recovery_paths[0].read_bytes(),
+                before["config/ftbquests/quests/first.snbt"][-1],
+            )
+
+    def test_private_artifact_payload_or_mode_drift_is_retained(self) -> None:
+        for case in ("payload", "mode"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                real_current = self.transaction_module._artifact_current_state
+                mutated = False
+
+                def mutate_then_read(artifact):
+                    nonlocal mutated
+                    if (
+                        not mutated
+                        and artifact.present
+                        and ".afterlight-stage-" in artifact.name
+                    ):
+                        mutated = True
+                        if case == "payload":
+                            artifact.path.write_bytes(b"third-party private payload\n")
+                        else:
+                            os.chmod(artifact.path, 0o711)
+                    return real_current(artifact)
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_artifact_current_state",
+                        side_effect=mutate_then_read,
+                    ):
+                        result = transaction.promote_bytes({first: b"new\n"}, frozen)
+
+                self.assertTrue(mutated)
+                self.assertTrue(result.committed)
+                self.assertTrue(result.cleanup_warnings)
+                self.assertEqual(len(result.recovery_paths), 1)
+                retained = result.recovery_paths[0]
+                self.assertTrue(retained.exists())
+                if case == "payload":
+                    self.assertEqual(
+                        retained.read_bytes(),
+                        b"third-party private payload\n",
+                    )
+                else:
+                    self.assertEqual(stat.S_IMODE(retained.stat().st_mode), 0o711)
+                retained.unlink()
+
+    def test_artifact_is_registered_before_fsync_and_cleanup_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            before = self.inventory(root)
+            original_identity = self.path_identity(first)
+            real_fsync = self.transaction_module.os.fsync
+            real_unlink = self.transaction_module.os.unlink
+            failed_fsync = False
+            failed_unlink = False
+
+            def fail_stage_fsync(descriptor):
+                nonlocal failed_fsync
+                status = os.fstat(descriptor)
+                if stat.S_ISREG(status.st_mode) and not failed_fsync:
+                    failed_fsync = True
+                    raise OSError("stage fsync failed")
+                return real_fsync(descriptor)
+
+            def fail_stage_unlink(path, *arguments, **keywords):
+                nonlocal failed_unlink
+                if ".afterlight-stage-" in os.fspath(path) and not failed_unlink:
+                    failed_unlink = True
+                    raise OSError("stage cleanup failed")
+                return real_unlink(path, *arguments, **keywords)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module.os,
+                    "fsync",
+                    side_effect=fail_stage_fsync,
+                ), mock.patch.object(
+                    self.transaction_module.os,
+                    "unlink",
+                    side_effect=fail_stage_unlink,
+                ):
                     with self.assertRaises(
                         self.transaction_module.QuestBuildRollbackError
                     ) as raised:
                         transaction.promote_bytes({first: b"new\n"}, frozen)
-            self.assertTrue(failed)
-            self.assertEqual(first.read_bytes(), b"new\n")
+
+            self.assertTrue(failed_fsync)
+            self.assertTrue(failed_unlink)
+            self.assertEqual(self.path_identity(first), original_identity)
+            self.assertEqual(first.read_bytes(), before["config/ftbquests/quests/first.snbt"][-1])
             self.assertTrue(raised.exception.cleanup_errors)
             self.assertEqual(len(raised.exception.recovery_paths), 1)
-            self.assertEqual(
-                raised.exception.recovery_paths[0].read_bytes(),
-                before["config/ftbquests/quests/first.snbt"][-1],
-            )
+            self.assertTrue(raised.exception.recovery_paths[0].exists())
+            raised.exception.recovery_paths[0].unlink()
+
+    def test_transactional_deletion_never_unlinks_a_raced_public_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            expected: tuple[object, ...] | None = None
+            raced = False
+            real_no_replace = self.transaction_module._atomic_no_replace
+            real_unlink = self.transaction_module._unlink_artifact
+
+            def race_atomic_move(parent_fd, source_name, destination_name):
+                nonlocal expected, raced
+                if source_name == first.name and not raced:
+                    raced = True
+                    expected = self.install_raced_object(first, "regular")
+                return real_no_replace(parent_fd, source_name, destination_name)
+
+            def reject_public_unlink(parent_fd, name):
+                nonlocal expected, raced
+                if name == first.name:
+                    raced = True
+                    expected = self.install_raced_object(first, "regular")
+                return real_unlink(parent_fd, name)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_atomic_no_replace",
+                    side_effect=race_atomic_move,
+                ), mock.patch.object(
+                    self.transaction_module,
+                    "_unlink_artifact",
+                    side_effect=reject_public_unlink,
+                ):
+                    with self.assertRaises(BaseException):
+                        transaction.promote_bytes({}, frozen, deletions=(first,))
+
+            self.assertTrue(raced)
+            self.assertEqual(self.path_identity(first), expected)
+
+    def test_new_file_rollback_never_unlinks_a_raced_public_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            target = first.with_name("new.snbt")
+            expected: tuple[object, ...] | None = None
+            raced = False
+            create_done = False
+            real_no_replace = self.transaction_module._atomic_no_replace
+            real_unlink = self.transaction_module._unlink_artifact
+
+            def race_atomic_move(parent_fd, source_name, destination_name):
+                nonlocal expected, raced, create_done
+                if destination_name == target.name and not create_done:
+                    result = real_no_replace(parent_fd, source_name, destination_name)
+                    create_done = True
+                    return result
+                if source_name == target.name and not raced:
+                    raced = True
+                    expected = self.install_raced_object(target, "regular")
+                return real_no_replace(parent_fd, source_name, destination_name)
+
+            def reject_public_unlink(parent_fd, name):
+                nonlocal expected, raced
+                if name == target.name:
+                    raced = True
+                    expected = self.install_raced_object(target, "regular")
+                return real_unlink(parent_fd, name)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_atomic_no_replace",
+                    side_effect=race_atomic_move,
+                ), mock.patch.object(
+                    self.transaction_module,
+                    "_unlink_artifact",
+                    side_effect=reject_public_unlink,
+                ):
+                    with self.assertRaises(
+                        self.transaction_module.QuestBuildRollbackError
+                    ) as raised:
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+
+            self.assertTrue(raced)
+            self.assertEqual(self.path_identity(target), expected)
+            self.assertIn(target, raised.exception.unresolved_paths)
+
+    def test_created_directory_cleanup_moves_then_verifies_before_removal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            created_parent = first.parent / "new-parent"
+            target = created_parent / "new.snbt"
+            raced = False
+            expected: tuple[object, ...] | None = None
+            real_no_replace = self.transaction_module._atomic_no_replace
+            real_rmdir = Path.rmdir
+
+            def race_atomic_move(parent_fd, source_name, destination_name):
+                nonlocal raced, expected
+                if source_name == created_parent.name and not raced:
+                    raced = True
+                    created_parent.rmdir()
+                    created_parent.mkdir(mode=0o700)
+                    expected = self.path_identity(created_parent)
+                return real_no_replace(parent_fd, source_name, destination_name)
+
+            def race_public_rmdir(path):
+                nonlocal raced, expected
+                if path == created_parent and not raced:
+                    raced = True
+                    real_rmdir(path)
+                    path.mkdir(mode=0o700)
+                    expected = self.path_identity(path)
+                return real_rmdir(path)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_atomic_no_replace",
+                    side_effect=race_atomic_move,
+                ), mock.patch.object(
+                    Path,
+                    "rmdir",
+                    autospec=True,
+                    side_effect=race_public_rmdir,
+                ):
+                    with self.assertRaises(BaseException):
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+
+            self.assertTrue(raced)
+            self.assertEqual(self.path_identity(created_parent), expected)
+
+    def test_created_directory_child_is_restored_public_and_reported(self) -> None:
+        for child_kind in ("file", "directory"):
+            with self.subTest(child_kind=child_kind), tempfile.TemporaryDirectory() as temp_dir:
+                root, first, _ = self.make_root(Path(temp_dir))
+                created_parent = first.parent / "new-parent"
+                target = created_parent / "new.snbt"
+                real_no_replace = self.transaction_module._atomic_no_replace
+                injected = False
+
+                def add_child_then_move(parent_fd, source_name, destination_name):
+                    nonlocal injected
+                    if (
+                        source_name == created_parent.name
+                        and ".afterlight-rollback-" in destination_name
+                        and not injected
+                    ):
+                        injected = True
+                        child = created_parent / "third-party"
+                        if child_kind == "file":
+                            child.write_bytes(b"preserve third-party child\n")
+                        else:
+                            child.mkdir(mode=0o701)
+                            (child / "payload").write_bytes(b"preserve nested bytes\n")
+                        os.chmod(created_parent, 0o710)
+                    return real_no_replace(parent_fd, source_name, destination_name)
+
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with mock.patch.object(
+                        self.transaction_module,
+                        "_atomic_no_replace",
+                        side_effect=add_child_then_move,
+                    ):
+                        with self.assertRaises(
+                            self.transaction_module.QuestBuildRollbackError
+                        ) as raised:
+                            transaction.promote_bytes(
+                                {target: b"transaction-output\n"},
+                                frozen,
+                                post_validate=lambda: (_ for _ in ()).throw(
+                                    ValueError("force rollback")
+                                ),
+                            )
+
+                self.assertTrue(injected)
+                self.assertTrue(created_parent.is_dir())
+                self.assertEqual(
+                    stat.S_IMODE(created_parent.stat().st_mode),
+                    0o710,
+                )
+                if child_kind == "file":
+                    self.assertEqual(
+                        (created_parent / "third-party").read_bytes(),
+                        b"preserve third-party child\n",
+                    )
+                else:
+                    self.assertEqual(
+                        (created_parent / "third-party" / "payload").read_bytes(),
+                        b"preserve nested bytes\n",
+                    )
+                self.assertIn(created_parent, raised.exception.unresolved_paths)
+                self.assertIn(created_parent, raised.exception.recovery_paths)
+                self.assertFalse(
+                    any(
+                        ".afterlight-rollback-" in child.name
+                        for child in created_parent.parent.iterdir()
+                    )
+                )
+
+    def test_created_directory_mode_drift_is_restored_public_and_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            created_parent = first.parent / "new-parent"
+            target = created_parent / "new.snbt"
+            real_no_replace = self.transaction_module._atomic_no_replace
+            changed = False
+
+            def chmod_then_move(parent_fd, source_name, destination_name):
+                nonlocal changed
+                if (
+                    source_name == created_parent.name
+                    and ".afterlight-rollback-" in destination_name
+                    and not changed
+                ):
+                    changed = True
+                    os.chmod(created_parent, 0o711)
+                return real_no_replace(parent_fd, source_name, destination_name)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_atomic_no_replace",
+                    side_effect=chmod_then_move,
+                ):
+                    with self.assertRaises(
+                        self.transaction_module.QuestBuildRollbackError
+                    ) as raised:
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+
+            self.assertTrue(changed)
+            self.assertTrue(created_parent.is_dir())
+            self.assertEqual(stat.S_IMODE(created_parent.stat().st_mode), 0o711)
+            self.assertIn(created_parent, raised.exception.unresolved_paths)
+            self.assertIn(created_parent, raised.exception.recovery_paths)
 
     def test_rollback_failure_retains_recovery_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -712,6 +1382,248 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
 
             self.assertEqual(self.inventory(root), before)
             self.assertEqual(self.inventory(other_root), other_before)
+
+    def test_public_catalog_writer_propagates_committed_cleanup_warnings(self) -> None:
+        transaction_module = importlib.import_module(
+            "afterlight_quests.quest_build_transaction"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repository"
+            quest_root = self.copy_repository_inputs(root)
+            catalog = copy.deepcopy(list(self.quests.build_catalog()))
+            catalog[0].title += " Warning Probe"
+            real_unlink = transaction_module._unlink_artifact
+            failed = False
+
+            def fail_once(parent_fd, name):
+                nonlocal failed
+                if not failed:
+                    failed = True
+                    raise OSError("catalog cleanup warning")
+                return real_unlink(parent_fd, name)
+
+            with mock.patch.object(
+                transaction_module,
+                "_unlink_artifact",
+                side_effect=fail_once,
+            ):
+                result = self.quests.write_catalog(catalog, quest_root)
+
+            self.assertTrue(failed)
+            self.assertTrue(result.committed)
+            self.assertTrue(result.cleanup_warnings)
+            self.assertTrue(result.recovery_paths)
+
+    def test_build_orchestration_propagates_committed_cleanup_warnings(self) -> None:
+        transaction_module = importlib.import_module(
+            "afterlight_quests.quest_build_transaction"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repository"
+            self.copy_repository_inputs(root)
+            real_unlink = transaction_module._unlink_artifact
+            failed = False
+
+            def fail_once(parent_fd, name):
+                nonlocal failed
+                if not failed:
+                    failed = True
+                    raise OSError("build cleanup warning")
+                return real_unlink(parent_fd, name)
+
+            with mock.patch.object(
+                transaction_module,
+                "_unlink_artifact",
+                side_effect=fail_once,
+            ):
+                result = self.build_script._build_quests(
+                    root,
+                    catalog=self.quests.build_catalog(),
+                )
+
+            self.assertTrue(failed)
+            self.assertTrue(result.committed)
+            self.assertTrue(result.cleanup_warnings)
+            self.assertTrue(result.recovery_paths)
+
+    def test_full_candidate_build_uses_git_ownership_after_process_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repository"
+            quest_root = self.copy_repository_inputs(root)
+            synthetic_chapter_id = "1234567890ABCDEF"
+            managed_state = json.loads(
+                (quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
+            )
+            managed_state["chapters"].append(synthetic_chapter_id)
+            managed_state["chapters"].sort()
+            synthetic_key = f"chapter.{synthetic_chapter_id}.title"
+            managed_state["localization_keys"].append(synthetic_key)
+            managed_state["localization_keys"].sort()
+            (quest_root / ".afterlight-managed.json").write_text(
+                json.dumps(managed_state, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            removed_chapter = quest_root / "chapters" / f"{synthetic_chapter_id}.snbt"
+            removed_chapter.write_text(
+                "{\n"
+                f'\tfilename: "{synthetic_chapter_id}"\n'
+                '\tgroup: "4A20F33642175B95"\n'
+                f'\tid: "{synthetic_chapter_id}"\n'
+                "\torder_index: 99\n"
+                "\tquest_links: [ ]\n"
+                "\tquests: [ ]\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            language_path = quest_root / "lang" / "en_us.snbt"
+            language = language_path.read_text(encoding="utf-8")
+            language_path.write_text(
+                language.rstrip()[:-1]
+                + f'\n\t{synthetic_key}: "Synthetic Managed Chapter"\n'
+                + "}\n",
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "fixture"],
+                cwd=root,
+                check=True,
+            )
+            chapter_relative = removed_chapter.relative_to(root).as_posix()
+            tracked_chapter = subprocess.run(
+                ["git", "show", f"HEAD:{chapter_relative}"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            ).stdout
+            tracked_language = subprocess.run(
+                ["git", "show", f"HEAD:{language_path.relative_to(root).as_posix()}"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertEqual(tracked_chapter, removed_chapter.read_bytes())
+            self.assertIn(
+                f'\t{synthetic_key}: "Synthetic Managed Chapter"\n',
+                tracked_language,
+            )
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.fspath(TOOLS)
+            build_script_path = TOOLS / "build-quests.py"
+            code = (
+                "import importlib.util, pathlib, sys; "
+                "spec=importlib.util.spec_from_file_location('build_quests_restart', sys.argv[1]); "
+                "module=importlib.util.module_from_spec(spec); "
+                "spec.loader.exec_module(module); "
+                "result=module._build_quests(pathlib.Path(sys.argv[2])); "
+                "raise SystemExit(2 if result.cleanup_warnings else 0)"
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    code,
+                    os.fspath(build_script_path),
+                    os.fspath(root),
+                ],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(removed_chapter.exists())
+            self.assertNotIn(
+                synthetic_key,
+                language_path.read_text(encoding="utf-8"),
+            )
+
+    def test_full_candidate_build_rejects_working_tree_ownership_poison(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repository"
+            quest_root = self.copy_repository_inputs(root)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Afterlight Test"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "afterlight-test@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "trusted fixture"],
+                cwd=root,
+                check=True,
+            )
+            poisoned_chapter_id = "4C01977EF77930A6"
+            poisoned_key = f"chapter.{poisoned_chapter_id}.title"
+            state_path = quest_root / ".afterlight-managed.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["chapters"].append(poisoned_chapter_id)
+            state["chapters"].sort()
+            state["localization_keys"].append(poisoned_key)
+            state["localization_keys"].sort()
+            state_path.write_text(
+                json.dumps(state, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            before = self.inventory(root)
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.fspath(TOOLS)
+            build_script_path = TOOLS / "build-quests.py"
+            code = (
+                "import importlib.util, pathlib, sys; "
+                "spec=importlib.util.spec_from_file_location('build_quests_poison', sys.argv[1]); "
+                "module=importlib.util.module_from_spec(spec); "
+                "spec.loader.exec_module(module); "
+                "module._build_quests(pathlib.Path(sys.argv[2]))"
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    code,
+                    os.fspath(build_script_path),
+                    os.fspath(root),
+                ],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertIn("unknown prior managed chapter", result.stderr)
+            self.assertEqual(self.inventory(root), before)
+            self.assertTrue(
+                (
+                    quest_root
+                    / "chapters"
+                    / f"{poisoned_chapter_id}.snbt"
+                ).is_file()
+            )
+            self.assertIn(
+                poisoned_key,
+                (quest_root / "lang" / "en_us.snbt").read_text(encoding="utf-8"),
+            )
 
     def test_candidate_stage_failures_leave_real_inventory_unchanged(self) -> None:
         cases = {

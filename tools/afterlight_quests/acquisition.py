@@ -1113,9 +1113,143 @@ def proof_digest(node: AcquisitionNode, manifest_sha256: str, nonce: str) -> str
 
 
 _AUDIT_RUNTIME_SOURCE = r"""
-const AfterlightMessageDigest = Java.loadClass('java.security.MessageDigest')
-const AfterlightHexFormat = Java.loadClass('java.util.HexFormat')
-const AfterlightByte = Java.loadClass('java.lang.Byte')
+const AFTERLIGHT_SHA256_CONSTANTS = [
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+  0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+  0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+  0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+  0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+  0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+]
+
+function afterlightRotateRight(value, count) {
+  return (value >>> count) | (value << (32 - count))
+}
+
+function afterlightSha256Bytes(input) {
+  var bytes = []
+  for (var byteIndex = 0; byteIndex < input.length; byteIndex++) {
+    bytes.push(Number(input[byteIndex]) & 0xFF)
+  }
+
+  var bitLength = bytes.length * 8
+  bytes.push(0x80)
+  while (bytes.length % 64 !== 56) bytes.push(0)
+  var bitLengthHigh = Math.floor(bitLength / 0x100000000)
+  var bitLengthLow = bitLength >>> 0
+  bytes.push(
+    (bitLengthHigh >>> 24) & 0xFF,
+    (bitLengthHigh >>> 16) & 0xFF,
+    (bitLengthHigh >>> 8) & 0xFF,
+    bitLengthHigh & 0xFF,
+    (bitLengthLow >>> 24) & 0xFF,
+    (bitLengthLow >>> 16) & 0xFF,
+    (bitLengthLow >>> 8) & 0xFF,
+    bitLengthLow & 0xFF
+  )
+
+  var hash = [
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+  ]
+  var words = new Array(64)
+  for (var offset = 0; offset < bytes.length; offset += 64) {
+    var cursor = offset
+    for (var wordIndex = 0; wordIndex < 16; wordIndex++) {
+      words[wordIndex] = (
+        (bytes[cursor] << 24)
+        | (bytes[cursor + 1] << 16)
+        | (bytes[cursor + 2] << 8)
+        | bytes[cursor + 3]
+      ) >>> 0
+      cursor += 4
+    }
+    for (var scheduleIndex = 16; scheduleIndex < 64; scheduleIndex++) {
+      var prior = words[scheduleIndex - 15]
+      var recent = words[scheduleIndex - 2]
+      var sigma0 = afterlightRotateRight(prior, 7)
+        ^ afterlightRotateRight(prior, 18) ^ (prior >>> 3)
+      var sigma1 = afterlightRotateRight(recent, 17)
+        ^ afterlightRotateRight(recent, 19) ^ (recent >>> 10)
+      words[scheduleIndex] = (
+        words[scheduleIndex - 16] + sigma0
+        + words[scheduleIndex - 7] + sigma1
+      ) >>> 0
+    }
+
+    var a = hash[0]
+    var b = hash[1]
+    var c = hash[2]
+    var d = hash[3]
+    var e = hash[4]
+    var f = hash[5]
+    var g = hash[6]
+    var h = hash[7]
+    for (var roundIndex = 0; roundIndex < 64; roundIndex++) {
+      var sum1 = afterlightRotateRight(e, 6)
+        ^ afterlightRotateRight(e, 11) ^ afterlightRotateRight(e, 25)
+      var choice = (e & f) ^ (~e & g)
+      var temporary1 = (
+        h + sum1 + choice
+        + AFTERLIGHT_SHA256_CONSTANTS[roundIndex] + words[roundIndex]
+      ) >>> 0
+      var sum0 = afterlightRotateRight(a, 2)
+        ^ afterlightRotateRight(a, 13) ^ afterlightRotateRight(a, 22)
+      var majority = (a & b) ^ (a & c) ^ (b & c)
+      var temporary2 = (sum0 + majority) >>> 0
+      h = g
+      g = f
+      f = e
+      e = (d + temporary1) >>> 0
+      d = c
+      c = b
+      b = a
+      a = (temporary1 + temporary2) >>> 0
+    }
+
+    hash[0] = (hash[0] + a) >>> 0
+    hash[1] = (hash[1] + b) >>> 0
+    hash[2] = (hash[2] + c) >>> 0
+    hash[3] = (hash[3] + d) >>> 0
+    hash[4] = (hash[4] + e) >>> 0
+    hash[5] = (hash[5] + f) >>> 0
+    hash[6] = (hash[6] + g) >>> 0
+    hash[7] = (hash[7] + h) >>> 0
+  }
+
+  var result = ''
+  for (var hashIndex = 0; hashIndex < hash.length; hashIndex++) {
+    result += ('00000000' + hash[hashIndex].toString(16)).slice(-8)
+  }
+  return result
+}
+
+function afterlightSha256Ascii(text) {
+  var value = String(text)
+  var bytes = []
+  for (var textIndex = 0; textIndex < value.length; textIndex++) {
+    var code = value.codePointAt(textIndex)
+    if (code > 0x7F) throw new Error('acquisition proof material is not ASCII')
+    bytes.push(code)
+  }
+  return afterlightSha256Bytes(bytes)
+}
+
+function afterlightProofDigest(manifestSha256, nonce, canonical) {
+  return afterlightSha256Ascii('AFTERLIGHT-ACQUISITION-PROOF\0'
+    + manifestSha256 + '\0' + nonce + '\0' + canonical)
+}
+
 const AfterlightLong = Java.loadClass('java.lang.Long')
 const AfterlightResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation')
 const AfterlightResourceKey = Java.loadClass('net.minecraft.resources.ResourceKey')
@@ -1130,7 +1264,9 @@ const AfterlightFakePlayerFactory = Java.loadClass('net.neoforged.neoforge.commo
 const AfterlightEntityType = Java.loadClass('net.minecraft.world.entity.EntityType')
 const AfterlightInteractionHand = Java.loadClass('net.minecraft.world.InteractionHand')
 const AfterlightServerQuestFile = Java.loadClass('dev.ftb.mods.ftbquests.quest.ServerQuestFile')
+const AfterlightCheckmarkTask = Java.loadClass('dev.ftb.mods.ftbquests.quest.task.CheckmarkTask')
 const AfterlightTranslationKey = Java.loadClass('dev.ftb.mods.ftbquests.quest.translation.TranslationKey')
+const AfterlightCokeOvenRecipe = Java.loadClass('blusunrize.immersiveengineering.api.crafting.CokeOvenRecipe')
 const AfterlightProcessingRecipe = Java.loadClass('com.simibubi.create.content.processing.recipe.ProcessingRecipe')
 const AfterlightSequencedAssemblyRecipe = Java.loadClass('com.simibubi.create.content.processing.sequenced.SequencedAssemblyRecipe')
 const AfterlightPressureChamberRecipe = Java.loadClass('me.desht.pneumaticcraft.api.crafting.recipe.PressureChamberRecipe')
@@ -1147,25 +1283,15 @@ ServerEvents.loaded(event => {
   let activeSpec = null
 
   function digestBytes(bytes) {
-    return AfterlightHexFormat.of().formatHex(AfterlightMessageDigest.getInstance('SHA-256').digest(bytes))
-  }
-
-  function digestText(text) {
-    const value = String(text)
-    const digest = AfterlightMessageDigest.getInstance('SHA-256')
-    for (let index = 0; index < value.length; index++) {
-      const code = value.charCodeAt(index)
-      if (code > 0x7F) throw new Error('acquisition proof material is not ASCII')
-      const byteValue = Java.cast(AfterlightByte.TYPE, code)
-      digest.update(byteValue)
-    }
-    return AfterlightHexFormat.of().formatHex(digest.digest())
+    return afterlightSha256Bytes(bytes)
   }
 
   function proof(spec) {
-    return digestText('AFTERLIGHT-ACQUISITION-PROOF\0'
-      + AFTERLIGHT_ACQUISITION_MANIFEST_SHA256 + '\0'
-      + bootNonce + '\0' + spec.canonical)
+    return afterlightProofDigest(
+      AFTERLIGHT_ACQUISITION_MANIFEST_SHA256,
+      bootNonce,
+      spec.canonical
+    )
   }
 
   function fail(reason) {
@@ -1179,8 +1305,14 @@ ServerEvents.loaded(event => {
   }
 
   function javaArray(value) {
-    const result = []
-    const iterator = value.iterator()
+    var result = []
+    if ('length' in value) {
+      for (var arrayIndex = 0; arrayIndex < value.length; arrayIndex++) {
+        result.push(value[arrayIndex])
+      }
+      return result
+    }
+    var iterator = value.iterator()
     while (iterator.hasNext()) result.push(iterator.next())
     return result
   }
@@ -1289,30 +1421,30 @@ ServerEvents.loaded(event => {
     if (spec.extractor === 'result_item') {
       outputs = [resultItem(recipe)]
     } else if (spec.extractor === 'ie_coke') {
-      if (recipe.getClass().getName() !== 'blusunrize.immersiveengineering.api.crafting.CokeOvenRecipe') fail('PROCESS_ATTRIBUTE_MISMATCH')
+      if (!(recipe instanceof AfterlightCokeOvenRecipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       if (recipe.creosoteOutput !== spec.attributes.creosote_millibuckets) fail('PROCESS_ATTRIBUTE_MISMATCH')
       outputs = [resultItem(recipe)]
     } else if (spec.extractor === 'create_rollable_results') {
-      if (!AfterlightProcessingRecipe.class.isInstance(recipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
+      if (!(recipe instanceof AfterlightProcessingRecipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       outputs = recipe.getRollableResultsAsItemStacks()
     } else if (spec.extractor === 'create_sequenced') {
-      if (!AfterlightSequencedAssemblyRecipe.class.isInstance(recipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
+      if (!(recipe instanceof AfterlightSequencedAssemblyRecipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       if (recipe.getLoops() !== spec.attributes.loops) fail('PROCESS_ATTRIBUTE_MISMATCH')
       verifyStack(recipe.getTransitionalItem(), spec.attributes.transitional_output, 'PROCESS_ATTRIBUTE_MISMATCH', 'PROCESS_ATTRIBUTE_MISMATCH', 'PROCESS_ATTRIBUTE_MISMATCH')
-      outputs = [recipe.getResultItem()]
+      outputs = [resultItem(recipe)]
     } else if (spec.extractor === 'pnc_outputs') {
-      const pressureRecipe = AfterlightPressureChamberRecipe.class.isInstance(recipe)
-      const explosionRecipe = AfterlightExplosionCraftingRecipe.class.isInstance(recipe)
+      var pressureRecipe = recipe instanceof AfterlightPressureChamberRecipe
+      var explosionRecipe = recipe instanceof AfterlightExplosionCraftingRecipe
       if (!pressureRecipe && !explosionRecipe) fail('PROCESS_ATTRIBUTE_MISMATCH')
       outputs = recipe.getOutputs()
       if (Object.prototype.hasOwnProperty.call(spec.attributes, 'loss_rate') && (!explosionRecipe || recipe.getLossRate() !== spec.attributes.loss_rate)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       if (Object.prototype.hasOwnProperty.call(spec.attributes, 'pressure') && (!pressureRecipe || Math.abs(recipe.getPressure() - spec.attributes.pressure) > 0.000001)) fail('PROCESS_ATTRIBUTE_MISMATCH')
     } else if (spec.extractor === 'pnc_heat_frame') {
-      if (!AfterlightHeatFrameCoolingRecipe.class.isInstance(recipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
+      if (!(recipe instanceof AfterlightHeatFrameCoolingRecipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       if (recipe.getThresholdTemperature() !== spec.attributes.threshold_temperature) fail('PROCESS_ATTRIBUTE_MISMATCH')
       outputs = [recipe.getOutput()]
     } else if (spec.extractor === 'pnc_assembly') {
-      if (!AfterlightAssemblyRecipe.class.isInstance(recipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
+      if (!(recipe instanceof AfterlightAssemblyRecipe)) fail('PROCESS_ATTRIBUTE_MISMATCH')
       if (String(recipe.getProgramType().name()) !== spec.attributes.program) fail('PROCESS_ATTRIBUTE_MISMATCH')
       outputs = [recipe.getOutput()]
     } else {
@@ -1336,7 +1468,8 @@ ServerEvents.loaded(event => {
     const output = expectedStack(check.output)
     const inputItem = input.getItem()
     const outputItem = output.getItem()
-    if (inputItem.getClass().getName() !== check.item_class || outputItem.getClass().getName() !== check.item_class) fail('PROCESS_NATIVE_MISMATCH')
+    var expectedItemClass = Java.loadClass(check.item_class)
+    if (!(inputItem instanceof expectedItemClass) || !(outputItem instanceof expectedItemClass)) fail('PROCESS_NATIVE_MISMATCH')
     if (inputItem.hasCapturedBlaze() || !outputItem.hasCapturedBlaze()) fail('PROCESS_NATIVE_MISMATCH')
     const player = AfterlightFakePlayerFactory.getMinecraft(level)
     const prior = player.getItemInHand(AfterlightInteractionHand.MAIN_HAND).copy()
@@ -1399,7 +1532,8 @@ ServerEvents.loaded(event => {
       if (criterion === null) fail('ADVANCEMENT_CRITERIA_MISMATCH')
       if (String(AfterlightBuiltInRegistries.TRIGGER_TYPES.getKey(criterion.trigger())) !== declared.trigger) fail('ADVANCEMENT_TRIGGER_MISMATCH')
       const instance = criterion.triggerInstance()
-      if (instance.getClass().getName() !== declared.instance_class) fail('ADVANCEMENT_INSTANCE_MISMATCH')
+      var expectedInstanceClass = Java.loadClass(declared.instance_class)
+      if (!(instance instanceof expectedInstanceClass)) fail('ADVANCEMENT_INSTANCE_MISMATCH')
       Object.keys(declared.fields).forEach(field => {
         let actual
         if (field === 'items') actual = instance.items().size()
@@ -1452,7 +1586,7 @@ ServerEvents.loaded(event => {
     const taskId = node.task_ids[0]
     const task = questFile.getTask(AfterlightLong.parseUnsignedLong(taskId, 16))
     if (task === null) fail('MANUAL_TASK_MISSING')
-    if (task.getClass().getName() !== 'dev.ftb.mods.ftbquests.quest.task.CheckmarkTask') fail('MANUAL_TASK_CLASS_MISMATCH')
+    if (!(task instanceof AfterlightCheckmarkTask)) fail('MANUAL_TASK_CLASS_MISMATCH')
     if (task.getQuest().getCodeString() !== node.quest_id) fail('MANUAL_PARENT_MISMATCH')
     const expectedKey = 'task.' + task.getCodeString() + '.title'
     if (node.manual_check.localization_key !== expectedKey) fail('MANUAL_KEY_MISMATCH')
@@ -1473,32 +1607,34 @@ ServerEvents.loaded(event => {
     else fail('METHOD_UNSUPPORTED')
   }
 
-  console.info(`AFTERLIGHT_ACQUISITION_AUDIT_BEGIN schema=1 nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256}`)
-  try {
-    for (let index = 0; index < AFTERLIGHT_ACQUISITION_SPECS.length; index++) {
-      activeSpec = AFTERLIGHT_ACQUISITION_SPECS[index]
-      try {
-        verifyNode(activeSpec.data)
-        console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=OK proof=${proof(activeSpec)}`)
-        okCount++
-      } catch (error) {
-        const reason = error.afterlightReason && AFTERLIGHT_ACQUISITION_FAILURE_REASONS.indexOf(String(error.afterlightReason)) >= 0
-          ? String(error.afterlightReason) : 'RUNTIME_EXCEPTION'
-        console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=FAIL reason=${reason} proof=${proof(activeSpec)}`)
-        console.info(`AFTERLIGHT_ACQUISITION_AUDIT_FAIL count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256} reason=${reason}`)
-        console.error(`AFTERLIGHT acquisition audit detail for ${activeSpec.data.quest_id}`, error)
-        return
+  setTimeout(() => {
+    console.info(`AFTERLIGHT_ACQUISITION_AUDIT_BEGIN schema=1 nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256}`)
+    try {
+      for (let index = 0; index < AFTERLIGHT_ACQUISITION_SPECS.length; index++) {
+        activeSpec = AFTERLIGHT_ACQUISITION_SPECS[index]
+        try {
+          verifyNode(activeSpec.data)
+          console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=OK proof=${proof(activeSpec)}`)
+          okCount++
+        } catch (error) {
+          var nodeReason = error.afterlightReason && AFTERLIGHT_ACQUISITION_FAILURE_REASONS.indexOf(String(error.afterlightReason)) >= 0
+            ? String(error.afterlightReason) : 'RUNTIME_EXCEPTION'
+          console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=FAIL reason=${nodeReason} proof=${proof(activeSpec)}`)
+          console.info(`AFTERLIGHT_ACQUISITION_AUDIT_FAIL count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256} reason=${nodeReason}`)
+          console.error(`AFTERLIGHT acquisition audit detail for ${activeSpec.data.quest_id}: ${String(error)}`)
+          return
+        }
       }
+      console.info(`AFTERLIGHT_ACQUISITION_AUDIT_OK count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256}`)
+    } catch (error) {
+      var outerReason = 'RUNTIME_EXCEPTION'
+      if (activeSpec !== null) {
+        console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=FAIL reason=${outerReason} proof=${proof(activeSpec)}`)
+      }
+      console.info(`AFTERLIGHT_ACQUISITION_AUDIT_FAIL count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256} reason=${outerReason}`)
+      console.error(`AFTERLIGHT acquisition audit outer failure: ${String(error)}`)
     }
-    console.info(`AFTERLIGHT_ACQUISITION_AUDIT_OK count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256}`)
-  } catch (error) {
-    const reason = 'RUNTIME_EXCEPTION'
-    if (activeSpec !== null) {
-      console.info(`AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=${activeSpec.data.quest_id} task=${activeSpec.data.task_ids.join(',')} method=${activeSpec.data.method} status=FAIL reason=${reason} proof=${proof(activeSpec)}`)
-    }
-    console.info(`AFTERLIGHT_ACQUISITION_AUDIT_FAIL count=${okCount} nonce=${bootNonce} manifest=${AFTERLIGHT_ACQUISITION_MANIFEST_SHA256} reason=${reason}`)
-    console.error('AFTERLIGHT acquisition audit outer failure', error)
-  }
+  }, Duration.ofMillis(1))
 })
 """
 

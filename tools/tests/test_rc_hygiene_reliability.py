@@ -4067,7 +4067,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 10)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "ef5ff936bfc0504a9555b64f913918ff29138ad6a057a7a227a378e64e703d48",
+            "34d572d0c40ffb07d4596c713addfd2c8116818b35a5019a2b35f78460958ec7",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

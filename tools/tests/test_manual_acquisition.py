@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -541,10 +542,83 @@ class AcquisitionModuleTests(unittest.TestCase):
         self.assertNotIn("Java.loadClass('java.lang.String')", source)
         self.assertNotIn("new AfterlightString", source)
         self.assertNotIn("Java.to(", source)
-        self.assertIn("value.charCodeAt(index)", source)
-        self.assertNotIn("digest.update(code)", source)
-        self.assertIn("Java.cast(AfterlightByte.TYPE, code)", source)
-        self.assertIn("digest.update(byteValue)", source)
+        self.assertNotIn("Java.cast(", source)
+        self.assertNotIn("AfterlightByte", source)
+        self.assertNotIn("AfterlightMessageDigest", source)
+        self.assertNotIn("AfterlightHexFormat", source)
+        self.assertNotIn("charCodeAt", source)
+        self.assertIn("value.codePointAt(textIndex)", source)
+        self.assertIn("function afterlightSha256Bytes", source)
+        self.assertIn("function afterlightSha256Ascii", source)
+        self.assertIn("setTimeout(() => {", source)
+        self.assertIn("}, Duration.ofMillis(1))", source)
+        self.assertIn("var nodeReason =", source)
+        self.assertIn("var outerReason =", source)
+        scheduled_audit = source[source.index("setTimeout(() => {") :]
+        self.assertNotIn("const reason =", scheduled_audit)
+        self.assertNotIn(", error)\n", scheduled_audit)
+        self.assertNotIn("task.getClass()", source)
+        self.assertNotIn("AfterlightCheckmarkTask.class.isInstance(task)", source)
+        self.assertIn("task instanceof AfterlightCheckmarkTask", source)
+        self.assertNotIn("instance.getClass()", source)
+        self.assertNotIn(".getClass()", source)
+        self.assertNotIn(".class.isInstance(", source)
+        self.assertIn(
+            "var expectedInstanceClass = Java.loadClass(declared.instance_class)",
+            source,
+        )
+        self.assertIn("instance instanceof expectedInstanceClass", source)
+        self.assertIn("recipe instanceof AfterlightProcessingRecipe", source)
+        self.assertIn("inputItem instanceof expectedItemClass", source)
+        sha_function = source[
+            source.index("function afterlightSha256Ascii") : source.index(
+                "function afterlightProofDigest"
+            )
+        ]
+        self.assertNotIn("const ", sha_function)
+        self.assertNotIn("let ", sha_function)
+
+    def test_renderer_indexes_rhino_java_lists_before_iterator_fallback(self) -> None:
+        manifest = self.acquisition.load_manifest(FIXTURE)
+        source = self.acquisition.render_manual_acquisition_audit(manifest)
+        adapter = source[
+            source.index("function javaArray") : source.index(
+                "function sortedStrings"
+            )
+        ]
+        harness = (
+            adapter
+            + "\nconst indexed = {0: 'first', 1: 'second', length: 2, "
+            + "iterator: function() { throw new Error('iterator accessed') }};\n"
+            + "console.log(JSON.stringify(javaArray(indexed)));\n"
+            + "const iterable = {iterator: function() { var position = 0; "
+            + "var values = ['third', 'fourth']; return {"
+            + "hasNext: function() { return position < values.length }, "
+            + "next: function() { return values[position++] }} }};\n"
+            + "console.log(JSON.stringify(javaArray(iterable)));\n"
+        )
+        result = subprocess.run(
+            ["node"],
+            input=harness,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ['["first","second"]', '["third","fourth"]'],
+        )
+
+    def test_renderer_uses_registry_context_for_every_recipe_result(self) -> None:
+        manifest = self.acquisition.load_manifest(FIXTURE)
+        source = self.acquisition.render_manual_acquisition_audit(manifest)
+
+        self.assertNotIn("recipe.getResultItem()", source)
+        self.assertIn(
+            "recipe['getResultItem(net.minecraft.core.HolderLookup$Provider)'](registries)",
+            source,
+        )
 
     def test_renderer_is_deterministic_ascii_and_boot_bound(self) -> None:
         manifest = self.acquisition.load_manifest(FIXTURE)
@@ -571,20 +645,58 @@ class AcquisitionModuleTests(unittest.TestCase):
         self.assertIn("FakePlayerFactory", first)
         self.assertIn("ServerQuestFile", first)
         self.assertIn(
-            "AfterlightProcessingRecipe.class.isInstance(recipe)",
+            "recipe instanceof AfterlightProcessingRecipe",
             first,
         )
         self.assertIn(
-            "AfterlightPressureChamberRecipe.class.isInstance(recipe)",
+            "recipe instanceof AfterlightPressureChamberRecipe",
             first,
         )
         self.assertIn(
-            "AfterlightExplosionCraftingRecipe.class.isInstance(recipe)",
+            "recipe instanceof AfterlightExplosionCraftingRecipe",
             first,
         )
-        self.assertIn(
-            "return AfterlightHexFormat.of().formatHex(digest.digest())",
-            first,
+        self.assertIn("return afterlightSha256Bytes(bytes)", first)
+        nonce = "task8-proof-vector"
+        known_proof = (
+            "397ea5d3b428d15f063935204af4bba29e1aba0cfc6437c186844296cede3a91"
+        )
+        self.assertEqual(
+            self.acquisition.proof_digest(
+                manifest.nodes[0],
+                self.acquisition.manifest_digest(manifest),
+                nonce,
+            ),
+            known_proof,
+        )
+        harness = (
+            "global.Java = { loadClass: function() { return {}; } };\n"
+            "global.ServerEvents = { loaded: function() {} };\n"
+            + first
+            + "\nconsole.log(afterlightProofDigest("
+            + json.dumps(self.acquisition.manifest_digest(manifest))
+            + ", "
+            + json.dumps(nonce)
+            + ", AFTERLIGHT_ACQUISITION_SPECS[0].canonical));\n"
+            + "console.log(afterlightSha256Bytes([97, 98, 99]));\n"
+            + "try { afterlightSha256Ascii('\\u00e9'); console.log('accepted') } "
+            + "catch (error) { console.log(String(error.message)) }\n"
+        )
+        result = subprocess.run(
+            ["node"],
+            input=harness,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                known_proof,
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                "acquisition proof material is not ASCII",
+            ],
         )
         self.assertNotIn(
             "spec.requirements.map(requirement => requirement.slice().sort()",

@@ -294,11 +294,11 @@ Every event uses the following fields. Update the original event when its status
 - **Category:** addition
 - **Status:** resolved
 - **Subsystem:** Cross-agent handoff continuity
-- **Summary:** The handoff now records the exact Story-cohesion checkpoint, integrated safeguards and content, active task boundaries, expected pre-generation audit drift, Prism automation limitation, and progress-safe release sequence.
-- **Evidence:** `docs/HANDOFF.md` names the local integration lineage through `7825f92`, preserves the dirty-checkout warning, and gives a restart prompt that requires the memory ledger and defers Packwiz, publication, and VPS deployment to their verified gates.
+- **Summary:** The handoff records the exact Story-cohesion checkpoint, integrated safeguards and content, active Task 9 review boundary, expected pre-generation drift, Prism automation limitation, and progress-safe release sequence.
+- **Evidence:** `docs/HANDOFF.md` names the local integration lineage through `795bae0`, the isolated Task 9 worktree and unresolved review counts, the fifth commodity declaration, the latest full-matrix outcome, the dirty-checkout warning, and a restart prompt that defers generation, Packwiz, publication, and VPS deployment to their verified gates.
 - **Files or Commit:** `docs/HANDOFF.md`, `docs/PROJECT_MEMORY.md`
 - **Impact:** A replacement Codex or Claude session can resume without repeating completed work, weakening release gates, regenerating too early, or risking live player progress.
-- **Follow-up:** Update the checkpoint again with final commit, CI, release, backup, and production evidence before declaring RC2 complete.
+- **Follow-up:** Update the checkpoint again after Task 9 integration, final generation, CI, release, backup, and production verification.
 
 ### MEM-2026-08-13-024
 

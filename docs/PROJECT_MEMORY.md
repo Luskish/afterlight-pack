@@ -43,10 +43,10 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** Signal companion networking
 - **Summary:** ECHO Pin and Claim actions disconnected clients because the server attempted to encode an invalid custom payload.
-- **Evidence:** Client disconnect reports named `minecraft:custom_payload`; the Signal 0.2.1 focused tests and server boot passed after the payload fix.
+- **Evidence:** Client disconnect reports named `minecraft:custom_payload`; the Signal 0.2.1 focused tests and dedicated-server boot passed after the payload fix. Released-client Pin and Claim confirmation remains pending.
 - **Files or Commit:** `30a5416` and the Signal companion source under `mods-src/`
-- **Impact:** Players can use Archive, Pin, and Claim without losing the connection.
-- **Follow-up:** Treat every custom payload path as client/server compatibility code and retain focused packet tests.
+- **Impact:** The candidate no longer reproduces the known encoder defect in automated validation, but this is not a claim of completed player acceptance.
+- **Follow-up:** Confirm Pin and Claim from the immutable released client, then update this event to verified.
 
 ### MEM-2026-08-13-003
 
@@ -79,10 +79,10 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** CurseForge client installation
 - **Summary:** A friend received a JavaFML provider mismatch after installing a SmartBrainLib artifact from the wrong loader line despite selecting a NeoForge-labeled file.
-- **Evidence:** The exact pack-managed dependency worked in a clean Prism install; replacing the manual CurseForge artifact with the release-managed file restored compatibility.
+- **Evidence:** The exact pack-managed dependency worked in a clean Prism install. CurseForge archive acceptance remained pending, so no CurseForge recovery is claimed.
 - **Files or Commit:** Packwiz SmartBrainLib metadata and launcher archives
 - **Impact:** Manual mod replacement can silently create loader-line mismatches and prevent startup.
-- **Follow-up:** Distribute immutable launcher archives and tell players not to mix manually downloaded dependencies into managed instances.
+- **Follow-up:** Distribute immutable launcher archives, avoid manual dependency replacement, and complete the clean CurseForge acceptance check.
 
 ### MEM-2026-08-13-006
 
@@ -111,11 +111,11 @@ Every event uses the following fields. Update the original event when its status
 ### MEM-2026-08-13-008
 
 - **Date:** 2026-08-13
-- **Category:** success
-- **Status:** verified
+- **Category:** decision
+- **Status:** accepted
 - **Subsystem:** Release verification discipline
-- **Summary:** AFTERLIGHT requires static pack validation, a fresh Java 21 dedicated-server boot, exact-SHA CI, immutable artifact inspection, and zero-player guarded deployment before production claims.
-- **Evidence:** `./tools/verify-pack.sh` requires `VERIFY: ALL GREEN`; `BOOT_TIMEOUT=600 ./tools/server-test.sh` requires `SERVER BOOT: OK`; release and deployment tests encode the remaining gates.
+- **Summary:** AFTERLIGHT mandates static pack validation, a fresh Java 21 dedicated-server boot, exact-SHA CI, immutable artifact inspection, and zero-player guarded deployment before production claims.
+- **Evidence:** `AGENTS.md`, the release tooling, and the deployment design define the required markers and fail-closed sequence; each release must execute them again.
 - **Files or Commit:** `AGENTS.md`, `tools/verify-pack.sh`, `tools/server-test.sh`, release scripts and tests
 - **Impact:** Client/server parity and deployment safety are executable contracts instead of agent assumptions.
 - **Follow-up:** Re-run every applicable gate in the same session as each release.
@@ -130,4 +130,40 @@ Every event uses the following fields. Update the original event when its status
 - **Evidence:** The first run failed with `ModuleNotFoundError: No module named 'yaml'`; a disposable virtual environment with PyYAML then printed `Skill is valid!`.
 - **Files or Commit:** `.agents/skills/afterlight-project-memory/SKILL.md`
 - **Impact:** Project skill validation remains reproducible without changing the repository or system Python.
-- **Follow-up:** Use `/tmp/afterlight-skill-validator/bin/python` for subsequent local skill validation in this session.
+- **Follow-up:** Create or reuse a disposable virtual environment with PyYAML whenever the default Python lacks the validator dependency.
+
+### MEM-2026-08-13-010
+
+- **Date:** 2026-08-13
+- **Category:** decision
+- **Status:** accepted
+- **Subsystem:** Packwiz release validation
+- **Summary:** Direct Packwiz refresh stops after the final pack commit, while the required gauntlet may refresh only inside its disposable detached validation worktree.
+- **Evidence:** `tools/release-gauntlet.sh` validates an exact clean SHA, runs `verify-pack.sh` in isolation, and rejects any resulting Git diff.
+- **Files or Commit:** `AGENTS.md`, `docs/RELEASING.md`, `tools/release-gauntlet.sh`
+- **Impact:** The release pipeline can prove Packwiz idempotence without mutating the branch worktree after its final pack commit.
+- **Follow-up:** Treat any branch-worktree refresh after the final pack commit as a process failure.
+
+### MEM-2026-08-13-011
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Story-cohesion release plan
+- **Summary:** The first implementation plan omitted shutdown-time progress comparison, complete rollback safeguards, and the repository's exact immutable promotion pipeline.
+- **Evidence:** Independent review found release, shutdown comparison, and rollback gaps. Four scoped fix rounds added executable deployment, acquisition, client smoke, provenance, and reboot quarantine contracts; final targeted review reported no residual load-bearing issue.
+- **Files or Commit:** `docs/superpowers/plans/2026-08-13-afterlight-story-cohesion.md`, `AGENTS.md`
+- **Impact:** The corrected plan prevents an unaccepted SHA or shutdown-written progress mutation from reaching players.
+- **Follow-up:** Execute the tested transaction without shortcuts and record every implementation failure or success.
+
+### MEM-2026-08-13-012
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Project memory integrity
+- **Summary:** The first ledger contract checked policy words globally and two seeded events overstated unconfirmed released-client acceptance.
+- **Evidence:** Independent review reproduced malformed-entry and continuation-line bypasses; tests now validate every event's exact one-line schema and full raw-body sensitive-data patterns. Final scoped review reported no remaining findings.
+- **Files or Commit:** `tools/tests/test_project_memory.py`, `docs/PROJECT_MEMORY.md`, `.agents/skills/afterlight-project-memory/agents/openai.yaml`
+- **Impact:** Future memory entries fail closed on malformed structure and no longer convert automated evidence into unearned player acceptance claims.
+- **Follow-up:** Keep task reviews independent and update event status only after matching same-session evidence.

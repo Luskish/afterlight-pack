@@ -168,7 +168,7 @@ Canonicalize mappings recursively, preserve list order where FTB semantics use o
 
 - [ ] **Step 4: Capture the immutable pre-overhaul fixture**
 
-Capture from the current quest corpus based on commit `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25`. Include a schema version and source commit, but no machine-specific absolute paths.
+Extract `config/ftbquests/quests` directly from Git object `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25` into a disposable directory and capture the fixture from those bytes, not from the working tree. Include a schema version and source commit, but no machine-specific absolute paths. Before accepting the fixture, prove that the current pre-overhaul corpus is canonically equal to the extracted Git object except for no fields at all. This prevents accidental working-tree drift from being blessed as the baseline.
 
 - [ ] **Step 5: Prove fail-closed behavior and commit**
 
@@ -200,6 +200,8 @@ Cover:
 - rendering into the chapter-level `quest_links` array
 - global collision detection across groups, chapters, links, quests, tasks, and rewards
 - unresolved link targets
+- duplicate target-and-coordinate triples
+- separate rejection tests for `NaN`, positive infinity, and negative infinity coordinates
 - malformed coordinates and high-bit IDs
 - empty chapters retaining `quest_links: [ ]`
 
@@ -257,11 +259,13 @@ Cover exact overlays for:
 - The Scarlands, chapter `770DAD173D9C234B`
 - Foothold, chapter `45491A24F6B8C192`
 - The Engine Room, chapter `52EF477C2D995F40`
-- Certification: Kinetics I, chapter `23643435F7BE74AC`, order 0 to 10
+- all seven existing Certification chapters, preserving their current relative order while moving them to 10 through 16
+- all three existing Requisition Depot chapters, preserving their current relative order while moving them to 30 through 32
 
 Tests must prove:
 
 - only declared top-level `quest_links`, `order_index`, and localization keys change
+- every existing chapter in group `4A20F33642175B95` has one unique order from the approved range with no collision against manuals
 - a digest mismatch outside permitted spans fails before writing
 - the second build is byte-identical
 - missing or duplicate structural spans fail closed
@@ -364,16 +368,21 @@ Also require:
 - manual order 0 through 7
 - every manual quest is `optional: true`
 - every root has no dependencies
+- every manual has exactly one finale reachable from its root
 - no story quest depends directly or transitively on a manual quest
+- every item task explicitly has `consume_items: false`
+- every reward type is `item` or `xp`
+- every item reward is exactly `kubejs:requisition_chit`; no other item reward is allowed
+- no reward uses loot, stage, command, custom, choice, random, or table semantics
 - all IDs are signed-safe and globally unique
 
 - [ ] **Step 2: Author ECHO-voice curricula**
 
-Implement the exact teaching goals and acquisition contracts from design sections 6.1 through 6.9. Keep tasks non-consuming unless a deliberate demonstration requires consumption. Use advancements only when the exact installed advancement exists and proves the intended action.
+Implement the exact teaching goals and acquisition contracts from design sections 6.1 through 6.9. Every manual task is non-consuming. Use advancements only when the exact installed advancement exists and proves the intended action.
 
 - [ ] **Step 3: Add rewards and visual grammar**
 
-Use modest starter materials, requisition chits, and experience. Do not grant machines that skip the lesson. Maintain the recovered-terminal and blackbox-cathedral voice.
+Use modest Requisition Chits and experience only. Do not grant starter materials, machines, schematics, Gate parts, seals, keys, or progression stages. Maintain the recovered-terminal and blackbox-cathedral voice.
 
 - [ ] **Step 4: Run focused tests and commit**
 
@@ -430,9 +439,19 @@ Co-Authored-By: Codex <noreply@openai.com>
 
 - Modify: `tools/validate-quests.py`
 - Modify: `tools/afterlight_quests/builder.py`
+- Create: `tools/afterlight_quests/acquisition.py`
+- Create: `tools/fixtures/quests/manual-acquisition.json`
 - Modify: `tools/tests/test_afterlight_quests.py`
+- Create: `tools/hash-generated-quests.py`
+- Create: `tools/client-quest-smoke.sh`
+- Modify: `tools/release-gauntlet.sh`
+- Modify: `tools/server-test.sh`
+- Modify: `tools/rc_hygiene.py`
+- Modify: `tools/tests/test_rc_hygiene.py`
+- Modify: `tools/tests/test_rc_hygiene_reliability.py`
+- Modify: applicable release and client test files
 - Modify: generated quest files under `config/ftbquests/quests/`
-- Modify: generated runtime audit inputs when required
+- Create: `kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js`
 
 - [ ] **Step 1: Run all quest tests**
 
@@ -440,15 +459,18 @@ Co-Authored-By: Codex <noreply@openai.com>
 python3 -m unittest tools.tests.test_afterlight_quests -v
 ```
 
-- [ ] **Step 2: Build twice and prove byte idempotence**
+- [ ] **Step 2: Build twice and prove complete byte idempotence**
 
 ```bash
+rm -rf /tmp/afterlight-quest-pass-1 /tmp/afterlight-quest-pass-2
 python3 tools/build-quests.py
-git diff -- config/ftbquests/quests > /tmp/afterlight-quest-pass-1.diff
+python3 tools/hash-generated-quests.py --output /tmp/afterlight-quest-pass-1
 python3 tools/build-quests.py
-git diff -- config/ftbquests/quests > /tmp/afterlight-quest-pass-2.diff
-cmp /tmp/afterlight-quest-pass-1.diff /tmp/afterlight-quest-pass-2.diff
+python3 tools/hash-generated-quests.py --output /tmp/afterlight-quest-pass-2
+diff -ru /tmp/afterlight-quest-pass-1 /tmp/afterlight-quest-pass-2
 ```
+
+The generated-file inventory must include every tracked and newly created chapter, localization file, managed-state file, reward table when applicable, `kubejs/server_scripts/afterlight/generated_quest_item_audit.js`, and `kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js`. It must detect untracked files and compare path, mode, size, and SHA-256.
 
 - [ ] **Step 3: Run static validation**
 
@@ -456,20 +478,70 @@ cmp /tmp/afterlight-quest-pass-1.diff /tmp/afterlight-quest-pass-2.diff
 python3 tools/validate-quests.py --static
 ```
 
-- [ ] **Step 4: Run the full test suite**
+Require exactly one checked-in acquisition declaration for every manual node. Static validation proves the declaration type agrees with the task contract.
+
+The acquisition fixture uses schema version 1 and maps each quest ID to exactly one record with `task_id`, `method`, and method-specific proof:
+
+- `advancement`: exact advancement resource ID
+- `recipe`: exact effective recipe ID, recipe type, expected output item, and minimum count
+- `process`: ordered effective recipe IDs and types with expected intermediate and final outputs
+- `worldgen`: exact loaded registry keys or resource paths plus the documented native acquisition target
+- `manual_check`: exact checkmark task ID and observable action localization key
+
+Item targets and common filters remain in the quest task, not duplicated as unverified free text in the fixture.
+
+- [ ] **Step 4: Prove effective runtime acquisition**
+
+Generate `generated_manual_acquisition_audit.js` deterministically from the fixture. On a fresh server, after KubeJS recipes are active, it emits:
+
+```text
+AFTERLIGHT_ACQUISITION_AUDIT_BEGIN schema=1 nonce=<nonce> manifest=<sha256>
+AFTERLIGHT_ACQUISITION_AUDIT_NODE quest=<id> task=<id> method=<method> status=OK proof=<sha256>
+AFTERLIGHT_ACQUISITION_AUDIT_OK count=<count> nonce=<nonce> manifest=<sha256>
+```
+
+For recipes and processes, inspect the effective server recipe manager by exact recipe ID, exact recipe type, and actual result stack after KubeJS changes. For advancements, inspect the loaded advancement manager. For worldgen, inspect every declared loaded registry key or server resource and its native acquisition target. Manual checks require a checkmark task and nonempty observable-action localization. A registry item entry alone is insufficient.
+
+`tools/validate-quests.py` computes the fixture digest, requires the current boot nonce and manifest in the KubeJS server log, rejects duplicate or missing node lines, and requires exact proof digests. Focused red tests cover zero declarations, duplicate declarations, invalid methods, missing recipes, wrong recipe types, replaced outputs, broken process intermediates, missing advancements, absent worldgen resources, stale nonces, stale manifests, and extra or missing runtime lines.
+
+`tools/server-test.sh` injects the same fresh nonce into both generated quest audits before boot. `tools/rc_hygiene.py` and its reliability tests must classify the new audit as generated source, require its installed pre-render bytes to match the Packwiz source, permit only the exact nonce placeholder substitution, and bind its post-render digest into provenance. Missing, stale, multiply substituted, or otherwise changed installed audit bytes fail before launch.
+
+- [ ] **Step 5: Add and run a real client quest smoke test**
+
+Create a fail-closed harness with this exact protocol:
+
+1. Allocate loopback-only random Packwiz, Minecraft, and RCON ports and a mode `0700` temporary root.
+2. Install a disposable server from the candidate Packwiz bytes with `server-ip=127.0.0.1`, `online-mode=false`, a random RCON password, and no externally reachable listener.
+3. Download or reuse one pinned official Prism Launcher release whose version, URL, size, and SHA-256 live in `tools/versions.env`; reject any mismatch.
+4. Build one disposable Prism application root containing only the candidate instance. Launch it with `--dir "$TEMP_PRISM_ROOT" --offline AfterlightSmoke --launch afterlight-smoke --server 127.0.0.1:<port>`. Never read or copy the user's normal Prism root or account files.
+5. Wait at most 600 seconds for RCON `list` to report exactly the offline smoke identity, then run `execute as AfterlightSmoke run ftbquests open_book 3E77A16CB0C0AD11`.
+6. Wait 15 seconds and require the same client to remain connected. This is the deterministic screen-open success marker because the open-book packet is handled synchronously by the real FTB Quests client before the second RCON check.
+7. Reject client or server logs containing disconnects, decoder or encoder exceptions, SNBT parse failures, missing localization, failed custom payloads, crashes, or FTB Quests sync errors. Require normal client login, server join, and open-book command markers.
+8. Always terminate the client, launcher, server, and Packwiz processes and delete the temporary root. Distinct timeout and cleanup failures are nonzero.
+
+Emit only `CLIENT QUEST SMOKE: OK` after every marker passes. Add the harness to `release-gauntlet.sh`. Focused tests fake each process and prove loopback binding, the exact `--dir` and offline arguments, stale marker rejection, timeout behavior, fatal-log rejection, second-list enforcement, credential-root isolation, and cleanup.
+
+- [ ] **Step 6: Run the full test suite**
 
 ```bash
 python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 ```
 
-- [ ] **Step 5: Commit generated quest corpus together**
+- [ ] **Step 7: Refresh and run local gates before the final pack commit**
 
-If Packwiz indexes changed pack files, source the version environment and refresh exactly once before the commit:
+Source the version environment, refresh the indexed pack once, then run the verifier while the final pack changes are still uncommitted:
 
 ```bash
 source tools/versions.env && export PATH="$PATH_EXTRA:$PATH"
 packwiz refresh
+./tools/verify-pack.sh
+BOOT_TIMEOUT=600 ./tools/server-test.sh
+python3 tools/validate-quests.py
 ```
+
+Required output includes `VERIFY: ALL GREEN`, `SERVER BOOT: OK`, and successful runtime acquisition validation. Confirm the second refresh inside `verify-pack.sh` causes no further diff.
+
+- [ ] **Step 8: Commit generated quest corpus together**
 
 Commit all compiler, fixture, generated quest, `pack.toml`, `index.toml`, and applicable pack files together:
 
@@ -481,53 +553,63 @@ Co-Authored-By: Codex <noreply@openai.com>
 
 Do not run `packwiz refresh` after this commit.
 
-## Task 9: Run Local Release Gates and Final Review
+## Task 9: Review and Accept the Exact Release Commit
 
 **Files:**
 
-- Modify only when a gate exposes a root-cause defect.
+- Create: `server/afterlight-progress-guard.py`
+- Create: `server/afterlight-quest-safe-update.sh`
+- Create: `server/afterlight-quarantine-gate.sh`
+- Create: `server/systemd/afterlight-quarantine-gate.service`
+- Modify: `server/afterlight-server.sh`
+- Modify: `server/afterlight-maintenance.sh`
+- Modify: `server/README.md`
+- Modify: `tools/tests/test_friend_server.py`
+- Modify: `tools/tests/test_server_maintenance.py`
+- Create: `tools/tests/test_quest_safe_update.py`
+- Modify only other files when a gate exposes a root-cause defect.
 - Update: `docs/PROJECT_MEMORY.md`
 
-- [ ] **Step 1: Run pack verification**
+- [ ] **Step 1: Write failing deployment-transaction tests**
 
-```bash
-./tools/verify-pack.sh
+Add fake Docker, RCON, `iptables`, filesystem, archive, and operator fixtures. Require one executable `server/afterlight-quest-safe-update.sh EXPECTED_SHA --confirm` transaction that:
+
+- validates the repository HEAD equals the exact 40-character expected SHA
+- takes the same nonblocking `flock` on `/run/afterlight/maintenance.lock` used by scheduled maintenance
+- requires a healthy current container and two exact zero-player RCON checks
+- inserts one `DOCKER-USER` TCP `25565` NEW-connection REJECT rule with a unique transaction comment, verifies it with `iptables -C`, and removes only that exact rule
+- runs `save-all flush`, stops Minecraft cleanly while retaining internal operator control, and never exposes RCON
+- creates a mode `0700` snapshot directory with canonical pre-state manifests and a full direct post-stop backup bound to SHA-256 and preflight extraction evidence
+- starts the exact expected release behind the gate, checks health and pack revision, stops cleanly, compares complete canonical FTB Quests and FTB Teams state, then performs the second healthy start
+- removes the gate and lock only after every success marker
+- on every injected failure, keeps the gate closed, stops the candidate, restores the prior exact release and affected quest/team data, proves the restored state through a clean stop and equality comparison, starts it again, then removes only the owned rule and lock
+- if rollback itself fails, first changes the Minecraft and backup containers to restart policy `no`, stops them, verifies both states, leaves the owned firewall rule installed, and writes a mode `0600` durable marker under `/var/lib/afterlight/quest-update-quarantine`; ordinary operator updates and scheduled maintenance must reject that marker until explicit documented recovery clears it
+- installs a systemd quarantine gate ordered after Docker. On reboot the persisted `restart: no` state keeps both containers stopped while the unit waits boundedly for `DOCKER-USER`, reconstructs the exact recorded rule, verifies it, and leaves the containers disabled. If the chain never appears, the unit fails but the stopped containers remain unable to autorestart
+
+Tests cover lock contention, malformed RCON output, players at either check, firewall insert/check/delete drift, save failure, backup verification failure, mode drift, candidate boot failure, pack SHA mismatch, shutdown failure, every canonical mismatch class, rollback failure, durable quarantine enforcement, verified `restart: no` persistence, reboot-time gate reconstruction after Docker, a boot where `DOCKER-USER` never appears, second-start failure, whitelist drift, signal interruption, and idempotent cleanup. The chain-absent reboot test must prove both containers remain stopped with autorestart disabled. No test logs identity-bearing values.
+
+- [ ] **Step 2: Implement canonical progress guard**
+
+`server/afterlight-progress-guard.py` is dependency-free and supports:
+
+```text
+snapshot --world WORLD --output MODE_0700_DIR
+compare --world WORLD --snapshot MODE_0700_DIR
 ```
 
-Required output: `VERIFY: ALL GREEN`.
+It structurally parses every FTB Quests and FTB Teams SNBT or JSON document, recursively canonicalizes complete values, and writes only relative file identifiers, document counts, byte hashes, canonical hashes, schema version, and snapshot digest. It rejects links, unsafe paths, duplicates, parse failures, extra or missing files, permission drift, and unsupported formats. Console output contains counts and hashes only.
 
-- [ ] **Step 2: Run a fresh server boot**
+- [ ] **Step 3: Implement the guarded update command**
 
-```bash
-BOOT_TIMEOUT=600 ./tools/server-test.sh
-```
+Keep ordinary `update` for non-quest changes, but document and require `afterlight-quest-safe-update.sh` for every quest corpus deployment. Reuse existing health, revision, archive, and rollback primitives where safe. Do not shell out to ordinary `update`, because its one-start flow is not progress-safe.
 
-Required output: `SERVER BOOT: OK`.
-
-- [ ] **Step 3: Validate runtime quest acquisition**
-
-```bash
-python3 tools/validate-quests.py
-```
-
-Require every manual item, advancement, filter tag, and reward to resolve in the fresh runtime registry audit.
-
-- [ ] **Step 4: Re-run pack verification**
-
-```bash
-./tools/verify-pack.sh
-git status --short
-```
-
-Required output: `VERIFY: ALL GREEN`, followed by an expected clean or explicitly reviewed tree.
-
-- [ ] **Step 5: Run independent final review**
+- [ ] **Step 4: Run independent final review**
 
 Review the entire branch against the approved design, compatibility fixture, common-tag declaration, no-U+2014 rule, release policy, and player-progress contract. Fix every Critical and Important finding, then repeat affected gates.
 
-- [ ] **Step 6: Record verified outcomes**
+- [ ] **Step 5: Record pre-acceptance outcomes**
 
-Append every discovered failure and verified success to `docs/PROJECT_MEMORY.md`. Commit only if the ledger changed:
+Append every discovered failure, fix, and verified local-gate success to `docs/PROJECT_MEMORY.md`. If review changes indexed pack content, rule the prior pack commit non-final, reopen Task 8, refresh and run all pack gates before creating its replacement final pack commit. If review changes only docs or server tooling outside the Packwiz index, run the affected tests without Packwiz refresh. Once the replacement final pack commit exists, never refresh the branch worktree.
 
 ```text
 docs(project): record story release evidence
@@ -535,28 +617,55 @@ docs(project): record story release evidence
 Co-Authored-By: Codex <noreply@openai.com>
 ```
 
+- [ ] **Step 6: Run server transaction tests and full local suite**
+
+```bash
+python3 -m unittest tools.tests.test_quest_safe_update -v
+python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
+git diff --check
+```
+
+Commit all transaction tooling, tests, docs, review fixes, and memory updates. Confirm the branch is clean.
+
+- [ ] **Step 7: Run the exact clean-SHA release gauntlet**
+
+From a clean `dev` checkout, derive `SHA=$(git rev-parse HEAD)` and run:
+
+```bash
+./tools/release-gauntlet.sh "$SHA"
+```
+
+Require `GAUNTLET: ACCEPTED $SHA`, capture the printed `GAUNTLET RECEIPT SHA-256`, and independently verify the receipt digest. The gauntlet's Packwiz refresh occurs only inside its disposable detached validation worktree and must leave the exact commit clean. Do not run Packwiz refresh in the branch worktree after the final pack commit.
+
 ## Task 10: Publish, Release, and Deploy Safely
 
 **Files:**
 
 - Use existing release scripts and documentation.
+- Execute the tested `server/afterlight-quest-safe-update.sh` transaction from the accepted SHA.
 - Update generated release notes and website data only through existing supported paths.
 
-- [ ] **Step 1: Push dev and bind CI to the exact SHA**
+- [ ] **Step 1: Promote only the gauntlet-accepted SHA**
 
 ```bash
-git push origin dev
+tools/promote-release.sh "$SHA" "$RECEIPT_SHA256" --confirm
 ```
 
-Wait for `pack-ci` on the pushed SHA. Require green status and retain the run URL and SHA as evidence.
+The promoter must push `dev` by explicit refspec, wait for exact accepted `dev` CI, fast-forward `main` to the same SHA, wait for exact `main` CI, verify ordinary and cache-busted Pages parity, verify clean install parity, create the immutable annotated tag, and return to `dev`. Do not manually merge or push around the promoter.
 
-- [ ] **Step 2: Merge dev to main without rewriting history**
+- [ ] **Step 2: Commit and verify release evidence**
 
-Merge only after exact-SHA CI is green. Push `main`, then require exact-main-SHA CI green.
+Populate the matching release document with the accepted SHA, receipt digest, gauntlet transcript digest, exact `dev` and `main` CI URLs, Pages hashes, tool versions, Signal evidence, and five artifact hashes. Commit only `docs/HANDOFF.md` and the release document as the distinct evidence commit, push `dev`, and require that exact commit's `pack-ci` run to pass.
 
-- [ ] **Step 3: Build and inspect immutable release artifacts**
+- [ ] **Step 3: Publish the immutable accepted artifacts**
 
-Use the existing release scripts. Require exactly:
+Run the existing publisher with the same accepted SHA and independently captured receipt digest:
+
+```bash
+tools/publish-release.sh "$SHA" "$VERSION" "$RECEIPT_SHA256" --confirm
+```
+
+Use `--prerelease --confirm` instead when the selected version is a release candidate. Require exactly:
 
 - `AFTERLIGHT-prism-instance.zip`
 - `AFTERLIGHT-curseforge.zip`
@@ -564,38 +673,55 @@ Use the existing release scripts. Require exactly:
 - `SHA256SUMS`
 - `release-metadata.json`
 
-Reject unsafe paths, links, secrets, malformed archives, extra files, or checksum drift. Publish under a new immutable version and tag. Never replace an existing asset.
+Reject unsafe paths, links, secrets, malformed archives, extra files, receipt drift, or checksum drift. Publish under the new immutable tag created by the promoter. Never replace an existing asset or move a tag.
 
 - [ ] **Step 4: Verify public delivery**
 
 Confirm the AFTERLIGHT portal at `https://rl-labs.org/afterlight` points to the newly published immutable assets and that Prism, CurseForge, and Modrinth downloads return the expected checksums.
 
-- [ ] **Step 5: Gate live deployment on zero players**
+- [ ] **Step 5: Begin the tested production safety transaction**
 
-Before any server modification:
+On the VPS, require a clean repository checkout at the accepted SHA, then run:
 
-1. Query the live server player list.
-2. Abort if any player is online.
-3. Close external connections before shutdown.
-4. Create a timestamped backup of `world/ftbquests`, `world/ftbteams`, `usercache.json`, and `whitelist.json`.
-5. Canonically parse and snapshot complete FTB Quests and FTB Teams progress objects locally without committing them.
+```bash
+sudo server/afterlight-quest-safe-update.sh "$SHA" --confirm
+```
 
-- [ ] **Step 6: Deploy server files and prove progress preservation**
+The command owns the full transaction. Before any server modification it must:
 
-Deploy the exact released server pack, start behind the closed connection gate, and wait for a clean boot. Canonically compare all pre-deploy and post-deploy progress values. Abort and restore the backup on any mismatch.
+1. Acquire the existing host maintenance lock and fail if another maintenance operation owns it.
+2. Query the live server player list through internal RCON and abort if any player is online.
+3. Install a fail-closed `DOCKER-USER` rule that rejects new external TCP `25565` connections without affecting SSH or internal health checks. Record and verify the exact rule identity for later removal.
+4. Reconfirm zero players through internal RCON.
+5. Flush saves and stop Minecraft cleanly.
+6. Create a mode `0700` timestamped snapshot directory and a verified authenticated backup of `world/ftbquests`, `world/ftbteams`, `usercache.json`, and `whitelist.json`.
+7. Canonically parse and hash every complete FTB Quests and FTB Teams document, including task progress, started, completed, repeatable, completion counts, claimed rewards, player data, pins, scalar flags, and team properties. Output only per-file counts and hashes.
 
-- [ ] **Step 7: Open connections and verify production**
+- [ ] **Step 6: Deploy, stop, and prove shutdown-time preservation**
 
-Open the connection gate only after:
+Require the transaction transcript to prove it deployed the exact CI-approved and published server release while the gate and lock remained active. It starts behind the gate, proves the released mod inventory, waits for clean health checks, verifies the quest corpus, then stops cleanly so FTB Quests and FTB Teams flush shutdown-time state. Only after shutdown may it compare every pre-deploy and post-stop progress and team document. Any changed document, key, value, count, cooldown, repeat state, claim, pin, property, or flag triggers its tested rollback path.
+
+- [ ] **Step 7: Perform the second verified start**
+
+Require the transaction transcript and final status to prove the accepted release started a second time behind the connection gate with clean health checks, exact released mod inventory, quest corpus load, intact whitelist, and unchanged canonical progress hashes. The lock and firewall rule remain active until every check passes.
+
+- [ ] **Step 8: Open connections and verify production**
+
+The transaction opens the connection gate only after:
 
 - server boot is clean
 - mod inventory matches the released manifest
 - quest corpus loads
-- complete progress comparison is identical
+- the post-shutdown complete progress comparison is identical
+- the second start is healthy
 - whitelist remains intact
 - no recovery action was needed
 
-Run a final status check and record the deployment success or any failure in `docs/PROJECT_MEMORY.md` without recording player identity or progress values.
+Verify it removed only the exact owned firewall rule and released the maintenance lock, then run a final status check. Record the deployment success or any failure in `docs/PROJECT_MEMORY.md` without recording player identity or progress values.
+
+- [ ] **Step 9: Fail-closed rollback when any production gate fails**
+
+On any failure, require the transaction to keep the external gate closed and stop the candidate. It restores the previous exact server release and restores pre-deploy FTB Quests and FTB Teams data when canonical comparison proves mutation. It starts the previous release behind the gate, stops cleanly, requires equality with the original snapshot, starts it once more, passes health checks, then removes only its exact rule and releases the lock. If automated rollback itself fails, set and verify `restart: no` for both containers, stop and verify them, leave the exact firewall rule installed, and write the durable fail-closed quarantine marker that blocks ordinary updates and scheduled maintenance. After reboot, Docker may start but the containers remain stopped while the post-Docker systemd gate reconstructs and verifies the recorded rule. If `DOCKER-USER` is absent, the unit fails without enabling either container. Print snapshot and authenticated backup digests without identities and require documented manual recovery. Record the rejected candidate and fix forward through a new commit, gauntlet, release, and immutable tag.
 
 ## Completion Criteria
 
@@ -605,6 +731,7 @@ Run a final status check and record the deployment success or any failure in `do
 - [ ] Safe commodity tasks accept all verified common-tag variants.
 - [ ] Existing quest identities and live progress remain intact.
 - [ ] Quest build is deterministic and idempotent.
+- [ ] A clean real client joins the disposable server, receives quest sync, and opens the quest screen without parse or packet failure.
 - [ ] `VERIFY: ALL GREEN` and `SERVER BOOT: OK` pass in the final session.
 - [ ] Exact-SHA CI is green on dev and main.
 - [ ] Immutable launcher artifacts and website links are verified.

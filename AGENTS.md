@@ -43,7 +43,7 @@ Never state that something works without having run the check in the same sessio
 ## Packwiz discipline
 
 - Every shell that runs packwiz starts with: `source tools/versions.env && export PATH="$PATH_EXTRA:$PATH"`.
-- Every packwiz-touching commit includes `pack.toml`, `index.toml`, and `mods/` together. Never leave refresh output uncommitted. Never run `packwiz refresh` after your final commit.
+- Every packwiz-touching commit includes `pack.toml`, `index.toml`, and `mods/` together. Never leave refresh output uncommitted. Never run `packwiz refresh` in the branch worktree after your final pack commit. The required release gauntlet may run it only inside its disposable detached validation worktree and must prove that exact commit remains clean.
 - Every mod gets a deliberate `side` value (`client`, `server`, or `both`). Client-only mods must never reach the server install.
 - New root-level files must be added to `.packwizignore` unless they are meant to ship inside the pack. The pack index is served publicly; check `index.toml` after refresh.
 - No jars, secrets, or tokens in git, ever.

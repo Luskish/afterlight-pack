@@ -575,3 +575,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/release-gauntlet.sh` and `tools/tests/test_release_gauntlet.py`
 - **Impact:** No artifact was accepted, pushed, published, or deployed. The runtime candidate remained green and player data remained untouched.
 - **Follow-up:** Commit the controller correction and rerun the exact-head gauntlet. Promote only from an accepted receipt.
+
+### MEM-2026-08-13-047
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** verified
+- **Subsystem:** RC2 clean client installation
+- **Summary:** The post-ShellCheck release preflight built and inspected all five public artifacts, then stopped because the client installer still locked the pre-FTB-Filter-System count of 156 instead of the current 157 client mods.
+- **Evidence:** The preflight built the 281-entry CurseForge archive and 183-entry Modrinth archive, and both completeness inspections reported `packwiz_client_mod_count` 157 with 13 server-only exclusions. The first launcher install completed all 322 Packwiz entries, then printed `FAIL: client install count changed: 157`. Git history confirmed FTB Filter System was added for generalized steel tasks after the count lock was last updated. The harness contract was changed first and failed against 156, then the implementation lock changed to 157. A fresh two-pass install ended with `Client mods: 157`, `Server-only exclusions: 13`, stable mod-set and payload digests, and `CLIENT INSTALL: OK`.
+- **Files or Commit:** `tools/client-install-test.sh`, `tools/tests/test_client_install.py`, and `mods/ftb-filter-system.pw.toml`
+- **Impact:** The released client contents were correct; only the stale release assertion failed. No artifact was published or deployed, and no production or player state changed.
+- **Follow-up:** Keep the explicit 157 and 13 inventory locks, run exact-head CI in parallel with the final gauntlet, and promote only after both are green.

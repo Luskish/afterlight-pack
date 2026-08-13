@@ -262,7 +262,7 @@ class ClientHarnessContractTests(unittest.TestCase):
         self.assertIn("SECOND_MODSET_SHA256", self.source)
         self.assertIn("FIRST_PAYLOAD_SHA256", self.source)
         self.assertIn("SECOND_PAYLOAD_SHA256", self.source)
-        self.assertIn('[ "$FIRST_CLIENT_COUNT" = 156 ]', self.source)
+        self.assertIn('[ "$FIRST_CLIENT_COUNT" = 157 ]', self.source)
         self.assertIn("CLIENT INSTALL: OK", self.source)
 
     def test_harness_avoids_ambiguous_and_or_guards(self):

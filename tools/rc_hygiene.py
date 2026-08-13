@@ -26,6 +26,14 @@ try:
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
+        validate_quest_item_audit_logs,
+    )
+    from afterlight_quests.acquisition import (
+        ACQUISITION_AUDIT_RELATIVE,
+        FIXTURE_RELATIVE,
+        load_manifest as load_acquisition_manifest,
+        render_manual_acquisition_audit as render_acquisition_source,
+        validate_acquisition_audit_logs,
     )
 except ModuleNotFoundError:
     from tools.afterlight_quests.builder import (
@@ -34,6 +42,14 @@ except ModuleNotFoundError:
         _quest_item_ids,
         _render_quest_item_audit,
         quest_item_audit_digest,
+        validate_quest_item_audit_logs,
+    )
+    from tools.afterlight_quests.acquisition import (
+        ACQUISITION_AUDIT_RELATIVE,
+        FIXTURE_RELATIVE,
+        load_manifest as load_acquisition_manifest,
+        render_manual_acquisition_audit as render_acquisition_source,
+        validate_acquisition_audit_logs,
     )
 
 
@@ -1219,6 +1235,34 @@ def verify_install_provenance(
         "digest": _artifact_inventory_digest(artifact_inventory),
         "inventory": artifact_inventory,
     }
+    if (root_path / FIXTURE_RELATIVE).is_file():
+        for relative_text, renderer in QUEST_RUNTIME_AUDITS:
+            indexed = indexed_entries.get(relative_text)
+            if not isinstance(indexed, dict) or indexed.get("metafile", False):
+                raise VerificationError(
+                    "quest runtime audit source is not directly indexed: "
+                    f"{relative_text}"
+                )
+            relative = PurePosixPath(relative_text)
+            canonical = renderer(root_path)
+            source_path = _verified_regular_file(
+                root_path,
+                relative,
+                "repository quest runtime audit source",
+            )
+            installed_path = _verified_regular_file(
+                install_path,
+                relative,
+                "installed quest runtime audit source",
+            )
+            if source_path.read_bytes() != canonical:
+                raise VerificationError(
+                    f"quest runtime audit repository source is stale: {relative_text}"
+                )
+            if installed_path.read_bytes() != canonical:
+                raise VerificationError(
+                    f"quest runtime audit install source is stale: {relative_text}"
+                )
     return provenance
 
 
@@ -3725,6 +3769,11 @@ def verify_boot_run(
     gate_audit_sha256 = verify_installed_gate_audit(
         root_path, install_path, nonce
     )
+    quest_audit_provenance = verify_installed_quest_audits(
+        root_path,
+        install_path,
+        nonce,
+    )
     verify_install_provenance(root_path, install_path, verify_files=False)
     verify_jdt_evidence(root_path, install_path)
     log_text = _read_strict_utf8(
@@ -3733,9 +3782,36 @@ def verify_boot_run(
     debug_text = _read_strict_utf8(
         install_path, PurePosixPath("logs/debug.log"), "debug.log"
     )
+    _read_strict_utf8(
+        install_path,
+        PurePosixPath("logs/kubejs/server.log"),
+        "KubeJS server.log",
+    )
     boot_text = _read_strict_utf8(
         install_path, PurePosixPath("boot.log"), "boot.log"
     )
+    runtime_logs = (
+        install_path / "logs" / "latest.log",
+        install_path / "logs" / "debug.log",
+        install_path / "logs" / "kubejs" / "server.log",
+    )
+    quest_root = root_path / "config" / "ftbquests" / "quests"
+    acquisition_manifest = load_acquisition_manifest(
+        root_path / FIXTURE_RELATIVE
+    )
+    runtime_audit_errors = [
+        *validate_quest_item_audit_logs(quest_root, nonce, runtime_logs),
+        *validate_acquisition_audit_logs(
+            acquisition_manifest,
+            nonce,
+            runtime_logs,
+        ),
+    ]
+    if runtime_audit_errors:
+        raise VerificationError(
+            "quest runtime audit validation failed: "
+            + "; ".join(runtime_audit_errors)
+        )
     sable = verify_sable_runtime_dist_cleaner_evidence(
         root_path,
         install_path,
@@ -3777,6 +3853,7 @@ def verify_boot_run(
         "warning_records": REVIEWED_WARNING_TOTAL,
         "audits": audits,
         "gate_audit_sha256": gate_audit_sha256,
+        "quest_audit_provenance": quest_audit_provenance,
         "seal_source_sha256": seal_sources["sha256"],
         "seal_code_corpus_sha256": seal_sources["code_corpus_sha256"],
         "quest_identity_count": quest_identity["count"],
@@ -3784,6 +3861,322 @@ def verify_boot_run(
         "console_severe_count": console_count,
         "console_severe_sha256": console_digest,
     }
+
+
+QUEST_AUDIT_NONCE_PLACEHOLDER = b"__AFTERLIGHT_BOOT_NONCE__"
+QUEST_RUNTIME_AUDIT_PROVENANCE = PurePosixPath(
+    "afterlight-runtime-audit-provenance.json"
+)
+
+
+def render_quest_item_audit(root: Path | str) -> bytes:
+    root_path = _validated_root(root, "pack root")
+    return _render_quest_item_audit(
+        root_path / "config" / "ftbquests" / "quests"
+    ).encode("utf-8")
+
+
+def render_manual_acquisition_audit(root: Path | str) -> bytes:
+    root_path = _validated_root(root, "pack root")
+    manifest = load_acquisition_manifest(root_path / FIXTURE_RELATIVE)
+    return render_acquisition_source(manifest).encode("utf-8")
+
+
+QUEST_RUNTIME_AUDITS = (
+    (
+        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+        render_quest_item_audit,
+    ),
+    (ACQUISITION_AUDIT_RELATIVE, render_manual_acquisition_audit),
+)
+
+
+def _atomic_runtime_write(
+    root: Path,
+    relative: PurePosixPath,
+    payload: bytes,
+    *,
+    mode: int,
+    must_exist: bool,
+) -> Path:
+    root_path = _validated_root(root, "runtime audit write root")
+    if must_exist:
+        target = _verified_regular_file(
+            root_path,
+            relative,
+            "runtime audit write target",
+        )
+    else:
+        parent = root_path
+        for part in relative.parent.parts:
+            parent /= part
+            try:
+                parent_status = parent.lstat()
+            except OSError as error:
+                raise VerificationError(
+                    f"cannot inspect runtime audit write parent {relative}: {error}"
+                ) from error
+            if stat.S_ISLNK(parent_status.st_mode) or not stat.S_ISDIR(
+                parent_status.st_mode
+            ):
+                raise VerificationError(
+                    f"unsafe runtime audit write parent: {relative.as_posix()}"
+                )
+        target = root_path.joinpath(*relative.parts)
+        try:
+            target_status = target.lstat()
+        except FileNotFoundError:
+            target_status = None
+        except OSError as error:
+            raise VerificationError(
+                f"cannot inspect runtime audit write target {relative}: {error}"
+            ) from error
+        if target_status is not None and (
+            stat.S_ISLNK(target_status.st_mode)
+            or not stat.S_ISREG(target_status.st_mode)
+        ):
+            raise VerificationError(
+                f"unsafe runtime audit write target: {relative.as_posix()}"
+            )
+
+    temporary = target.with_name(
+        f".{target.name}.afterlight-{os.getpid()}-{os.urandom(8).hex()}"
+    )
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = -1
+    try:
+        descriptor = os.open(temporary, flags, mode)
+        remaining = memoryview(payload)
+        while remaining:
+            written = os.write(descriptor, remaining)
+            if written <= 0:
+                raise OSError("short runtime audit write")
+            remaining = remaining[written:]
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = -1
+        os.chmod(temporary, mode)
+        os.replace(temporary, target)
+    except OSError as error:
+        if descriptor >= 0:
+            os.close(descriptor)
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+        raise VerificationError(
+            f"cannot atomically write runtime audit {relative.as_posix()}: {error}"
+        ) from error
+    try:
+        actual = target.read_bytes()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read back runtime audit {relative.as_posix()}: {error}"
+        ) from error
+    if actual != payload:
+        raise VerificationError(
+            f"runtime audit readback mismatch: {relative.as_posix()}"
+        )
+    return target
+
+
+def _runtime_audit_expectations(
+    root: Path,
+    install: Path,
+    nonce: str,
+    *,
+    require_pre_render: bool,
+) -> list[dict[str, object]]:
+    if re.fullmatch(r"[A-Za-z0-9._-]+", nonce) is None:
+        raise VerificationError("installed quest audit nonce is malformed")
+    expectations: list[dict[str, object]] = []
+    for relative_text, renderer in QUEST_RUNTIME_AUDITS:
+        relative = PurePosixPath(relative_text)
+        canonical = renderer(root)
+        source_path = _verified_regular_file(
+            root,
+            relative,
+            "repository quest audit source",
+        )
+        try:
+            tracked = source_path.read_bytes()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot read repository quest audit source {relative_text}: {error}"
+            ) from error
+        if tracked != canonical:
+            raise VerificationError(
+                f"repository quest audit source is not canonical: {relative_text}"
+            )
+        if canonical.count(QUEST_AUDIT_NONCE_PLACEHOLDER) != 1:
+            raise VerificationError(
+                f"quest audit nonce placeholder count changed: {relative_text}"
+            )
+        installed_path = _verified_regular_file(
+            install,
+            relative,
+            "installed quest audit",
+        )
+        try:
+            installed = installed_path.read_bytes()
+        except OSError as error:
+            raise VerificationError(
+                f"cannot read installed quest audit {relative_text}: {error}"
+            ) from error
+        rendered = canonical.replace(
+            QUEST_AUDIT_NONCE_PLACEHOLDER,
+            nonce.encode("ascii"),
+            1,
+        )
+        expected_installed = canonical if require_pre_render else rendered
+        if installed != expected_installed:
+            phase = "pre-render source" if require_pre_render else "post-render bytes"
+            raise VerificationError(
+                f"installed quest audit {phase} mismatch: {relative_text}"
+            )
+        expectations.append(
+            {
+                "path": relative_text,
+                "relative": relative,
+                "canonical": canonical,
+                "rendered": rendered,
+                "mode": stat.S_IMODE(installed_path.stat().st_mode),
+                "source_sha256": _hash_bytes(canonical, "sha256"),
+                "rendered_sha256": _hash_bytes(rendered, "sha256"),
+            }
+        )
+    return expectations
+
+
+def _runtime_audit_provenance_payload(
+    expectations: Sequence[dict[str, object]],
+    nonce: str,
+) -> tuple[dict[str, object], bytes]:
+    document: dict[str, object] = {
+        "schema_version": 1,
+        "nonce": nonce,
+        "audits": [
+            {
+                "path": expectation["path"],
+                "source_sha256": expectation["source_sha256"],
+                "rendered_sha256": expectation["rendered_sha256"],
+            }
+            for expectation in sorted(
+                expectations,
+                key=lambda value: str(value["path"]),
+            )
+        ],
+    }
+    payload = (json.dumps(document, indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    return document, payload
+
+
+def render_installed_quest_audits(
+    root: Path | str,
+    install: Path | str,
+    nonce: str,
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    expectations = _runtime_audit_expectations(
+        root_path,
+        install_path,
+        nonce,
+        require_pre_render=True,
+    )
+    written: list[dict[str, object]] = []
+    provenance_path = install_path / QUEST_RUNTIME_AUDIT_PROVENANCE
+    if provenance_path.exists() or provenance_path.is_symlink():
+        raise VerificationError(
+            "runtime audit provenance must be absent before rendering"
+        )
+    try:
+        for expectation in expectations:
+            _atomic_runtime_write(
+                install_path,
+                expectation["relative"],
+                expectation["rendered"],
+                mode=int(expectation["mode"]),
+                must_exist=True,
+            )
+            written.append(expectation)
+        document, payload = _runtime_audit_provenance_payload(
+            expectations,
+            nonce,
+        )
+        _atomic_runtime_write(
+            install_path,
+            QUEST_RUNTIME_AUDIT_PROVENANCE,
+            payload,
+            mode=0o600,
+            must_exist=False,
+        )
+        result = verify_installed_quest_audits(
+            root_path,
+            install_path,
+            nonce,
+        )
+    except VerificationError:
+        for expectation in reversed(written):
+            try:
+                _atomic_runtime_write(
+                    install_path,
+                    expectation["relative"],
+                    expectation["canonical"],
+                    mode=int(expectation["mode"]),
+                    must_exist=True,
+                )
+            except VerificationError:
+                pass
+        try:
+            provenance_path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+        raise
+    return result
+
+
+def verify_installed_quest_audits(
+    root: Path | str,
+    install: Path | str,
+    nonce: str,
+) -> dict[str, object]:
+    root_path = _validated_root(root, "pack root")
+    install_path = _validated_root(install, "install root")
+    expectations = _runtime_audit_expectations(
+        root_path,
+        install_path,
+        nonce,
+        require_pre_render=False,
+    )
+    expected_document, expected_payload = _runtime_audit_provenance_payload(
+        expectations,
+        nonce,
+    )
+    provenance_path = _verified_regular_file(
+        install_path,
+        QUEST_RUNTIME_AUDIT_PROVENANCE,
+        "runtime audit provenance",
+    )
+    try:
+        actual_payload = provenance_path.read_bytes()
+    except OSError as error:
+        raise VerificationError(
+            f"cannot read runtime audit provenance: {error}"
+        ) from error
+    if actual_payload != expected_payload:
+        raise VerificationError("runtime audit provenance mismatch")
+    if stat.S_IMODE(provenance_path.stat().st_mode) != 0o600:
+        raise VerificationError("runtime audit provenance mode must be 0600")
+    return expected_document
 
 
 def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
@@ -3817,7 +4210,8 @@ def quest_audit_expectation(root: Path | str) -> tuple[str, int]:
             "generated quest audit script must declare exactly one digest"
         )
     item_match = re.search(
-        r"^const AFTERLIGHT_QUEST_ITEM_IDS = (?P<items>\[.*?\])\n\nServerEvents\.loaded",
+        r"^const AFTERLIGHT_QUEST_ITEM_IDS = (?P<items>\[.*?\])\n\n"
+        r"const AFTERLIGHT_QUEST_COMMODITY =",
         script,
         flags=re.MULTILINE | re.DOTALL,
     )
@@ -3862,7 +4256,7 @@ def verify_installed_quest_audit(
     install_path = _validated_root(install, "install root")
     quest_root = root_path / "config" / "ftbquests" / "quests"
     expected_source = _render_quest_item_audit(quest_root)
-    placeholder = "__AFTERLIGHT_BOOT_NONCE__"
+    placeholder = QUEST_AUDIT_NONCE_PLACEHOLDER.decode("ascii")
     if expected_source.count(placeholder) != 1:
         raise VerificationError("quest audit builder nonce contract changed")
     expected = expected_source.replace(placeholder, nonce, 1).encode("utf-8")
@@ -3912,9 +4306,9 @@ SEAL_METADATA_MAX_FILES = 4_096
 SEAL_METADATA_MAX_TOTAL_PATH_BYTES = 1024 * 1024
 SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
-EXPECTED_SEAL_CODE_CORPUS_COUNT = 9
+EXPECTED_SEAL_CODE_CORPUS_COUNT = 10
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "6a202fc7cb6c7d563d03ec953c4b8f3785beac69df613f06153aa132bb28975b"
+    "fa46a0e76f16fb2413fe83ac71ba43f0ba46e9ecb73fa6d74fe87e446188d53f"
 )
 SEAL_RENDERED_CODE_RELATIVES = frozenset(
     {
@@ -4966,9 +5360,34 @@ def _verify_seal_code_corpus(root: Path, install: Path) -> str:
 
     rendered_nonces: list[str] = []
     rendered_relatives: set[str] = set()
+    non_seal_rendered_relatives: set[str] = set()
+    non_seal_runtime_relatives = {
+        relative
+        for relative, _renderer in QUEST_RUNTIME_AUDITS
+        if relative != "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+    }
     for relative, root_payload in sorted(root_inventory.items()):
         installed_payload = install_inventory[relative]
         if installed_payload == root_payload:
+            continue
+        if relative in non_seal_runtime_relatives:
+            nonce = _seal_rendered_code_nonce(installed_payload, relative)
+            if root_payload.count(QUEST_AUDIT_NONCE_PLACEHOLDER) != 1:
+                raise VerificationError(
+                    "repository non-Seal quest audit nonce placeholder count changed"
+                )
+            expected_rendered = root_payload.replace(
+                QUEST_AUDIT_NONCE_PLACEHOLDER,
+                nonce.encode("ascii"),
+                1,
+            )
+            if installed_payload != expected_rendered:
+                raise VerificationError(
+                    "installed non-Seal quest audit differs from authenticated "
+                    "code-corpus nonce substitution"
+                )
+            non_seal_rendered_relatives.add(relative)
+            rendered_nonces.append(nonce)
             continue
         if relative not in SEAL_RENDERED_CODE_RELATIVES:
             raise VerificationError(
@@ -5001,6 +5420,15 @@ def _verify_seal_code_corpus(root: Path, install: Path) -> str:
         raise VerificationError(
             "Seal source corpus rendered code is incomplete or nonce-divergent: "
             f"paths={sorted(rendered_relatives)} nonces={sorted(set(rendered_nonces))}"
+        )
+    if non_seal_rendered_relatives and (
+        non_seal_rendered_relatives != non_seal_runtime_relatives
+        or len(set(rendered_nonces)) != 1
+    ):
+        raise VerificationError(
+            "non-Seal quest audit rendered code is incomplete or nonce-divergent: "
+            f"paths={sorted(non_seal_rendered_relatives)} "
+            f"nonces={sorted(set(rendered_nonces))}"
         )
     return root_digest
 
@@ -6868,6 +7296,30 @@ def _cli_verify_quest_audit(args: argparse.Namespace) -> None:
     print(f"QUEST AUDIT BYTES: OK sha256={digest}")
 
 
+def _cli_render_installed_quest_audits(args: argparse.Namespace) -> None:
+    result = render_installed_quest_audits(
+        Path(args.root),
+        Path(args.install),
+        args.nonce,
+    )
+    print(
+        "QUEST AUDIT RENDER: OK "
+        f"audits={len(result['audits'])} nonce={result['nonce']}"
+    )
+
+
+def _cli_verify_quest_audits(args: argparse.Namespace) -> None:
+    result = verify_installed_quest_audits(
+        Path(args.root),
+        Path(args.install),
+        args.nonce,
+    )
+    print(
+        "QUEST AUDIT BYTES: OK "
+        f"audits={len(result['audits'])} nonce={result['nonce']}"
+    )
+
+
 def _cli_render_installed_gate_audit(args: argparse.Namespace) -> None:
     digest = _install_rendered_gate_audit(
         Path(args.root), Path(args.install), args.nonce
@@ -6910,6 +7362,20 @@ def build_parser() -> argparse.ArgumentParser:
     quest_audit.add_argument("--install", required=True)
     quest_audit.add_argument("--nonce", required=True)
     quest_audit.set_defaults(handler=_cli_verify_quest_audit)
+    quest_audit_render = subparsers.add_parser(
+        "render-installed-quest-audits"
+    )
+    quest_audit_render.add_argument("--root", default=".")
+    quest_audit_render.add_argument("--install", required=True)
+    quest_audit_render.add_argument("--nonce", required=True)
+    quest_audit_render.set_defaults(
+        handler=_cli_render_installed_quest_audits
+    )
+    quest_audits = subparsers.add_parser("verify-quest-audits")
+    quest_audits.add_argument("--root", default=".")
+    quest_audits.add_argument("--install", required=True)
+    quest_audits.add_argument("--nonce", required=True)
+    quest_audits.set_defaults(handler=_cli_verify_quest_audits)
     gate_render = subparsers.add_parser("render-installed-gate-audit")
     gate_render.add_argument("--root", default=".")
     gate_render.add_argument("--install", required=True)

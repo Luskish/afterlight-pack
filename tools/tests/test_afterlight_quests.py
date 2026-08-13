@@ -5000,6 +5000,7 @@ class QuestCompilerTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             cls.quests = importlib.import_module("afterlight_quests")
+            cls.builder = importlib.import_module("afterlight_quests.builder")
         except ModuleNotFoundError as error:
             raise AssertionError("afterlight_quests package must exist") from error
 
@@ -5088,6 +5089,26 @@ class QuestCompilerTests(unittest.TestCase):
 
     def audit_item_count(self, item_id: str = "example:widget") -> int:
         return len(self.quests.KUBEJS_ITEM_ALLOWLIST | {item_id})
+
+    def runtime_quest_audit_text(self, quest_root: Path, nonce: str) -> str:
+        digest = self.quests.quest_item_audit_digest(quest_root)
+        commodity = self.builder._commodity_runtime_contract(
+            quest_root.parents[2]
+        )
+        lines = [
+            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
+            f"{self.audit_item_count()} {nonce}"
+        ]
+        lines.extend(
+            f"[AFTERLIGHT QUEST COMMODITY AUDIT] {record}"
+            for record in commodity["records"]
+        )
+        lines.append(
+            "[AFTERLIGHT QUEST COMMODITY AUDIT] OK "
+            f"{commodity['fixture_sha256']} {digest} "
+            f"{commodity['declaration_count']} {nonce}"
+        )
+        return "\n".join(lines) + "\n"
 
     def make_unsafe_migration_corpus(
         self, base: Path
@@ -8212,7 +8233,7 @@ class QuestCompilerTests(unittest.TestCase):
             base = Path(temp_dir)
             quest_root = self.make_quest_root(base)
             mods_dir = base / "mods"
-            runtime_log = base / "server.log"
+            runtime_logs = tuple(base / f"server-{index}.log" for index in range(3))
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
             nonce = self.write_runtime_nonce(base)
@@ -8220,44 +8241,42 @@ class QuestCompilerTests(unittest.TestCase):
             missing_errors = self.quests.validate_quests(
                 quest_root,
                 mods_dir,
-                runtime_logs=(runtime_log,),
+                runtime_logs=runtime_logs,
                 require_runtime_audit=True,
             )
             self.assertTrue(
-                any("runtime item audit missing or stale" in error for error in missing_errors)
+                any("quest runtime audit log unavailable" in error for error in missing_errors)
             )
 
-            digest = self.quests.quest_item_audit_digest(quest_root)
-            runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
-                f"{self.audit_item_count()} {nonce}\n",
-                encoding="utf-8",
-            )
+            for runtime_log in runtime_logs:
+                runtime_log.write_text(
+                    self.runtime_quest_audit_text(quest_root, nonce),
+                    encoding="utf-8",
+                )
             self.assertEqual(
                 self.quests.validate_quests(
                     quest_root,
                     mods_dir,
-                    runtime_logs=(runtime_log,),
+                    runtime_logs=runtime_logs,
                     require_runtime_audit=True,
                 ),
                 [],
             )
 
-    def test_runtime_item_audit_rejects_log_older_than_generated_script(self) -> None:
+    def test_runtime_item_audit_uses_nonce_proofs_not_mtime(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
             quest_root = self.make_quest_root(base)
             mods_dir = base / "mods"
-            runtime_log = base / "server.log"
+            runtime_logs = tuple(base / f"server-{index}.log" for index in range(3))
             self.make_mod_jar(mods_dir)
             self.quests.write_catalog(self.make_catalog(), quest_root)
             nonce = self.write_runtime_nonce(base)
-            digest = self.quests.quest_item_audit_digest(quest_root)
-            runtime_log.write_text(
-                f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} "
-                f"{self.audit_item_count()} {nonce}\n",
-                encoding="utf-8",
-            )
+            for runtime_log in runtime_logs:
+                runtime_log.write_text(
+                    self.runtime_quest_audit_text(quest_root, nonce),
+                    encoding="utf-8",
+                )
             audit_script = (
                 base
                 / "kubejs"
@@ -8266,15 +8285,16 @@ class QuestCompilerTests(unittest.TestCase):
                 / "generated_quest_item_audit.js"
             )
             stale_time = audit_script.stat().st_mtime - 1
-            os.utime(runtime_log, (stale_time, stale_time))
+            for runtime_log in runtime_logs:
+                os.utime(runtime_log, (stale_time, stale_time))
 
             errors = self.quests.validate_quests(
                 quest_root,
                 mods_dir,
-                runtime_logs=(runtime_log,),
+                runtime_logs=runtime_logs,
                 require_runtime_audit=True,
             )
-            self.assertTrue(any("runtime item audit missing or stale" in error for error in errors))
+            self.assertEqual(errors, [])
 
     def test_item_audit_digest_changes_with_registry_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -11,7 +11,11 @@ from afterlight_quests import (
     write_catalog,
     write_legacy_quest_overlays,
 )
-from afterlight_quests.builder import _parse_snbt
+from afterlight_quests.builder import COMMODITY_FIXTURE_RELATIVE, _parse_snbt
+from afterlight_quests.acquisition import (
+    ACQUISITION_AUDIT_RELATIVE,
+    FIXTURE_RELATIVE,
+)
 from afterlight_quests.quest_build_transaction import (
     PromotionResult,
     QuestBuildTransaction,
@@ -56,18 +60,23 @@ def _build_quests(
     managed_catalog = copy.deepcopy(
         tuple(build_catalog() if catalog is None else catalog)
     )
-    audit_path = (
+    audit_paths = (
         root
         / "kubejs"
         / "server_scripts"
         / "afterlight"
-        / "generated_quest_item_audit.js"
+        / "generated_quest_item_audit.js",
+        root / ACQUISITION_AUDIT_RELATIVE,
     )
     with QuestBuildTransaction(root) as transaction:
         frozen = transaction.freeze(
-            quest_build_dependency_roots(
-                root,
-                include_validation_inputs=True,
+            (
+                *quest_build_dependency_roots(
+                    root,
+                    include_validation_inputs=True,
+                ),
+                root / FIXTURE_RELATIVE,
+                root / COMMODITY_FIXTURE_RELATIVE,
             )
         )
         with candidate_workspace(transaction, frozen) as candidate_root:
@@ -105,7 +114,7 @@ def _build_quests(
                 )
             writes, deletions = frozen.candidate_changes(
                 candidate_root,
-                (quest_root, audit_path),
+                (quest_root, *audit_paths),
             )
 
         def validate_promoted_corpus() -> None:

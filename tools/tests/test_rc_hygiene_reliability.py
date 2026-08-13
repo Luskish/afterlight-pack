@@ -4064,10 +4064,10 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             self.hygiene.SEAL_SCAN_ROOTS,
             ("config", "global_packs", "kubejs", "mods"),
         )
-        self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
+        self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 10)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "6a202fc7cb6c7d563d03ec953c4b8f3785beac69df613f06153aa132bb28975b",
+            "fa46a0e76f16fb2413fe83ac71ba43f0ba46e9ecb73fa6d74fe87e446188d53f",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
@@ -6649,7 +6649,7 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         port = self._free_port()
         result = self._run(port)
         self.assertEqual(result.returncode, 7, result.stdout)
-        self.assertIn("generated quest item audit script missing", result.stdout)
+        self.assertIn("Gate recipe audit script missing", result.stdout)
         curl_arguments = (self.root / "curl-arguments.txt").read_text(
             encoding="utf-8"
         )

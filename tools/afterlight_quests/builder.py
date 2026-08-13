@@ -23,6 +23,15 @@ from .quest_build_transaction import (
     is_quest_transaction_artifact,
     quest_build_dependency_roots,
 )
+from .acquisition import (
+    ACQUISITION_AUDIT_RELATIVE,
+    FIXTURE_RELATIVE,
+    AcquisitionManifest,
+    load_manifest,
+    render_manual_acquisition_audit,
+    validate_acquisition_audit_logs,
+    validate_fixture_to_quests,
+)
 
 
 HEX_ID = re.compile(r"^[0-9A-F]{16}$")
@@ -49,6 +58,41 @@ DEPENDENCY_REQUIREMENTS = frozenset(
     {"all_completed", "one_completed", "all_started", "one_started"}
 )
 PROGRESSION_MODES = frozenset({"linear", "flexible"})
+COMMODITY_FIXTURE_RELATIVE = Path(
+    "tools/fixtures/quests/common-commodity-tasks.json"
+)
+COMMODITY_FIXTURE_SHA256 = (
+    "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+)
+COMMODITY_EXPECTED_TAG_MEMBERS = {
+    "c:foods/bread": (
+        "minecraft:bread",
+        "pneumaticcraft:sourdough_bread",
+    ),
+    "c:ingots/steel": (
+        "immersiveengineering:ingot_steel",
+        "mekanism:ingot_steel",
+        "modern_industrialization:steel_ingot",
+        "oritech:biosteel_ingot",
+        "oritech:steel_ingot",
+    ),
+}
+ITEM_AUDIT_RELATIVE = Path(
+    "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+)
+GENERATED_QUEST_AUDIT_NAMES = frozenset(
+    {
+        ITEM_AUDIT_RELATIVE.name,
+        Path(ACQUISITION_AUDIT_RELATIVE).name,
+    }
+)
+
+
+def _fixture_input_path(repository_root: Path, relative: str | Path) -> Path:
+    candidate = repository_root / relative
+    if candidate.is_file():
+        return candidate
+    return Path(__file__).resolve().parents[2] / relative
 
 
 @dataclass(frozen=True)
@@ -1112,6 +1156,23 @@ def write_catalog(
     repository_root = quest_root.parents[2]
     frozen_catalog = copy.deepcopy(tuple(catalog))
     frozen_legacy_ids = tuple(legacy_quest_ids)
+    acquisition_root = (
+        transaction.repository_root if transaction is not None else repository_root
+    )
+    acquisition_path = acquisition_root / FIXTURE_RELATIVE
+    acquisition_manifest = (
+        load_manifest(acquisition_path) if acquisition_path.is_file() else None
+    )
+    if acquisition_manifest is not None:
+        acquisition_errors = validate_fixture_to_quests(
+            acquisition_manifest,
+            frozen_catalog,
+        )
+        if acquisition_errors:
+            raise ValueError(
+                "manual acquisition catalog validation failed:\n"
+                + "\n".join(acquisition_errors)
+            )
     if transaction is None:
         with QuestBuildTransaction(repository_root) as owned_transaction:
             return _write_catalog_transactional(
@@ -1119,6 +1180,7 @@ def write_catalog(
                 quest_root,
                 legacy_quest_ids=frozen_legacy_ids,
                 transaction=owned_transaction,
+                acquisition_manifest=acquisition_manifest,
             )
     transaction.require_root(repository_root)
     if transaction.is_workspace(repository_root):
@@ -1130,6 +1192,7 @@ def write_catalog(
                 transaction.repository_root,
                 quest_root,
             ),
+            acquisition_manifest=acquisition_manifest,
         )
         return PromotionResult(written)
     return _write_catalog_transactional(
@@ -1137,6 +1200,7 @@ def write_catalog(
         quest_root,
         legacy_quest_ids=frozen_legacy_ids,
         transaction=transaction,
+        acquisition_manifest=acquisition_manifest,
     )
 
 
@@ -1146,18 +1210,23 @@ def _write_catalog_transactional(
     *,
     legacy_quest_ids: Iterable[str],
     transaction: QuestBuildTransaction,
+    acquisition_manifest: AcquisitionManifest | None,
 ) -> PromotionResult:
     repository_root = quest_root.parents[2]
     trusted_prior = _trusted_managed_ownership(repository_root, quest_root)
-    frozen = transaction.freeze(quest_build_dependency_roots(repository_root))
+    dependency_roots = list(quest_build_dependency_roots(repository_root))
+    if acquisition_manifest is not None:
+        dependency_roots.append(repository_root / FIXTURE_RELATIVE)
+    commodity_path = repository_root / COMMODITY_FIXTURE_RELATIVE
+    if commodity_path.is_file():
+        dependency_roots.append(commodity_path)
+    frozen = transaction.freeze(tuple(dependency_roots))
     output_roots = (
         quest_root,
-        repository_root
-        / "kubejs"
-        / "server_scripts"
-        / "afterlight"
-        / "generated_quest_item_audit.js",
+        repository_root / ITEM_AUDIT_RELATIVE,
     )
+    if acquisition_manifest is not None:
+        output_roots = (*output_roots, repository_root / ACQUISITION_AUDIT_RELATIVE)
     with candidate_workspace(transaction, frozen) as candidate_root:
         candidate_quest_root = (
             candidate_root / quest_root.relative_to(repository_root)
@@ -1167,6 +1236,7 @@ def _write_catalog_transactional(
             candidate_quest_root,
             legacy_quest_ids=legacy_quest_ids,
             trusted_prior=trusted_prior,
+            acquisition_manifest=acquisition_manifest,
         )
         writes, deletions = frozen.candidate_changes(
             candidate_root,
@@ -1190,7 +1260,20 @@ def _write_catalog_workspace(
     *,
     legacy_quest_ids: Iterable[str] = (),
     trusted_prior: _ManagedOwnership | None = None,
+    acquisition_manifest: AcquisitionManifest | None = None,
 ) -> tuple[list[Path], _ManagedOwnership]:
+    repository_root = quest_root.parents[2]
+    manifest = acquisition_manifest
+    local_acquisition_path = repository_root / FIXTURE_RELATIVE
+    if manifest is None and local_acquisition_path.is_file():
+        manifest = load_manifest(local_acquisition_path)
+    if manifest is not None:
+        acquisition_errors = validate_fixture_to_quests(manifest, catalog)
+        if acquisition_errors:
+            raise ValueError(
+                "manual acquisition catalog validation failed:\n"
+                + "\n".join(acquisition_errors)
+            )
     resolved_quest_links = _validate_catalog(
         catalog,
         legacy_quest_ids=legacy_quest_ids,
@@ -1285,14 +1368,31 @@ def _write_catalog_workspace(
         state_path,
         state_text,
     )
+    audit_root = repository_root / ITEM_AUDIT_RELATIVE.parent
     _atomic_write(
-        quest_root.parents[2]
-        / "kubejs"
-        / "server_scripts"
-        / "afterlight"
-        / "generated_quest_item_audit.js",
+        repository_root / ITEM_AUDIT_RELATIVE,
         _render_quest_item_audit(quest_root),
     )
+    if manifest is not None:
+        _atomic_write(
+            repository_root / ACQUISITION_AUDIT_RELATIVE,
+            render_manual_acquisition_audit(manifest),
+        )
+        generated_audits = {
+            path.name for path in audit_root.glob("generated_*_audit.js")
+        }
+        if generated_audits != GENERATED_QUEST_AUDIT_NAMES:
+            raise ValueError(
+                "generated quest audit inventory mismatch: "
+                f"expected {sorted(GENERATED_QUEST_AUDIT_NAMES)}, "
+                f"got {sorted(generated_audits)}"
+            )
+        parsed_acquisition_errors = validate_fixture_to_quests(manifest, quest_root)
+        if parsed_acquisition_errors:
+            raise ValueError(
+                "manual acquisition parsed-SNBT validation failed:\n"
+                + "\n".join(parsed_acquisition_errors)
+            )
     ownership = _ManagedOwnership(
         state_text=state_text,
         chapter_payloads=tuple(sorted(rendered_chapters.items())),
@@ -3152,17 +3252,161 @@ def quest_item_audit_digest(quest_root: Path) -> str:
     return _quest_item_audit_digest(quest_root)
 
 
+def _reject_duplicate_json_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _commodity_runtime_contract(repo_root: Path) -> dict[str, Any]:
+    fixture_path = _fixture_input_path(repo_root, COMMODITY_FIXTURE_RELATIVE)
+    raw = fixture_path.read_bytes()
+    fixture_sha256 = hashlib.sha256(raw).hexdigest()
+    if fixture_sha256 != COMMODITY_FIXTURE_SHA256:
+        raise ValueError(
+            "commodity fixture digest mismatch: "
+            f"expected {COMMODITY_FIXTURE_SHA256}, got {fixture_sha256}"
+        )
+    fixture = json.loads(
+        raw.decode("utf-8"),
+        object_pairs_hook=_reject_duplicate_json_pairs,
+    )
+    return _commodity_contract_from_fixture(fixture, fixture_sha256)
+
+
+def _commodity_contract_from_fixture(
+    fixture: object,
+    fixture_sha256: str,
+) -> dict[str, Any]:
+    if not isinstance(fixture, dict) or fixture.get("schema_version") != 1:
+        raise ValueError("commodity fixture schema_version must equal 1")
+    declarations = fixture.get("declarations")
+    if not isinstance(declarations, list):
+        raise ValueError("commodity fixture declarations must be a list")
+
+    task_ids: list[str] = []
+    tag_order: list[str] = []
+    producers_by_tag: dict[str, list[str]] = {}
+    changed_old_items: list[dict[str, str]] = []
+    for index, declaration in enumerate(declarations):
+        if not isinstance(declaration, dict):
+            raise ValueError(f"commodity declaration {index} must be an object")
+        task = declaration.get("task")
+        if not isinstance(task, dict) or not isinstance(task.get("id"), str):
+            raise ValueError(f"commodity declaration {index} has no task ID")
+        task_id = task["id"]
+        if task_id in task_ids:
+            raise ValueError(f"duplicate commodity declaration task: {task_id}")
+        task_ids.append(task_id)
+        tag_id = declaration.get("tag")
+        if tag_id not in COMMODITY_EXPECTED_TAG_MEMBERS:
+            raise ValueError(f"unsupported commodity tag: {tag_id!r}")
+        if tag_id not in tag_order:
+            tag_order.append(tag_id)
+            producers_by_tag[tag_id] = []
+        producers = declaration.get("producers")
+        if not isinstance(producers, list):
+            raise ValueError(f"commodity declaration {task_id} has no producers")
+        for producer in producers:
+            if not isinstance(producer, dict) or not isinstance(
+                producer.get("item"), str
+            ):
+                raise ValueError(
+                    f"commodity declaration {task_id} has malformed producer"
+                )
+            item_id = producer["item"]
+            if item_id not in producers_by_tag[tag_id]:
+                producers_by_tag[tag_id].append(item_id)
+        if declaration.get("already_generalized") is False:
+            old_item = declaration.get("old_item")
+            if not isinstance(old_item, dict) or not isinstance(
+                old_item.get("id"), str
+            ):
+                raise ValueError(
+                    f"commodity declaration {task_id} has malformed old item"
+                )
+            changed_old_items.append(
+                {"tag": tag_id, "item": old_item["id"]}
+            )
+
+    if len(declarations) != 4:
+        raise ValueError("commodity fixture must contain exactly four declarations")
+
+    expected_task_ids = (
+        "39C717BFFEE3D235",
+        "374F658F034EF8C5",
+        "33B5B56650A6AEDF",
+        "1679C5714C2F2A74",
+    )
+    if tuple(task_ids) != expected_task_ids:
+        raise ValueError("commodity declaration task order mismatch")
+    if tuple(tag_order) != tuple(COMMODITY_EXPECTED_TAG_MEMBERS):
+        raise ValueError("commodity tag order mismatch")
+    for tag_id, producers in producers_by_tag.items():
+        unexpected = set(producers) - set(COMMODITY_EXPECTED_TAG_MEMBERS[tag_id])
+        if unexpected:
+            raise ValueError(
+                f"commodity producer not in expected tag {tag_id}: "
+                + ", ".join(sorted(unexpected))
+            )
+    tag_contracts = [
+        {
+            "id": tag_id,
+            "members": list(COMMODITY_EXPECTED_TAG_MEMBERS[tag_id]),
+            "producers": producers_by_tag[tag_id],
+        }
+        for tag_id in tag_order
+    ]
+    records: list[str] = []
+    for tag in tag_contracts:
+        records.append(f"TAG {tag['id']} {','.join(tag['members'])}")
+        records.extend(
+            f"PRODUCER {tag['id']} {producer} OK"
+            for producer in tag["producers"]
+        )
+    return {
+        "fixture_sha256": fixture_sha256,
+        "declaration_count": len(declarations),
+        "tags": tag_contracts,
+        "changed_old_items": changed_old_items,
+        "records": records,
+    }
+
+
 def _render_quest_item_audit(
     quest_root: Path,
     file_overrides: Mapping[Path, bytes] | None = None,
 ) -> str:
     item_ids = _quest_item_ids(quest_root)
     digest = _quest_item_audit_digest(quest_root, file_overrides)
+    commodity = _commodity_runtime_contract(quest_root.parents[2])
     rendered_ids = json.dumps(item_ids, indent=2)
+    rendered_commodity = json.dumps(commodity, indent=2, sort_keys=True)
     return (
         "// Generated by tools/build-quests.py. Do not edit by hand.\n"
         f"const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '{digest}'\n"
+        f"const AFTERLIGHT_QUEST_COMMODITY_FIXTURE_SHA256 = '{commodity['fixture_sha256']}'\n"
         f"const AFTERLIGHT_QUEST_ITEM_IDS = {rendered_ids}\n\n"
+        f"const AFTERLIGHT_QUEST_COMMODITY = {rendered_commodity}\n\n"
+        "const AfterlightCommodityBuiltInRegistries = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries')\n"
+        "const AfterlightCommodityRegistries = Java.loadClass('net.minecraft.core.registries.Registries')\n"
+        "const AfterlightCommodityResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation')\n"
+        "const AfterlightCommodityTagKey = Java.loadClass('net.minecraft.tags.TagKey')\n\n"
+        "function afterlightCommodityMembers(tagId) {\n"
+        "  const key = AfterlightCommodityTagKey.create(AfterlightCommodityRegistries.ITEM, AfterlightCommodityResourceLocation.parse(tagId))\n"
+        "  const optional = AfterlightCommodityBuiltInRegistries.ITEM.getTag(key)\n"
+        "  if (!optional.isPresent()) return null\n"
+        "  const members = []\n"
+        "  const iterator = optional.get().iterator()\n"
+        "  while (iterator.hasNext()) {\n"
+        "    const holder = iterator.next()\n"
+        "    members.push(String(AfterlightCommodityBuiltInRegistries.ITEM.getKey(holder.value())))\n"
+        "  }\n"
+        "  return members.sort()\n"
+        "}\n\n"
         "ServerEvents.loaded(() => {\n"
         "  const bootNonce = '__AFTERLIGHT_BOOT_NONCE__'\n"
         "  const invalid = AFTERLIGHT_QUEST_ITEM_IDS.filter(id => !Item.exists(id))\n"
@@ -3172,8 +3416,137 @@ def _render_quest_item_audit(
         "    return\n"
         "  }\n"
         "  console.info(`[AFTERLIGHT QUEST ITEM AUDIT] OK ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${AFTERLIGHT_QUEST_ITEM_IDS.length} ${bootNonce}`)\n"
+        "  let commodityFailure = null\n"
+        "  const resolvedTags = {}\n"
+        "  AFTERLIGHT_QUEST_COMMODITY.tags.forEach(spec => {\n"
+        "    if (commodityFailure !== null) return\n"
+        "    const members = afterlightCommodityMembers(spec.id)\n"
+        "    if (members === null) { commodityFailure = `${spec.id} TAG_REGISTRY_MISSING`; return }\n"
+        "    if (members.length < 2) { commodityFailure = `${spec.id} TAG_TOO_SMALL`; return }\n"
+        "    if (JSON.stringify(members) !== JSON.stringify(spec.members)) { commodityFailure = `${spec.id} TAG_MEMBERS_MISMATCH`; return }\n"
+        "    resolvedTags[spec.id] = members\n"
+        "    spec.producers.forEach(producer => {\n"
+        "      if (commodityFailure === null && members.indexOf(producer) < 0) commodityFailure = `${producer} PRODUCER_MISSING`\n"
+        "    })\n"
+        "  })\n"
+        "  AFTERLIGHT_QUEST_COMMODITY.changed_old_items.forEach(oldItem => {\n"
+        "    if (commodityFailure !== null) return\n"
+        "    const members = resolvedTags[oldItem.tag]\n"
+        "    if (members === undefined || members.indexOf(oldItem.item) < 0) commodityFailure = `${oldItem.item} OLD_ITEM_MISSING`\n"
+        "  })\n"
+        "  if (commodityFailure !== null) {\n"
+        "    console.error(`[AFTERLIGHT QUEST COMMODITY AUDIT] INVALID ${commodityFailure}`)\n"
+        "    console.error(`[AFTERLIGHT QUEST COMMODITY AUDIT] FAILED ${AFTERLIGHT_QUEST_COMMODITY_FIXTURE_SHA256} ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${bootNonce}`)\n"
+        "    return\n"
+        "  }\n"
+        "  AFTERLIGHT_QUEST_COMMODITY.records.forEach(record => console.info(`[AFTERLIGHT QUEST COMMODITY AUDIT] ${record}`))\n"
+        "  console.info(`[AFTERLIGHT QUEST COMMODITY AUDIT] OK ${AFTERLIGHT_QUEST_COMMODITY_FIXTURE_SHA256} ${AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST} ${AFTERLIGHT_QUEST_COMMODITY.declaration_count} ${bootNonce}`)\n"
         "})\n"
     )
+
+
+def validate_quest_item_audit_logs(
+    quest_root: Path,
+    nonce: str,
+    runtime_logs: Sequence[Path],
+) -> list[str]:
+    errors: list[str] = []
+
+    def append_once(message: str) -> None:
+        if message not in errors:
+            errors.append(message)
+
+    if re.fullmatch(r"[A-Za-z0-9._-]+", nonce) is None:
+        return ["quest runtime audit nonce is malformed"]
+    if len(runtime_logs) != 3:
+        append_once("quest runtime audits require exactly three logs")
+
+    item_digest = quest_item_audit_digest(quest_root)
+    item_count = len(_quest_item_ids(quest_root))
+    commodity = _commodity_runtime_contract(quest_root.parents[2])
+    item_prefix = "[AFTERLIGHT QUEST ITEM AUDIT]"
+    commodity_prefix = "[AFTERLIGHT QUEST COMMODITY AUDIT]"
+    expected_item = f"{item_prefix} OK {item_digest} {item_count} {nonce}"
+    expected_commodity = [
+        f"{commodity_prefix} {record}" for record in commodity["records"]
+    ]
+    expected_commodity.append(
+        f"{commodity_prefix} OK {commodity['fixture_sha256']} "
+        f"{item_digest} {commodity['declaration_count']} {nonce}"
+    )
+    terminal_pattern = re.compile(
+        re.escape(commodity_prefix)
+        + r" OK (?P<fixture>[0-9a-f]{64}) (?P<item>[0-9a-f]{64}) "
+        + r"(?P<count>[0-9]+) (?P<nonce>[A-Za-z0-9._-]+)"
+    )
+    failure_pattern = re.compile(
+        re.escape(commodity_prefix)
+        + r" INVALID (?P<target>[^\s]+) (?P<reason>[A-Z][A-Z0-9_]*)"
+    )
+
+    for path in runtime_logs:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            append_once(f"quest runtime audit log unavailable: {path}")
+            continue
+        item_lines: list[str] = []
+        commodity_lines: list[str] = []
+        for raw_line in text.splitlines():
+            if item_prefix in raw_line:
+                item_lines.append(raw_line[raw_line.index(item_prefix) :])
+            if commodity_prefix in raw_line:
+                commodity_lines.append(
+                    raw_line[raw_line.index(commodity_prefix) :]
+                )
+
+        invalid_item = [
+            line
+            for line in item_lines
+            if line.startswith(f"{item_prefix} INVALID ")
+        ]
+        failed_item = [
+            line
+            for line in item_lines
+            if line.startswith(f"{item_prefix} FAILED ")
+        ]
+        if invalid_item or failed_item:
+            append_once(f"runtime item audit failed for digest {item_digest}")
+        elif item_lines != [expected_item]:
+            append_once(
+                f"runtime item audit missing or stale: expected digest {item_digest}"
+            )
+
+        failures = [
+            failure_pattern.fullmatch(line)
+            for line in commodity_lines
+        ]
+        failures = [match for match in failures if match is not None]
+        if failures:
+            for match in failures:
+                append_once(
+                    "commodity audit failure "
+                    f"{match.group('target')} {match.group('reason')}"
+                )
+            continue
+
+        terminals = [
+            match
+            for line in commodity_lines
+            if (match := terminal_pattern.fullmatch(line)) is not None
+        ]
+        if any(match.group("nonce") != nonce for match in terminals):
+            append_once("commodity audit stale nonce")
+        if any(
+            match.group("fixture") != commodity["fixture_sha256"]
+            for match in terminals
+        ):
+            append_once("commodity audit stale fixture")
+        if any(match.group("item") != item_digest for match in terminals):
+            append_once("commodity audit stale item digest")
+        if commodity_lines != expected_commodity:
+            append_once("commodity audit transcript mismatch")
+    return errors
 
 
 def _jar_asset_namespaces(mods_dir: Path) -> set[str]:
@@ -3401,6 +3774,23 @@ def validate_quests(
             elif ftb_safe_id(identifier) != identifier:
                 errors.append(f"non signed-safe FTB ID in localization key: {key}")
 
+    repo_root = quest_root.parents[2]
+    acquisition_fixture = repo_root / FIXTURE_RELATIVE
+    acquisition_manifest: AcquisitionManifest | None = None
+    if acquisition_fixture.is_file():
+        try:
+            acquisition_manifest = load_manifest(acquisition_fixture)
+        except ValueError as error:
+            errors.append(f"manual acquisition fixture invalid: {error}")
+        if acquisition_manifest is not None:
+            errors.extend(
+                validate_fixture_to_quests(acquisition_manifest, quest_root)
+            )
+    elif require_runtime_audit and repo_root == Path(__file__).resolve().parents[2]:
+        errors.append(
+            f"manual acquisition fixture missing: {acquisition_fixture}"
+        )
+
     if not mods_dir.is_dir():
         errors.append(f"item audit unavailable: missing mods directory {mods_dir}")
     else:
@@ -3418,58 +3808,30 @@ def validate_quests(
                 errors.append(f"impossible item reference {item_id}: {locations}")
 
     if require_runtime_audit:
-        item_ids = _quest_item_ids(quest_root)
-        digest = quest_item_audit_digest(quest_root)
-        repo_root = quest_root.parents[2]
-        audit_script = (
-            repo_root
-            / "kubejs"
-            / "server_scripts"
-            / "afterlight"
-            / "generated_quest_item_audit.js"
-        )
         nonce_path = repo_root / "server-test" / "afterlight-audit-nonce.txt"
         try:
             boot_nonce = nonce_path.read_text(encoding="utf-8").strip()
         except OSError:
             boot_nonce = ""
-        if not re.fullmatch(r"[A-Za-z0-9_.:-]+", boot_nonce):
-            errors.append(f"runtime item audit missing or stale: invalid boot nonce {nonce_path}")
-            boot_nonce = "missing"
-        available_logs = [
-            path
-            for path in runtime_logs
-            if path.is_file()
-            and audit_script.is_file()
-            and path.stat().st_mtime >= audit_script.stat().st_mtime
-        ]
-        success_marker = (
-            f"[AFTERLIGHT QUEST ITEM AUDIT] OK {digest} {len(item_ids)} {boot_nonce}"
-        )
-        failure_marker = f"[AFTERLIGHT QUEST ITEM AUDIT] FAILED {digest} {boot_nonce}"
-        failed_logs = [
-            path
-            for path in available_logs
-            if failure_marker in path.read_text(encoding="utf-8")
-        ]
-        successful_logs = [
-            path
-            for path in available_logs
-            if success_marker in path.read_text(encoding="utf-8")
-        ]
-        fresh_success = bool(successful_logs)
-        if failed_logs:
-            invalid_pattern = re.compile(r"\[AFTERLIGHT QUEST ITEM AUDIT\] INVALID ([^\s]+)")
-            invalid_items = sorted(
-                {
-                    item_id
-                    for path in failed_logs
-                    for item_id in invalid_pattern.findall(path.read_text(encoding="utf-8"))
-                }
+        if re.fullmatch(r"[A-Za-z0-9._-]+", boot_nonce) is None:
+            errors.append(
+                f"runtime item audit missing or stale: invalid boot nonce {nonce_path}"
             )
-            suffix = f": {', '.join(invalid_items)}" if invalid_items else ""
-            errors.append(f"runtime item audit failed for digest {digest}{suffix}")
-        elif not fresh_success:
-            errors.append(f"runtime item audit missing or stale: expected digest {digest}")
+        else:
+            errors.extend(
+                validate_quest_item_audit_logs(
+                    quest_root,
+                    boot_nonce,
+                    runtime_logs,
+                )
+            )
+            if acquisition_manifest is not None:
+                errors.extend(
+                    validate_acquisition_audit_logs(
+                        acquisition_manifest,
+                        boot_nonce,
+                        runtime_logs,
+                    )
+                )
 
     return errors

@@ -102,7 +102,9 @@ capture_evidence() {
     copy_evidence "$DIR/boot.log" "boot.log"
     copy_evidence "$DIR/logs/latest.log" "logs/latest.log"
     copy_evidence "$DIR/logs/debug.log" "logs/debug.log"
+    copy_evidence "$DIR/logs/kubejs/server.log" "logs/kubejs/server.log"
     copy_evidence "$DIR/afterlight-audit-nonce.txt" "afterlight-audit-nonce.txt"
+    copy_evidence "$DIR/afterlight-runtime-audit-provenance.json" "afterlight-runtime-audit-provenance.json"
     copy_evidence "$DIR/afterlight-server-exit-status.txt" "afterlight-server-exit-status.txt"
     copy_evidence "$DIR/packwiz.json" "packwiz.json"
     copy_evidence "$DIR/afterlight-provenance.txt" "afterlight-provenance.txt"
@@ -358,14 +360,8 @@ assert_manifest_unchanged
 python3 tools/rc_hygiene.py verify-provenance --root . --install "$DIR" | tee "$DIR/afterlight-provenance.txt"
 python3 tools/rc_hygiene.py verify-seal-sources --root . --install "$DIR"
 
-AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
-if [ ! -f "$AUDIT_SCRIPT" ]; then
-  echo "FAIL: generated quest item audit script missing"
-  exit 7
-fi
-awk -v nonce="$AUDIT_NONCE" '{ gsub(/__AFTERLIGHT_BOOT_NONCE__/, nonce); print }' "$AUDIT_SCRIPT" > "$AUDIT_SCRIPT.tmp"
-mv "$AUDIT_SCRIPT.tmp" "$AUDIT_SCRIPT"
-python3 tools/rc_hygiene.py verify-quest-audit --root . --install "$DIR" --nonce "$AUDIT_NONCE"
+python3 tools/rc_hygiene.py render-installed-quest-audits --root . --install "$DIR" --nonce "$AUDIT_NONCE"
+python3 tools/rc_hygiene.py verify-quest-audits --root . --install "$DIR" --nonce "$AUDIT_NONCE"
 
 GATE_AUDIT_SCRIPT="$DIR/kubejs/server_scripts/afterlight/gate_recipe_audit.js"
 if [ ! -f "$GATE_AUDIT_SCRIPT" ]; then

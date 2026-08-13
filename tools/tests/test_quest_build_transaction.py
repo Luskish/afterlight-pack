@@ -1773,6 +1773,16 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
         )
         audit_target.parent.mkdir(parents=True)
         shutil.copy2(audit_source, audit_target)
+        fixture_root = root / "tools" / "fixtures" / "quests"
+        fixture_root.mkdir(parents=True)
+        for fixture_name in (
+            "manual-acquisition.json",
+            "common-commodity-tasks.json",
+        ):
+            shutil.copy2(
+                ROOT / "tools" / "fixtures" / "quests" / fixture_name,
+                fixture_root / fixture_name,
+            )
         mods = root / "server-test" / "mods"
         mods.mkdir(parents=True)
         with zipfile.ZipFile(mods / "fixture.jar", "w"):
@@ -2296,6 +2306,7 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
                         "config/ftbquests/quests/chapters/5B93C6934B230CFB.snbt",
                         "config/ftbquests/quests/lang/en_us.snbt",
                         "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+                        "kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js",
                     ]
                 ),
             )

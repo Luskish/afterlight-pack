@@ -455,3 +455,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/afterlight_quests/builder.py`, `tools/tests/test_afterlight_quests.py`, `tools/tests/test_manual_acquisition.py`, and `docs/PROJECT_MEMORY.md`
 - **Impact:** The generated runtime audit will compare the exact installed bed tag without falsely rejecting a correct server because of declaration ordering.
 - **Follow-up:** Require the fresh dedicated-server commodity transcript after final generation.
+
+### MEM-2026-08-13-037
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Installed-JAR tag inventory probe
+- **Summary:** Two read-only tag inventory probes printed only headers because the first used an incompatible zsh null-delimited read form and the second combined `pipefail` with early-exit `grep -q`, making a successful match look false after `unzip` received SIGPIPE.
+- **Evidence:** Replacing the loop with newline-safe JAR paths and a non-early-exit exact grep printed every contributor: two identical vanilla bed-tag copies plus Aether, and exactly Immersive Engineering, Mekanism, Modern Industrialization, and Oritech for steel.
+- **Files or Commit:** `docs/PROJECT_MEMORY.md`
+- **Impact:** No repository or runtime state changed, and the final inventory independently confirms 17 unique bed members and five unique steel members.
+- **Follow-up:** Avoid `grep -q` in a `pipefail` archive-list pipeline when the producer can receive SIGPIPE.

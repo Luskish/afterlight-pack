@@ -37,11 +37,32 @@ from live_install_support import requires_live_install
 
 class StoryCohesionCompatibilityTests(unittest.TestCase):
     SOURCE_COMMIT = "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
+    APPROVED_COMMODITY_REPLACEMENTS: dict[str, str] = {}
     FIXTURE_PATH = (
         ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
     )
     QUEST_ROOT = ROOT / "config" / "ftbquests" / "quests"
     STORY_GROUP_ID = "4A20F33642175B95"
+    IDENTITY_KINDS = (
+        "chapter_group",
+        "chapter",
+        "image",
+        "quest_link",
+        "quest",
+        "task",
+        "reward",
+        "reward_table",
+        "reward_table_reward",
+    )
+    ORDERED_IDENTITY_KINDS = (
+        "chapter_group",
+        "image",
+        "quest_link",
+        "quest",
+        "task",
+        "reward",
+        "reward_table_reward",
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -64,6 +85,293 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         self.assertEqual(fixture["source_commit"], self.SOURCE_COMMIT)
         return fixture["corpus"]
 
+    @staticmethod
+    def _identity_corpus() -> dict[str, object]:
+        return {
+            "chapter_groups": {
+                "chapter_groups": [
+                    {"id": "0000000000000001", "order_index": "0"},
+                    {"id": "0000000000000002", "order_index": "1"},
+                ]
+            },
+            "chapters": {
+                "0000000000000010.snbt": {
+                    "filename": "0000000000000010",
+                    "group": "0000000000000001",
+                    "id": "0000000000000010",
+                    "images": [
+                        {"id": "0000000000000011", "x": "0.0d"},
+                        {"id": "0000000000000012", "x": "1.0d"},
+                    ],
+                    "order_index": "0",
+                    "quest_links": [
+                        {
+                            "id": "0000000000000030",
+                            "linked_quest": "0000000000000020",
+                            "x": "0.0d",
+                            "y": "0.0d",
+                        },
+                        {
+                            "id": "0000000000000031",
+                            "linked_quest": "0000000000000021",
+                            "x": "1.0d",
+                            "y": "0.0d",
+                        },
+                    ],
+                    "quests": [
+                        {
+                            "dependencies": [
+                                "00000000000000A0",
+                                "00000000000000A1",
+                            ],
+                            "id": "0000000000000020",
+                            "rewards": [
+                                {
+                                    "id": "0000000000000050",
+                                    "table_data": {
+                                        "rewards": [
+                                            {
+                                                "id": "0000000000000080",
+                                                "type": "xp",
+                                                "xp": "1",
+                                            },
+                                            {
+                                                "id": "0000000000000081",
+                                                "type": "xp",
+                                                "xp": "2",
+                                            },
+                                        ]
+                                    },
+                                    "table_id": "-1L",
+                                    "type": "random",
+                                },
+                                {
+                                    "id": "0000000000000051",
+                                    "type": "xp",
+                                    "xp": "3",
+                                },
+                            ],
+                            "tasks": [
+                                {
+                                    "id": "0000000000000040",
+                                    "type": "checkmark",
+                                },
+                                {
+                                    "id": "0000000000000041",
+                                    "type": "checkmark",
+                                },
+                            ],
+                            "x": "0.0d",
+                        },
+                        {
+                            "dependencies": [],
+                            "id": "0000000000000021",
+                            "rewards": [],
+                            "tasks": [],
+                            "x": "1.0d",
+                        },
+                    ],
+                }
+            },
+            "language": {"en_us": {}},
+            "reward_tables": {
+                "0000000000000060.snbt": {
+                    "id": "0000000000000060",
+                    "rewards": [
+                        {
+                            "id": "0000000000000070",
+                            "type": "xp",
+                            "xp": "4",
+                        },
+                        {
+                            "id": "0000000000000071",
+                            "type": "xp",
+                            "xp": "5",
+                        },
+                    ],
+                }
+            },
+        }
+
+    @staticmethod
+    def _commodity_corpora() -> tuple[
+        dict[str, object], dict[str, object], str
+    ]:
+        task_id = "0123456789ABCDE0"
+        baseline = {
+            "chapter_groups": {"chapter_groups": []},
+            "chapters": {
+                "0123456789ABCDE1.snbt": {
+                    "id": "0123456789ABCDE1",
+                    "group": "0123456789ABCDE2",
+                    "quest_links": [],
+                    "quests": [
+                        {
+                            "id": "0123456789ABCDE3",
+                            "tasks": [
+                                {
+                                    "id": task_id,
+                                    "type": "item",
+                                    "item": {
+                                        "count": "1",
+                                        "id": "example:steel_ingot",
+                                    },
+                                    "count": "12L",
+                                    "consume_items": False,
+                                    "match_components": "fuzzy",
+                                }
+                            ],
+                            "rewards": [],
+                        }
+                    ],
+                }
+            },
+            "language": {"en_us": {}},
+            "reward_tables": {},
+        }
+        current = copy.deepcopy(baseline)
+        current["chapters"]["0123456789ABCDE1.snbt"]["quests"][0]["tasks"][
+            0
+        ]["item"] = {
+            "count": "1",
+            "id": "ftbfiltersystem:smart_filter",
+            "components": {
+                "ftbfiltersystem:filter": (
+                    "ftbfiltersystem:item_tag(c:ingots/steel)"
+                )
+            },
+        }
+        return baseline, current, task_id
+
+    @staticmethod
+    def _identity_member(
+        corpus: dict[str, object], kind: str
+    ) -> tuple[dict[str, object], str]:
+        chapter = corpus["chapters"]["0000000000000010.snbt"]
+        quest = chapter["quests"][0]
+        locations = {
+            "chapter_group": (
+                corpus["chapter_groups"]["chapter_groups"][0],
+                "$.chapter_groups.chapter_groups[0].id",
+            ),
+            "chapter": (chapter, "$.chapters.0000000000000010.snbt.id"),
+            "image": (
+                chapter["images"][0],
+                "$.chapters.0000000000000010.snbt.images[0].id",
+            ),
+            "quest_link": (
+                chapter["quest_links"][0],
+                "$.chapters.0000000000000010.snbt.quest_links[0].id",
+            ),
+            "quest": (
+                quest,
+                "$.chapters.0000000000000010.snbt.quests[0].id",
+            ),
+            "task": (
+                quest["tasks"][0],
+                "$.chapters.0000000000000010.snbt.quests[0].tasks[0].id",
+            ),
+            "reward": (
+                quest["rewards"][0],
+                "$.chapters.0000000000000010.snbt.quests[0].rewards[0].id",
+            ),
+            "reward_table": (
+                corpus["reward_tables"]["0000000000000060.snbt"],
+                "$.reward_tables.0000000000000060.snbt.id",
+            ),
+            "reward_table_reward": (
+                corpus["reward_tables"]["0000000000000060.snbt"]["rewards"][0],
+                "$.reward_tables.0000000000000060.snbt.rewards[0].id",
+            ),
+        }
+        return locations[kind]
+
+    @staticmethod
+    def _identity_list(
+        corpus: dict[str, object], kind: str
+    ) -> tuple[list[dict[str, object]], str]:
+        chapter = corpus["chapters"]["0000000000000010.snbt"]
+        quest = chapter["quests"][0]
+        locations = {
+            "chapter_group": (
+                corpus["chapter_groups"]["chapter_groups"],
+                "$.chapter_groups.chapter_groups",
+            ),
+            "image": (
+                chapter["images"],
+                "$.chapters.0000000000000010.snbt.images",
+            ),
+            "quest_link": (
+                chapter["quest_links"],
+                "$.chapters.0000000000000010.snbt.quest_links",
+            ),
+            "quest": (
+                chapter["quests"],
+                "$.chapters.0000000000000010.snbt.quests",
+            ),
+            "task": (
+                quest["tasks"],
+                "$.chapters.0000000000000010.snbt.quests[0].tasks",
+            ),
+            "reward": (
+                quest["rewards"],
+                "$.chapters.0000000000000010.snbt.quests[0].rewards",
+            ),
+            "reward_table_reward": (
+                corpus["reward_tables"]["0000000000000060.snbt"]["rewards"],
+                "$.reward_tables.0000000000000060.snbt.rewards",
+            ),
+        }
+        return locations[kind]
+
+    @classmethod
+    def _append_duplicate_identity(
+        cls, corpus: dict[str, object], kind: str
+    ) -> str:
+        if kind == "chapter":
+            duplicate_path = "$.chapters.7FFFFFFFFFFFFFF0.snbt.id"
+            corpus["chapters"]["7FFFFFFFFFFFFFF0.snbt"] = copy.deepcopy(
+                corpus["chapters"]["0000000000000010.snbt"]
+            )
+            return duplicate_path
+        if kind == "reward_table":
+            duplicate_path = "$.reward_tables.7FFFFFFFFFFFFFF1.snbt.id"
+            corpus["reward_tables"]["7FFFFFFFFFFFFFF1.snbt"] = copy.deepcopy(
+                corpus["reward_tables"]["0000000000000060.snbt"]
+            )
+            return duplicate_path
+        members, collection_path = cls._identity_list(corpus, kind)
+        members.append(copy.deepcopy(members[0]))
+        return f"{collection_path}[{len(members) - 1}].id"
+
+    @staticmethod
+    def _new_identity_member(kind: str, identifier: str) -> dict[str, object]:
+        members = {
+            "chapter_group": {"id": identifier, "order_index": "9"},
+            "image": {"id": identifier, "x": "9.0d"},
+            "quest_link": {
+                "id": identifier,
+                "linked_quest": "0000000000000020",
+                "x": "9.0d",
+                "y": "9.0d",
+            },
+            "quest": {
+                "dependencies": [],
+                "id": identifier,
+                "rewards": [],
+                "tasks": [],
+                "x": "9.0d",
+            },
+            "task": {"id": identifier, "type": "checkmark"},
+            "reward": {"id": identifier, "type": "xp", "xp": "9"},
+            "reward_table_reward": {
+                "id": identifier,
+                "type": "xp",
+                "xp": "9",
+            },
+        }
+        return members[kind]
+
     def _assert_mismatch_at(
         self,
         baseline: dict[str, object],
@@ -77,8 +385,8 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
             errors,
         )
 
-    def test_fixture_comes_from_immutable_source_and_current_has_no_drift(self) -> None:
-        capture, compare = self._compatibility_support()
+    def test_fixture_comes_from_immutable_source(self) -> None:
+        capture, _ = self._compatibility_support()
         fixture = self._fixture()
 
         archive = subprocess.run(
@@ -101,11 +409,18 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
                 extracted_root / "config" / "ftbquests" / "quests"
             )
 
-        current_corpus = capture(self.QUEST_ROOT)
         self.assertEqual(fixture["corpus"], source_corpus)
-        self.assertEqual(current_corpus, source_corpus)
+
+    def test_current_corpus_satisfies_frozen_compatibility_contract(self) -> None:
+        capture, compare = self._compatibility_support()
+        fixture = self._fixture()
+        current_corpus = capture(self.QUEST_ROOT)
         self.assertEqual(
-            compare(source_corpus, current_corpus, commodity_replacements={}),
+            compare(
+                fixture,
+                current_corpus,
+                commodity_replacements=self.APPROVED_COMMODITY_REPLACEMENTS,
+            ),
             [],
         )
 
@@ -113,7 +428,9 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         capture, _ = self._compatibility_support()
         fixture = self._fixture()
         canonical_fixture = json.dumps(fixture, indent=2, sort_keys=True) + "\n"
-        self.assertEqual(self.FIXTURE_PATH.read_text(encoding="utf-8"), canonical_fixture)
+        self.assertEqual(
+            self.FIXTURE_PATH.read_text(encoding="utf-8"), canonical_fixture
+        )
         self.assertNotIn(str(ROOT), canonical_fixture)
         self.assertNotIn("/private/", canonical_fixture)
         self.assertNotIn("/Users/", canonical_fixture)
@@ -162,51 +479,7 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
 
     def test_declared_commodity_replacement_freezes_all_other_task_fields(self) -> None:
         _, compare = self._compatibility_support()
-        task_id = "0123456789ABCDE0"
-        baseline = {
-            "chapter_groups": {"chapter_groups": []},
-            "chapters": {
-                "0123456789ABCDE1.snbt": {
-                    "id": "0123456789ABCDE1",
-                    "group": "0123456789ABCDE2",
-                    "quest_links": [],
-                    "quests": [
-                        {
-                            "id": "0123456789ABCDE3",
-                            "tasks": [
-                                {
-                                    "id": task_id,
-                                    "type": "item",
-                                    "item": {
-                                        "count": "1",
-                                        "id": "example:steel_ingot",
-                                    },
-                                    "count": "12L",
-                                    "consume_items": False,
-                                    "match_components": "fuzzy",
-                                }
-                            ],
-                            "rewards": [],
-                        }
-                    ],
-                }
-            },
-            "language": {"en_us": {}},
-            "reward_tables": {},
-        }
-        current = copy.deepcopy(baseline)
-        current_task = current["chapters"]["0123456789ABCDE1.snbt"]["quests"][0][
-            "tasks"
-        ][0]
-        current_task["item"] = {
-            "count": "1",
-            "id": "ftbfiltersystem:smart_filter",
-            "components": {
-                "ftbfiltersystem:filter": (
-                    "ftbfiltersystem:item_tag(c:ingots/steel)"
-                )
-            },
-        }
+        baseline, current, task_id = self._commodity_corpora()
 
         self.assertEqual(
             compare(
@@ -255,6 +528,396 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
                     errors,
                 )
 
+    def test_commodity_replacement_requires_exact_smart_filter_shape(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline, current, task_id = self._commodity_corpora()
+        item_path = "$.chapters.0123456789ABCDE1.snbt.quests[0].tasks[0].item"
+
+        invalid_items = {
+            "wrong_item": {
+                "count": "1",
+                "id": "ftbfiltersystem:item_tag",
+                "components": {
+                    "ftbfiltersystem:filter": (
+                        "ftbfiltersystem:item_tag(c:ingots/steel)"
+                    )
+                },
+            },
+            "missing_count": {
+                "id": "ftbfiltersystem:smart_filter",
+                "components": {
+                    "ftbfiltersystem:filter": (
+                        "ftbfiltersystem:item_tag(c:ingots/steel)"
+                    )
+                },
+            },
+            "wrong_component": {
+                "count": "1",
+                "id": "ftbfiltersystem:smart_filter",
+                "components": {
+                    "ftbfiltersystem:filter": (
+                        "ftbfiltersystem:item_tag(c:ingots/iron)"
+                    )
+                },
+            },
+            "extra_component": {
+                "count": "1",
+                "id": "ftbfiltersystem:smart_filter",
+                "components": {
+                    "example:extra": "forbidden",
+                    "ftbfiltersystem:filter": (
+                        "ftbfiltersystem:item_tag(c:ingots/steel)"
+                    ),
+                },
+            },
+        }
+        for name, invalid_item in invalid_items.items():
+            with self.subTest(name=name):
+                mutated = copy.deepcopy(current)
+                mutated["chapters"]["0123456789ABCDE1.snbt"]["quests"][0][
+                    "tasks"
+                ][0]["item"] = invalid_item
+                errors = compare(
+                    baseline,
+                    mutated,
+                    commodity_replacements={task_id: "c:ingots/steel"},
+                )
+                self.assertTrue(
+                    any(error.startswith(f"{item_path}:") for error in errors),
+                    errors,
+                )
+
+    def test_duplicate_commodity_declaration_fails_closed(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline, current, task_id = self._commodity_corpora()
+
+        class DuplicateDeclarations(dict[str, str]):
+            def items(self):
+                return [
+                    (task_id, "c:ingots/steel"),
+                    (task_id, "c:ingots/steel"),
+                ]
+
+        errors = compare(
+            baseline,
+            current,
+            commodity_replacements=DuplicateDeclarations(),
+        )
+        self.assertTrue(
+            any(
+                error.startswith(f"$.commodity_replacements.{task_id}:")
+                and "duplicate" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_duplicate_ids_fail_for_every_supported_identity_kind(self) -> None:
+        _, compare = self._compatibility_support()
+        for corpus_side in ("baseline", "current"):
+            for kind in self.IDENTITY_KINDS:
+                with self.subTest(corpus_side=corpus_side, kind=kind):
+                    baseline = self._identity_corpus()
+                    current = copy.deepcopy(baseline)
+                    target = baseline if corpus_side == "baseline" else current
+                    duplicate_path = self._append_duplicate_identity(target, kind)
+                    errors = compare(
+                        baseline,
+                        current,
+                        commodity_replacements={},
+                    )
+                    self.assertTrue(
+                        any(
+                            error.startswith(f"{duplicate_path}:")
+                            and f"duplicate {kind} ID" in error
+                            for error in errors
+                        ),
+                        errors,
+                    )
+
+    def test_duplicate_frozen_quest_with_changed_payload_fails_closed(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        quests = current["chapters"]["0000000000000010.snbt"]["quests"]
+        duplicate = copy.deepcopy(quests[0])
+        duplicate["x"] = "999.0d"
+        quests.append(duplicate)
+
+        duplicate_path = "$.chapters.0000000000000010.snbt.quests[2].id"
+        errors = compare(baseline, current, commodity_replacements={})
+        self.assertTrue(
+            any(
+                error.startswith(f"{duplicate_path}:")
+                and "duplicate quest ID" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_duplicate_chapter_id_across_files_fails_at_second_file(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        duplicate_path = self._append_duplicate_identity(current, "chapter")
+
+        errors = compare(baseline, current, commodity_replacements={})
+        self.assertTrue(
+            any(
+                error.startswith(f"{duplicate_path}:")
+                and "$.chapters.0000000000000010.snbt.id" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_missing_ids_fail_for_every_supported_identity_kind(self) -> None:
+        _, compare = self._compatibility_support()
+        for corpus_side in ("baseline", "current"):
+            for kind in self.IDENTITY_KINDS:
+                with self.subTest(corpus_side=corpus_side, kind=kind):
+                    baseline = self._identity_corpus()
+                    current = copy.deepcopy(baseline)
+                    target = baseline if corpus_side == "baseline" else current
+                    member, missing_path = self._identity_member(target, kind)
+                    member.pop("id")
+                    errors = compare(
+                        baseline,
+                        current,
+                        commodity_replacements={},
+                    )
+                    self.assertTrue(
+                        any(
+                            error.startswith(f"{missing_path}:")
+                            and f"{kind} identity is missing" in error
+                            for error in errors
+                        ),
+                        errors,
+                    )
+
+    def test_cross_kind_collisions_fail_in_baseline_and_current(self) -> None:
+        _, compare = self._compatibility_support()
+        for corpus_side in ("baseline", "current"):
+            with self.subTest(corpus_side=corpus_side):
+                baseline = self._identity_corpus()
+                current = copy.deepcopy(baseline)
+                target = baseline if corpus_side == "baseline" else current
+                quest_id = target["chapters"]["0000000000000010.snbt"][
+                    "quests"
+                ][0]["id"]
+                task = target["chapters"]["0000000000000010.snbt"]["quests"][
+                    0
+                ]["tasks"][0]
+                task["id"] = quest_id
+                collision_path = (
+                    "$.chapters.0000000000000010.snbt.quests[0].tasks[0].id"
+                )
+                errors = compare(
+                    baseline,
+                    current,
+                    commodity_replacements={},
+                )
+                self.assertTrue(
+                    any(
+                        error.startswith(f"{collision_path}:")
+                        and "cross-kind ID collision" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_removed_frozen_id_cannot_be_reused_under_another_kind(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        chapter = current["chapters"]["0000000000000010.snbt"]
+        removed_quest_id = chapter["quests"].pop(0)["id"]
+        chapter["quests"][0]["tasks"].append(
+            {"id": removed_quest_id, "type": "checkmark"}
+        )
+        reused_path = (
+            "$.chapters.0000000000000010.snbt.quests[0].tasks[0].id"
+        )
+
+        errors = compare(baseline, current, commodity_replacements={})
+        self.assertTrue(
+            any(
+                error.startswith(f"{reused_path}:")
+                and "reuses baseline quest ID" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_unique_entities_can_be_inserted_at_front_and_middle(self) -> None:
+        _, compare = self._compatibility_support()
+        for kind_index, kind in enumerate(self.ORDERED_IDENTITY_KINDS, start=1):
+            for position, position_name in ((0, "front"), (1, "middle")):
+                with self.subTest(kind=kind, position=position_name):
+                    baseline = self._identity_corpus()
+                    current = copy.deepcopy(baseline)
+                    members, _ = self._identity_list(current, kind)
+                    identifier = f"700000000000{kind_index:02X}{position:02X}"
+                    members.insert(
+                        position,
+                        self._new_identity_member(kind, identifier),
+                    )
+                    self.assertEqual(
+                        compare(
+                            baseline,
+                            current,
+                            commodity_replacements={},
+                        ),
+                        [],
+                    )
+
+    def test_unique_chapter_and_reward_table_additions_are_allowed(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        current["chapters"]["7000000000000010.snbt"] = {
+            "filename": "7000000000000010",
+            "group": "0000000000000001",
+            "id": "7000000000000010",
+            "images": [],
+            "order_index": "9",
+            "quest_links": [],
+            "quests": [],
+        }
+        current["reward_tables"]["7000000000000020.snbt"] = {
+            "id": "7000000000000020",
+            "rewards": [],
+        }
+        self.assertEqual(
+            compare(baseline, current, commodity_replacements={}),
+            [],
+        )
+
+    def test_frozen_entity_relative_order_is_preserved(self) -> None:
+        _, compare = self._compatibility_support()
+        for kind in self.ORDERED_IDENTITY_KINDS:
+            with self.subTest(kind=kind):
+                baseline = self._identity_corpus()
+                current = copy.deepcopy(baseline)
+                members, collection_path = self._identity_list(current, kind)
+                members[0], members[1] = members[1], members[0]
+                errors = compare(
+                    baseline,
+                    current,
+                    commodity_replacements={},
+                )
+                self.assertTrue(
+                    any(
+                        error.startswith(f"{collection_path}:")
+                        and "frozen ID relative order changed" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_dependency_reordering_remains_positional(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        dependencies = current["chapters"]["0000000000000010.snbt"][
+            "quests"
+        ][0]["dependencies"]
+        dependencies[0], dependencies[1] = dependencies[1], dependencies[0]
+
+        errors = compare(baseline, current, commodity_replacements={})
+        for index in (0, 1):
+            expected_path = (
+                "$.chapters.0000000000000010.snbt.quests[0].dependencies"
+                f"[{index}]"
+            )
+            self.assertTrue(
+                any(error.startswith(f"{expected_path}:") for error in errors),
+                errors,
+            )
+
+    def test_mismatch_path_uses_current_index_after_unique_insertion(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._identity_corpus()
+        current = copy.deepcopy(baseline)
+        quests = current["chapters"]["0000000000000010.snbt"]["quests"]
+        quests.insert(
+            0,
+            self._new_identity_member("quest", "7000000000000030"),
+        )
+        quests[1]["x"] = "999.0d"
+
+        errors = compare(baseline, current, commodity_replacements={})
+        expected_path = "$.chapters.0000000000000010.snbt.quests[1].x"
+        self.assertTrue(
+            any(error.startswith(f"{expected_path}:") for error in errors),
+            errors,
+        )
+        self.assertFalse(
+            any(
+                error.startswith(
+                    "$.chapters.0000000000000010.snbt.quests[0].x:"
+                )
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_fixture_hygiene_rejects_every_binding_category(self) -> None:
+        _, compare = self._compatibility_support()
+        cases = (
+            (
+                "uuid",
+                "fixture.note",
+                "00000000-0000-0000-0000-000000000000",
+                "UUID",
+            ),
+            ("player_name", "player_name", "redacted", "player identity field"),
+            ("raw_progress", "task_progress", {}, "raw progress field"),
+            ("secret", "access_token", "test-only", "secret field"),
+            (
+                "em_dash",
+                "fixture.note",
+                f"forbidden{chr(0x2014)}punctuation",
+                "U+2014",
+            ),
+            (
+                "windows_path",
+                "fixture.note",
+                "C:\\Users\\fixture\\quests",
+                "Windows machine path",
+            ),
+            (
+                "windows_unc_path",
+                "fixture.note",
+                "\\\\server\\share\\quests",
+                "Windows machine path",
+            ),
+            (
+                "unix_root",
+                "fixture.note",
+                "/home/fixture/quests",
+                "Unix machine root",
+            ),
+        )
+        for name, key, value, marker in cases:
+            with self.subTest(name=name):
+                contaminated = self._identity_corpus()
+                contaminated["language"]["en_us"][key] = value
+                errors = compare(
+                    contaminated,
+                    copy.deepcopy(contaminated),
+                    commodity_replacements={},
+                )
+                expected_path = f"$.language.en_us.{key}"
+                self.assertTrue(
+                    any(
+                        error.startswith(f"{expected_path}:")
+                        and marker in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
     def test_changed_task_count_fails_at_exact_path(self) -> None:
         baseline = self._baseline()
         current = copy.deepcopy(baseline)
@@ -271,7 +934,8 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         self._assert_mismatch_at(
             baseline,
             current,
-            f"$.chapters.{chapter_name}.quests[{quest_index}].tasks[{task_index}].count",
+            f"$.chapters.{chapter_name}.quests[{quest_index}].tasks"
+            f"[{task_index}].count",
         )
 
     def test_changed_reward_payload_fails_at_exact_path(self) -> None:
@@ -290,7 +954,8 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
         self._assert_mismatch_at(
             baseline,
             current,
-            f"$.chapters.{chapter_name}.quests[{quest_index}].rewards[{reward_index}].item.id",
+            f"$.chapters.{chapter_name}.quests[{quest_index}].rewards"
+            f"[{reward_index}].item.id",
         )
 
     def test_changed_quest_flag_fails_at_exact_path(self) -> None:

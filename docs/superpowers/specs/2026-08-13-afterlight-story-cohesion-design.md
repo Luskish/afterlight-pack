@@ -80,7 +80,9 @@ The implementation records the current quest corpus at commit `7fcbc3a99fedcb8f6
 - optional, repeatable, consumption, visibility, and sequencing flags
 - all existing localization values
 
-The fixture omits only the exact fields listed in section 4.2. The compatibility test recursively compares every other baseline value and requires the post-change corpus to be an additive superset. New chapters, quests, tasks, rewards, localization keys, and quest links are allowed. Outside the declared commodity task exception in section 4.2.1, a changed item ID, required count, reward amount, command, flag, owner, dependency, or type is a hard failure.
+The fixture retains complete payloads, including every field listed in section 4.2. The compatibility comparison exempts only the exact approved paths while recursively comparing every other baseline value and requiring the post-change corpus to be an additive superset. New chapters, quests, tasks, rewards, localization keys, and quest links are allowed. Outside the declared commodity task exception in section 4.2.1, a changed item ID, required count, reward amount, command, flag, owner, dependency, or type is a hard failure.
+
+Both the frozen and current corpora are indexed before comparison across chapter groups, chapters, images, quest links, quests, tasks, rewards, reward tables, and reward-table rewards. Missing IDs, duplicate IDs, and cross-kind ID collisions fail at their exact paths. Existing entities are matched by stable ID, additive entities may appear anywhere, and frozen IDs retain relative order in ordered entity collections. Ordered non-entity values such as dependency lists remain positional.
 
 The fixture is generated from pack content only. It contains no world data, player names, UUIDs, timestamps, progress values, pins, claims, or live paths.
 
@@ -423,13 +425,16 @@ Implementation follows test-driven development.
 
 ### 10.2 Progress compatibility tests
 
-- Generate the frozen compatibility fixture from the `7fcbc3a` corpus once.
+- Generate the frozen compatibility fixture from the `7fcbc3a` corpus once and prove the fixture corpus remains exactly equal to that immutable Git object.
+- Compare the evolving current corpus to the frozen fixture separately with explicit approved commodity declarations.
 - Recursively compare every baseline group, chapter, quest link, quest, task, reward, and localization value except the exact fields permitted by section 4.2.
+- Build complete baseline and current identity indexes and reject missing IDs, duplicate IDs, and cross-kind collisions before compatibility comparison.
+- Match ID-bearing members by stable ID, permit unique additions at any list position, preserve frozen relative order where entity order is semantic, and keep non-entity lists positional.
 - Assert permitted localization and order changes are limited to the exact IDs and keys declared by the design.
-- Assert existing link arrays remain a prefix of the new arrays and all appended link IDs are new.
+- Assert every existing link ID remains unique and in frozen relative order while new unique link IDs may appear at any position.
 - Allow an existing item target change only when its frozen task ID declares an exact runtime-backed commodity tag replacement under section 4.2.1.
 - Assert every declared commodity replacement freezes task type, count, consumption, component matching, and all surrounding quest data.
-- Assert the fixture contains no player names, UUIDs, timestamps, progress values, or live paths.
+- Assert the fixture contains no UUIDs, player identity fields, raw progress fields, secrets, U+2014, Windows paths, or Unix machine roots.
 - Assert all new manuals, quests, tasks, rewards, localization keys, and links are additive.
 - Mutate one frozen task count, reward payload, quest flag, owner, dependency, title, and icon in isolated fixtures and prove each mutation fails.
 

@@ -167,3 +167,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/tests/test_project_memory.py`, `docs/PROJECT_MEMORY.md`, `.agents/skills/afterlight-project-memory/agents/openai.yaml`
 - **Impact:** Future memory entries fail closed on malformed structure and no longer convert automated evidence into unearned player acceptance claims.
 - **Follow-up:** Keep task reviews independent and update event status only after matching same-session evidence.
+
+### MEM-2026-08-13-013
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** FTB Quests, story compatibility baseline
+- **Summary:** Story cohesion now has a fail-closed canonical compatibility fixture and a narrowly declared commodity item-tag exception.
+- **Evidence:** The focused suite first ended with `FAILED (failures=11)`, then passed 11 tests twice. Git-object extraction from `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25` printed `CANONICAL_EQUAL: YES`, `NO_ALLOWLIST_MISMATCHES: 0`, and fixture SHA-256 `b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c` before the fixture was written. An overstrict wrapper then failed with `/tmp/afterlight-task2-focused-1.log /tmp/afterlight-task2-focused-2.log differ: char 2022, line 14`; diff proved the only difference was unittest elapsed timing, normalized output was identical, and fixture hashes remained equal.
+- **Files or Commit:** `tools/afterlight_quests/compatibility.py`, `tools/fixtures/quests/story-cohesion-baseline.json`, `tools/tests/test_afterlight_quests.py`, and the Task 2 commit
+- **Impact:** Future story changes fail on undeclared mutations to existing groups, chapters, links, quests, tasks, rewards, and localization while preserving approved additive content.
+- **Follow-up:** Use an empty commodity replacement mapping unless Shane has approved a runtime-backed interchangeable commodity tag.

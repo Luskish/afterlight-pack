@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import importlib
+import io
 import json
 import os
 import re
@@ -11,6 +13,7 @@ import stat
 import struct
 import subprocess
 import sys
+import tarfile
 import tempfile
 import tomllib
 import unittest
@@ -30,6 +33,342 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from live_install_support import requires_live_install
+
+
+class StoryCohesionCompatibilityTests(unittest.TestCase):
+    SOURCE_COMMIT = "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
+    FIXTURE_PATH = (
+        ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
+    )
+    QUEST_ROOT = ROOT / "config" / "ftbquests" / "quests"
+    STORY_GROUP_ID = "4A20F33642175B95"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+
+    def _compatibility_support(self):
+        capture = getattr(self.quests, "capture_quest_corpus", None)
+        compare = getattr(self.quests, "compare_quest_corpus", None)
+        self.assertTrue(callable(capture), "capture_quest_corpus is missing")
+        self.assertTrue(callable(compare), "compare_quest_corpus is missing")
+        return capture, compare
+
+    def _fixture(self) -> dict[str, object]:
+        self.assertTrue(self.FIXTURE_PATH.is_file(), "compatibility fixture is missing")
+        return json.loads(self.FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    def _baseline(self) -> dict[str, object]:
+        fixture = self._fixture()
+        self.assertEqual(fixture["schema_version"], 1)
+        self.assertEqual(fixture["source_commit"], self.SOURCE_COMMIT)
+        return fixture["corpus"]
+
+    def _assert_mismatch_at(
+        self,
+        baseline: dict[str, object],
+        current: dict[str, object],
+        expected_path: str,
+    ) -> None:
+        _, compare = self._compatibility_support()
+        errors = compare(baseline, current, commodity_replacements={})
+        self.assertTrue(
+            any(error.startswith(f"{expected_path}:") for error in errors),
+            errors,
+        )
+
+    def test_fixture_comes_from_immutable_source_and_current_has_no_drift(self) -> None:
+        capture, compare = self._compatibility_support()
+        fixture = self._fixture()
+
+        archive = subprocess.run(
+            [
+                "git",
+                "archive",
+                "--format=tar",
+                self.SOURCE_COMMIT,
+                "config/ftbquests/quests",
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            extracted_root = Path(temporary_directory)
+            with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as source_tar:
+                source_tar.extractall(extracted_root, filter="data")
+            source_corpus = capture(
+                extracted_root / "config" / "ftbquests" / "quests"
+            )
+
+        current_corpus = capture(self.QUEST_ROOT)
+        self.assertEqual(fixture["corpus"], source_corpus)
+        self.assertEqual(current_corpus, source_corpus)
+        self.assertEqual(
+            compare(source_corpus, current_corpus, commodity_replacements={}),
+            [],
+        )
+
+    def test_fixture_serialization_is_canonical_and_deterministic(self) -> None:
+        capture, _ = self._compatibility_support()
+        fixture = self._fixture()
+        canonical_fixture = json.dumps(fixture, indent=2, sort_keys=True) + "\n"
+        self.assertEqual(self.FIXTURE_PATH.read_text(encoding="utf-8"), canonical_fixture)
+        self.assertNotIn(str(ROOT), canonical_fixture)
+        self.assertNotIn("/private/", canonical_fixture)
+        self.assertNotIn("/Users/", canonical_fixture)
+
+        first_capture = json.dumps(
+            capture(self.QUEST_ROOT), indent=2, sort_keys=True
+        )
+        second_capture = json.dumps(
+            capture(self.QUEST_ROOT), indent=2, sort_keys=True
+        )
+        self.assertEqual(first_capture, second_capture)
+
+    def test_approved_existing_field_changes_are_the_only_exceptions(self) -> None:
+        _, compare = self._compatibility_support()
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        current["language"]["en_us"][
+            f"chapter_group.{self.STORY_GROUP_ID}.title"
+        ] = "Story Signal"
+
+        story_chapter_name, story_chapter = next(
+            (name, chapter)
+            for name, chapter in current["chapters"].items()
+            if chapter["group"] == self.STORY_GROUP_ID
+        )
+        story_chapter["order_index"] = "10"
+        story_quest_id = story_chapter["quests"][0]["id"]
+        current["language"]["en_us"][
+            f"quest.{story_quest_id}.quest_subtitle"
+        ] = "Changed subtitle"
+        current["language"]["en_us"][f"quest.{story_quest_id}.quest_desc"] = [
+            "Changed description"
+        ]
+        story_chapter["quest_links"].append(
+            {
+                "id": "0123456789ABCDEF",
+                "chapter": story_chapter_name.removesuffix(".snbt"),
+                "quest": story_quest_id,
+            }
+        )
+
+        self.assertEqual(
+            compare(baseline, current, commodity_replacements={}),
+            [],
+        )
+
+    def test_declared_commodity_replacement_freezes_all_other_task_fields(self) -> None:
+        _, compare = self._compatibility_support()
+        task_id = "0123456789ABCDE0"
+        baseline = {
+            "chapter_groups": {"chapter_groups": []},
+            "chapters": {
+                "0123456789ABCDE1.snbt": {
+                    "id": "0123456789ABCDE1",
+                    "group": "0123456789ABCDE2",
+                    "quest_links": [],
+                    "quests": [
+                        {
+                            "id": "0123456789ABCDE3",
+                            "tasks": [
+                                {
+                                    "id": task_id,
+                                    "type": "item",
+                                    "item": {
+                                        "count": "1",
+                                        "id": "example:steel_ingot",
+                                    },
+                                    "count": "12L",
+                                    "consume_items": False,
+                                    "match_components": "fuzzy",
+                                }
+                            ],
+                            "rewards": [],
+                        }
+                    ],
+                }
+            },
+            "language": {"en_us": {}},
+            "reward_tables": {},
+        }
+        current = copy.deepcopy(baseline)
+        current_task = current["chapters"]["0123456789ABCDE1.snbt"]["quests"][0][
+            "tasks"
+        ][0]
+        current_task["item"] = {
+            "count": "1",
+            "id": "ftbfiltersystem:smart_filter",
+            "components": {
+                "ftbfiltersystem:filter": (
+                    "ftbfiltersystem:item_tag(c:ingots/steel)"
+                )
+            },
+        }
+
+        self.assertEqual(
+            compare(
+                baseline,
+                current,
+                commodity_replacements={task_id: "c:ingots/steel"},
+            ),
+            [],
+        )
+        undeclared_errors = compare(
+            baseline,
+            current,
+            commodity_replacements={},
+        )
+        self.assertTrue(
+            any(
+                error.startswith(
+                    "$.chapters.0123456789ABCDE1.snbt.quests[0].tasks[0].item:"
+                )
+                for error in undeclared_errors
+            ),
+            undeclared_errors,
+        )
+
+        for field, changed_value in (
+            ("count", "13L"),
+            ("consume_items", True),
+            ("match_components", "strict"),
+        ):
+            with self.subTest(field=field):
+                mutated = copy.deepcopy(current)
+                mutated["chapters"]["0123456789ABCDE1.snbt"]["quests"][0][
+                    "tasks"
+                ][0][field] = changed_value
+                errors = compare(
+                    baseline,
+                    mutated,
+                    commodity_replacements={task_id: "c:ingots/steel"},
+                )
+                expected_path = (
+                    "$.chapters.0123456789ABCDE1.snbt.quests[0].tasks[0]."
+                    f"{field}"
+                )
+                self.assertTrue(
+                    any(error.startswith(f"{expected_path}:") for error in errors),
+                    errors,
+                )
+
+    def test_changed_task_count_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name, quest_index, task_index = next(
+            (chapter_name, quest_index, task_index)
+            for chapter_name, chapter in current["chapters"].items()
+            for quest_index, quest in enumerate(chapter["quests"])
+            for task_index, task in enumerate(quest["tasks"])
+            if "count" in task
+        )
+        current["chapters"][chapter_name]["quests"][quest_index]["tasks"][
+            task_index
+        ]["count"] = "999L"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.quests[{quest_index}].tasks[{task_index}].count",
+        )
+
+    def test_changed_reward_payload_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name, quest_index, reward_index = next(
+            (chapter_name, quest_index, reward_index)
+            for chapter_name, chapter in current["chapters"].items()
+            for quest_index, quest in enumerate(chapter["quests"])
+            for reward_index, reward in enumerate(quest["rewards"])
+            if isinstance(reward.get("item"), dict) and "id" in reward["item"]
+        )
+        current["chapters"][chapter_name]["quests"][quest_index]["rewards"][
+            reward_index
+        ]["item"]["id"] = "minecraft:barrier"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.quests[{quest_index}].rewards[{reward_index}].item.id",
+        )
+
+    def test_changed_quest_flag_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name, quest_index, flag = next(
+            (chapter_name, quest_index, flag)
+            for chapter_name, chapter in current["chapters"].items()
+            for quest_index, quest in enumerate(chapter["quests"])
+            for flag in ("optional", "can_repeat", "invisible_until_completed")
+            if flag in quest and isinstance(quest[flag], bool)
+        )
+        quest = current["chapters"][chapter_name]["quests"][quest_index]
+        quest[flag] = not quest[flag]
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.quests[{quest_index}].{flag}",
+        )
+
+    def test_changed_dependency_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name, quest_index = next(
+            (chapter_name, quest_index)
+            for chapter_name, chapter in current["chapters"].items()
+            for quest_index, quest in enumerate(chapter["quests"])
+            if quest.get("dependencies")
+        )
+        current["chapters"][chapter_name]["quests"][quest_index]["dependencies"][
+            0
+        ] = "0123456789ABCDEF"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.quests[{quest_index}].dependencies[0]",
+        )
+
+    def test_changed_title_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        title_key = next(
+            key
+            for key in current["language"]["en_us"]
+            if key.startswith("quest.") and key.endswith(".title")
+        )
+        current["language"]["en_us"][title_key] = "Mutated title"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.language.en_us.{title_key}",
+        )
+
+    def test_changed_icon_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name = next(
+            name
+            for name, chapter in current["chapters"].items()
+            if isinstance(chapter.get("icon"), dict) and "id" in chapter["icon"]
+        )
+        current["chapters"][chapter_name]["icon"]["id"] = "minecraft:barrier"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.icon.id",
+        )
+
+    def test_changed_owner_fails_at_exact_path(self) -> None:
+        baseline = self._baseline()
+        current = copy.deepcopy(baseline)
+        chapter_name = next(iter(current["chapters"]))
+        current["chapters"][chapter_name]["group"] = "0123456789ABCDEF"
+        self._assert_mismatch_at(
+            baseline,
+            current,
+            f"$.chapters.{chapter_name}.group",
+        )
 
 
 class Plan06GateDependencyTests(unittest.TestCase):

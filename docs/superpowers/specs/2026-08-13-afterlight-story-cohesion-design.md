@@ -80,7 +80,7 @@ The implementation records the current quest corpus at commit `7fcbc3a99fedcb8f6
 - optional, repeatable, consumption, visibility, and sequencing flags
 - all existing localization values
 
-The fixture omits only the exact fields listed in section 4.2. The compatibility test recursively compares every other baseline value and requires the post-change corpus to be an additive superset. New chapters, quests, tasks, rewards, localization keys, and quest links are allowed. A changed item ID, required count, reward amount, command, flag, owner, dependency, or type is a hard failure.
+The fixture omits only the exact fields listed in section 4.2. The compatibility test recursively compares every other baseline value and requires the post-change corpus to be an additive superset. New chapters, quests, tasks, rewards, localization keys, and quest links are allowed. Outside the declared commodity task exception in section 4.2.1, a changed item ID, required count, reward amount, command, flag, owner, dependency, or type is a hard failure.
 
 The fixture is generated from pack content only. It contains no world data, player names, UUIDs, timestamps, progress values, pins, claims, or live paths.
 
@@ -94,6 +94,15 @@ The cohesion pass may change only these fields on existing content:
 - additive entries in existing chapter-level `quest_links` arrays
 
 Existing quest positions, shapes, sizes, titles, dependencies, tasks, rewards, optional flags, repeatability, progression modes, and every other unlisted field remain byte-equivalent after canonical parsing.
+
+### 4.2.1 Commodity task exception
+
+An existing item task may change from one mod-specific commodity item to a semantically equivalent `ftbfiltersystem:item_tag` filter. The compatibility declaration maps the frozen task ID to the runtime item tag. This is the only additional existing-field exception.
+
+- The task ID, task type, required count, consume behavior, `match_components` behavior, and every surrounding quest value remain fixed.
+- The replacement uses `ftbfiltersystem:smart_filter` with an exact `ftbfiltersystem:filter` component value of `ftbfiltersystem:item_tag(<tag>)`.
+- The tag must exist in the installed runtime and represent interchangeable outputs of the same commodity.
+- No machine, component, schematic, custom progression item, or mod-specific resource qualifies.
 
 ### 4.3 New content rules
 
@@ -418,6 +427,8 @@ Implementation follows test-driven development.
 - Recursively compare every baseline group, chapter, quest link, quest, task, reward, and localization value except the exact fields permitted by section 4.2.
 - Assert permitted localization and order changes are limited to the exact IDs and keys declared by the design.
 - Assert existing link arrays remain a prefix of the new arrays and all appended link IDs are new.
+- Allow an existing item target change only when its frozen task ID declares an exact runtime-backed commodity tag replacement under section 4.2.1.
+- Assert every declared commodity replacement freezes task type, count, consumption, component matching, and all surrounding quest data.
 - Assert the fixture contains no player names, UUIDs, timestamps, progress values, or live paths.
 - Assert all new manuals, quests, tasks, rewards, localization keys, and links are additive.
 - Mutate one frozen task count, reward payload, quest flag, owner, dependency, title, and icon in isolated fixtures and prove each mutation fails.

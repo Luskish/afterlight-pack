@@ -25,6 +25,7 @@ from .catalog import (
     DEPOT_MID_TABLE,
     build_catalog,
 )
+from .compatibility import capture_quest_corpus, compare_quest_corpus
 
 
 __all__ = [
@@ -44,6 +45,8 @@ __all__ = [
     "VANILLA_ITEM_ALLOWLIST",
     "assert_no_id_collisions",
     "build_catalog",
+    "capture_quest_corpus",
+    "compare_quest_corpus",
     "count_quests",
     "ftb_safe_id",
     "quest_item_audit_digest",

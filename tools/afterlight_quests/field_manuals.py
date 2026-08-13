@@ -436,7 +436,7 @@ _MANUALS = (
     _Manual(
         "manuals/pneumaticcraft",
         "Field Manual: Pressure",
-        "pneumaticcraft:manual",
+        "pneumaticcraft:pneumatic_wrench",
         "0A510C4BD2A3818B",
         "084209B68927F9FC",
         (

@@ -6,7 +6,7 @@
 	icon: { id: "mekanism:alloy_atomic" }
 	id: "099200314296766A"
 	images: [ ]
-	order_index: 22
+	order_index: 32
 	quest_links: [ ]
 	quests: [
 		{

@@ -1,0 +1,311 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "0A510C4BD2A3818B"
+	group: "4A20F33642175B95"
+	icon: { id: "pneumaticcraft:pneumatic_wrench" }
+	id: "0A510C4BD2A3818B"
+	images: [ ]
+	order_index: 4
+	quest_links: [
+		{ id: "68E005D35965E4F9", linked_quest: "4D41BE537DD35854", x: 0.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "084209B68927F9FC"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "1B763EBDB1D20149"
+					type: "item"
+					item: { count: 1, id: "patchouli:guide_book", components: { "patchouli:book": "pneumaticcraft:book" } }
+					count: 1L
+					consume_items: false
+					match_components: "fuzzy"
+				}
+			]
+			rewards: [
+				{
+					id: "24E4D4141CCE24F4"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "61E391AFD45083E5"
+			dependencies: ["084209B68927F9FC"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "6BF02744402D75B1"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:ingot_iron_compressed" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1276F7602BC577FD"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "5901EDCD5D7EE35A"
+			dependencies: ["61E391AFD45083E5"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "092A46F52460013A"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:air_compressor" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "02BD5C0865514423"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "26E45C5C03858B9F"
+			dependencies: ["5901EDCD5D7EE35A"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "36D6321F892FE181"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:pressure_tube" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "0825977A4900B5BA"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:pressure_gauge" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "0F189FF7498174C9"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "08943F9E8ACA0BF5"
+			dependencies: ["26E45C5C03858B9F"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "0994485FB5DACE43"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:safety_tube_module" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7145C432834DB407"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "05E49A076947D40D"
+			dependencies: ["08943F9E8ACA0BF5"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "3B6D2676AD20D501"
+					type: "advancement"
+					advancement: "pneumaticcraft:pressure_chamber"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "66428801AA451026"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "3954E54E987D82B9"
+			dependencies: ["05E49A076947D40D"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "2F65A5B1DAC626EA"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:plastic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7F1C897F58C97371"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1BBE173FE2812E12"
+			dependencies: ["3954E54E987D82B9"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "79805DBF03E5D8FD"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:etching_acid_bucket" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "09204CA60F243E36"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "0986AB7BB8DC26CB"
+			dependencies: ["1BBE173FE2812E12"]
+			x: 16.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "38A4D2A3ABDEE4CB"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "53F09DE42D7C8BC4"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "0EB3739A284996EF"
+			dependencies: ["0986AB7BB8DC26CB"]
+			x: 18.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "7CB761930616556A"
+					type: "item"
+					item: { count: 1, id: "pneumaticcraft:programmer" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4828F02BF7D5E4BD"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "0FDC59D6374DE405"
+			dependencies: ["0EB3739A284996EF"]
+			x: 20.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "5BAFFAABF5E46B4F"
+					type: "advancement"
+					advancement: "pneumaticcraft:logistics_drone"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "75C1E646F9972710"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "049F6475EEBA23BF"
+			dependencies: ["0FDC59D6374DE405"]
+			x: 22.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "1348FF905C53A83B"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "149CAD93D8C7DF4E"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "7DC1F290904A62F9"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

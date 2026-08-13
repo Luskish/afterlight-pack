@@ -7,7 +7,9 @@
 	id: "2D7CB8E643BDC03B"
 	images: [ ]
 	order_index: 12
-	quest_links: [ ]
+	quest_links: [
+		{ id: "5D99BED063D4488E", linked_quest: "6CC0CCE16F9FB5BE", x: 0.0d, y: -2.0d }
+	]
 	quests: [
 		{
 			id: "6A0FBE1789BEFD37"

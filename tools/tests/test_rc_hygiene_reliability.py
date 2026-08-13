@@ -197,7 +197,7 @@ def valid_boot_log(nonce: str) -> str:
             "[08Aug2026 12:00:01.250] [Server thread/INFO] [KubeJS Server/]: "
             f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {recipe_count} {nonce}",
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -238,7 +238,7 @@ def valid_gate_boot_log(nonce: str, *, gate_first: bool = True) -> str:
             'Done (12.345s)! For help, type "help"',
             *audits,
             "[08Aug2026 12:00:01.500] [Server thread/INFO] [FTB Quests/]: "
-            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
             "[08Aug2026 12:00:02.000] [Server thread/INFO] "
             "[net.minecraft.server.MinecraftServer/]: Stopping server",
             "[08Aug2026 12:00:02.100] [Server thread/INFO] "
@@ -2164,7 +2164,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 312)
+        self.assertEqual(len(indexed), 322)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -2599,11 +2599,22 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         )
 
     def copy_seal_corpus(self, source_root: Path, destination_root: Path) -> None:
-        source_quests = source_root / "config/ftbquests/quests"
-        if source_quests.is_dir():
+        source_config = source_root / "config"
+        if source_config.is_dir():
             shutil.copytree(
-                source_quests,
-                destination_root / "config/ftbquests/quests",
+                source_config,
+                destination_root / "config",
+                dirs_exist_ok=True,
+            )
+        for metadata in sorted((source_root / "mods").glob("*.pw.toml")):
+            destination = destination_root / "mods" / metadata.name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(metadata, destination)
+        source_startup = source_root / "kubejs" / "startup_scripts"
+        if source_startup.is_dir():
+            shutil.copytree(
+                source_startup,
+                destination_root / "kubejs" / "startup_scripts",
                 dirs_exist_ok=True,
             )
         relative_paths = {
@@ -2621,11 +2632,28 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             destination = destination_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
+        acquisition_fixture = source_root / self.hygiene.FIXTURE_RELATIVE
+        if acquisition_fixture.is_file():
+            destination = destination_root / self.hygiene.FIXTURE_RELATIVE
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(acquisition_fixture, destination)
+
+    def prepare_installed_quest_audits(
+        self, repository_root: Path, install_root: Path
+    ) -> None:
+        for relative_text, renderer in self.hygiene.QUEST_RUNTIME_AUDITS:
+            destination = install_root / relative_text
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(renderer(repository_root))
+        self.hygiene.render_installed_quest_audits(
+            repository_root, install_root, self.nonce
+        )
 
     def verify_pair(self, latest: str, debug: str, boot: str | None = None):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
             self.copy_seal_corpus(ROOT / "server-test", install)
+            self.prepare_installed_quest_audits(ROOT, install)
             (install / "logs").mkdir(parents=True)
             gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
             gate_audit.parent.mkdir(parents=True, exist_ok=True)
@@ -2634,6 +2662,9 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             )
             (install / "logs" / "latest.log").write_text(latest, encoding="utf-8")
             (install / "logs" / "debug.log").write_text(debug, encoding="utf-8")
+            kubejs_log = install / "logs" / "kubejs" / "server.log"
+            kubejs_log.parent.mkdir(parents=True)
+            shutil.copy2(ROOT / "server-test/logs/kubejs/server.log", kubejs_log)
             (install / "boot.log").write_text(
                 self.boot if boot is None else boot, encoding="utf-8"
             )
@@ -2653,6 +2684,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             install = Path(temporary)
             self.copy_seal_corpus(ROOT / "server-test", install)
+            self.prepare_installed_quest_audits(ROOT, install)
             (install / "logs").mkdir()
             gate_audit = install / self.hygiene.GATE_AUDIT_RELATIVE
             gate_audit.parent.mkdir(parents=True, exist_ok=True)
@@ -2661,6 +2693,9 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             )
             (install / "logs" / "latest.log").write_bytes(latest)
             (install / "logs" / "debug.log").write_bytes(debug)
+            kubejs_log = install / "logs" / "kubejs" / "server.log"
+            kubejs_log.parent.mkdir(parents=True)
+            shutil.copy2(ROOT / "server-test/logs/kubejs/server.log", kubejs_log)
             (install / "boot.log").write_bytes(boot)
             with (
                 mock.patch.object(self.hygiene, "verify_install_provenance"),
@@ -2886,8 +2921,15 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             rewritten_boot = self.boot.replace(
                 f"{old_workspace}/server-test", encoded_install
             ).replace(old_workspace, encoded_workspace)
+            rewritten_kubejs = (
+                (ROOT / "server-test/logs/kubejs/server.log")
+                .read_text(encoding="utf-8")
+                .replace(f"{old_workspace}/server-test", encoded_install)
+                .replace(old_workspace, encoded_workspace)
+            )
             self.copy_seal_corpus(ROOT, workspace)
             self.copy_seal_corpus(ROOT / "server-test", install)
+            self.prepare_installed_quest_audits(workspace, install)
             gate_source = workspace / self.hygiene.GATE_AUDIT_RELATIVE
             gate_source.parent.mkdir(parents=True, exist_ok=True)
             gate_source.write_bytes(
@@ -2905,6 +2947,9 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             (install / "logs" / "debug.log").write_text(
                 rewritten_debug, encoding="utf-8"
             )
+            kubejs_log = install / "logs" / "kubejs" / "server.log"
+            kubejs_log.parent.mkdir(parents=True)
+            kubejs_log.write_text(rewritten_kubejs, encoding="utf-8")
             (install / "boot.log").write_text(rewritten_boot, encoding="utf-8")
             with (
                 mock.patch.object(self.hygiene, "verify_install_provenance"),
@@ -3174,8 +3219,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "cbed5a3a1b3157edd9971fcfb6ad8634f3da4e5bd4d6207273fd1c1c537c889c",
-                238,
+                "5fc8ec0db1298622c464333c797490c91612969e1afbe4f5cb38022c2f0365ad",
+                281,
             ),
         )
 
@@ -3311,7 +3356,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             "DedicatedServer/]: Done (",
             "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
             "[AFTERLIGHT GATE RECIPE AUDIT] OK ",
-            "FTB Quests/]: Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+            "FTB Quests/]: Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
             "MinecraftServer/]: Stopping server",
             "MinecraftServer/]: Saving players",
             "MinecraftServer/]: Saving worlds",
@@ -3337,7 +3382,7 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
             ("DedicatedServer/]: Done (", "[AFTERLIGHT QUEST ITEM AUDIT] OK "),
             (
                 "[AFTERLIGHT QUEST ITEM AUDIT] OK ",
-                "FTB Quests/]: Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+                "FTB Quests/]: Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
             ),
             ("MinecraftServer/]: Saving players", "MinecraftServer/]: Saving worlds"),
         )
@@ -4067,7 +4112,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 10)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "34d572d0c40ffb07d4596c713addfd2c8116818b35a5019a2b35f78460958ec7",
+            "3ad163cc3a61c16c42e3c2567e279a43574bab376b234e63b19a687cb50cbb86",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))
@@ -5221,7 +5266,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
     def test_boot_oracle_binds_exact_finale_totals_and_seal_scan(self) -> None:
         current = valid_gate_boot_log("fresh").replace(
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
-            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
         )
         try:
             projection = self.hygiene.validate_boot_markers(current, "fresh", 0, ROOT)
@@ -5229,7 +5274,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
             self.fail(str(error))
         self.assertIn("FTB Quests load", {label for label, _record in projection})
         stale = current.replace(
-            "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables",
+            "Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables",
             "Loaded 6 chapter groups, 45 chapters, 307 quests, 6 reward tables",
         )
         with self.assertRaisesRegex(
@@ -5432,9 +5477,16 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             depot.write_text(depot_text, encoding="utf-8")
 
             for relative, original, compacted in (
-                ("chapters/758F5AEF697F7EFD.snbt", 20, 7),
-                ("chapters/7C611E8A94BC5CE5.snbt", 21, 8),
-                ("chapters/099200314296766A.snbt", 22, 9),
+                ("chapters/23643435F7BE74AC.snbt", 10, 8),
+                ("chapters/7BA8A3335FAC821A.snbt", 11, 9),
+                ("chapters/16E0B20162F6DAE5.snbt", 12, 10),
+                ("chapters/775CD739E3318A7E.snbt", 13, 11),
+                ("chapters/18471B3E458EAB62.snbt", 14, 12),
+                ("chapters/0FAB5AA8294D4487.snbt", 15, 13),
+                ("chapters/5070DE6E2B300F4B.snbt", 16, 14),
+                ("chapters/758F5AEF697F7EFD.snbt", 30, 15),
+                ("chapters/7C611E8A94BC5CE5.snbt", 31, 16),
+                ("chapters/099200314296766A.snbt", 32, 17),
                 ("reward_tables/depot_early.snbt", 10, 3),
                 ("reward_tables/depot_mid.snbt", 11, 4),
                 ("reward_tables/depot_late.snbt", 12, 5),
@@ -5544,9 +5596,16 @@ class QuestIdentityStabilityTests(unittest.TestCase):
             root, install = self.copy_quest_corpus(Path(temporary))
             install_quests = install / "config/ftbquests/quests"
             for relative, compacted, replacement in (
-                ("chapters/758F5AEF697F7EFD.snbt", 20, 70),
-                ("chapters/7C611E8A94BC5CE5.snbt", 21, 80),
-                ("chapters/099200314296766A.snbt", 22, 90),
+                ("chapters/23643435F7BE74AC.snbt", 10, 80),
+                ("chapters/7BA8A3335FAC821A.snbt", 11, 81),
+                ("chapters/16E0B20162F6DAE5.snbt", 12, 82),
+                ("chapters/775CD739E3318A7E.snbt", 13, 83),
+                ("chapters/18471B3E458EAB62.snbt", 14, 84),
+                ("chapters/0FAB5AA8294D4487.snbt", 15, 85),
+                ("chapters/5070DE6E2B300F4B.snbt", 16, 86),
+                ("chapters/758F5AEF697F7EFD.snbt", 30, 70),
+                ("chapters/7C611E8A94BC5CE5.snbt", 31, 80),
+                ("chapters/099200314296766A.snbt", 32, 90),
                 ("reward_tables/depot_early.snbt", 10, 30),
                 ("reward_tables/depot_mid.snbt", 11, 40),
                 ("reward_tables/depot_late.snbt", 12, 50),
@@ -6157,6 +6216,15 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
         self.fake_bin.mkdir()
         (self.java_home / "bin").mkdir(parents=True)
         shutil.copy2(ROOT / "tools" / "server-test.sh", self.root / "tools")
+        shutil.copy2(
+            ROOT / "tools" / "build_server_mod_manifest_lock.py",
+            self.root / "tools",
+        )
+        (self.root / "tools" / "server-mod-manifest-lock.json").write_text(
+            '{\n  "files": [],\n  "format": 1\n}\n',
+            encoding="utf-8",
+        )
+        (self.root / "mods").mkdir()
         (self.root / "tools" / "versions.env").write_text(
             "MC_VERSION=1.21.1\n"
             "NEOFORGE_VERSION=21.1.248\n"
@@ -6241,6 +6309,7 @@ class ServerHarnessIntegrationTests(unittest.TestCase):
                     run_path.chmod(0o755)
                     raise SystemExit(0)
                 if sys.argv[1:3] == ["-jar", "packwiz-installer-bootstrap.jar"]:
+                    Path({str(self.root / 'server-test/mods')!r}).mkdir(parents=True, exist_ok=True)
                     if {create_audit!r}:
                         audit = Path({str(self.root / 'server-test/kubejs/server_scripts/afterlight/generated_quest_item_audit.js')!r})
                         audit.parent.mkdir(parents=True, exist_ok=True)

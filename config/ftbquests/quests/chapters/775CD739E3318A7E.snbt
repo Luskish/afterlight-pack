@@ -6,7 +6,7 @@
 	icon: { id: "ae2:pattern_provider" }
 	id: "775CD739E3318A7E"
 	images: [ ]
-	order_index: 3
+	order_index: 13
 	quest_links: [ ]
 	quests: [
 		{

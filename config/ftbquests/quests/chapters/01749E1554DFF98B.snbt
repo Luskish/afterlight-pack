@@ -1,0 +1,307 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "01749E1554DFF98B"
+	group: "4A20F33642175B95"
+	icon: { id: "ae2:guide" }
+	id: "01749E1554DFF98B"
+	images: [ ]
+	order_index: 2
+	quest_links: [
+		{ id: "54328C23013544B5", linked_quest: "0CEB581902A9D016", x: 0.0d, y: -2.0d }
+		{ id: "6FDA5AEE392F30BF", linked_quest: "7F064705A3CAB2E6", x: 2.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "70380821D8D0339D"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "129582F511E79560"
+					type: "item"
+					item: { count: 1, id: "ae2:guide" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "253EF7564D8170C5"
+					type: "item"
+					item: { count: 1, id: "ae2:meteorite_compass" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "2B6F6A1440F259A7"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1DF658F133C9C9A4"
+			dependencies: ["70380821D8D0339D"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "6AD3668B85458A8B"
+					type: "item"
+					item: { count: 1, id: "ae2:charger" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7E1798A08ECF6F78"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "6A9CCAD32116CF75"
+			dependencies: ["1DF658F133C9C9A4"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "5A6F2B448B801918"
+					type: "item"
+					item: { count: 1, id: "ae2:fluix_crystal" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "0E72FFC508910BEA"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "761B2927F8393C9A"
+			dependencies: ["6A9CCAD32116CF75"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "1C668B59F28F0F19"
+					type: "item"
+					item: { count: 1, id: "ae2:calculation_processor_press" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "11CA1CA5EBB8FBDF"
+					type: "item"
+					item: { count: 1, id: "ae2:engineering_processor_press" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "2E6BEBF06A8B642B"
+					type: "item"
+					item: { count: 1, id: "ae2:logic_processor_press" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "6D4558609B8C9BF1"
+					type: "item"
+					item: { count: 1, id: "ae2:silicon_press" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4DC79CFB0699E959"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "67425D7048734CBD"
+			dependencies: ["761B2927F8393C9A"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "4E423C3EE4CCDA16"
+					type: "item"
+					item: { count: 1, id: "ae2:inscriber" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "63CDDDD58D522836"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "72D2FA03AF7D6FAD"
+			dependencies: ["67425D7048734CBD"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "54587A946CD34F3E"
+					type: "item"
+					item: { count: 1, id: "ae2:energy_acceptor" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "71D34590431FB1EC"
+					type: "item"
+					item: { count: 1, id: "ae2:fluix_glass_cable" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "378A61B62D00492C"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1D0902FA9E169BEC"
+			dependencies: ["72D2FA03AF7D6FAD"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "479F597C6168A465"
+					type: "item"
+					item: { count: 1, id: "ae2:drive" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "1D7C6C617E650D3D"
+					type: "item"
+					item: { count: 1, id: "ae2:item_storage_cell_1k" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "255715D4FA56652A"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "620865D0A523C79B"
+			dependencies: ["1D0902FA9E169BEC"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "074E12DD8485BF8F"
+					type: "item"
+					item: { count: 1, id: "ae2:crafting_terminal" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "132AEA619C875FB5"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "61D8F2A89CB3591B"
+			dependencies: ["620865D0A523C79B"]
+			x: 16.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "7986665DE940A3D0"
+					type: "item"
+					item: { count: 1, id: "ae2:blank_pattern" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "14F1D47ADD311543"
+					type: "item"
+					item: { count: 1, id: "ae2:pattern_encoding_terminal" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "0D2721C933EC7121"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "684F6A9A8A036747"
+			dependencies: ["61D8F2A89CB3591B"]
+			x: 18.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "6E13DD3BB253DF53"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "0217E963F2CF12D3"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "2B1AC5D39F902B8F"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

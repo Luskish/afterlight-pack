@@ -2287,28 +2287,9 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
             )
             self.assertEqual(
                 changed,
-                sorted(
-                    [
-                        "config/ftbquests/quests/.afterlight-managed.json",
-                        *(
-                            f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                            for chapter_id in self.ORDER_CHAPTERS
-                        ),
-                        *(
-                            f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                            for chapter_id in self.MANUAL_CHAPTERS
-                        ),
-                        *(
-                            f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
-                            for chapter_id in self.STORY_COHESION_CHAPTERS
-                        ),
-                        "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
-                        "config/ftbquests/quests/chapters/5B93C6934B230CFB.snbt",
-                        "config/ftbquests/quests/lang/en_us.snbt",
-                        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
-                        "kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js",
-                    ]
-                ),
+                [
+                    "kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js"
+                ],
             )
             first_inventory = self.inventory(root)
             self.build_script._build_quests(root, catalog=self.quests.build_catalog())

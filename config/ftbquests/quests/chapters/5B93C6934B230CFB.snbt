@@ -78,7 +78,11 @@
 			tasks: [
 				{ id: "1D73FB79ED38668F"
 				type: "item"
-				item: { count: 1, id: "minecraft:red_bed" }
+				item: {
+					count: 1
+					id: "ftbfiltersystem:smart_filter"
+					components: { "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(minecraft:beds)" }
+				}
 				count: 1L
 				consume_items: false }
 			]
@@ -181,7 +185,11 @@
 			tasks: [
 				{ id: "39C717BFFEE3D235"
 				type: "item"
-				item: { count: 1, id: "minecraft:bread" }
+				item: {
+					count: 1
+					id: "ftbfiltersystem:smart_filter"
+					components: { "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:foods/bread)" }
+				}
 				count: 8L
 				consume_items: false }
 			]

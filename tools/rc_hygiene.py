@@ -4308,7 +4308,7 @@ SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 10
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "34d572d0c40ffb07d4596c713addfd2c8116818b35a5019a2b35f78460958ec7"
+    "3ad163cc3a61c16c42e3c2567e279a43574bab376b234e63b19a687cb50cbb86"
 )
 SEAL_GENERATED_ITEM_AUDIT_RELATIVE = (
     "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
@@ -6190,9 +6190,16 @@ QUEST_IDENTITY_SPELL_BOOK_DEFAULT_COMPONENT = {
 }
 QUEST_IDENTITY_ORDER_NORMALIZATIONS = {
     "chapter": {
-        "099200314296766A": (22, 9),
-        "758F5AEF697F7EFD": (20, 7),
-        "7C611E8A94BC5CE5": (21, 8),
+        "0FAB5AA8294D4487": (15, 13),
+        "16E0B20162F6DAE5": (12, 10),
+        "18471B3E458EAB62": (14, 12),
+        "23643435F7BE74AC": (10, 8),
+        "5070DE6E2B300F4B": (16, 14),
+        "775CD739E3318A7E": (13, 11),
+        "7BA8A3335FAC821A": (11, 9),
+        "099200314296766A": (32, 17),
+        "758F5AEF697F7EFD": (30, 15),
+        "7C611E8A94BC5CE5": (31, 16),
     },
     "reward_table": {
         "17E69C9CFEA907D4": (10, 3),
@@ -7084,7 +7091,7 @@ def validate_boot_markers(
     gate_message = (
         f"[AFTERLIGHT GATE RECIPE AUDIT] OK {gate_digest} {gate_count} {nonce}"
     )
-    ftb_message = "Loaded 6 chapter groups, 47 chapters, 315 quests, 6 reward tables"
+    ftb_message = "Loaded 6 chapter groups, 55 chapters, 396 quests, 6 reward tables"
 
     def exact_single(
         record: LogRecord,

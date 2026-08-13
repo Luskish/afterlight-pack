@@ -6,7 +6,7 @@
 	icon: { id: "immersiveengineering:conveyor_basic" }
 	id: "18471B3E458EAB62"
 	images: [ ]
-	order_index: 4
+	order_index: 14
 	quest_links: [ ]
 	quests: [
 		{

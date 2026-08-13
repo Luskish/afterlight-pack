@@ -1,0 +1,291 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "0B7C7859EBD6EFF3"
+	group: "4A20F33642175B95"
+	icon: { id: "mekanism:geiger_counter" }
+	id: "0B7C7859EBD6EFF3"
+	images: [ ]
+	order_index: 7
+	quest_links: [
+		{ id: "5C9799B0DE4547F7", linked_quest: "45A86A6AA4AD7824", x: 0.0d, y: -2.0d }
+		{ id: "0AA077A5B734EE35", linked_quest: "19D5F09EADF78A32", x: 2.0d, y: -2.0d }
+		{ id: "1768F75584D09447", linked_quest: "50775CE87FAA4EB7", x: 4.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "4EEAB6F41DB426E7"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "495A10C44F72378A"
+					type: "item"
+					item: { count: 1, id: "mekanism:hazmat_mask" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "34E4C99926170FB3"
+					type: "item"
+					item: { count: 1, id: "mekanism:hazmat_gown" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "6BB96C5647B7454A"
+					type: "item"
+					item: { count: 1, id: "mekanism:hazmat_pants" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "26554BB1116B4315"
+					type: "item"
+					item: { count: 1, id: "mekanism:hazmat_boots" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "109AA4B6388E040F"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "3C0CAFF5CE43DBE8"
+			dependencies: ["4EEAB6F41DB426E7"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "4F9828AD3B805199"
+					type: "item"
+					item: { count: 1, id: "mekanism:dosimeter" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "752C9BF41B08D401"
+					type: "item"
+					item: { count: 1, id: "mekanism:geiger_counter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "3510F19154FF15E1"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "176542F326A57218"
+			dependencies: ["3C0CAFF5CE43DBE8"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "0C1AFA31816EFDB2"
+					type: "item"
+					item: { count: 1, id: "mekanism:electrolytic_separator" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6AB1AC513F3C9CD9"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "70BFD67399A4F396"
+			dependencies: ["176542F326A57218"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "5DB2522E2C975568"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "1EC73C97D1645939"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1153A398AA96928A"
+			dependencies: ["70BFD67399A4F396"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "11263255FB47BBC7"
+					type: "item"
+					item: { count: 1, id: "mekanism:isotopic_centrifuge" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1403E1977DFEF859"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "37C91CCD4ED1E165"
+			dependencies: ["1153A398AA96928A"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "1DB6273F56B74BE3"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:fission_fuel_assembly" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7F67C7F3DB8D0C9E"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "6AD4DFCE7836DF74"
+			dependencies: ["37C91CCD4ED1E165"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "326463DBC94D5740"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:fission_reactor_logic_adapter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "3150CD3278346611"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "2DAD7D9352F7A623"
+			dependencies: ["6AD4DFCE7836DF74"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "0537AF4CE07515E0"
+					type: "item"
+					item: { count: 1, id: "mekanism:radioactive_waste_barrel" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4D1ABDBF4F8B7E60"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "0A97449C2B595A5F"
+			dependencies: ["2DAD7D9352F7A623"]
+			x: 16.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "12A3C6C92D979AAE"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:turbine_vent" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "166B42861F2C1A0D"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:saturating_condenser" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "4C70A06B9930E941"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1EE5AE5D99152C98"
+			dependencies: ["0A97449C2B595A5F"]
+			x: 18.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "292A8DAC66C8A6ED"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "72DF0A176A8FD120"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "7EA313DACFEBC91C"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

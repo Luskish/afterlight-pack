@@ -6,7 +6,7 @@
 	icon: { id: "functionalstorage:storage_controller" }
 	id: "7BA8A3335FAC821A"
 	images: [ ]
-	order_index: 1
+	order_index: 11
 	quest_links: [ ]
 	quests: [
 		{

@@ -280,9 +280,19 @@ class StoryCohesionTask7Tests(unittest.TestCase):
                 self.assertEqual(baseline_quest.get("dependencies", []), record["dependencies"])
                 self.assertEqual(current_quest.get("dependencies", []), record["dependencies"])
                 self.assertEqual(baseline_language.get(subtitle_key, ""), record["current_subtitle"])
-                self.assertEqual(current_language.get(subtitle_key, ""), record["current_subtitle"])
                 self.assertEqual(baseline_language.get(description_key, []), record["current_description"])
-                self.assertEqual(current_language.get(description_key, []), record["current_description"])
+                expected_subtitle = (
+                    record["replacement_subtitle"]
+                    if record["prose_status"] == "revised"
+                    else record["current_subtitle"]
+                )
+                expected_description = (
+                    record["replacement_description"]
+                    if record["prose_status"] == "revised"
+                    else record["current_description"]
+                )
+                self.assertEqual(current_language.get(subtitle_key, ""), expected_subtitle)
+                self.assertEqual(current_language.get(description_key, []), expected_description)
 
     def test_compiler_places_exact_story_links_and_manual_returns(self) -> None:
         catalog = self.quests.build_catalog()

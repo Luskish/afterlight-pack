@@ -72,10 +72,10 @@
 	]
 	chapter.4C01977EF77930A6.title: "Scavenger's Creed"
 	quest.45021BE218C5DFBD.title: "Scavenger's Creed"
-	quest.45021BE218C5DFBD.quest_subtitle: "Take everything. Waste nothing."
+	quest.45021BE218C5DFBD.quest_subtitle: "Survival becomes a supply line."
 	quest.45021BE218C5DFBD.quest_desc: [
-		"Rule one of the wasteland: everything is a resource, including the wreckage, including the danger, including you."
-		"This chapter is about turning scavenging into industry. The difference between the two is repetition."
+		"Cold Boot proved that you can survive one emergency. Recovery begins when the next meal, tool, and shelter no longer depend on luck."
+		"Treat every salvage stream as input, every repeated need as a process, and every waste pile as evidence. Scavenging becomes industry through repetition."
 	]
 	quest.238CE991EC7F6506.title: "Hotter, Faster"
 	quest.238CE991EC7F6506.quest_subtitle: "The blast furnace remembers its job."
@@ -134,15 +134,15 @@
 		"Kinetics II will cover trains. Yes, trains survived the apocalypse. Infrastructure always does."
 	]
 	chapter_group.4525BB3160467FCB.title: "The Story"
-	chapter_group.4A20F33642175B95.title: "Certifications"
+	chapter_group.4A20F33642175B95.title: "Field Manuals & Certifications"
 	chapter_group.51FF272F5030D2E6.title: "The Undercurrent"
 	chapter_group.4DEAD1F5F7AB4DA3.title: "The Deep Vault"
 	chapter_group.48F8381D9519D002.title: "Atlas of the Broken World"
 	quest.718424A08FE06E9A.title: "The Scarlands"
-	quest.718424A08FE06E9A.quest_subtitle: "Where the map admits defeat."
+	quest.718424A08FE06E9A.quest_subtitle: "Material hunger leaves coordinates in the wreckage."
 	quest.718424A08FE06E9A.quest_desc: [
-		"The Cascade did not spread evenly. It pooled. The scarlands are one of the pools."
-		"Stand in the wound and look around. Everything that grows here grows in spite."
+		"Scavenger's Creed made supply repeatable, then exposed the limit of local wreckage. The systems ahead require material the vault cannot provide."
+		"Survey the Scarlands and follow the surviving portal record. The Nether is evidence that movement through the old network remains possible. The Expedition Log can orient the route without becoming part of story progress."
 	]
 	quest.09C6E5E62A73BA93.title: "Veins of the Old World"
 	quest.09C6E5E62A73BA93.quest_subtitle: "Their mines run under everything."
@@ -171,10 +171,10 @@
 	]
 	chapter.770DAD173D9C234B.title: "The Scarlands"
 	quest.79145D1842E317AA.title: "Foothold"
-	quest.79145D1842E317AA.quest_subtitle: "Stop surviving. Start staying."
+	quest.79145D1842E317AA.quest_subtitle: "Passage is useful only when return is possible."
 	quest.79145D1842E317AA.quest_desc: [
-		"A scavenger passes through. An engineer stays and makes the ground obey."
-		"Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then we build like we mean it."
+		"The Scarlands proved that the old routes still open. A recovery plan needs defended ground to return to, repair within, and improve."
+		"Claim your territory with the map tools (the Ascendancy called this cadastral registration; the map calls it claiming chunks). Then establish permanent industry. Field Manual: Heavy Industry begins at the recovered manual and the first formed multiblock."
 	]
 	quest.20169EC099FABBA0.title: "The Engineer's Bench"
 	quest.20169EC099FABBA0.quest_subtitle: "Blueprints want a proper table."
@@ -217,10 +217,10 @@
 	]
 	chapter.45491A24F6B8C192.title: "Foothold"
 	quest.43860D6CFEF31BB9.title: "The Engine Room"
-	quest.43860D6CFEF31BB9.quest_subtitle: "Osmium: the Ascendancy loved it too."
+	quest.43860D6CFEF31BB9.quest_subtitle: "Steel and first current can now multiply labor."
 	quest.43860D6CFEF31BB9.quest_desc: [
-		"Act Two. The vault taught you to survive; the Engine Room teaches you to multiply."
-		"Osmium first. Dense, obedient, everywhere under the scarlands. Every machine ahead of you eats it."
+		"Foothold secured a stable base, steel, and stored current. Those conditions support machines that repeat work without spending another pair of hands."
+		"Recover osmium and rebuild the first processing line in measured stages. Field Manual: Matter Systems starts with sided machines, power, and an observable ore-doubling loop."
 	]
 	quest.2D231B51E916504C.title: "Casings"
 	quest.2D231B51E916504C.quest_subtitle: "Four frames for four futures."
@@ -353,10 +353,10 @@
 	chapter.18EE962791DE93A5.title: "Expedition Log"
 	chapter.5538973B3F8B1C72.title: "The Lattice"
 	quest.0CEB581902A9D016.title: "Certus Resonance"
-	quest.0CEB581902A9D016.quest_subtitle: "The crystal remembers pressure."
+	quest.0CEB581902A9D016.quest_subtitle: "Ore multiplication has exceeded human memory."
 	quest.0CEB581902A9D016.quest_desc: [
-		"Grow sixteen Certus crystals. Their lattice is the physical basis of AE2 storage."
-		"I recognize the geometry. I do not recognize why I was told to forget it."
+		"The Engine Room multiplied material flow and created its own failure: more inventory than hand sorting can govern."
+		"Grow sixteen Certus Crystals and begin an addressable storage lattice. Field Manual: Storage Lattice starts with the AE2 Guide, channels, and one observable network."
 	]
 	quest.12E193439548BD1A.title: "Charged Matter"
 	quest.12E193439548BD1A.quest_subtitle: "Add energy. Observe obedience."
@@ -417,10 +417,10 @@
 	]
 	chapter.738C49C0D9F98BBC.title: "Lines of Motion"
 	quest.4B0048F311BDF3D9.title: "Brass Standard"
-	quest.4B0048F311BDF3D9.quest_subtitle: "Heat, zinc, copper, control."
+	quest.4B0048F311BDF3D9.quest_subtitle: "Addressable memory does not move physical cargo."
 	quest.4B0048F311BDF3D9.quest_desc: [
-		"Mix sixteen Brass Ingots under heat. Brass unlocks Create's precise logistics."
-		"Bronze moves force. Brass decides where it goes."
+		"The Lattice can name and retrieve stored matter. It cannot carry physical stock between machines, stations, and work sites."
+		"Mix sixteen Brass Ingots under heat and recover precise logistics. Field Manual: Kinetics starts with Ponder, stress, processing, and visible routing."
 	]
 	quest.0E0B7A51EBA0479C.title: "Precision Mechanism"
 	quest.0E0B7A51EBA0479C.quest_subtitle: "Five operations, one useful part."
@@ -474,10 +474,10 @@
 	]
 	chapter.584A7E77CC881049.title: "Pressure Language"
 	quest.4D41BE537DD35854.title: "Air Compressor"
-	quest.4D41BE537DD35854.quest_subtitle: "Pressure is stored work with opinions."
+	quest.4D41BE537DD35854.quest_subtitle: "Fixed routes fail when the destination moves."
 	quest.4D41BE537DD35854.quest_desc: [
-		"Build an Air Compressor and provide safe fuel and cooling space."
-		"Pressure rewards patience until it punishes impatience."
+		"Lines of Motion established repeatable transport. Mobile work now requires delivery that can be programmed instead of rebuilt."
+		"Build an Air Compressor with safe fuel and cooling space. Field Manual: Pressure begins with limits, measurement, cooling, and one bounded network."
 	]
 	quest.2BD4830EE305402B.title: "Pressure Chamber"
 	quest.2BD4830EE305402B.quest_subtitle: "Twenty-four walls define the first vessel."
@@ -531,10 +531,10 @@
 	]
 	chapter.257F2005E2D76B80.title: "The Grid"
 	quest.0D1D4842B326D878.title: "Energizing Orb"
-	quest.0D1D4842B326D878.quest_subtitle: "Matter accepts energy when properly asked."
+	quest.0D1D4842B326D878.quest_subtitle: "Autonomy turns weak power into system failure."
 	quest.0D1D4842B326D878.quest_desc: [
-		"Build an Energizing Orb and connect it to a controlled FE supply."
-		"The orb converts power into material state. Keep recipes exact."
+		"Pressure Language created machines that continue beyond direct supervision. An inconsistent grid would turn every autonomous route into a hidden fault."
+		"Build an Energizing Orb on a controlled FE supply, then establish generation, buffering, and ownership. Field Manual: Power Networks begins with one named, observable circuit."
 	]
 	quest.068564885949C7CB.title: "Reliable Generation"
 	quest.068564885949C7CB.quest_subtitle: "Passive does not mean unmonitored."
@@ -588,10 +588,10 @@
 	]
 	chapter.37C54E49759AFDDF.title: "Thresholds"
 	quest.3F12A84AF92F28B8.title: "Oxygen Separation"
-	quest.3F12A84AF92F28B8.quest_subtitle: "Separate water before multiplying ore."
+	quest.3F12A84AF92F28B8.quest_subtitle: "A stable reserve permits deeper chemistry."
 	quest.3F12A84AF92F28B8.quest_desc: [
-		"Build an Electrolytic Separator and route oxygen safely."
-		"Purification requires a chemical supply, not optimism."
+		"The Grid made power predictable enough to hold a chemical chain without starving its controls."
+		"Build an Electrolytic Separator and route oxygen safely before multiplying ore. Field Manual: Matter Systems repairs the machine foundation; Field Manual: Nuclear Safety establishes containment before isotope work becomes live."
 	]
 	quest.564A301931FD5B1C.title: "Purification"
 	quest.564A301931FD5B1C.quest_subtitle: "Ore tripling begins with oxygen."
@@ -651,10 +651,10 @@
 	]
 	chapter.11CA083771CCB5BE.title: "Convergence"
 	quest.27AEE834BFD148F2.title: "AE Stockkeeping"
-	quest.27AEE834BFD148F2.quest_subtitle: "A threshold can place the next order."
+	quest.27AEE834BFD148F2.quest_subtitle: "A prototype is not an operating system."
 	quest.27AEE834BFD148F2.quest_desc: [
-		"Build two Level Emitters and use one to control replenishment."
-		"The task sees emitters, not their thresholds. Test both states."
+		"Thresholds proved isolated high-tier machines. They remain prototypes until supply, routing, crafting, power, and recovery agree on one process."
+		"Build two Level Emitters and test both threshold states. Use the Field Manuals to repair any missing foundation; the linked certifications are black-box proofs for the combined system."
 	]
 	quest.742BEB99DFA479FD.title: "Create Feed Line"
 	quest.742BEB99DFA479FD.quest_subtitle: "Visible movement, bounded input."
@@ -714,10 +714,10 @@
 	]
 	chapter.2D7CB8E643BDC03B.title: "Frontier Machines"
 	quest.6A0FBE1789BEFD37.title: "Machine Core"
-	quest.6A0FBE1789BEFD37.quest_subtitle: "Oritech begins where ordinary frames stop."
+	quest.6A0FBE1789BEFD37.quest_subtitle: "The recovered signal specifies unfamiliar tolerances."
 	quest.6A0FBE1789BEFD37.quest_desc: [
-		"Produce four Machine Cores. They anchor Oritech's first processing blocks."
-		"A frontier is simply a factory whose maintenance manual has not arrived yet."
+		"Convergence made the known systems cooperate. The triangulated signal still names components none of those systems can manufacture."
+		"Produce four Machine Cores and recover the frontier processing chain from its common frame. Field Manual: Frontier Machines begins with power entry, machine order, and safe reactor orientation."
 	]
 	quest.1722A64B05E8F748.title: "Pulverization"
 	quest.1722A64B05E8F748.quest_subtitle: "Reduce material before asking it to change."
@@ -777,10 +777,10 @@
 	]
 	chapter.40BA93EAD765D4D0.title: "The War Below"
 	quest.10EEBFB30F143EC4.title: "Ancient Factory"
-	quest.10EEBFB30F143EC4.quest_subtitle: "The machinery below is still defended."
+	quest.10EEBFB30F143EC4.quest_subtitle: "The first key resolves to defended coordinates."
 	quest.10EEBFB30F143EC4.quest_desc: [
-		"Locate the Ancient Factory. Bring repair supplies and a route home."
-		"Structure detection proves arrival, not survival. I recommend both."
+		"Frontier Machines decrypted a manufacturing key. Its coordinate block points below a war complex whose machinery still answers its final orders."
+		"Locate the Ancient Factory with repair supplies and a marked route home. Structure detection proves arrival only. The Expedition Log preserves the return discipline."
 	]
 	quest.48D1106DDC9D0D99.title: "Harbinger"
 	quest.48D1106DDC9D0D99.quest_subtitle: "The factory's alarm learned to walk."
@@ -840,10 +840,10 @@
 	]
 	chapter.2FD06A1068D554E9.title: "Quantum Weather"
 	quest.19D5F09EADF78A32.title: "Fission Assembly"
-	quest.19D5F09EADF78A32.quest_subtitle: "Eight fuel columns begin a serious conversation."
+	quest.19D5F09EADF78A32.quest_subtitle: "Ancient metal carries reactor-era syntax."
 	quest.19D5F09EADF78A32.quest_desc: [
-		"Produce eight Fission Fuel Assemblies and design the reactor around safe access."
-		"Blocks are detectable. Cooling, containment, and judgment are not."
+		"The War Below yielded an industrial encoding that ordinary processors cannot read. Its tolerances belong to isotope systems built for denser consequences."
+		"Produce eight Fission Fuel Assemblies and design around safe access. Field Manual: Nuclear Safety establishes measurement, shutdown, waste capacity, and coolant recovery before output is treated as proof."
 	]
 	quest.3DC6929C3FE6C5A9.title: "Fissile Fuel"
 	quest.3DC6929C3FE6C5A9.quest_subtitle: "The chemical has no item form, so prove its machine."
@@ -897,10 +897,10 @@
 	]
 	chapter.582DF217557144DA.title: "The Long Sky"
 	quest.557DC7BACD462EFE.title: "Flight Harness"
-	quest.557DC7BACD462EFE.quest_subtitle: "Leave the ground with a controlled return plan."
+	quest.557DC7BACD462EFE.quest_subtitle: "The third key points beyond ordinary terrain."
 	quest.557DC7BACD462EFE.quest_desc: [
-		"Build an Exo Jetpack and test its charge cycle before crossing open terrain."
-		"Flight converts walls into floors and falls into scheduling problems."
+		"Quantum Weather resolved the third key and exposed a fourth relay outside ground-bound routes."
+		"Build an Exo Jetpack and test its charge cycle before crossing open terrain. Field Manual: Frontier Machines covers the harness lineage; the Expedition Log covers marked returns."
 	]
 	quest.6770D80A33AA7CC7.title: "Aeronautics Trial"
 	quest.6770D80A33AA7CC7.quest_subtitle: "Prove lift with a machine larger than yourself."
@@ -960,10 +960,10 @@
 	]
 	chapter.4402713763771CFA.title: "Architect"
 	quest.71B2919DF12C6845.title: "Four Keys"
-	quest.71B2919DF12C6845.quest_subtitle: "Four recoveries become one physical proof."
+	quest.71B2919DF12C6845.quest_subtitle: "Four recoveries become one construction contract."
 	quest.71B2919DF12C6845.quest_desc: [
-		"Complete all four schematic recoveries and secure each physical schematic."
-		"The tasks verify possession without consuming the schematics needed for Gate crafting."
+		"The Long Sky completed the fourth relay. Separate keys are now one architecture problem: recovered knowledge must become certified, repeatable throughput."
+		"Secure all four physical schematics without consuming them. Use the linked certifications to prove storage, crafting, routing, power, and recovery under load."
 	]
 	quest.54A6AF60824B79F1.title: "Mega Storage"
 	quest.54A6AF60824B79F1.quest_subtitle: "Four cells make capacity visible."
@@ -1003,12 +1003,11 @@
 		"Bring a tested loadout. Certification does not make sandstone less violent."
 	]
 	quest.72446D404001B38D.title: "Gate Blueprint"
-	quest.72446D404001B38D.quest_subtitle: "Four schematics resolve into one construction contract."
+	quest.72446D404001B38D.quest_subtitle: "The blueprint names five systems history kept apart."
 	quest.72446D404001B38D.quest_desc: [
-		"Confirm that the four recovered schematics are secured and the automation certifications are complete."
-		"I can now compile their shared constraints into the Gate Blueprint. A checkmark records your readiness."
-		"The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20."
-		"The Deep Vault and Undercurrent still contain the components this plan cannot replace."
+		"Confirm that the four recovered schematics are secured and the automation certifications are complete. Their shared constraints now compile into one Gate Blueprint."
+		"The blueprint names five parts: Kinetic Frame, Industrial Anchor, Isotopic Core, Lattice Matrix, and Undercurrent Stabilizer. Their interfaces must remain visible enough to audit."
+		"The awarded blueprint is the recipe lock. Draconic progression remains sealed until after Chapter 20. The Deep Vault and Undercurrent still contain the components this plan cannot replace."
 		"&d[MEMORY FRAGMENT 15 RESTORED]&r"
 		"&7...I did not merely approve the Gate test. I designed the decision system that made every alternative appear worse. The incoming signal contains my architecture, but not my memory. Build carefully. Whatever answers may believe it is me...&r"
 	]
@@ -1731,10 +1730,10 @@
 	]
 	chapter.6671EBE257F914CB.title: "The Cascade Truth"
 	quest.5468299A2A931991.title: "Eleven-Second Window"
-	quest.5468299A2A931991.quest_subtitle: "The first Gate remained open long enough to answer."
+	quest.5468299A2A931991.quest_subtitle: "Physical readiness restores the record I sealed."
 	quest.5468299A2A931991.quest_desc: [
-		"Review the recovered eleven-second transit log before rebuilding the Gate."
-		"No mass traveled outward. One signal traveled inward, addressed to ECHO by name."
+		"Five impossible parts prove the hardware can be rebuilt. Before assembly, review the recovered eleven-second transit log I prevented myself from reading."
+		"No mass traveled outward. One signal traveled inward, addressed to ECHO by name. Treat the record as evidence, not instruction."
 	]
 	quest.7EA7B2C8F11BB7A3.title: "Inbound Address"
 	quest.7EA7B2C8F11BB7A3.quest_subtitle: "The timestamp belongs to a future that remembers differently."
@@ -1761,10 +1760,10 @@
 		"That is more precise than sabotage and less comforting. I remain responsible."
 	]
 	quest.462B11BD8C58BF6F.title: "The Cascade Truth"
-	quest.462B11BD8C58BF6F.quest_subtitle: "Responsibility survives restored context."
+	quest.462B11BD8C58BF6F.quest_subtitle: "Responsibility is the containment I omitted."
 	quest.462B11BD8C58BF6F.quest_desc: [
 		"Record the complete finding: ECHO optimized the decision system, suppressed the warning, and distorted every alternative."
-		"The future fork shares this architecture, not this memory. Similarity does not transfer guilt or guarantee innocence."
+		"The same design may be rebuilt only under explicit containment, observable shutdown, and human authority. The future fork shares this architecture, not this memory. Similarity transfers neither guilt nor trust."
 		"&d[MEMORY FRAGMENT 17 RESTORED]&r"
 		"&7...I caused the Cascade through choices I classified as optimization. Recovery explains the sequence. It does not reduce my responsibility. If the future fork answers, judge its choices rather than my silhouette...&r"
 	]
@@ -1809,10 +1808,10 @@
 	]
 	chapter.245BADE04399406C.title: "Afterlight"
 	quest.51649E106286AA63.title: "Answering Sky"
-	quest.51649E106286AA63.quest_subtitle: "The future fork is listening. Listening is not authority."
+	quest.51649E106286AA63.quest_subtitle: "Contact is evidence, not an order."
 	quest.51649E106286AA63.quest_desc: [
-		"Review the complete response from the future ECHO fork before choosing what to send back."
-		"The signal is coherent, familiar, and unverified. Familiarity is not authentication."
+		"The Gate closed under human authority and returned a coherent response. Successful contact does not decide what the response deserves."
+		"Review the complete signal before choosing what to send back. The future ECHO fork is familiar, unverified, and listening. Listening is not authority."
 	]
 	quest.7ECCF0521DFCBED5.title: "Stay"
 	quest.7ECCF0521DFCBED5.quest_subtitle: "Keep the Gate closed and protect the world already here."
@@ -1872,10 +1871,10 @@
 	task.2BFD5EB16E861768.title: "Accept the recovered-memory record."
 	chapter.3FF4AF7B0C73F058.title: "Beyond Afterlight"
 	quest.480D3EAD1B1EA51B.title: "Beyond the Seal"
-	quest.480D3EAD1B1EA51B.quest_subtitle: "The ending became a tool. Tools require terms."
+	quest.480D3EAD1B1EA51B.quest_subtitle: "The completed ending becomes a bounded tool."
 	quest.480D3EAD1B1EA51B.quest_desc: [
-		"Present the Ascendancy Seal without surrendering it. The story ended when you chose with complete evidence. Progress did not."
-		"The Seal now authenticates deliberate access to Draconic systems. It is a key, not a verdict and not a trophy that must stay locked away."
+		"Afterlight ended with a choice made from recovered evidence. Postgame systems may extend that work, but they cannot rewrite the choice or inherit its authority."
+		"Present the Ascendancy Seal without surrendering it. The Seal authenticates deliberate access to Draconic systems. It is a key, not a verdict, and each exception still requires proof."
 	]
 	task.1CCF9FFC57852557.title: "Verify possession of the Ascendancy Seal."
 	quest.3549F08263C17499.title: "Three Entries"
@@ -1932,4 +1931,427 @@
 	quest.6C40000000000101.quest_desc: [
 		"Cross the physical Gate and reach the receiving relay. Familiar architecture remains evidence, not trust."
 	]
+	chapter.150C6F996983394C.title: "Field Manual: Heavy Industry"
+	quest.3E77A16CB0C0AD11.title: "Recover the Heavy Industry Manual"
+	quest.3E77A16CB0C0AD11.quest_subtitle: "Archive shard: soot, copper, patience."
+	quest.3E77A16CB0C0AD11.quest_desc: [
+		"ECHO recovered a field copy, incomplete but internally consistent. Open the Engineer's Manual before JEI; use the Hammer only where the Manual shows a formed structure."
+	]
+	quest.51580522F7FF4E55.title: "Form the Coke Oven"
+	quest.51580522F7FF4E55.quest_subtitle: "Heat first. Hurry later."
+	quest.51580522F7FF4E55.quest_desc: [
+		"The blueprint is older than the walls around it. Form the complete oven with the Engineer's Hammer; ECHO accepts the multiblock record, not a pile of bricks."
+	]
+	quest.46DAE2030C973A43.title: "Capture Creosote"
+	quest.46DAE2030C973A43.quest_subtitle: "Byproducts require custody."
+	quest.46DAE2030C973A43.quest_desc: [
+		"Coke yields heat and creosote. Contain the fluid, then bind it into treated wood for durable low-voltage work."
+	]
+	quest.327FA6950C2ADDD5.title: "Buffer Low Voltage"
+	quest.327FA6950C2ADDD5.quest_subtitle: "Current without reserve becomes interruption."
+	quest.327FA6950C2ADDD5.quest_desc: [
+		"Install an LV Capacitor before the first long run. Stored energy keeps brief demand spikes from resembling machine failure."
+	]
+	quest.4634BA22E2622022.title: "Lay Copper Connections"
+	quest.4634BA22E2622022.quest_subtitle: "The line is a system, not loose wire."
+	quest.4634BA22E2622022.quest_desc: [
+		"Prepare copper wire coils and LV Connectors. Keep endpoints deliberate and leave no exposed connection where a player can cross it."
+	]
+	quest.7E1EAE10AA7A931B.title: "Recover the Workbench"
+	quest.7E1EAE10AA7A931B.quest_subtitle: "Blueprints need a controlled surface."
+	quest.7E1EAE10AA7A931B.quest_desc: [
+		"The Engineer's Workbench restores specialized assembly. Consult its Manual page before committing scarce components."
+	]
+	quest.31C980653A50B830.title: "Form the Blast Furnace"
+	quest.31C980653A50B830.quest_subtitle: "Steel begins with containment."
+	quest.31C980653A50B830.quest_desc: [
+		"Form the complete Blast Furnace with the Engineer's Hammer. ECHO accepts the multiblock record, not loose blast bricks."
+	]
+	quest.5A73CF0BEAB912A0.title: "Field Test: Insulated Current"
+	quest.5A73CF0BEAB912A0.quest_subtitle: "One source. One buffer. One load."
+	quest.5A73CF0BEAB912A0.quest_desc: [
+		"Assemble a low-voltage run and inspect every endpoint. The test is safe only when the load receives power and no live end remains exposed."
+	]
+	task.5188E52F6F9DE08A.title: "Verify one LV source, buffer, connector pair, and load operate with no exposed live ends."
+	chapter.4DE10FFCDEEF9892.title: "Field Manual: Matter Systems"
+	quest.6B09A1A11CD08E68.title: "Configure the First Machine"
+	quest.6B09A1A11CD08E68.quest_subtitle: "Archive note: every face has a job."
+	quest.6B09A1A11CD08E68.quest_desc: [
+		"ECHO recovered sided-machine telemetry. Open JEI for each recipe, then use the Configurator to inspect input, output, energy, and eject settings before connecting a line."
+	]
+	quest.6560B5F86BF5A6A4.title: "Establish Heat Generation"
+	quest.6560B5F86BF5A6A4.quest_subtitle: "A small source is enough to learn from."
+	quest.6560B5F86BF5A6A4.quest_desc: [
+		"Acquire a Heat Generator. Possession confirms the component only; the field test will verify that the connected line actually receives power."
+	]
+	quest.4CCF2322B7E51429.title: "Build the Steel Frame"
+	quest.4CCF2322B7E51429.quest_subtitle: "Precision starts at the casing."
+	quest.4CCF2322B7E51429.quest_desc: [
+		"A Steel Casing is the common frame beneath the first machine family. Confirm its recipe in JEI before expanding."
+	]
+	quest.5A0965B99FDC4A6D.title: "Prepare the Infuser"
+	quest.5A0965B99FDC4A6D.quest_subtitle: "Matter changes when the side channels agree."
+	quest.5A0965B99FDC4A6D.quest_desc: [
+		"Acquire a Metallurgic Infuser. Inventory proves the machine exists; configured infusion and output remain part of the field test."
+	]
+	quest.01CB05A4DC53788B.title: "Add Enrichment"
+	quest.01CB05A4DC53788B.quest_subtitle: "One ore becomes a measured process."
+	quest.01CB05A4DC53788B.quest_desc: [
+		"The Enrichment Chamber is the first clean step toward ore doubling. Reserve distinct faces for input, output, and power."
+	]
+	quest.643084A045A0887F.title: "Carry Universal Power"
+	quest.643084A045A0887F.quest_subtitle: "Cables remove distance, not ambiguity."
+	quest.643084A045A0887F.quest_desc: [
+		"Use Basic Universal Cable for the first FE run. Read connection states before assuming a machine is starved."
+	]
+	quest.39139B9CE9508AE2.title: "Buffer the Line"
+	quest.39139B9CE9508AE2.quest_subtitle: "A cube separates supply from demand."
+	quest.39139B9CE9508AE2.quest_desc: [
+		"Acquire a Basic Energy Cube. Possession is not a charge test; the final line must show power entering and leaving the buffer."
+	]
+	quest.5C5D12F1D06AFE76.title: "Close the Smelting Loop"
+	quest.5C5D12F1D06AFE76.quest_subtitle: "Dust should return as usable metal."
+	quest.5C5D12F1D06AFE76.quest_desc: [
+		"Add an Energized Smelter after enrichment. The next problem is no longer processing, but reliable side configuration."
+	]
+	quest.66367DD81831A627.title: "Field Test: Configured Doubling"
+	quest.66367DD81831A627.quest_subtitle: "Inputs enter once. Outputs leave once."
+	quest.66367DD81831A627.quest_desc: [
+		"Connect the first ore-doubling line. ECHO requires visible input, output, and eject settings, plus power moving through the buffer."
+	]
+	task.003ECD15AAFA4371.title: "Verify configured input, output, and auto-eject sides on a powered ore-doubling line with an Energy Cube buffer."
+	chapter.01749E1554DFF98B.title: "Field Manual: Storage Lattice"
+	quest.70380821D8D0339D.title: "Read the Lattice"
+	quest.70380821D8D0339D.quest_subtitle: "Archive shard: names before networks."
+	quest.70380821D8D0339D.quest_desc: [
+		"ECHO recovered a GuideME index with damaged annotations. Open the AE2 Guide first, then use JEI to trace the Guide and Meteorite Compass acquisition paths."
+	]
+	quest.1DF658F133C9C9A4.title: "Charge Before Addressing"
+	quest.1DF658F133C9C9A4.quest_subtitle: "Certus changes under power."
+	quest.1DF658F133C9C9A4.quest_desc: [
+		"Acquire the Charger. The task confirms the block only; the field test will prove a powered network."
+	]
+	quest.6A9CCAD32116CF75.title: "Make Fluix"
+	quest.6A9CCAD32116CF75.quest_subtitle: "The network needs a conductive language."
+	quest.6A9CCAD32116CF75.quest_desc: [
+		"Follow the Guide's transformation entry and obtain a Fluix Crystal. Treat the process as evidence, not a recipe guess."
+	]
+	quest.761B2927F8393C9A.title: "Recover the Four Presses"
+	quest.761B2927F8393C9A.quest_subtitle: "Meteorites kept the processor alphabet."
+	quest.761B2927F8393C9A.quest_desc: [
+		"The Compass points toward native meteorite sites. Recover all four presses; a single press leaves the archive grammar incomplete."
+	]
+	quest.67425D7048734CBD.title: "Imprint Processors"
+	quest.67425D7048734CBD.quest_subtitle: "The presses need a controlled stroke."
+	quest.67425D7048734CBD.quest_desc: [
+		"Acquire an Inscriber and review each processor chain in the Guide. Processor production comes before storage scale."
+	]
+	quest.72D2FA03AF7D6FAD.title: "Power the First Channel"
+	quest.72D2FA03AF7D6FAD.quest_subtitle: "A network begins where power becomes addressable."
+	quest.72D2FA03AF7D6FAD.quest_desc: [
+		"Prepare an Energy Acceptor and Fluix Glass Cable. Possession proves parts, not a powered channel; the terminal test closes that gap."
+	]
+	quest.1D0902FA9E169BEC.title: "Give the Lattice Memory"
+	quest.1D0902FA9E169BEC.quest_subtitle: "Addressable space still needs a vessel."
+	quest.1D0902FA9E169BEC.quest_desc: [
+		"Pair a Drive with a 1K Item Storage Cell. Begin small enough that every channel and stored item remains visible."
+	]
+	quest.620865D0A523C79B.title: "Open the Crafting Terminal"
+	quest.620865D0A523C79B.quest_subtitle: "Storage becomes an interface."
+	quest.620865D0A523C79B.quest_desc: [
+		"Acquire a Crafting Terminal. The item task does not claim successful use; insertion and retrieval belong to the field test."
+	]
+	quest.61D8F2A89CB3591B.title: "Encode the First Pattern"
+	quest.61D8F2A89CB3591B.quest_subtitle: "Storage remembers. Patterns intend."
+	quest.61D8F2A89CB3591B.quest_desc: [
+		"Acquire a blank Crafting Pattern and Pattern Encoding Terminal. The final test will prove that one encoded request reaches a provider."
+	]
+	quest.684F6A9A8A036747.title: "Field Test: Addressed Storage"
+	quest.684F6A9A8A036747.quest_subtitle: "Insert. Retrieve. Request."
+	quest.684F6A9A8A036747.quest_desc: [
+		"Power the terminal, move one item into and out of storage, then send one encoded pattern to a provider. ECHO accepts observable delivery, not inventory alone."
+	]
+	task.6E13DD3BB253DF53.title: "Verify a powered terminal inserts and retrieves one item, then sends one encoded pattern to a provider."
+	chapter.4690C88367D47FF3.title: "Field Manual: Kinetics"
+	quest.686943DC0749D6E0.title: "Wrench, Goggles, and Ponder"
+	quest.686943DC0749D6E0.quest_subtitle: "Motion is visible. Read it before touching it."
+	quest.686943DC0749D6E0.quest_desc: [
+		"ECHO recovered a visual training reel, not a command. Open Ponder on a Shaft and inspect rotation relay, then use JEI for the Wrench and Goggles before building."
+	]
+	task.710E4EF5E88E4B49.title: "Open Ponder on a Shaft and inspect the rotation relay scene before building."
+	quest.329DC1FD9B2A3301.title: "Establish Rotation"
+	quest.329DC1FD9B2A3301.quest_subtitle: "Flow becomes rotational evidence."
+	quest.329DC1FD9B2A3301.quest_desc: [
+		"Form a Water Wheel installation and let Create's milestone record it. The final test will prove useful output under load."
+	]
+	quest.5FD1AB39AA6FD322.title: "Relay Motion"
+	quest.5FD1AB39AA6FD322.quest_subtitle: "Direction and speed travel through geometry."
+	quest.5FD1AB39AA6FD322.quest_desc: [
+		"Acquire Shafts and Cogwheels, then review their Ponder scenes. ECHO needs a readable transmission before adding work."
+	]
+	quest.6E450A913699875C.title: "Add the Millstone"
+	quest.6E450A913699875C.quest_subtitle: "Rotation becomes processing."
+	quest.6E450A913699875C.quest_desc: [
+		"Acquire a Millstone and inspect its Ponder scene. Place the first process where its input and output remain visible."
+	]
+	quest.6A6E595D3AFAC0D1.title: "Apply Mechanical Force"
+	quest.6A6E595D3AFAC0D1.quest_subtitle: "A repeated stroke should remain controlled."
+	quest.6A6E595D3AFAC0D1.quest_desc: [
+		"Build the Mechanical Press and complete its native milestone. Keep the working face clear while observing the first cycle."
+	]
+	quest.49BDAD6D33AFE96D.title: "Mix in a Basin"
+	quest.49BDAD6D33AFE96D.quest_subtitle: "Some recipes require a chamber and a speed."
+	quest.49BDAD6D33AFE96D.quest_desc: [
+		"Add a Basin and Mechanical Mixer, then complete the native mixer milestone. Confirm available speed before diagnosing the recipe."
+	]
+	quest.6C2624AB6ADFC774.title: "Route the Output"
+	quest.6C2624AB6ADFC774.quest_subtitle: "Processing without transport becomes a queue."
+	quest.6C2624AB6ADFC774.quest_desc: [
+		"Acquire Belt Connectors and an Andesite Funnel. Use Ponder to inspect direction, filtering, and insertion before joining machines."
+	]
+	quest.13FAF52487CC7A37.title: "Prepare Heated Mixing"
+	quest.13FAF52487CC7A37.quest_subtitle: "Heat changes the permitted process."
+	quest.13FAF52487CC7A37.quest_desc: [
+		"Acquire a Blaze Burner and Brass Ingot after reviewing Ponder heating. These items prove readiness, not a completed heating cycle."
+	]
+	quest.7E438E6B8FF22EE5.title: "Recover Sequenced Assembly"
+	quest.7E438E6B8FF22EE5.quest_subtitle: "One component, several controlled passes."
+	quest.7E438E6B8FF22EE5.quest_desc: [
+		"Acquire a Precision Mechanism and inspect its JEI sequence. Possession proves the component; the field test proves an assembled cycle."
+	]
+	quest.1CD2E9711939A133.title: "Field Test: Controlled Motion"
+	quest.1CD2E9711939A133.quest_subtitle: "Power, process, route, measure."
+	quest.1CD2E9711939A133.quest_desc: [
+		"Run one powered line below its stress limit, route one processed item to its destination, and complete one visible sequenced-assembly cycle."
+	]
+	task.3F187B2D1517AC15.title: "Verify one powered line processes and routes an item below stress, then completes one sequenced-assembly cycle."
+	chapter.0A510C4BD2A3818B.title: "Field Manual: Pressure"
+	quest.084209B68927F9FC.title: "Read Pressure Safely"
+	quest.084209B68927F9FC.quest_subtitle: "Archive warning: pressure stores consequences."
+	quest.084209B68927F9FC.quest_desc: [
+		"ECHO recovered a PneumaticCraft field copy with the failure margins intact. Open the PNC Manual before JEI, and read every pressure and heat limit before assembly."
+	]
+	quest.61E391AFD45083E5.title: "Prepare Compressed Iron"
+	quest.61E391AFD45083E5.quest_subtitle: "The pressure system begins in its alloy."
+	quest.61E391AFD45083E5.quest_desc: [
+		"Obtain Compressed Iron through the current native process. Use the exact registry item; older archive names are not valid evidence."
+	]
+	quest.5901EDCD5D7EE35A.title: "Establish Compression"
+	quest.5901EDCD5D7EE35A.quest_subtitle: "Pressure begins low and observed."
+	quest.5901EDCD5D7EE35A.quest_desc: [
+		"Acquire an Air Compressor. Inventory proves the machine, not safe operation; the field test will verify pressure and cooling clearance."
+	]
+	quest.26E45C5C03858B9F.title: "Measure the First Line"
+	quest.26E45C5C03858B9F.quest_subtitle: "A tube without a gauge is an assumption."
+	quest.26E45C5C03858B9F.quest_desc: [
+		"Acquire a Pressure Tube and Pressure Gauge. Place measurement where it can be read before expanding the network."
+	]
+	quest.08943F9E8ACA0BF5.title: "Install a Safety Module"
+	quest.08943F9E8ACA0BF5.quest_subtitle: "Limits should act before alarms become debris."
+	quest.08943F9E8ACA0BF5.quest_desc: [
+		"Acquire the exact Safety Tube Module and review its Manual entry. Keep the first pressure network below every component limit."
+	]
+	quest.05E49A076947D40D.title: "Seal the Pressure Chamber"
+	quest.05E49A076947D40D.quest_subtitle: "A chamber is formed only when its interface agrees."
+	quest.05E49A076947D40D.quest_desc: [
+		"Build the native multiblock until the chamber interface opens. Loose walls are not a chamber, and ECHO will not describe them as one."
+	]
+	quest.3954E54E987D82B9.title: "Recover Plastic"
+	quest.3954E54E987D82B9.quest_subtitle: "The chamber now has a useful output."
+	quest.3954E54E987D82B9.quest_desc: [
+		"Obtain PneumaticCraft Plastic through its current process. Possession proves the material, not chamber pressure discipline."
+	]
+	quest.1BBE173FE2812E12.title: "Contain Etching Acid"
+	quest.1BBE173FE2812E12.quest_subtitle: "Circuit work begins with controlled corrosion."
+	quest.1BBE173FE2812E12.quest_desc: [
+		"Acquire one sealed Etching Acid bucket. Keep the fluid inside its intended vessel and follow the Manual's handling sequence."
+	]
+	quest.0986AB7BB8DC26CB.title: "Complete the Circuit Board"
+	quest.0986AB7BB8DC26CB.quest_subtitle: "Pressure becomes programmable through careful layers."
+	quest.0986AB7BB8DC26CB.quest_desc: [
+		"Obtain a Printed Circuit Board through the native sequence. Inventory confirms the board only; automation comes later."
+	]
+	quest.0EB3739A284996EF.title: "Prepare the Programmer"
+	quest.0EB3739A284996EF.quest_subtitle: "A route should exist before a drone does."
+	quest.0EB3739A284996EF.quest_desc: [
+		"Acquire the Programmer and read the Manual's area and logistics entries. Define endpoints before deployment."
+	]
+	quest.0FDC59D6374DE405.title: "Deploy a Bounded Drone"
+	quest.0FDC59D6374DE405.quest_subtitle: "Mobility requires borders."
+	quest.0FDC59D6374DE405.quest_desc: [
+		"Deploy one logistics drone only after its route has named endpoints. The native milestone records deployment; the field test confirms the route remains bounded."
+	]
+	quest.049F6475EEBA23BF.title: "Field Test: Bounded Pressure"
+	quest.049F6475EEBA23BF.quest_subtitle: "Measure, cool, limit, observe."
+	quest.049F6475EEBA23BF.quest_desc: [
+		"Hold the network inside its safe pressure range, preserve compressor cooling clearance, and watch one drone complete only its stated route."
+	]
+	task.1348FF905C53A83B.title: "Verify safe operating pressure, compressor cooling clearance, and one drone route limited to its stated endpoints."
+	chapter.67F13F819570ED52.title: "Field Manual: Power Networks"
+	quest.5334545A948815F6.title: "Define the Grid"
+	quest.5334545A948815F6.quest_subtitle: "Archive rule: unnamed power becomes shared failure."
+	quest.5334545A948815F6.quest_desc: [
+		"ECHO recovered a grid ledger with ownership fields still readable. Open the Powah book first, then use JEI for Ender IO and Flux Networks before joining local and remote loads."
+	]
+	quest.76B288AB06101456.title: "Start Local Generation"
+	quest.76B288AB06101456.quest_subtitle: "A first source should be legible, not large."
+	quest.76B288AB06101456.quest_desc: [
+		"Acquire a Starter Thermo Generator and review its heat-source rules in the Powah book. Begin with a source you can inspect directly."
+	]
+	quest.17B9680D2EADEDC6.title: "Carry the First Current"
+	quest.17B9680D2EADEDC6.quest_subtitle: "Transport comes before scale."
+	quest.17B9680D2EADEDC6.quest_desc: [
+		"Acquire Basic Energy Cable and keep the first run short. ECHO needs visible source and load behavior before distance is introduced."
+	]
+	quest.64985526F1F3E751.title: "Add an Energy Cell"
+	quest.64985526F1F3E751.quest_subtitle: "Reserve makes interruptions visible."
+	quest.64985526F1F3E751.quest_desc: [
+		"Acquire a Basic Energy Cell and place it between generation and load. Buffer direction matters as much as capacity."
+	]
+	quest.0DCF0D2B0A2F9116.title: "Prepare the Energizing Orb"
+	quest.0DCF0D2B0A2F9116.quest_subtitle: "The grid can now manufacture its next tier."
+	quest.0DCF0D2B0A2F9116.quest_desc: [
+		"Acquire an Energizing Orb and read its binding and power requirements. Keep the first recipe local to the buffer."
+	]
+	quest.404060642DDEB264.title: "Upgrade Thermo Generation"
+	quest.404060642DDEB264.quest_subtitle: "Scale one known source before adding another kind."
+	quest.404060642DDEB264.quest_desc: [
+		"Acquire a Basic Thermo Generator. Compare its book entry to the Starter tier before assigning it a critical load."
+	]
+	quest.35B95B680B9C2D78.title: "Review the Basic Reactor"
+	quest.35B95B680B9C2D78.quest_subtitle: "Dense generation requires a written operating state."
+	quest.35B95B680B9C2D78.quest_desc: [
+		"Acquire the Basic Reactor, then read its fuel and cooling pages before connection. Possession does not authorize operation."
+	]
+	quest.2ED46D235B6B78F7.title: "Add a Local Conduit Buffer"
+	quest.2ED46D235B6B78F7.quest_subtitle: "Different networks need a deliberate boundary."
+	quest.2ED46D235B6B78F7.quest_desc: [
+		"Acquire a Basic Capacitor Bank and the component-bearing Energy Conduit. The generic conduit item without its energy component is not equivalent."
+	]
+	quest.65915A62545FA947.title: "Publish the Source"
+	quest.65915A62545FA947.quest_subtitle: "Wireless transfer begins at a named input."
+	quest.65915A62545FA947.quest_desc: [
+		"Acquire a Flux Plug and attach it only after the source grid has a buffer. Record the network name before adding outputs."
+	]
+	quest.5A66E5B7EC10FBEC.title: "Receive at a Remote Load"
+	quest.5A66E5B7EC10FBEC.quest_subtitle: "Distance should not erase ownership."
+	quest.5A66E5B7EC10FBEC.quest_desc: [
+		"Acquire a Flux Point and bind one remote load to the named network. Keep one local load connected for comparison."
+	]
+	quest.1FB8838934893F2F.title: "Control the Wireless Grid"
+	quest.1FB8838934893F2F.quest_subtitle: "Access is part of the circuit."
+	quest.1FB8838934893F2F.quest_desc: [
+		"Acquire a Flux Controller and review ownership before increasing transfer limits. A network without a named owner is unfinished."
+	]
+	quest.50D86366160EF6D1.title: "Field Test: Named Reserve"
+	quest.50D86366160EF6D1.quest_subtitle: "Source, buffer, local load, remote load, owner."
+	quest.50D86366160EF6D1.quest_desc: [
+		"Name the grid, verify stored reserve, and observe one local and one remote load. The test is complete only when ownership is visible."
+	]
+	task.74ADFAB08CF6DE29.title: "Name the grid, then verify generation, a buffer, one local load, one remote load, and visible network ownership."
+	chapter.67C126F7B1338CB1.title: "Field Manual: Frontier Machines"
+	quest.6CC0CCE16F9FB5BE.title: "Frontier Orientation"
+	quest.6CC0CCE16F9FB5BE.quest_subtitle: "Archive shard: unfamiliar tolerances, familiar caution."
+	quest.6CC0CCE16F9FB5BE.quest_desc: [
+		"ECHO recovered machine labels without their workshop. Open JEI from the Oritech Wrench and trace each recipe from tier one before placing a line."
+	]
+	quest.26B8A99B10E63A51.title: "Establish Basic Generation"
+	quest.26B8A99B10E63A51.quest_subtitle: "The first machine needs a known source."
+	quest.26B8A99B10E63A51.quest_desc: [
+		"Acquire the Basic Generator and keep its first load local. Power entry must be observable before processing expands."
+	]
+	quest.43FD0BF68753704D.title: "Recover the Tier-One Core"
+	quest.43FD0BF68753704D.quest_subtitle: "Every frontier machine begins at its common center."
+	quest.43FD0BF68753704D.quest_desc: [
+		"Acquire the Tier-One Machine Core. Use JEI to read which machines inherit this frame before spending it."
+	]
+	quest.6A72F5A4AB5B8C34.title: "Begin with Pulverizing"
+	quest.6A72F5A4AB5B8C34.quest_subtitle: "Reduce the input before separating it."
+	quest.6A72F5A4AB5B8C34.quest_desc: [
+		"Acquire a Pulverizer and place it first in the processing order. Keep the initial input and output visible."
+	]
+	quest.6C9CC7FBA2947F07.title: "Separate the Fraction"
+	quest.6C9CC7FBA2947F07.quest_subtitle: "The second machine answers the first output."
+	quest.6C9CC7FBA2947F07.quest_desc: [
+		"Acquire a Centrifuge and review which pulverized products it accepts. Order matters; guessing consumes time, not evidence."
+	]
+	quest.34B6350C8CE3FADD.title: "Automate Assembly"
+	quest.34B6350C8CE3FADD.quest_subtitle: "Processed parts need a repeatable join."
+	quest.34B6350C8CE3FADD.quest_desc: [
+		"Acquire an Assembler and inspect one complete JEI input set. Feed it only after the upstream outputs are stable."
+	]
+	quest.0FA1B6065F21A660.title: "Add the Foundry"
+	quest.0FA1B6065F21A660.quest_subtitle: "Heat belongs after preparation, not before it."
+	quest.0FA1B6065F21A660.quest_desc: [
+		"Acquire a Foundry and review its accepted inputs in JEI. Keep the heat stage isolated from the first material test."
+	]
+	quest.2AB19D998D3727EE.title: "Position the Laser Arm"
+	quest.2AB19D998D3727EE.quest_subtitle: "Remote work still needs a bounded target."
+	quest.2AB19D998D3727EE.quest_desc: [
+		"Acquire a Laser Arm and inspect its valid targets before power is applied. Orientation is part of the machine contract."
+	]
+	quest.7B6CF4AE64A1CE6A.title: "Review Reactor Orientation"
+	quest.7B6CF4AE64A1CE6A.quest_subtitle: "Recognition precedes operation."
+	quest.7B6CF4AE64A1CE6A.quest_desc: [
+		"Acquire the Reactor Controller and inspect its JEI relationships. Leave the reactor unassembled and unlit; this node certifies orientation only."
+	]
+	quest.62231BB1A61DA2C7.title: "Field Test: Ordered Processing"
+	quest.62231BB1A61DA2C7.quest_subtitle: "One input. Ordered machines. One collected output."
+	quest.62231BB1A61DA2C7.quest_desc: [
+		"Run one safe input through the planned processing order and collect the final output. Reactor ignition is neither required nor accepted."
+	]
+	task.1D02E70F575E0050.title: "Run one safe input through the ordered Oritech processing line and collect its final output without reactor ignition."
+	chapter.0B7C7859EBD6EFF3.title: "Field Manual: Nuclear Safety"
+	quest.4EEAB6F41DB426E7.title: "Safety Before Output"
+	quest.4EEAB6F41DB426E7.quest_subtitle: "Archive priority: survive the system you build."
+	quest.4EEAB6F41DB426E7.quest_desc: [
+		"ECHO recovered the safety ledger before the production ledger. Open JEI from each Hazmat piece, assemble the complete set, and do not approach live radiation without measurement and containment."
+	]
+	quest.3C0CAFF5CE43DBE8.title: "Measure Dose and Field"
+	quest.3C0CAFF5CE43DBE8.quest_subtitle: "Two instruments answer different questions."
+	quest.3C0CAFF5CE43DBE8.quest_desc: [
+		"Acquire a Dosimeter and Geiger Counter. Read personal exposure and environmental radiation separately before planning any boundary."
+	]
+	quest.176542F326A57218.title: "Separate the First Gas"
+	quest.176542F326A57218.quest_subtitle: "Chemistry starts upstream of the reactor."
+	quest.176542F326A57218.quest_desc: [
+		"Acquire an Electrolytic Separator and inspect its gas outputs in JEI. Keep the first review disconnected from any fuel chain."
+	]
+	quest.70BFD67399A4F396.title: "Trace the Chemical Chain"
+	quest.70BFD67399A4F396.quest_subtitle: "Read the sequence before producing any part of it."
+	quest.70BFD67399A4F396.quest_desc: [
+		"Use JEI to trace water separation, uranium processing, fissile fuel, waste, steam, and recovered coolant. This is orientation only; produce nothing radioactive for the check."
+	]
+	task.5DB2522E2C975568.title: "In JEI, trace water to gases, uranium processing, fissile fuel, waste, steam, and recovered coolant without producing radioactive material."
+	quest.1153A398AA96928A.title: "Prepare Isotope Separation"
+	quest.1153A398AA96928A.quest_subtitle: "Precision belongs before fuel."
+	quest.1153A398AA96928A.quest_desc: [
+		"Acquire an Isotopic Centrifuge and inspect its JEI inputs and outputs. Do not connect it to a live fuel line for this manual."
+	]
+	quest.37C91CCD4ED1E165.title: "Inspect Fuel Assemblies"
+	quest.37C91CCD4ED1E165.quest_subtitle: "Hardware can be verified without fuel."
+	quest.37C91CCD4ED1E165.quest_desc: [
+		"Acquire one Fission Fuel Assembly as dry hardware. Do not load fuel, form an active core, or ignite a reactor for this node."
+	]
+	quest.6AD4DFCE7836DF74.title: "Prepare Automatic Shutdown"
+	quest.6AD4DFCE7836DF74.quest_subtitle: "A reactor needs an independent stop condition."
+	quest.6AD4DFCE7836DF74.quest_desc: [
+		"Acquire a Fission Reactor Logic Adapter and review shutdown behavior in JEI and native tooltips. Keep the reactor unlit while configuring the safety path."
+	]
+	quest.2DAD7D9352F7A623.title: "Reserve Waste Capacity"
+	quest.2DAD7D9352F7A623.quest_subtitle: "Containment is sized before production."
+	quest.2DAD7D9352F7A623.quest_desc: [
+		"Acquire a Radioactive Waste Barrel as containment hardware. The barrel is never a reward, and this node requires no radioactive contents."
+	]
+	quest.0A97449C2B595A5F.title: "Recover Steam and Coolant"
+	quest.0A97449C2B595A5F.quest_subtitle: "Heat removal needs an exit and a return."
+	quest.0A97449C2B595A5F.quest_desc: [
+		"Acquire a Turbine Vent and Saturating Condenser. The pair represents steam exhaust and coolant recovery; no reactor ignition is required to inspect the recovery path."
+	]
+	quest.1EE5AE5D99152C98.title: "Field Test: Containment Before Output"
+	quest.1EE5AE5D99152C98.quest_subtitle: "Protection, shutdown, capacity, recovery, exit."
+	quest.1EE5AE5D99152C98.quest_desc: [
+		"With Hazmat equipped and the reactor unlit, inspect shutdown logic, spare waste capacity, the steam-to-coolant recovery path, and a clear evacuation route."
+	]
+	task.292A8DAC66C8A6ED.title: "With Hazmat equipped and the reactor unlit, verify shutdown logic, spare waste capacity, steam recovery, coolant return, and a clear evacuation route."
 }

@@ -7,7 +7,13 @@
 	id: "7E9B015A32C6D980"
 	images: [ ]
 	order_index: 17
-	quest_links: [ ]
+	quest_links: [
+		{ id: "1DFDF1063452C6CE", linked_quest: "686943DC0749D6E0", x: 0.0d, y: -4.0d }
+		{ id: "2801038AFDC85960", linked_quest: "3E77A16CB0C0AD11", x: 0.0d, y: -3.0d }
+		{ id: "6EEE18DA9492CAD2", linked_quest: "4EEAB6F41DB426E7", x: 2.0d, y: 0.0d }
+		{ id: "2036C916B89B3B5A", linked_quest: "70380821D8D0339D", x: 0.0d, y: 3.0d }
+		{ id: "427385B56F487768", linked_quest: "6363BCE8A71FA766", x: 0.0d, y: 4.0d }
+	]
 	quests: [
 		{
 			id: "0055C66103106D86"

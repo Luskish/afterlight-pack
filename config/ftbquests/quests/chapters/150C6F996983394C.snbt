@@ -1,0 +1,229 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "150C6F996983394C"
+	group: "4A20F33642175B95"
+	icon: { id: "immersiveengineering:manual" }
+	id: "150C6F996983394C"
+	images: [ ]
+	order_index: 0
+	quest_links: [
+		{ id: "386444141B66F453", linked_quest: "20169EC099FABBA0", x: 0.0d, y: -2.0d }
+		{ id: "2837E3B154B9CF56", linked_quest: "52FE1624DCCE878F", x: 2.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "3E77A16CB0C0AD11"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "5FB21DC249AF9417"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:manual" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "179DE29AF0E290B2"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:hammer" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1B09D33305DDD94D"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "51580522F7FF4E55"
+			dependencies: ["3E77A16CB0C0AD11"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "03266BF12E770DB1"
+					type: "advancement"
+					advancement: "immersiveengineering:main/mb_cokeoven"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "001F1B53CC82E007"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "46DAE2030C973A43"
+			dependencies: ["51580522F7FF4E55"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "3B29B02837FD35B4"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:creosote_bucket" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "46AB804F3DA5C9A1"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:treated_wood_horizontal" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "1C1C4BD0D6C21BA5"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "327FA6950C2ADDD5"
+			dependencies: ["46DAE2030C973A43"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "0E5E5EF006B64720"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:capacitor_lv" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6CC0BFFC57947AB7"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "4634BA22E2622022"
+			dependencies: ["327FA6950C2ADDD5"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "2E3CA754C9846571"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:wirecoil_copper" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "393D18332424CF74"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:connector_lv" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7372FBB73C12D941"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "7E1EAE10AA7A931B"
+			dependencies: ["4634BA22E2622022"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "65ED560309BB1BD2"
+					type: "item"
+					item: { count: 1, id: "immersiveengineering:workbench" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6FAC70C1A03E51B0"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "31C980653A50B830"
+			dependencies: ["7E1EAE10AA7A931B"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "531E66B820F88A6C"
+					type: "advancement"
+					advancement: "immersiveengineering:main/mb_blastfurnace"
+					criterion: ""
+				}
+			]
+			rewards: [
+				{
+					id: "2410C1FAE7187098"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "5A73CF0BEAB912A0"
+			dependencies: ["31C980653A50B830"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "5188E52F6F9DE08A"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "18496B24083B572F"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "101A99960F08F275"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

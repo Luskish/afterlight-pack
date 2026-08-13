@@ -1,0 +1,314 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "67F13F819570ED52"
+	group: "4A20F33642175B95"
+	icon: { id: "powah:book" }
+	id: "67F13F819570ED52"
+	images: [ ]
+	order_index: 5
+	quest_links: [
+		{ id: "277025CE751ECC8D", linked_quest: "0D1D4842B326D878", x: 0.0d, y: -2.0d }
+		{ id: "663E47307E11A38C", linked_quest: "66AD5C821947DF8E", x: 2.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "5334545A948815F6"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "783A596CB815B83C"
+					type: "item"
+					item: { count: 1, id: "powah:book" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "2BE131AE23BA2A20"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "76B288AB06101456"
+			dependencies: ["5334545A948815F6"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "7CE6C5A32C3624F0"
+					type: "item"
+					item: { count: 1, id: "powah:thermo_generator_starter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "07FC0462374D5879"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "17B9680D2EADEDC6"
+			dependencies: ["76B288AB06101456"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "46409D43702136C6"
+					type: "item"
+					item: { count: 1, id: "powah:energy_cable_basic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "375BA71B76B0F6A7"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "64985526F1F3E751"
+			dependencies: ["17B9680D2EADEDC6"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "250F6375398AC32A"
+					type: "item"
+					item: { count: 1, id: "powah:energy_cell_basic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6B4BFC6751380F39"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "0DCF0D2B0A2F9116"
+			dependencies: ["64985526F1F3E751"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "7E731053DE26A3FB"
+					type: "item"
+					item: { count: 1, id: "powah:energizing_orb" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "47445C5913726DEE"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "404060642DDEB264"
+			dependencies: ["0DCF0D2B0A2F9116"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "35D0B044B8F365B2"
+					type: "item"
+					item: { count: 1, id: "powah:thermo_generator_basic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "079F5BC9A78C5F22"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "35B95B680B9C2D78"
+			dependencies: ["404060642DDEB264"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "0FA845373D202BD6"
+					type: "item"
+					item: { count: 1, id: "powah:reactor_basic" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "35DC56AF95EF1C9F"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "2ED46D235B6B78F7"
+			dependencies: ["35B95B680B9C2D78"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "61951D91627EFAC5"
+					type: "item"
+					item: { count: 1, id: "enderio:basic_capacitor_bank" }
+					count: 1L
+					consume_items: false
+				}
+				{
+					id: "10E5D3DA84BBA97B"
+					type: "item"
+					item: { count: 1, id: "enderio:conduit", components: { "enderio:conduit": "enderio:energy" } }
+					count: 1L
+					consume_items: false
+					match_components: "fuzzy"
+				}
+			]
+			rewards: [
+				{
+					id: "005331BF77B7FB96"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "65915A62545FA947"
+			dependencies: ["2ED46D235B6B78F7"]
+			x: 16.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "3A6C56DDA15AFE3D"
+					type: "item"
+					item: { count: 1, id: "fluxnetworks:flux_plug" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "55472D0E62980143"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "5A66E5B7EC10FBEC"
+			dependencies: ["65915A62545FA947"]
+			x: 18.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "2561E548F6569487"
+					type: "item"
+					item: { count: 1, id: "fluxnetworks:flux_point" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "5ABAD2884E150AA9"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "1FB8838934893F2F"
+			dependencies: ["5A66E5B7EC10FBEC"]
+			x: 20.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "75239F5EFE865630"
+					type: "item"
+					item: { count: 1, id: "fluxnetworks:flux_controller" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "6EA4107F92C744B9"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "50D86366160EF6D1"
+			dependencies: ["1FB8838934893F2F"]
+			x: 22.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "74ADFAB08CF6DE29"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "37F00DCD83A5FF39"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "78FC8C313A6E134B"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

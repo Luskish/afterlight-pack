@@ -6,7 +6,7 @@
 	icon: { id: "create:brass_ingot" }
 	id: "7C611E8A94BC5CE5"
 	images: [ ]
-	order_index: 21
+	order_index: 31
 	quest_links: [ ]
 	quests: [
 		{

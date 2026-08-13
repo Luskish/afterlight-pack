@@ -7,7 +7,11 @@
 	id: "11CA083771CCB5BE"
 	images: [ ]
 	order_index: 11
-	quest_links: [ ]
+	quest_links: [
+		{ id: "128E1BA6D3EE37C3", linked_quest: "25E5B276B9FA47ED", x: 4.0d, y: -3.0d }
+		{ id: "364E22ABAC317B0F", linked_quest: "3011977E372A3BC6", x: 0.0d, y: -2.0d }
+		{ id: "65486B7C21041B56", linked_quest: "02BA27AF63721ACA", x: 2.0d, y: -2.0d }
+	]
 	quests: [
 		{
 			id: "27AEE834BFD148F2"
@@ -180,7 +184,7 @@
 				{
 					id: "33B5B56650A6AEDF"
 					type: "item"
-					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					item: { count: 1, id: "ftbfiltersystem:smart_filter", components: { "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)" } }
 					count: 64L
 					consume_items: false
 				}

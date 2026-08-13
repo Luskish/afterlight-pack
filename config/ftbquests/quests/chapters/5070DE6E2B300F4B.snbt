@@ -6,7 +6,7 @@
 	icon: { id: "ae2:logic_processor" }
 	id: "5070DE6E2B300F4B"
 	images: [ ]
-	order_index: 6
+	order_index: 16
 	quest_links: [ ]
 	quests: [
 		{
@@ -112,7 +112,7 @@
 				{
 					id: "1679C5714C2F2A74"
 					type: "item"
-					item: { count: 1, id: "immersiveengineering:ingot_steel" }
+					item: { count: 1, id: "ftbfiltersystem:smart_filter", components: { "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)" } }
 					count: 1024L
 					consume_items: false
 				}

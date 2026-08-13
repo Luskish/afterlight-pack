@@ -37,7 +37,13 @@ from live_install_support import requires_live_install
 
 class StoryCohesionCompatibilityTests(unittest.TestCase):
     SOURCE_COMMIT = "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
-    APPROVED_COMMODITY_REPLACEMENTS: dict[str, str] = {}
+    APPROVED_COMMODITY_REPLACEMENTS = {
+        "39C717BFFEE3D235": "c:foods/bread",
+        "1D73FB79ED38668F": "minecraft:beds",
+        "374F658F034EF8C5": "c:ingots/steel",
+        "33B5B56650A6AEDF": "c:ingots/steel",
+        "1679C5714C2F2A74": "c:ingots/steel",
+    }
     FIXTURE_PATH = (
         ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
     )
@@ -1395,6 +1401,40 @@ class CommonCommodityCompilerTests(unittest.TestCase):
             with self.subTest(tag=tag):
                 self.assertEqual(members, tuple(sorted(set(members))))
 
+    def test_runtime_bread_bridge_and_member_deduplication_are_explicit(self) -> None:
+        tag_path = (
+            ROOT
+            / "kubejs"
+            / "data"
+            / "c"
+            / "tags"
+            / "item"
+            / "foods"
+            / "bread.json"
+        )
+        tag_payload = json.loads(tag_path.read_text(encoding="utf-8"))
+        self.assertFalse(tag_payload["replace"])
+        self.assertEqual(
+            tag_payload["values"],
+            ["pneumaticcraft:sourdough_bread"],
+        )
+        rendered = self.builder._render_quest_item_audit(
+            ROOT / "config" / "ftbquests" / "quests"
+        )
+        self.assertIn("ServerEvents.loaded(event => {", rendered)
+        self.assertIn("Ingredient.of('#' + tagId).itemIds.toArray()", rendered)
+        self.assertIn(
+            "for (let memberIndex = 0; memberIndex < itemIds.length; memberIndex++)",
+            rendered,
+        )
+        self.assertIn("  let itemId\n  for (let memberIndex", rendered)
+        self.assertNotIn("const itemId = String(itemIds[memberIndex])", rendered)
+        self.assertIn("afterlightCommodityMembers(spec.id)", rendered)
+        self.assertIn(
+            "if (members.indexOf(itemId) < 0) members.push(itemId)",
+            rendered,
+        )
+
     def baseline(self) -> dict[str, object]:
         return json.loads(self.BASELINE_PATH.read_text(encoding="utf-8"))["corpus"]
 
@@ -1956,7 +1996,7 @@ class Plan06GateDependencyTests(unittest.TestCase):
 
         self.assertEqual(
             (counts.chapters, counts.quests, counts.tasks, counts.rewards),
-            (47, 315, 336, 439),
+            (55, 396, 437, 528),
         )
         self.assertEqual(len(reward_tables), 6)
         for item_id, _display_name in self.GATE_ITEMS.values():
@@ -2250,24 +2290,6 @@ class Plan06ActIVContractTests(unittest.TestCase):
         from afterlight_quests.builder import _parse_snbt
 
         catalog = self.quests.build_catalog() if catalog is None else catalog
-        excluded_manual_quest_ids = {
-            quest.id
-            for chapter in catalog
-            if chapter.slug.startswith("manuals/")
-            for quest in chapter.quests
-        }
-        committed_manual_group = self.quests.GroupSpec(
-            "certifications",
-            "Certifications",
-            "4A20F33642175B95",
-        )
-        catalog = [
-            replace(chapter, group=committed_manual_group)
-            if chapter.group.resolved_id == "4A20F33642175B95"
-            else chapter
-            for chapter in catalog
-            if not chapter.slug.startswith("manuals/")
-        ]
         committed_state = json.loads(
             (self.quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
         )
@@ -2297,7 +2319,12 @@ class Plan06ActIVContractTests(unittest.TestCase):
             written = self.quests.write_catalog(
                 catalog,
                 isolated_quest_root,
-                legacy_quest_ids=legacy_quest_ids | excluded_manual_quest_ids,
+                legacy_quest_ids=legacy_quest_ids,
+            )
+            self.quests.write_legacy_quest_overlays(
+                isolated_quest_root,
+                catalog=catalog,
+                known_quest_ids=legacy_quest_ids,
             )
             self.assertEqual({path.name for path in written}, managed_chapters)
             for filename in sorted(managed_chapters):
@@ -2463,7 +2490,7 @@ class Plan06ActIVContractTests(unittest.TestCase):
         all_quests = [quest for chapter in self.chapters.values() for quest in chapter["quests"]]
         all_tasks = [task for quest in all_quests for task in quest["tasks"]]
         all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
-        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (47, 315, 336, 439))
+        self.assertEqual((len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)), (55, 396, 437, 528))
         self.assertEqual(
             (
                 len(act_iv),
@@ -2771,7 +2798,7 @@ class Plan06PostgameContractTests(unittest.TestCase):
         all_rewards = [reward for quest in all_quests for reward in quest["rewards"]]
         self.assertEqual(
             (len(self.chapters), len(all_quests), len(all_tasks), len(all_rewards)),
-            (47, 315, 336, 439),
+            (55, 396, 437, 528),
         )
         self.assertEqual(
             (
@@ -2894,7 +2921,7 @@ class FieldManualCatalogTests(unittest.TestCase):
             "0A510C4BD2A3818B",
             "manuals/pneumaticcraft/read-pressure-safely",
             "084209B68927F9FC",
-            "pneumaticcraft:manual",
+            "pneumaticcraft:pneumatic_wrench",
             "manuals/pneumaticcraft/field-test",
         ),
         (
@@ -4011,11 +4038,21 @@ class LegacyQuestOverlayTests(unittest.TestCase):
 
     def copy_repo_inputs(self, base: Path) -> tuple[Path, Path]:
         quest_root = base / "config" / "ftbquests" / "quests"
-        shutil.copytree(self.QUEST_ROOT, quest_root)
-        audit_source = ROOT / "kubejs" / "server_scripts" / "afterlight" / "generated_quest_item_audit.js"
-        audit_target = base / "kubejs" / "server_scripts" / "afterlight" / "generated_quest_item_audit.js"
-        audit_target.parent.mkdir(parents=True)
-        shutil.copy2(audit_source, audit_target)
+        archive = subprocess.run(
+            [
+                "git",
+                "archive",
+                "--format=tar",
+                self.DIGEST_BASE,
+                "config/ftbquests/quests",
+                "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as source_tar:
+            source_tar.extractall(base, filter="data")
         catalog = self.quests.build_catalog()
         managed_chapter_ids = {chapter.id for chapter in catalog}
         legacy_quest_ids = tuple(

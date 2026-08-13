@@ -6,7 +6,7 @@
 	icon: { id: "mekanism:enrichment_chamber" }
 	id: "16E0B20162F6DAE5"
 	images: [ ]
-	order_index: 2
+	order_index: 12
 	quest_links: [ ]
 	quests: [
 		{

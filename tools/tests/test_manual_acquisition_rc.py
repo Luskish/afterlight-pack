@@ -85,7 +85,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
             generated_digest = self.hygiene._seal_code_corpus_digest(
                 generated_inventory
             )
-            self.assertNotEqual(
+            self.assertEqual(
                 before_inventory[
                     "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
                 ],

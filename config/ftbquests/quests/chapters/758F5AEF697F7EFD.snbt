@@ -6,7 +6,7 @@
 	icon: { id: "minecraft:iron_ingot" }
 	id: "758F5AEF697F7EFD"
 	images: [ ]
-	order_index: 20
+	order_index: 30
 	quest_links: [ ]
 	quests: [
 		{

@@ -1,0 +1,235 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "4DE10FFCDEEF9892"
+	group: "4A20F33642175B95"
+	icon: { id: "mekanism:configurator" }
+	id: "4DE10FFCDEEF9892"
+	images: [ ]
+	order_index: 1
+	quest_links: [
+		{ id: "6D41B7269E44A298", linked_quest: "1AC07872BABAC949", x: 0.0d, y: -2.0d }
+		{ id: "71C9341BE0B9B992", linked_quest: "43860D6CFEF31BB9", x: 2.0d, y: -2.0d }
+		{ id: "3C25350A9C3F2146", linked_quest: "3F12A84AF92F28B8", x: 4.0d, y: -2.0d }
+	]
+	quests: [
+		{
+			id: "6B09A1A11CD08E68"
+			x: 0.0d
+			y: 0.0d
+			size: 1.5d
+			optional: true
+			tasks: [
+				{
+					id: "2E9FCCBF9802B9EE"
+					type: "item"
+					item: { count: 1, id: "mekanism:configurator" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "740A0803C3A2845F"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "6560B5F86BF5A6A4"
+			dependencies: ["6B09A1A11CD08E68"]
+			x: 2.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "44F2C8DF662AD165"
+					type: "item"
+					item: { count: 1, id: "mekanismgenerators:heat_generator" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "35B2C2898A129A72"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "4CCF2322B7E51429"
+			dependencies: ["6560B5F86BF5A6A4"]
+			x: 4.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "575F4F2478289C9A"
+					type: "item"
+					item: { count: 1, id: "mekanism:steel_casing" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "26CFCA3C6A84F708"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "5A0965B99FDC4A6D"
+			dependencies: ["4CCF2322B7E51429"]
+			x: 6.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "09588F5EF477DD0C"
+					type: "item"
+					item: { count: 1, id: "mekanism:metallurgic_infuser" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "25CB766B3F4B7F9A"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "01CB05A4DC53788B"
+			dependencies: ["5A0965B99FDC4A6D"]
+			x: 8.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "437B1886698D3CCD"
+					type: "item"
+					item: { count: 1, id: "mekanism:enrichment_chamber" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "62AE5E09D3C7DE9D"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "643084A045A0887F"
+			dependencies: ["01CB05A4DC53788B"]
+			x: 10.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "5630A07961127985"
+					type: "item"
+					item: { count: 1, id: "mekanism:basic_universal_cable" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "7F9F52485C6D2641"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "39139B9CE9508AE2"
+			dependencies: ["643084A045A0887F"]
+			x: 12.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "39089C90A9CE268A"
+					type: "item"
+					item: { count: 1, id: "mekanism:basic_energy_cube" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "02209F91D44B2CD6"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "5C5D12F1D06AFE76"
+			dependencies: ["39139B9CE9508AE2"]
+			x: 14.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "2459AE8CF34F30CD"
+					type: "item"
+					item: { count: 1, id: "mekanism:energized_smelter" }
+					count: 1L
+					consume_items: false
+				}
+			]
+			rewards: [
+				{
+					id: "506FB6F109D01C1D"
+					type: "item"
+					item: { count: 1, id: "kubejs:requisition_chit" }
+					count: 1
+				}
+			]
+		}
+		{
+			id: "66367DD81831A627"
+			dependencies: ["5C5D12F1D06AFE76"]
+			x: 16.0d
+			y: 0.0d
+			optional: true
+			tasks: [
+				{
+					id: "003ECD15AAFA4371"
+					type: "checkmark"
+				}
+			]
+			rewards: [
+				{
+					id: "141BFDA31DA3EEED"
+					type: "item"
+					item: { count: 3, id: "kubejs:requisition_chit" }
+					count: 3
+				}
+				{
+					id: "1F5E1645DBC2EA65"
+					type: "xp"
+					xp: 100
+				}
+			]
+		}
+	]
+}

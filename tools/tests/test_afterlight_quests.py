@@ -2241,6 +2241,18 @@ class Plan06ActIVContractTests(unittest.TestCase):
         catalog: list[object] | None = None,
     ) -> None:
         catalog = self.quests.build_catalog() if catalog is None else catalog
+        committed_manual_group = self.quests.GroupSpec(
+            "certifications",
+            "Certifications",
+            "4A20F33642175B95",
+        )
+        catalog = [
+            replace(chapter, group=committed_manual_group)
+            if chapter.group.resolved_id == "4A20F33642175B95"
+            else chapter
+            for chapter in catalog
+            if not chapter.slug.startswith("manuals/")
+        ]
         committed_state = json.loads(
             (self.quest_root / ".afterlight-managed.json").read_text(encoding="utf-8")
         )
@@ -2811,6 +2823,370 @@ class Plan06PostgameContractTests(unittest.TestCase):
             self.assertIn(scenario, verification_text)
         self.assertIn("Plan 07 manual acceptance", verification_text)
         self.assertNotIn("\u2014", verification_text)
+
+
+class FieldManualCatalogTests(unittest.TestCase):
+    MANUALS = (
+        (
+            "manuals/immersive-engineering",
+            "150C6F996983394C",
+            "manuals/immersive-engineering/recover-field-manual",
+            "3E77A16CB0C0AD11",
+            "immersiveengineering:manual",
+            "manuals/immersive-engineering/field-test",
+        ),
+        (
+            "manuals/mekanism",
+            "4DE10FFCDEEF9892",
+            "manuals/mekanism/configure-the-first-machine",
+            "6B09A1A11CD08E68",
+            "mekanism:configurator",
+            "manuals/mekanism/field-test",
+        ),
+        (
+            "manuals/applied-energistics-2",
+            "01749E1554DFF98B",
+            "manuals/applied-energistics-2/read-the-lattice",
+            "70380821D8D0339D",
+            "ae2:guide",
+            "manuals/applied-energistics-2/field-test",
+        ),
+        (
+            "manuals/create",
+            "4690C88367D47FF3",
+            "manuals/create/ponder-kinetics",
+            "686943DC0749D6E0",
+            "create:wrench",
+            "manuals/create/field-test",
+        ),
+        (
+            "manuals/pneumaticcraft",
+            "0A510C4BD2A3818B",
+            "manuals/pneumaticcraft/read-pressure-safely",
+            "084209B68927F9FC",
+            "pneumaticcraft:manual",
+            "manuals/pneumaticcraft/field-test",
+        ),
+        (
+            "manuals/power-networks",
+            "67F13F819570ED52",
+            "manuals/power-networks/define-the-grid",
+            "5334545A948815F6",
+            "powah:book",
+            "manuals/power-networks/reserve-field-test",
+        ),
+        (
+            "manuals/oritech",
+            "67C126F7B1338CB1",
+            "manuals/oritech/frontier-orientation",
+            "6CC0CCE16F9FB5BE",
+            "oritech:wrench",
+            "manuals/oritech/field-test",
+        ),
+        (
+            "manuals/nuclear-systems",
+            "0B7C7859EBD6EFF3",
+            "manuals/nuclear-systems/safety-before-output",
+            "4EEAB6F41DB426E7",
+            "mekanism:geiger_counter",
+            "manuals/nuclear-systems/contained-field-test",
+        ),
+    )
+    MANUAL_CHECKS = {
+        "manuals/immersive-engineering/field-test/task/checkmark": (
+            "5188E52F6F9DE08A",
+            "Verify one LV source, buffer, connector pair, and load operate with no exposed live ends.",
+        ),
+        "manuals/mekanism/field-test/task/checkmark": (
+            "003ECD15AAFA4371",
+            "Verify configured input, output, and auto-eject sides on a powered ore-doubling line with an Energy Cube buffer.",
+        ),
+        "manuals/applied-energistics-2/field-test/task/checkmark": (
+            "6E13DD3BB253DF53",
+            "Verify a powered terminal inserts and retrieves one item, then sends one encoded pattern to a provider.",
+        ),
+        "manuals/create/ponder-kinetics/task/checkmark": (
+            "710E4EF5E88E4B49",
+            "Open Ponder on a Shaft and inspect the rotation relay scene before building.",
+        ),
+        "manuals/create/field-test/task/checkmark": (
+            "3F187B2D1517AC15",
+            "Verify one powered line processes and routes an item below stress, then completes one sequenced-assembly cycle.",
+        ),
+        "manuals/pneumaticcraft/field-test/task/checkmark": (
+            "1348FF905C53A83B",
+            "Verify safe operating pressure, compressor cooling clearance, and one drone route limited to its stated endpoints.",
+        ),
+        "manuals/power-networks/reserve-field-test/task/checkmark": (
+            "74ADFAB08CF6DE29",
+            "Name the grid, then verify generation, a buffer, one local load, one remote load, and visible network ownership.",
+        ),
+        "manuals/oritech/field-test/task/checkmark": (
+            "1D02E70F575E0050",
+            "Run one safe input through the ordered Oritech processing line and collect its final output without reactor ignition.",
+        ),
+        "manuals/nuclear-systems/chemical-chain-orientation/task/checkmark": (
+            "5DB2522E2C975568",
+            "In JEI, trace water to gases, uranium processing, fissile fuel, waste, steam, and recovered coolant without producing radioactive material.",
+        ),
+        "manuals/nuclear-systems/contained-field-test/task/checkmark": (
+            "292A8DAC66C8A6ED",
+            "With Hazmat equipped and the reactor unlit, verify shutdown logic, spare waste capacity, steam recovery, coolant return, and a clear evacuation route.",
+        ),
+    }
+    ADVANCEMENTS = {
+        "immersiveengineering:main/mb_cokeoven",
+        "immersiveengineering:main/mb_blastfurnace",
+        "create:water_wheel",
+        "create:mechanical_press",
+        "create:mechanical_mixer",
+        "pneumaticcraft:pressure_chamber",
+        "pneumaticcraft:logistics_drone",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.builder = importlib.import_module("afterlight_quests.builder")
+
+    def field_manuals(self):
+        return tuple(
+            chapter
+            for chapter in self.quests.build_catalog()
+            if chapter.slug.startswith("manuals/")
+        )
+
+    def test_public_builder_and_exact_manual_roots_are_catalogued(self) -> None:
+        self.assertTrue(callable(getattr(self.quests, "build_field_manuals", None)))
+        manuals = self.field_manuals()
+        self.assertEqual(len(manuals), 8)
+        self.assertEqual(
+            [
+                (
+                    chapter.slug,
+                    chapter.id,
+                    chapter.quests[0].slug,
+                    chapter.quests[0].id,
+                    chapter.icon,
+                    chapter.order_index,
+                )
+                for chapter in manuals
+            ],
+            [
+                (chapter_slug, chapter_id, root_slug, root_id, icon, order)
+                for order, (
+                    chapter_slug,
+                    chapter_id,
+                    root_slug,
+                    root_id,
+                    icon,
+                    _finale_slug,
+                ) in enumerate(self.MANUALS)
+            ],
+        )
+        for chapter in manuals:
+            self.assertEqual(chapter.group.resolved_id, "4A20F33642175B95")
+            self.assertEqual(chapter.group.title, "Field Manuals & Certifications")
+            self.assertEqual(chapter.quest_links, ())
+
+    def test_exact_counts_optionality_and_linear_coordinates_are_closed(self) -> None:
+        manuals = self.field_manuals()
+        quests = [quest for chapter in manuals for quest in chapter.quests]
+        tasks = [task for quest in quests for task in quest.tasks]
+        rewards = [reward for quest in quests for reward in quest.rewards]
+        self.assertEqual((len(manuals), len(quests), len(tasks), len(rewards)), (8, 81, 101, 89))
+        self.assertTrue(all(quest.optional is True for quest in quests))
+        for chapter in manuals:
+            self.assertEqual([quest.x for quest in chapter.quests], [float(index * 2) for index in range(len(chapter.quests))])
+            self.assertEqual({quest.y for quest in chapter.quests}, {0.0})
+            self.assertEqual(chapter.quests[0].size, 1.5)
+
+    def test_every_manual_is_one_reachable_immediate_dependency_path(self) -> None:
+        manuals = self.field_manuals()
+        self.assertEqual(len(manuals), 8)
+        expected_finales = [manual[-1] for manual in self.MANUALS]
+        observed_finales = []
+        for chapter in manuals:
+            self.assertEqual(chapter.quests[0].dependencies, ())
+            dependents = Counter(
+                dependency
+                for quest in chapter.quests
+                for dependency in quest.dependencies
+            )
+            for index, quest in enumerate(chapter.quests[1:], start=1):
+                self.assertEqual(quest.dependencies, (chapter.quests[index - 1].slug,))
+            leaves = [quest for quest in chapter.quests if dependents[quest.slug] == 0]
+            self.assertEqual(len(leaves), 1)
+            self.assertEqual(leaves[0], chapter.quests[-1])
+            self.assertEqual(len(leaves[0].tasks), 1)
+            self.assertEqual(leaves[0].tasks[0].task_type, "checkmark")
+            observed_finales.append(leaves[0].slug)
+        self.assertEqual(observed_finales, expected_finales)
+
+    def test_manual_task_detectors_are_exact_non_consuming_and_component_aware(self) -> None:
+        tasks = [
+            task
+            for chapter in self.field_manuals()
+            for quest in chapter.quests
+            for task in quest.tasks
+        ]
+        self.assertEqual(Counter(task.task_type for task in tasks), {"item": 84, "advancement": 7, "checkmark": 10})
+        for task in tasks:
+            if task.task_type != "item":
+                continue
+            self.assertEqual(task.data["count"], self.quests.SnbtLong(1))
+            self.assertIs(task.data["consume_items"], False)
+            self.assertEqual(task.data["item"]["count"], 1)
+        advancement_ids = {
+            task.data["advancement"]
+            for task in tasks
+            if task.task_type == "advancement"
+        }
+        self.assertEqual(advancement_ids, self.ADVANCEMENTS)
+        checkmarks = {task.slug: (task.id, task.title) for task in tasks if task.task_type == "checkmark"}
+        self.assertEqual(checkmarks, self.MANUAL_CHECKS)
+
+    def test_corrected_pneumaticcraft_manual_and_ae2_blank_pattern_targets_are_exact(self) -> None:
+        manuals = self.field_manuals()
+        self.assertEqual(len(manuals), 8)
+        tasks = {
+            task.slug: task
+            for chapter in manuals
+            for quest in chapter.quests
+            for task in quest.tasks
+        }
+        pnc_manual = tasks["manuals/pneumaticcraft/read-pressure-safely/task/item"]
+        self.assertEqual(
+            pnc_manual.data,
+            {
+                "item": {
+                    "count": 1,
+                    "id": "patchouli:guide_book",
+                    "components": {"patchouli:book": "pneumaticcraft:book"},
+                },
+                "count": self.quests.SnbtLong(1),
+                "consume_items": False,
+                "match_components": "fuzzy",
+            },
+        )
+        blank_pattern = tasks["manuals/applied-energistics-2/first-pattern/task/crafting-pattern"]
+        self.assertEqual(blank_pattern.data["item"], {"count": 1, "id": "ae2:blank_pattern"})
+        self.assertNotIn("pneumaticcraft:manual", {task.data.get("item", {}).get("id") for task in tasks.values()})
+        self.assertNotIn("ae2:crafting_pattern", {task.data.get("item", {}).get("id") for task in tasks.values()})
+
+    def test_acquisition_placeholders_cover_every_node_with_exact_classification(self) -> None:
+        declarations = getattr(self.quests, "FIELD_MANUAL_ACQUISITIONS", ())
+        quest_slugs = {
+            quest.slug
+            for chapter in self.field_manuals()
+            for quest in chapter.quests
+        }
+        self.assertEqual(len(declarations), 81)
+        self.assertEqual({declaration.quest_slug for declaration in declarations}, quest_slugs)
+        self.assertEqual(
+            Counter(declaration.method for declaration in declarations),
+            {"recipe": 53, "process": 9, "worldgen": 1, "advancement": 8, "manual_check": 10},
+        )
+        by_slug = {declaration.quest_slug: declaration.method for declaration in declarations}
+        self.assertEqual(by_slug["manuals/applied-energistics-2/meteorite-presses"], "worldgen")
+        self.assertEqual(by_slug["manuals/nuclear-systems/safety-before-output"], "advancement")
+        for chapter in self.field_manuals():
+            for quest in chapter.quests:
+                task_types = {task.task_type for task in quest.tasks}
+                method = by_slug[quest.slug]
+                if method == "manual_check":
+                    self.assertEqual(task_types, {"checkmark"})
+                elif method == "advancement" and quest.slug != "manuals/nuclear-systems/safety-before-output":
+                    self.assertEqual(task_types, {"advancement"})
+                else:
+                    self.assertEqual(task_types, {"item"})
+
+    def test_reward_policy_is_exact_and_progression_safe(self) -> None:
+        manuals = self.field_manuals()
+        all_rewards = [reward for chapter in manuals for quest in chapter.quests for reward in quest.rewards]
+        self.assertEqual(Counter(reward.reward_type for reward in all_rewards), {"item": 81, "xp": 8})
+        total_chits = 0
+        total_xp = 0
+        finale_slugs = {manual[-1] for manual in self.MANUALS}
+        for chapter in manuals:
+            for quest in chapter.quests:
+                item_rewards = [reward for reward in quest.rewards if reward.reward_type == "item"]
+                xp_rewards = [reward for reward in quest.rewards if reward.reward_type == "xp"]
+                self.assertEqual(len(item_rewards), 1)
+                self.assertEqual(item_rewards[0].data["item"]["id"], "kubejs:requisition_chit")
+                expected_chits = 3 if quest.slug in finale_slugs else 1
+                self.assertEqual(item_rewards[0].data, {"item": {"count": expected_chits, "id": "kubejs:requisition_chit"}, "count": expected_chits})
+                self.assertEqual([reward.data for reward in xp_rewards], [{"xp": 100}] if quest.slug in finale_slugs else [])
+                total_chits += expected_chits
+                total_xp += sum(reward.data["xp"] for reward in xp_rewards)
+        self.assertEqual((total_chits, total_xp), (97, 800))
+        self.assertTrue({reward.reward_type for reward in all_rewards} <= {"item", "xp"})
+
+    def test_localization_keys_are_complete_exact_and_u2014_free(self) -> None:
+        manuals = self.field_manuals()
+        self.assertEqual(len(manuals), 8)
+        entries = self.builder._localization_entries(manuals)
+        self.assertEqual(entries["chapter_group.4A20F33642175B95.title"], "Field Manuals & Certifications")
+        self.assertEqual(len(entries), 262)
+        expected_task_entries = {
+            f"task.{task_id}.title": title
+            for task_id, title in self.MANUAL_CHECKS.values()
+        }
+        self.assertEqual(
+            {key: value for key, value in entries.items() if key.startswith("task.")},
+            expected_task_entries,
+        )
+        for value in entries.values():
+            values = (value,) if isinstance(value, str) else value
+            self.assertNotIn("\u2014", "\n".join(values))
+
+    def test_story_has_no_direct_or_transitive_manual_dependency(self) -> None:
+        catalog = self.quests.build_catalog()
+        quests = {quest.slug: quest for chapter in catalog for quest in chapter.quests}
+        ids = {quest.id: quest.slug for quest in quests.values()}
+        manual_slugs = {slug for slug in quests if slug.startswith("manuals/")}
+        story_slugs = {
+            quest.slug
+            for chapter in catalog
+            if chapter.group.resolved_id == "4525BB3160467FCB"
+            for quest in chapter.quests
+        }
+        reached = set(story_slugs)
+        pending = list(story_slugs)
+        while pending:
+            quest = quests[pending.pop()]
+            for dependency in quest.dependencies:
+                dependency_slug = ids.get(dependency, dependency)
+                if dependency_slug in quests and dependency_slug not in reached:
+                    reached.add(dependency_slug)
+                    pending.append(dependency_slug)
+        self.assertTrue(manual_slugs)
+        self.assertFalse(reached & manual_slugs)
+
+    def test_only_approved_entities_use_explicit_ids_and_all_ids_are_unique(self) -> None:
+        catalog = self.quests.build_catalog()
+        manuals = self.field_manuals()
+        self.assertEqual(len(manuals), 8)
+        approved_explicit = {
+            *(manual[0] for manual in self.MANUALS),
+            *(manual[2] for manual in self.MANUALS),
+        }
+        manual_entities = []
+        for chapter in manuals:
+            manual_entities.append(("chapter", chapter.slug, chapter.id, chapter.explicit_id))
+            for quest in chapter.quests:
+                manual_entities.append(("quest", quest.slug, quest.id, quest.explicit_id))
+                manual_entities.extend(("task", task.slug, task.id, task.explicit_id) for task in quest.tasks)
+                manual_entities.extend(("reward", reward.slug, reward.id, reward.explicit_id) for reward in quest.rewards)
+        for kind, slug, identifier, explicit_id in manual_entities:
+            self.assertRegex(identifier, r"^[0-7][0-9A-F]{15}$")
+            if slug in approved_explicit:
+                self.assertEqual(explicit_id, identifier)
+            else:
+                self.assertIsNone(explicit_id)
+                self.assertEqual(identifier, self.quests.stable_id(kind, slug))
+        self.assertEqual(len({entity[2] for entity in manual_entities}), len(manual_entities))
+        self.quests.assert_no_id_collisions(catalog)
 
 
 class QuestLinkCompilerTests(unittest.TestCase):
@@ -4497,12 +4873,27 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             self.assertEqual(
                 changed,
                 sorted([
+                    "config/ftbquests/quests/.afterlight-managed.json",
                     *[
                         f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                         for chapter_id in self.ORDER_OVERLAYS
                     ],
                     "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
                     f"config/ftbquests/quests/chapters/{self.COMMODITY_CHAPTER}.snbt",
+                    *[
+                        f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
+                        for chapter_id in (
+                            "150C6F996983394C",
+                            "4DE10FFCDEEF9892",
+                            "01749E1554DFF98B",
+                            "4690C88367D47FF3",
+                            "0A510C4BD2A3818B",
+                            "67F13F819570ED52",
+                            "67C126F7B1338CB1",
+                            "0B7C7859EBD6EFF3",
+                        )
+                    ],
+                    "config/ftbquests/quests/lang/en_us.snbt",
                     "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
                 ]),
             )
@@ -6334,6 +6725,7 @@ class QuestCompilerTests(unittest.TestCase):
         catalog = [
             chapter for chapter in full_catalog
             if chapter.group.resolved_id == "4A20F33642175B95"
+            and not chapter.slug.startswith("manuals/")
         ]
 
         self.assertEqual([chapter.title for chapter in catalog], [
@@ -6360,7 +6752,10 @@ class QuestCompilerTests(unittest.TestCase):
                 and chapter.order_index <= 16
                 and chapter.id != "6C40000000000001"
             )
-            or chapter.group.resolved_id == "4A20F33642175B95"
+            or (
+                chapter.group.resolved_id == "4A20F33642175B95"
+                and not chapter.slug.startswith("manuals/")
+            )
         ]
         self.assertEqual(
             (
@@ -6670,7 +7065,7 @@ class QuestCompilerTests(unittest.TestCase):
                 sum(len(quest.tasks) for chapter in full_catalog for quest in chapter.quests),
                 sum(len(quest.rewards) for chapter in full_catalog for quest in chapter.quests),
             ),
-            (38, 259, 279, 344),
+            (46, 340, 380, 433),
         )
 
     def test_task_six_undercurrent_requires_ars_plus_exactly_one_branch(self) -> None:

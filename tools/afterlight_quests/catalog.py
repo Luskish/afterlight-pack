@@ -17,10 +17,11 @@ from .builder import (
     SnbtLong,
     TaskSpec,
 )
+from .field_manuals import FIELD_MANUALS, build_field_manuals
 
 
 STORY = GroupSpec("story", "The Story", "4525BB3160467FCB")
-CERTIFICATIONS = GroupSpec("certifications", "Certifications", "4A20F33642175B95")
+CERTIFICATIONS = FIELD_MANUALS
 UNDERCURRENT = GroupSpec("undercurrent", "The Undercurrent", "51FF272F5030D2E6")
 DEEP_VAULT = GroupSpec("deep-vault", "The Deep Vault", "4DEAD1F5F7AB4DA3")
 ATLAS = GroupSpec(
@@ -3113,6 +3114,7 @@ def build_catalog() -> list[ChapterSpec]:
     undercurrent = _undercurrent_chapters()
     deep_vault = _deep_vault_chapters()
     atlas = _atlas_chapters()
+    field_manuals = build_field_manuals()
     story = [
         chapter_six,
         chapter_seven,
@@ -3137,6 +3139,7 @@ def build_catalog() -> list[ChapterSpec]:
     ]
     return [
         *story,
+        *field_manuals,
         logistics,
         ore_loop,
         autocrafting,

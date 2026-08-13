@@ -263,3 +263,27 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/fixtures/quests/common-commodity-tasks.json`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/compatibility.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
 - **Impact:** Interchangeable bread and steel outputs can satisfy the named quests without admitting machines, components, unique resources, custom progression items, or ambiguous story materials.
 - **Follow-up:** Task 8 must generate the corpus once, emit and validate fresh commodity-audit records, and run the required pack and server gates before this event becomes verified.
+
+### MEM-2026-08-13-019
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** open
+- **Subsystem:** FTB Quests, generated item audit
+- **Summary:** The requested Task 6 base commit already fails the committed-corpus regeneration guard because the generated quest item audit contains a stale digest.
+- **Evidence:** Before Task 6 changes, `python3 -m unittest tools.tests.test_afterlight_quests tools.tests.test_project_memory -v` ended with `Ran 197 tests in 10.871s` and `FAILED (failures=1, skipped=2)` at `test_full_catalog_regeneration_is_byte_identical_to_committed_output`; the isolated regeneration expected digest prefix `9950f9bba126daefa892798ec0ffdeb01a9eb5425`, while the committed audit used prefix `cbed5a3a1b3157edd9971fcfb6ad8634f3da4e5bd`. After Task 6, the full quest suite ended with `Ran 200 tests in 10.839s` and the same single failure.
+- **Files or Commit:** `df677afb0855b613420c8ad0368fab5b5787c8cd`, `kubejs/server_scripts/afterlight/generated_quest_item_audit.js`, `tools/tests/test_afterlight_quests.py`
+- **Impact:** The broad quest suite is not fully green at this base commit, but the mismatch is independent of the Task 6 catalog because the committed generated quest corpus and audit remained byte-untouched.
+- **Follow-up:** Task 8 must regenerate both quest audits through the owned transaction, prove deterministic bytes, and resolve this failure without a Task 6 corpus write.
+
+### MEM-2026-08-13-020
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** FTB Quests, optional field manuals
+- **Summary:** The catalog now contains exactly eight optional ECHO-voice field manuals with 81 linear quests, 101 non-consuming or action tasks, 89 policy-limited rewards, deterministic acquisition classifications, and no Story dependency or quest links.
+- **Evidence:** The test-first run ended with `Ran 10 tests in 0.025s` and `FAILED (failures=10)` before the manual builder existed. The final focused run ended with `Ran 15 tests in 1.958s` and `OK`; independent blueprint comparison printed `BLUEPRINT_COMPARE_OK chapters=8 quests=81 task8_ids=81 corrections=2`; compile and diff verification printed `VERIFY_FOCUSED_AND_COMPILE_OK`, `GENERATED_CORPUS_UNTOUCHED`, `TASK4_TASK5_OWNERS_UNTOUCHED`, `U2014_DIFF_CLEAN`, and `OWNERSHIP_AND_DIFF_GUARDS_OK`.
+- **Files or Commit:** `tools/afterlight_quests/field_manuals.py`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, `docs/PROJECT_MEMORY.md`
+- **Impact:** Players can receive beginner guidance for Heavy Industry, Matter Systems, Storage Lattice, Kinetics, Pressure, Power Networks, Frontier Machines, and Nuclear Safety without making any manual part of required Story progression. PneumaticCraft uses the component-bearing Patchouli guide and AE2 uses the craftable blank pattern.
+- **Follow-up:** Task 7 may add approved quest links, and Task 8 must generate the quest corpus and exact acquisition fixture, then prove all 81 acquisition records against the effective runtime.

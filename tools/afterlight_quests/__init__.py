@@ -30,6 +30,12 @@ from .catalog import (
     load_common_commodity_declarations,
 )
 from .compatibility import capture_quest_corpus, compare_quest_corpus
+from .field_manuals import (
+    FIELD_MANUAL_ACQUISITIONS,
+    FIELD_MANUALS,
+    FieldManualAcquisition,
+    build_field_manuals,
+)
 from .legacy_quest_overlays import (
     LEGACY_CHAPTER_ORDER_OVERLAYS,
     LEGACY_COMMODITY_TASK_OVERLAYS,
@@ -54,6 +60,9 @@ __all__ = [
     "DEPOT_LATE_TABLE",
     "DEPOT_MID_TABLE",
     "GroupSpec",
+    "FIELD_MANUAL_ACQUISITIONS",
+    "FIELD_MANUALS",
+    "FieldManualAcquisition",
     "KUBEJS_ITEM_ALLOWLIST",
     "LEGACY_CHAPTER_ORDER_OVERLAYS",
     "LEGACY_COMMODITY_TASK_OVERLAYS",
@@ -73,6 +82,7 @@ __all__ = [
     "VANILLA_ITEM_ALLOWLIST",
     "assert_no_id_collisions",
     "build_catalog",
+    "build_field_manuals",
     "capture_quest_corpus",
     "compare_quest_corpus",
     "count_quests",

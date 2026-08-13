@@ -618,14 +618,43 @@ class QuestBuildTransactionTests(unittest.TestCase):
                 before["config/ftbquests/quests/first.snbt"][-1],
             )
 
+    def test_in_root_recovery_blocks_retry_without_growing_residue(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_unlink_artifact",
+                    side_effect=OSError("retain cleanup artifact"),
+                ):
+                    result = transaction.promote_bytes({first: b"new\n"}, frozen)
+
+            self.assertTrue(result.cleanup_warnings)
+            self.assertEqual(len(result.unexpected_recovery_paths), 1)
+            recovery_identity = self.path_identity(
+                result.unexpected_recovery_paths[0]
+            )
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "unresolved quest transaction artifact",
+                ):
+                    self.freeze(transaction, root)
+            self.assertEqual(
+                self.path_identity(result.unexpected_recovery_paths[0]),
+                recovery_identity,
+            )
+
     def test_private_artifact_payload_or_mode_drift_is_retained(self) -> None:
         for case in ("payload", "mode"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
                 root, first, _ = self.make_root(Path(temp_dir))
-                real_current = self.transaction_module._artifact_current_state
+                real_cleanup = self.transaction_module._cleanup_private_artifact
                 mutated = False
 
-                def mutate_then_read(artifact):
+                def mutate_then_cleanup(artifact):
                     nonlocal mutated
                     if (
                         not mutated
@@ -637,14 +666,14 @@ class QuestBuildTransactionTests(unittest.TestCase):
                             artifact.path.write_bytes(b"third-party private payload\n")
                         else:
                             os.chmod(artifact.path, 0o711)
-                    return real_current(artifact)
+                    return real_cleanup(artifact)
 
                 with self.transaction_module.QuestBuildTransaction(root) as transaction:
                     frozen = self.freeze(transaction, root)
                     with mock.patch.object(
                         self.transaction_module,
-                        "_artifact_current_state",
-                        side_effect=mutate_then_read,
+                        "_cleanup_private_artifact",
+                        side_effect=mutate_then_cleanup,
                     ):
                         result = transaction.promote_bytes({first: b"new\n"}, frozen)
 
@@ -698,10 +727,160 @@ class QuestBuildTransactionTests(unittest.TestCase):
             self.assertTrue(result.committed)
             self.assertTrue(result.cleanup_warnings)
             self.assertEqual(len(result.recovery_paths), 1)
+            self.assertFalse(result.retained_paths)
+            self.assertEqual(
+                result.unexpected_recovery_paths,
+                result.recovery_paths,
+            )
             self.assertEqual(
                 self.path_identity(result.recovery_paths[0]),
                 replacement_identity,
             )
+
+    def test_final_unlink_hook_cannot_delete_a_private_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            original_identity = self.path_identity(first)
+            real_unlink = self.transaction_module.os.unlink
+            injected = False
+            replacement_path: Path | None = None
+
+            def replace_at_final_unlink(path, *arguments, **keywords):
+                nonlocal injected, replacement_path
+                name = os.fspath(path)
+                if ".afterlight-remove-" in name and not injected:
+                    injected = True
+                    cleanup_path = first.parent / name
+                    replacement = cleanup_path.with_name(
+                        f".{cleanup_path.name}.third-party"
+                    )
+                    replacement.write_bytes(b"third-party final unlink bytes\n")
+                    os.chmod(replacement, 0o711)
+                    os.replace(replacement, cleanup_path)
+                    replacement_path = cleanup_path
+                return real_unlink(path, *arguments, **keywords)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module.os,
+                    "unlink",
+                    side_effect=replace_at_final_unlink,
+                ):
+                    result = transaction.promote_bytes({first: b"new\n"}, frozen)
+
+            self.assertFalse(injected)
+            self.assertIsNone(replacement_path)
+            self.assertFalse(result.cleanup_warnings)
+            self.assertEqual(len(result.recovery_paths), 1)
+            self.assertEqual(
+                self.path_identity(result.recovery_paths[0]),
+                original_identity,
+            )
+
+    def test_repeated_success_reuses_bounded_retention_and_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            observed_retention: set[Path] = set()
+
+            for index in range(8):
+                payload = f"replacement-{index}\n".encode("utf-8")
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    result = transaction.promote_bytes({first: payload}, frozen)
+                self.assertFalse(result.cleanup_warnings)
+                self.assertEqual(len(result.recovery_paths), 1)
+                self.assertEqual(result.retained_paths, result.recovery_paths)
+                self.assertFalse(result.unexpected_recovery_paths)
+                observed_retention.update(result.recovery_paths)
+                self.assertEqual(first.read_bytes(), payload)
+                self.assertLessEqual(
+                    len([path for path in observed_retention if path.exists()]),
+                    1,
+                )
+
+            retained_before = {
+                path: self.path_identity(path)
+                for path in observed_retention
+                if path.exists()
+            }
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                result = transaction.promote_bytes(
+                    {first: b"replacement-7\n"},
+                    frozen,
+                )
+            self.assertEqual(list(result), [])
+            self.assertFalse(result.cleanup_warnings)
+            self.assertFalse(result.recovery_paths)
+            self.assertEqual(
+                {
+                    path: self.path_identity(path)
+                    for path in observed_retention
+                    if path.exists()
+                },
+                retained_before,
+            )
+
+    def test_repeated_delete_create_cycles_keep_two_file_records_at_most(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            observed_retention: set[Path] = set()
+
+            for index in range(5):
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    deleted = transaction.promote_bytes(
+                        {},
+                        frozen,
+                        deletions=(first,),
+                    )
+                self.assertFalse(first.exists())
+                self.assertFalse(deleted.cleanup_warnings)
+                observed_retention.update(deleted.recovery_paths)
+                self.assertLessEqual(
+                    len([path for path in observed_retention if path.exists()]),
+                    2,
+                )
+
+                payload = f"created-{index}\n".encode("utf-8")
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    created = transaction.promote_bytes({first: payload}, frozen)
+                self.assertEqual(first.read_bytes(), payload)
+                self.assertFalse(created.cleanup_warnings)
+                observed_retention.update(created.recovery_paths)
+                self.assertLessEqual(
+                    len([path for path in observed_retention if path.exists()]),
+                    2,
+                )
+
+    def test_repeated_created_directory_rollbacks_reuse_retention(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            created_parent = first.parent / "new-parent"
+            target = created_parent / "new.snbt"
+            observed_retention: set[Path] = set()
+
+            for _ in range(5):
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    with self.assertRaisesRegex(ValueError, "force rollback") as raised:
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+                recovery_paths = getattr(raised.exception, "recovery_paths", ())
+                self.assertEqual(len(recovery_paths), 3)
+                observed_retention.update(recovery_paths)
+                self.assertFalse(created_parent.exists())
+                self.assertLessEqual(
+                    len([path for path in observed_retention if path.exists()]),
+                    3,
+                )
 
     def test_artifact_is_registered_before_fsync_and_cleanup_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -709,9 +888,9 @@ class QuestBuildTransactionTests(unittest.TestCase):
             before = self.inventory(root)
             original_identity = self.path_identity(first)
             real_fsync = self.transaction_module.os.fsync
-            real_unlink = self.transaction_module.os.unlink
+            real_move = self.transaction_module._atomic_no_replace_between
             failed_fsync = False
-            failed_unlink = False
+            failed_cleanup = False
 
             def fail_stage_fsync(descriptor):
                 nonlocal failed_fsync
@@ -721,12 +900,26 @@ class QuestBuildTransactionTests(unittest.TestCase):
                     raise OSError("stage fsync failed")
                 return real_fsync(descriptor)
 
-            def fail_stage_unlink(path, *arguments, **keywords):
-                nonlocal failed_unlink
-                if ".afterlight-stage-" in os.fspath(path) and not failed_unlink:
-                    failed_unlink = True
+            def fail_stage_cleanup(
+                source_parent_fd,
+                source_name,
+                target_parent_fd,
+                target_name,
+            ):
+                nonlocal failed_cleanup
+                if (
+                    ".afterlight-stage-" in source_name
+                    and target_name.startswith(".afterlight-retained-")
+                    and not failed_cleanup
+                ):
+                    failed_cleanup = True
                     raise OSError("stage cleanup failed")
-                return real_unlink(path, *arguments, **keywords)
+                return real_move(
+                    source_parent_fd,
+                    source_name,
+                    target_parent_fd,
+                    target_name,
+                )
 
             with self.transaction_module.QuestBuildTransaction(root) as transaction:
                 frozen = self.freeze(transaction, root)
@@ -735,9 +928,9 @@ class QuestBuildTransactionTests(unittest.TestCase):
                     "fsync",
                     side_effect=fail_stage_fsync,
                 ), mock.patch.object(
-                    self.transaction_module.os,
-                    "unlink",
-                    side_effect=fail_stage_unlink,
+                    self.transaction_module,
+                    "_atomic_no_replace_between",
+                    side_effect=fail_stage_cleanup,
                 ):
                     with self.assertRaises(
                         self.transaction_module.QuestBuildRollbackError
@@ -745,7 +938,7 @@ class QuestBuildTransactionTests(unittest.TestCase):
                         transaction.promote_bytes({first: b"new\n"}, frozen)
 
             self.assertTrue(failed_fsync)
-            self.assertTrue(failed_unlink)
+            self.assertTrue(failed_cleanup)
             self.assertEqual(self.path_identity(first), original_identity)
             self.assertEqual(first.read_bytes(), before["config/ftbquests/quests/first.snbt"][-1])
             self.assertTrue(raised.exception.cleanup_errors)
@@ -1067,6 +1260,48 @@ class QuestBuildTransactionTests(unittest.TestCase):
             )
             self.assertIn(created_parent, raised.exception.unresolved_paths)
             self.assertIn(created_parent, raised.exception.recovery_paths)
+
+    def test_final_rmdir_hook_cannot_hide_created_directory_mode_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            created_parent = first.parent / "new-parent"
+            target = created_parent / "new.snbt"
+            real_rmdir = self.transaction_module.os.rmdir
+            injected = False
+
+            def chmod_at_final_rmdir(path, *arguments, **keywords):
+                nonlocal injected
+                name = os.fspath(path)
+                if ".afterlight-remove-" in name and not injected:
+                    injected = True
+                    os.chmod(
+                        created_parent.parent / name,
+                        0o711,
+                    )
+                return real_rmdir(path, *arguments, **keywords)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module.os,
+                    "rmdir",
+                    side_effect=chmod_at_final_rmdir,
+                ):
+                    with self.assertRaises(BaseException) as raised:
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+
+            self.assertFalse(injected)
+            recovery_paths = getattr(raised.exception, "recovery_paths", ())
+            self.assertTrue(recovery_paths)
+            self.assertTrue(
+                all(path.exists() for path in recovery_paths)
+            )
 
     def test_rollback_failure_retains_recovery_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

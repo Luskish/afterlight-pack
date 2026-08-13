@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import fcntl
+import hashlib
 import os
 import shutil
 import stat
@@ -22,6 +23,8 @@ RENAME_EXCL = 0x00000004
 
 _ACTIVE_ROOTS: set[tuple[int, int]] = set()
 _ACTIVE_ROOTS_LOCK = threading.Lock()
+_MAX_RETAINED_FILES_PER_TARGET = 2
+_MAX_RETAINED_DIRECTORIES_PER_PATH = 1
 
 
 def is_quest_transaction_artifact(path: Path) -> bool:
@@ -76,6 +79,13 @@ class _NodeState:
     payload: bytes | None
 
 
+@dataclass(frozen=True)
+class _RetentionStore:
+    path: Path
+    descriptor: int
+    state: _NodeState
+
+
 @dataclass
 class _Artifact:
     path: Path
@@ -85,6 +95,8 @@ class _Artifact:
     state: _NodeState | None = None
     present: bool = True
     retain: bool = False
+    retention_store: _RetentionStore | None = None
+    retention_key: str | None = None
 
 
 @dataclass
@@ -109,6 +121,7 @@ class _CreatedDirectory:
     phase: str = "public"
     private_name: str | None = None
     private_path: Path | None = None
+    private_parent_fd: int | None = None
 
 
 class PromotionResult(list[Path]):
@@ -123,6 +136,10 @@ class PromotionResult(list[Path]):
         self.committed = True
         self.cleanup_warnings = tuple(cleanup_warnings)
         self.recovery_paths = tuple(dict.fromkeys(recovery_paths))
+        (
+            self.retained_paths,
+            self.unexpected_recovery_paths,
+        ) = _classify_retention_paths(self.recovery_paths)
 
 
 class QuestBuildRollbackError(RuntimeError):
@@ -240,6 +257,46 @@ def _same_identity(expected: _NodeState, actual: _NodeState) -> bool:
     )
 
 
+def _state_token(state: _NodeState) -> str:
+    digest = hashlib.sha256()
+    values = (
+        state.kind,
+        state.device,
+        state.inode,
+        state.mode,
+        state.uid,
+        state.gid,
+        state.links,
+        state.size,
+        state.modified_ns,
+        state.flags,
+        state.birth_ns,
+    )
+    for value in values:
+        digest.update(repr(value).encode("ascii"))
+        digest.update(b"\0")
+    payload = state.payload
+    if payload is None:
+        digest.update(b"none")
+    else:
+        digest.update(b"bytes\0")
+        digest.update(payload)
+    return digest.hexdigest()
+
+
+def _retention_key(repository_root: Path, path: Path) -> str:
+    relative = _relative_to_root(repository_root, path)
+    return hashlib.sha256(relative.as_posix().encode("utf-8")).hexdigest()[:32]
+
+
+def _retention_prefix(key: str) -> str:
+    return f".afterlight-retained-{key}-"
+
+
+def _retention_name(key: str, state: _NodeState) -> str:
+    return f"{_retention_prefix(key)}{_state_token(state)}"
+
+
 def _fsync_directory_fd(descriptor: int) -> None:
     os.fsync(descriptor)
 
@@ -284,6 +341,51 @@ def _file_flags() -> int:
     return flags
 
 
+def _open_retention_store(
+    repository_root: Path,
+    repository_state: _NodeState,
+    *,
+    create: bool,
+) -> _RetentionStore | None:
+    parent_path = repository_root.parent
+    parent_fd = os.open(parent_path, _directory_flags())
+    name = (
+        ".afterlight-quest-retention-"
+        f"{repository_state.device:x}-{repository_state.inode:x}"
+    )
+    path = parent_path / name
+    created = False
+    try:
+        try:
+            status = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            if not create:
+                return None
+            os.mkdir(name, 0o700, dir_fd=parent_fd)
+            created = True
+            status = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if stat.S_ISLNK(status.st_mode) or not stat.S_ISDIR(status.st_mode):
+            raise ValueError(f"unsafe quest retention directory: {path}")
+        descriptor = os.open(name, _directory_flags(), dir_fd=parent_fd)
+        opened = os.fstat(descriptor)
+        if opened.st_dev != status.st_dev or opened.st_ino != status.st_ino:
+            os.close(descriptor)
+            raise ValueError(f"quest retention directory changed while opening: {path}")
+        state = _node_state(opened, None)
+        if (
+            state.device != repository_state.device
+            or state.uid != os.geteuid()
+            or state.mode != 0o700
+        ):
+            os.close(descriptor)
+            raise ValueError(f"unsafe quest retention directory metadata: {path}")
+        if created:
+            _fsync_directory_fd(parent_fd)
+        return _RetentionStore(path=path, descriptor=descriptor, state=state)
+    finally:
+        os.close(parent_fd)
+
+
 def _open_root(path: Path) -> int:
     return os.open(path, _directory_flags())
 
@@ -308,6 +410,48 @@ def _relative_to_root(root: Path, path: Path) -> Path:
     return relative
 
 
+def _claim_retained_directory(
+    store: _RetentionStore,
+    key: str,
+    parent_fd: int,
+    path: Path,
+    name: str,
+    registry: list[_CreatedDirectory],
+) -> _NodeState | None:
+    candidates = _retained_candidates(
+        store,
+        key,
+        expected_kind="directory",
+        limit=_MAX_RETAINED_DIRECTORIES_PER_PATH,
+    )
+    if not candidates:
+        return None
+    retained_name, _, retained_state = candidates[0]
+    _atomic_no_replace_between(
+        store.descriptor,
+        retained_name,
+        parent_fd,
+        name,
+    )
+    record = _CreatedDirectory(
+        path=path,
+        parent_fd=os.dup(parent_fd),
+        name=name,
+        state=retained_state,
+    )
+    registry.append(record)
+    _fsync_directory_fd(store.descriptor)
+    _fsync_directory_fd(parent_fd)
+    observed = _read_any_at(parent_fd, name, path)
+    if observed is None or observed != retained_state:
+        if observed is not None:
+            record.state = observed
+        raise ValueError(
+            f"quest transaction lost retained directory ownership: {path}"
+        )
+    return retained_state
+
+
 def _open_parent(
     root: Path,
     root_fd: int,
@@ -315,6 +459,7 @@ def _open_parent(
     *,
     create: bool,
     created_registry: list[_CreatedDirectory] | None = None,
+    retention_store: _RetentionStore | None = None,
 ) -> tuple[int, tuple[tuple[Path, _NodeState], ...]]:
     relative = _relative_to_root(root, target)
     descriptor = os.dup(root_fd)
@@ -328,22 +473,44 @@ def _open_parent(
             except FileNotFoundError:
                 if not create:
                     raise
-                os.mkdir(component, 0o755, dir_fd=descriptor)
-                created_record = _CreatedDirectory(
-                    path=current,
-                    parent_fd=(
-                        os.dup(descriptor)
-                        if created_registry is not None
-                        else -1
-                    ),
-                    name=component,
-                )
-                if created_registry is not None:
-                    created_registry.append(created_record)
-                status = os.stat(component, dir_fd=descriptor, follow_symlinks=False)
-                created_record.state = _node_state(status, None)
-                created.append((current, created_record.state))
-                _fsync_directory_fd(descriptor)
+                retained_state = None
+                if retention_store is not None and created_registry is not None:
+                    retained_state = _claim_retained_directory(
+                        retention_store,
+                        _retention_key(root, current),
+                        descriptor,
+                        current,
+                        component,
+                        created_registry,
+                    )
+                if retained_state is None:
+                    os.mkdir(component, 0o755, dir_fd=descriptor)
+                    created_record = _CreatedDirectory(
+                        path=current,
+                        parent_fd=(
+                            os.dup(descriptor)
+                            if created_registry is not None
+                            else -1
+                        ),
+                        name=component,
+                    )
+                    if created_registry is not None:
+                        created_registry.append(created_record)
+                    status = os.stat(
+                        component,
+                        dir_fd=descriptor,
+                        follow_symlinks=False,
+                    )
+                    created_record.state = _node_state(status, None)
+                    retained_state = created_record.state
+                    _fsync_directory_fd(descriptor)
+                else:
+                    status = os.stat(
+                        component,
+                        dir_fd=descriptor,
+                        follow_symlinks=False,
+                    )
+                created.append((current, retained_state))
             if stat.S_ISLNK(status.st_mode):
                 raise ValueError(f"symlinked parent component is not allowed: {current}")
             if not stat.S_ISDIR(status.st_mode):
@@ -448,6 +615,38 @@ def _read_path(path: Path) -> _NodeState:
         return state
     finally:
         os.close(descriptor)
+
+
+def _classify_retention_paths(
+    paths: Iterable[Path],
+) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
+    retained: list[Path] = []
+    unexpected: list[Path] = []
+    marker = ".afterlight-retained-"
+    for path in paths:
+        name = path.name
+        remainder = name[len(marker):] if name.startswith(marker) else ""
+        key, separator, token = remainder.partition("-")
+        verified = (
+            separator == "-"
+            and len(key) == 32
+            and len(token) == 64
+            and all(character in "0123456789abcdef" for character in key + token)
+        )
+        if verified:
+            try:
+                state = _read_path(path)
+                verified = _state_token(state) == token
+                if state.kind == "directory":
+                    descriptor = os.open(path, _directory_flags())
+                    try:
+                        verified = verified and not os.listdir(descriptor)
+                    finally:
+                        os.close(descriptor)
+            except (OSError, ValueError):
+                verified = False
+        (retained if verified else unexpected).append(path)
+    return tuple(retained), tuple(unexpected)
 
 
 def _capture_roots(
@@ -822,14 +1021,19 @@ def _atomic_exchange(parent_fd: int, staged_name: str, target_name: str) -> None
     raise NotImplementedError(f"atomic exchange is unsupported on {sys_platform()}")
 
 
-def _atomic_no_replace(parent_fd: int, staged_name: str, target_name: str) -> None:
+def _atomic_no_replace_between(
+    source_parent_fd: int,
+    source_name: str,
+    target_parent_fd: int,
+    target_name: str,
+) -> None:
     if sys_platform() == "Darwin":
         _libc_call(
             "renameatx_np",
             (
-                parent_fd,
-                os.fsencode(staged_name),
-                parent_fd,
+                source_parent_fd,
+                os.fsencode(source_name),
+                target_parent_fd,
                 os.fsencode(target_name),
                 RENAME_EXCL,
             ),
@@ -839,15 +1043,24 @@ def _atomic_no_replace(parent_fd: int, staged_name: str, target_name: str) -> No
         _libc_call(
             "renameat2",
             (
-                parent_fd,
-                os.fsencode(staged_name),
-                parent_fd,
+                source_parent_fd,
+                os.fsencode(source_name),
+                target_parent_fd,
                 os.fsencode(target_name),
                 RENAME_NOREPLACE,
             ),
         )
         return
     raise NotImplementedError(f"atomic no-replace is unsupported on {sys_platform()}")
+
+
+def _atomic_no_replace(parent_fd: int, staged_name: str, target_name: str) -> None:
+    _atomic_no_replace_between(
+        parent_fd,
+        staged_name,
+        parent_fd,
+        target_name,
+    )
 
 
 def sys_platform() -> str:
@@ -865,6 +1078,128 @@ def _require_same_device(
         )
 
 
+def _read_open_regular(descriptor: int, path: Path) -> _NodeState:
+    before = os.fstat(descriptor)
+    if not stat.S_ISREG(before.st_mode):
+        raise ValueError(f"quest retained object is not a regular file: {path}")
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    chunks: list[bytes] = []
+    while True:
+        chunk = os.read(descriptor, 1024 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    payload = b"".join(chunks)
+    after = os.fstat(descriptor)
+    state = _node_state(after, payload)
+    if not _states_match(_node_state(before, payload), state):
+        raise ValueError(f"quest retained object changed while reading: {path}")
+    return state
+
+
+def _retained_candidates(
+    store: _RetentionStore,
+    key: str,
+    *,
+    expected_kind: str,
+    limit: int,
+) -> list[tuple[str, Path, _NodeState]]:
+    prefix = _retention_prefix(key)
+    names = sorted(name for name in os.listdir(store.descriptor) if name.startswith(prefix))
+    if len(names) > limit:
+        raise ValueError(
+            f"quest retention bound exceeded for key {key}: {store.path}"
+        )
+    candidates: list[tuple[str, Path, _NodeState]] = []
+    for name in names:
+        suffix = name[len(prefix):]
+        path = store.path / name
+        if len(suffix) != 64 or any(
+            character not in "0123456789abcdef" for character in suffix
+        ):
+            raise ValueError(f"malformed quest retention record: {path}")
+        state = _read_any_at(store.descriptor, name, path)
+        if state is None or state.kind != expected_kind or _state_token(state) != suffix:
+            raise ValueError(f"quest retention ownership cannot be proven: {path}")
+        if expected_kind == "file" and state.links != 1:
+            raise ValueError(f"quest retained file has unsafe links: {path}")
+        if expected_kind == "directory":
+            descriptor = os.open(name, _directory_flags(), dir_fd=store.descriptor)
+            try:
+                opened = _node_state(os.fstat(descriptor), None)
+                children = os.listdir(descriptor)
+                after = _node_state(os.fstat(descriptor), None)
+            finally:
+                os.close(descriptor)
+            if opened != state or after != state or children:
+                raise ValueError(
+                    f"quest retained directory ownership cannot be proven: {path}"
+                )
+        candidates.append((name, path, state))
+    return candidates
+
+
+def _claim_retained_file(
+    store: _RetentionStore,
+    key: str,
+    parent_fd: int,
+    parent_path: Path,
+    name: str,
+    registry: list[_Artifact],
+) -> tuple[_Artifact, int] | None:
+    candidates = _retained_candidates(
+        store,
+        key,
+        expected_kind="file",
+        limit=_MAX_RETAINED_FILES_PER_TARGET,
+    )
+    if not candidates:
+        return None
+    retained_name, _, retained_state = candidates[0]
+    _atomic_no_replace_between(
+        store.descriptor,
+        retained_name,
+        parent_fd,
+        name,
+    )
+    artifact = _Artifact(
+        path=parent_path / name,
+        parent_fd=parent_fd,
+        name=name,
+        created_state=retained_state,
+        state=retained_state,
+        retention_store=store,
+        retention_key=key,
+    )
+    registry.append(artifact)
+    _fsync_directory_fd(store.descriptor)
+    _fsync_directory_fd(parent_fd)
+    moved = _artifact_current_state(artifact)
+    if moved is None or not _states_match(retained_state, moved):
+        if moved is not None:
+            artifact.state = moved
+        artifact.retain = True
+        raise ValueError(
+            f"quest transaction lost retained artifact ownership: {artifact.path}"
+        )
+    flags = os.O_RDWR
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(name, flags, dir_fd=parent_fd)
+    try:
+        opened = _read_open_regular(descriptor, artifact.path)
+    except BaseException:
+        os.close(descriptor)
+        raise
+    if not _states_match(retained_state, opened):
+        os.close(descriptor)
+        artifact.retain = True
+        raise ValueError(
+            f"quest retained artifact changed while claiming: {artifact.path}"
+        )
+    return artifact, descriptor
+
+
 def _create_artifact(
     parent_fd: int,
     parent_path: Path,
@@ -875,22 +1210,45 @@ def _create_artifact(
     gid: int,
     kind: str,
     registry: list[_Artifact],
+    retention_store: _RetentionStore,
+    retention_key: str,
 ) -> _Artifact:
     name = f".{target_name}.afterlight-{kind}-{uuid.uuid4().hex}"
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    descriptor = os.open(name, flags, 0o600, dir_fd=parent_fd)
-    path = parent_path / name
-    created_state = _node_state(os.fstat(descriptor), b"")
-    artifact = _Artifact(
-        path=path,
-        parent_fd=parent_fd,
-        name=name,
-        created_state=created_state,
+    _require_same_device(
+        os.fstat(parent_fd),
+        os.fstat(retention_store.descriptor),
+        retention_store.path,
     )
-    registry.append(artifact)
+    claimed = _claim_retained_file(
+        retention_store,
+        retention_key,
+        parent_fd,
+        parent_path,
+        name,
+        registry,
+    )
+    if claimed is None:
+        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(name, flags, 0o600, dir_fd=parent_fd)
+        path = parent_path / name
+        created_state = _node_state(os.fstat(descriptor), b"")
+        artifact = _Artifact(
+            path=path,
+            parent_fd=parent_fd,
+            name=name,
+            created_state=created_state,
+            retention_store=retention_store,
+            retention_key=retention_key,
+        )
+        registry.append(artifact)
+    else:
+        artifact, descriptor = claimed
     try:
+        os.ftruncate(descriptor, 0)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        artifact.state = _node_state(os.fstat(descriptor), b"")
         view = memoryview(payload)
         written = 0
         while written < len(view):
@@ -909,9 +1267,17 @@ def _create_artifact(
         status = os.fstat(descriptor)
         state = _node_state(status, payload)
         artifact.state = state
-        _require_same_device(os.fstat(parent_fd), status, path)
+        _require_same_device(os.fstat(parent_fd), status, artifact.path)
         if state.links != 1 or state.kind != "file":
-            raise ValueError(f"invalid quest transaction stage: {path}")
+            raise ValueError(f"invalid quest transaction stage: {artifact.path}")
+        observed = _artifact_current_state(artifact)
+        if observed is None or not _states_match(state, observed):
+            if observed is not None:
+                artifact.state = observed
+            artifact.retain = True
+            raise ValueError(
+                f"quest transaction stage changed after creation: {artifact.path}"
+            )
         return artifact
     finally:
         os.close(descriptor)
@@ -919,52 +1285,45 @@ def _create_artifact(
 
 def _unlink_artifact(artifact: _Artifact) -> None:
     expected = artifact.state or artifact.created_state
-    original_name = artifact.name
-    original_path = artifact.path
-    cleanup_name = f".{original_name}.afterlight-remove-{uuid.uuid4().hex}"
-    cleanup_path = original_path.parent / cleanup_name
-    _atomic_no_replace(artifact.parent_fd, original_name, cleanup_name)
-    artifact.name = cleanup_name
-    artifact.path = cleanup_path
-    sync_error: BaseException | None = None
+    store = artifact.retention_store
+    key = artifact.retention_key
+    if store is None or key is None:
+        artifact.retain = True
+        raise ValueError(f"quest transaction artifact has no retention record: {artifact.path}")
+    retention_name = _retention_name(key, expected)
+    retention_path = store.path / retention_name
+    source_parent_fd = artifact.parent_fd
+    _atomic_no_replace_between(
+        source_parent_fd,
+        artifact.name,
+        store.descriptor,
+        retention_name,
+    )
+    artifact.parent_fd = store.descriptor
+    artifact.name = retention_name
+    artifact.path = retention_path
+    artifact.retain = True
+    sync_errors: list[BaseException] = []
     try:
-        _fsync_directory_fd(artifact.parent_fd)
+        _fsync_directory_fd(source_parent_fd)
     except BaseException as error:
-        sync_error = error
+        sync_errors.append(error)
+    try:
+        _fsync_directory_fd(store.descriptor)
+    except BaseException as error:
+        sync_errors.append(error)
     moved = _artifact_current_state(artifact)
     if moved is None or not _states_match(expected, moved):
-        try:
-            if moved is not None:
-                _atomic_no_replace(
-                    artifact.parent_fd,
-                    cleanup_name,
-                    original_name,
-                )
-                artifact.name = original_name
-                artifact.path = original_path
-                _fsync_directory_fd(artifact.parent_fd)
-                restored = _artifact_current_state(artifact)
-                if restored is None or not _states_match(moved, restored):
-                    raise ValueError(
-                        "quest transaction could not verify restored private "
-                        f"artifact: {original_path}"
-                    )
-        except BaseException:
-            artifact.retain = True
-            raise
-        artifact.retain = True
+        if moved is not None:
+            artifact.state = moved
         raise ValueError(
-            f"quest transaction lost private artifact ownership: {original_path}"
+            f"quest transaction lost private artifact ownership: {retention_path}"
         )
-    os.unlink(cleanup_name, dir_fd=artifact.parent_fd)
-    artifact.present = False
-    try:
-        _fsync_directory_fd(artifact.parent_fd)
-    except BaseException as error:
-        if sync_error is None:
-            sync_error = error
-    if sync_error is not None:
-        raise sync_error
+    if sync_errors:
+        raise RuntimeError(
+            "quest retention directory sync failure: "
+            + "; ".join(str(error) for error in sync_errors)
+        )
 
 
 def _artifact_current_state(artifact: _Artifact) -> _NodeState | None:
@@ -988,7 +1347,6 @@ def _cleanup_private_artifact(artifact: _Artifact) -> None:
         if _artifact_current_state(artifact) is None:
             artifact.present = False
         raise
-    artifact.present = False
 
 
 def _remove_created_directory(
@@ -996,43 +1354,50 @@ def _remove_created_directory(
     private_name: str,
     private_path: Path,
     expected: _NodeState,
+    store: _RetentionStore,
+    retention_key: str,
 ) -> None:
-    cleanup_name = f".{record.name}.afterlight-remove-{uuid.uuid4().hex}"
-    cleanup_path = record.path.parent / cleanup_name
-    _atomic_no_replace(record.parent_fd, private_name, cleanup_name)
-    record.phase = "cleanup-private"
-    record.private_name = cleanup_name
-    record.private_path = cleanup_path
+    existing = _retained_candidates(
+        store,
+        retention_key,
+        expected_kind="directory",
+        limit=_MAX_RETAINED_DIRECTORIES_PER_PATH,
+    )
+    if existing:
+        raise ValueError(
+            f"quest retained directory bound is occupied: {existing[0][1]}"
+        )
+    retention_name = _retention_name(retention_key, expected)
+    retention_path = store.path / retention_name
+    _atomic_no_replace_between(
+        record.parent_fd,
+        private_name,
+        store.descriptor,
+        retention_name,
+    )
+    record.phase = "retained"
+    record.private_name = retention_name
+    record.private_path = retention_path
+    record.private_parent_fd = store.descriptor
     _fsync_directory_fd(record.parent_fd)
-    moved = _read_any_at(record.parent_fd, cleanup_name, cleanup_path)
-    mismatch = moved is None or not _same_identity(expected, moved)
+    _fsync_directory_fd(store.descriptor)
+    moved = _read_any_at(store.descriptor, retention_name, retention_path)
+    mismatch = moved is None or moved != expected
     if not mismatch:
-        descriptor = os.open(cleanup_name, _directory_flags(), dir_fd=record.parent_fd)
+        descriptor = os.open(
+            retention_name,
+            _directory_flags(),
+            dir_fd=store.descriptor,
+        )
         try:
             mismatch = bool(os.listdir(descriptor))
         finally:
             os.close(descriptor)
     if mismatch:
-        if moved is not None:
-            _atomic_no_replace(record.parent_fd, cleanup_name, private_name)
-            record.phase = "moved-private"
-            record.private_name = private_name
-            record.private_path = private_path
-            _fsync_directory_fd(record.parent_fd)
-            restored = _read_any_at(record.parent_fd, private_name, private_path)
-            if restored is None or not _same_identity(moved, restored):
-                raise ValueError(
-                    "quest transaction could not verify restored private "
-                    f"directory: {record.path}"
-                )
         raise ValueError(
             f"quest transaction lost created-directory ownership: {record.path}"
         )
-    os.rmdir(cleanup_name, dir_fd=record.parent_fd)
-    record.phase = "removed"
-    record.private_name = None
-    record.private_path = None
-    _fsync_directory_fd(record.parent_fd)
+    record.phase = "retained-owned"
 
 
 class QuestBuildTransaction:
@@ -1221,6 +1586,14 @@ class QuestBuildTransaction:
             root_fd,
             normalized,
         )
+        unresolved_artifacts = sorted(
+            path for path in entries if is_quest_transaction_artifact(path)
+        )
+        if unresolved_artifacts:
+            raise ValueError(
+                "unresolved quest transaction artifact requires recovery: "
+                f"{unresolved_artifacts[0]}"
+            )
         frozen = FrozenRepository(
             repository_root=self.repository_root,
             repository_state=repository_state,
@@ -1264,8 +1637,26 @@ class QuestBuildTransaction:
         artifacts: list[_Artifact] = []
         commits: list[_CommitRecord] = []
         changed: list[Path] = []
+        repository_state = _node_state(os.fstat(root_fd), None)
+        retention_store: _RetentionStore | None = None
+
+        def require_retention_store() -> _RetentionStore:
+            nonlocal retention_store
+            if retention_store is None:
+                retention_store = _open_retention_store(
+                    self.repository_root,
+                    repository_state,
+                    create=True,
+                )
+                assert retention_store is not None
+            return retention_store
 
         try:
+            retention_store = _open_retention_store(
+                self.repository_root,
+                repository_state,
+                create=False,
+            )
             for raw_path, raw_plan in sorted(writes.items(), key=lambda item: str(item[0])):
                 path = Path(os.path.abspath(raw_path))
                 relative = _relative_to_root(self.repository_root, path)
@@ -1278,6 +1669,7 @@ class QuestBuildTransaction:
                         path,
                         create=True,
                         created_registry=created_records,
+                        retention_store=retention_store,
                     )
                     parent_handles[parent_path] = parent_fd
                 parent_fd = parent_handles[parent_path]
@@ -1304,6 +1696,8 @@ class QuestBuildTransaction:
                     and original.gid == plan.gid
                 ):
                     continue
+                store = require_retention_store()
+                retention_key = _retention_key(self.repository_root, path)
                 stage = _create_artifact(
                     parent_fd,
                     parent_path,
@@ -1314,6 +1708,8 @@ class QuestBuildTransaction:
                     plan.gid,
                     "stage",
                     artifacts,
+                    store,
+                    retention_key,
                 )
                 stages[path] = stage
                 if original is None:
@@ -1327,6 +1723,8 @@ class QuestBuildTransaction:
                         plan.gid,
                         "recovery",
                         artifacts,
+                        store,
+                        retention_key,
                     )
                 changed.append(path)
 
@@ -1345,6 +1743,22 @@ class QuestBuildTransaction:
                 original = _read_regular_at(parent_fd, relative.name, path)
                 if original is None:
                     raise ValueError(f"quest transaction deletion target is missing: {path}")
+                store = require_retention_store()
+                _require_same_device(
+                    os.fstat(parent_fd),
+                    os.fstat(store.descriptor),
+                    store.path,
+                )
+                retained = _retained_candidates(
+                    store,
+                    _retention_key(self.repository_root, path),
+                    expected_kind="file",
+                    limit=_MAX_RETAINED_FILES_PER_TARGET,
+                )
+                if len(retained) >= _MAX_RETAINED_FILES_PER_TARGET:
+                    raise ValueError(
+                        f"quest retained file bound is occupied: {retained[0][1]}"
+                    )
                 originals[path] = original
                 changed.append(path)
 
@@ -1375,6 +1789,8 @@ class QuestBuildTransaction:
                         created_state=original,
                         state=original,
                         present=False,
+                        retention_store=require_retention_store(),
+                        retention_key=_retention_key(self.repository_root, path),
                     )
                     artifacts.append(backup)
                     record = _CommitRecord(
@@ -1490,9 +1906,9 @@ class QuestBuildTransaction:
                     _cleanup_private_artifact(artifact)
                 except BaseException as cleanup_error:
                     committed_cleanup_errors.append(cleanup_error)
-                    if _artifact_current_state(artifact) is not None:
-                        artifact.retain = True
-                        retained_recovery.append(artifact.path)
+                if artifact.present and _artifact_current_state(artifact) is not None:
+                    artifact.retain = True
+                    retained_recovery.append(artifact.path)
             return PromotionResult(
                 changed,
                 cleanup_warnings=committed_cleanup_errors,
@@ -1536,9 +1952,9 @@ class QuestBuildTransaction:
                     _cleanup_private_artifact(artifact)
                 except BaseException as cleanup_error:
                     cleanup_errors.append(cleanup_error)
-                    if _artifact_current_state(artifact) is not None:
-                        artifact.retain = True
-                        recovery.append(artifact.path)
+                if artifact.present and _artifact_current_state(artifact) is not None:
+                    artifact.retain = True
+                    recovery.append(artifact.path)
             if unresolved:
                 recovery.extend(
                     record.path
@@ -1547,11 +1963,35 @@ class QuestBuildTransaction:
                 )
             else:
                 directory_errors, directory_recovery, directory_unresolved = (
-                    self._cleanup_created_directories(created_records)
+                    self._cleanup_created_directories(
+                        created_records,
+                        retention_store,
+                    )
                 )
                 cleanup_errors.extend(directory_errors)
                 recovery.extend(directory_recovery)
                 unresolved.extend(directory_unresolved)
+            if (
+                recovery
+                and not isinstance(error, QuestBuildRollbackError)
+                and not unresolved
+                and not rollback_errors
+                and not cleanup_errors
+            ):
+                try:
+                    setattr(
+                        error,
+                        "recovery_paths",
+                        tuple(dict.fromkeys(recovery)),
+                    )
+                    setattr(error, "cleanup_warnings", ())
+                except BaseException as evidence_error:
+                    cleanup_errors.append(
+                        RuntimeError(
+                            "quest transaction could not attach retained-path evidence: "
+                            f"{evidence_error}"
+                        )
+                    )
             if (
                 isinstance(error, QuestBuildRollbackError)
                 or unresolved
@@ -1571,6 +2011,8 @@ class QuestBuildTransaction:
                 os.close(descriptor)
             for record in created_records:
                 os.close(record.parent_fd)
+            if retention_store is not None:
+                os.close(retention_store.descriptor)
 
     def _rollback_committed(
         self,
@@ -1829,6 +2271,7 @@ class QuestBuildTransaction:
     def _cleanup_created_directories(
         self,
         created: Sequence[_CreatedDirectory],
+        retention_store: _RetentionStore | None,
     ) -> tuple[list[BaseException], list[Path], list[Path]]:
         errors: list[BaseException] = []
         recovery: list[Path] = []
@@ -1842,6 +2285,11 @@ class QuestBuildTransaction:
             private_path = record.path.parent / private_name
             moved: _NodeState | None = None
             try:
+                if retention_store is None:
+                    raise ValueError(
+                        "quest transaction has no created-directory retention store: "
+                        f"{record.path}"
+                    )
                 if record.state is None:
                     raise ValueError(
                         f"quest transaction has no created-directory identity: {record.path}"
@@ -1850,6 +2298,7 @@ class QuestBuildTransaction:
                 record.phase = "moved-private"
                 record.private_name = private_name
                 record.private_path = private_path
+                record.private_parent_fd = record.parent_fd
                 _fsync_directory_fd(record.parent_fd)
                 moved = _read_any_at(record.parent_fd, private_name, private_path)
                 if moved is None or not _same_identity(record.state, moved):
@@ -1861,42 +2310,57 @@ class QuestBuildTransaction:
                     private_name,
                     private_path,
                     moved,
+                    retention_store,
+                    _retention_key(self.repository_root, record.path),
                 )
+                if record.phase == "retained-owned" and record.private_path is not None:
+                    recovery.append(record.private_path)
             except BaseException as error:
                 restore_error: BaseException | None = None
-                if record.phase in {"moved-private", "cleanup-private"}:
+                if record.phase in {"moved-private", "retained"}:
                     try:
                         source_name = record.private_name
                         source_path = record.private_path
-                        if source_name is None or source_path is None:
+                        source_parent_fd = record.private_parent_fd
+                        if (
+                            source_name is None
+                            or source_path is None
+                            or source_parent_fd is None
+                        ):
                             raise ValueError(
                                 "quest transaction lost private created-directory "
                                 f"record: {record.path}"
                             )
-                        _atomic_no_replace(
-                            record.parent_fd,
+                        expected_restored = _read_any_at(
+                            source_parent_fd,
                             source_name,
+                            source_path,
+                        )
+                        if expected_restored is None:
+                            raise ValueError(
+                                "quest transaction lost private created directory: "
+                                f"{source_path}"
+                            )
+                        _atomic_no_replace_between(
+                            source_parent_fd,
+                            source_name,
+                            record.parent_fd,
                             record.name,
                         )
                         record.phase = "public"
                         record.private_name = None
                         record.private_path = None
+                        record.private_parent_fd = None
+                        if source_parent_fd != record.parent_fd:
+                            _fsync_directory_fd(source_parent_fd)
                         _fsync_directory_fd(record.parent_fd)
                         restored = _read_any_at(
                             record.parent_fd,
                             record.name,
                             record.path,
                         )
-                        expected_restored = moved
-                        if expected_restored is None:
-                            expected_restored = _read_any_at(
-                                record.parent_fd,
-                                record.name,
-                                record.path,
-                            )
                         if (
                             restored is None
-                            or expected_restored is None
                             or not _same_identity(expected_restored, restored)
                         ):
                             raise ValueError(
@@ -1909,7 +2373,7 @@ class QuestBuildTransaction:
                 unresolved.append(record.path)
                 if restore_error is not None:
                     errors.append(restore_error)
-                if record.phase in {"moved-private", "cleanup-private"}:
+                if record.phase in {"moved-private", "retained"}:
                     if record.private_path is not None:
                         recovery.append(record.private_path)
                 elif record.phase == "public":

@@ -3165,8 +3165,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "4997a610c1a1b971ae08819f968c1a3e6b60860c13bbed319748e7d500c5ca76",
-                238,
+                "3e20a870fc24f824c0a1693fe6314286169973d3f24c75af1d99d57b18ad2626",
+                237,
             ),
         )
 
@@ -4058,7 +4058,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "f59a78fb30d9615eb6a51274a592354b0f9f47daa4d0b96ae330cb7a8340f4f1",
+            "96259f73a2f6055040675bdbe850f74788920316f232787edbb13360825a52e8",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

@@ -4317,6 +4317,36 @@ class QuestCompilerTests(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class LegacyStoryQuestContractTests(unittest.TestCase):
+    def test_slow_fire_tracks_the_coke_oven_multiblock_advancement(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        chapter_path = (
+            ROOT
+            / "config"
+            / "ftbquests"
+            / "quests"
+            / "chapters"
+            / "45491A24F6B8C192.snbt"
+        )
+        chapter = _parse_snbt(chapter_path.read_text(encoding="utf-8"))
+        quest = next(
+            quest for quest in chapter["quests"] if quest["id"] == "78E07ADD5BCD1F19"
+        )
+
+        self.assertEqual(
+            quest["tasks"],
+            [
+                {
+                    "id": "68A344A9166D7763",
+                    "type": "advancement",
+                    "advancement": "immersiveengineering:main/mb_cokeoven",
+                    "criterion": "",
+                }
+            ],
+        )
+
+
 class SignalReliquaryQuestContractTests(unittest.TestCase):
     RECOVERY_CHAPTER = "6C40000000000001"
     RECOVERY_QUEST = "6C40000000000002"

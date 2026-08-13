@@ -51,10 +51,9 @@
 			y: 1.0d
 			tasks: [
 				{ id: "68A344A9166D7763"
-				type: "item"
-				item: { count: 1, id: "immersiveengineering:coke_oven" }
-				count: 1L
-				consume_items: false }
+				type: "advancement"
+				advancement: "immersiveengineering:main/mb_cokeoven"
+				criterion: "" }
 			]
 			rewards: [
 				{ id: "4A7688B24FD8CFCB"

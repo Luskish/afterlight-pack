@@ -40,7 +40,7 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Published at: `2026-08-13T00:11:21Z`.
 - Release evidence documentation commit on `dev`: `7dc4d8eb16a1c8916a58d164c98b7a365346f191`.
 - Publication, live portal selection, and the transactional VPS rollout completed on 2026-08-12 Eastern time.
-- RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
+- RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, changes Slow Fire to the real Coke Oven formation advancement, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
 
 ## Signal Companion
 

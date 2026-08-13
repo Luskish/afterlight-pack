@@ -238,7 +238,7 @@ class ReleaseGauntletTests(unittest.TestCase):
             "server-test",
             "docker compose --project-name afterlight-gauntlet --env-file <WORKTREE>/server/.env.gauntlet -f server/docker-compose.yml config --quiet",
             "git ls-files *.sh",
-            "shellcheck -x tools/sample.sh",
+            "shellcheck -x -P SCRIPTDIR tools/sample.sh",
             f"build-release <WORKTREE>/dist/.release-gauntlet-first {SHA}",
             f"build-release <WORKTREE>/dist/.release-gauntlet-second {SHA}",
             "cmp <WORKTREE>/dist/.release-gauntlet-first/AFTERLIGHT-curseforge.zip <WORKTREE>/dist/.release-gauntlet-second/AFTERLIGHT-curseforge.zip",

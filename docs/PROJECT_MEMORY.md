@@ -52,7 +52,7 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** issue
-- **Status:** resolved
+- **Status:** verified
 - **Subsystem:** FTB Quests, Slow Fire
 - **Summary:** The Coke Oven quest could not progress because it required a held item even though completion is represented by a formed multiblock.
 - **Evidence:** The task now tracks the verified Immersive Engineering multiblock formation advancement and the quest and server gates passed.
@@ -559,7 +559,19 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** Exact-head release gauntlet portability
 - **Summary:** The first RC2 exact-head gauntlet stopped in the initial clean-worktree unit suite because one static commodity evidence test used ignored `server-test` jars without declaring itself as an authenticated live-install test.
-- **Evidence:** `tools/release-gauntlet.sh 3c0178463ef84a10b86acb090490b9a4b022e6d7` ended with `Ran 931 tests in 645.002s` and `FAILED (errors=1, skipped=77)`. The only error was `missing installed jar for c:foods/bread: server-test/mods/ftb-filter-system-neoforge-21.1.4.jar` from `test_static_runtime_evidence_proves_tags_and_producers`. The gauntlet intentionally runs a clean suite before creating `server-test`, while `tools/server-test.sh` later reruns the suite with a fresh authenticated install. After applying the existing live-install decorator, the focused clean mode ended with `OK (skipped=1)`, and the same focused test with `AFTERLIGHT_REQUIRE_LIVE_TESTS=1` plus the authenticated run ID ended with `Ran 1 test in 0.530s` and `OK`.
+- **Evidence:** `tools/release-gauntlet.sh 3c0178463ef84a10b86acb090490b9a4b022e6d7` ended with `Ran 931 tests in 645.002s` and `FAILED (errors=1, skipped=77)`. The only error was `missing installed jar for c:foods/bread: server-test/mods/ftb-filter-system-neoforge-21.1.4.jar` from `test_static_runtime_evidence_proves_tags_and_producers`. The gauntlet intentionally runs a clean suite before creating `server-test`, while `tools/server-test.sh` later reruns the suite with a fresh authenticated install. After applying the existing live-install decorator, the focused clean mode ended with `OK (skipped=1)`, and the same focused test with `AFTERLIGHT_REQUIRE_LIVE_TESTS=1` plus the authenticated run ID ended with `Ran 1 test in 0.530s` and `OK`. The next exact-head gauntlet at `f11eb476e3b00b8d9095b8aa89113da608c8c7df` confirmed the clean suite with `Ran 931 tests in 642.727s` and `OK (skipped=78)`, then confirmed the authenticated suite with `Ran 931 tests in 866.721s`, `OK`, and `SERVER BOOT: OK`.
 - **Files or Commit:** `tools/tests/test_afterlight_quests.py` and `tools/release-gauntlet.sh`
 - **Impact:** No pack, artifact, production server, or player data changed. The failure prevented acceptance before any push or publication.
-- **Follow-up:** Commit the correction and rerun the exact-head gauntlet. Promote only if the new receipt is accepted.
+- **Follow-up:** Preserve the live-install decorator and continue from MEM-2026-08-13-046.
+
+### MEM-2026-08-13-046
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Release gauntlet ShellCheck source resolution
+- **Summary:** The second RC2 exact-head gauntlet passed both 931-test suites, Packwiz verification, and dedicated-server boot, then stopped because its ShellCheck invocation did not resolve dynamic sibling includes from each script directory.
+- **Evidence:** `tools/release-gauntlet.sh f11eb476e3b00b8d9095b8aa89113da608c8c7df` reached `SERVER BOOT: OK`, then `shellcheck -x server/afterlight-ingress-boot-gate.sh` returned `SC1091` for `afterlight-safety-contract.sh`. Running every affected server script with `shellcheck -x -P SCRIPTDIR` passed. A release-gauntlet unit test was changed first and failed on the missing `-P SCRIPTDIR` argument, then passed after the controller added that source path. Every tracked shell file passed the corrected invocation.
+- **Files or Commit:** `tools/release-gauntlet.sh` and `tools/tests/test_release_gauntlet.py`
+- **Impact:** No artifact was accepted, pushed, published, or deployed. The runtime candidate remained green and player data remained untouched.
+- **Follow-up:** Commit the controller correction and rerun the exact-head gauntlet. Promote only from an accepted receipt.

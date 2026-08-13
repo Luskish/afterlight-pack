@@ -116,7 +116,7 @@ inner() {
   SHELL_FILES=$(git ls-files '*.sh')
   [ -n "$SHELL_FILES" ] || fail "no tracked Bash files found for ShellCheck"
   while IFS= read -r shell_file; do
-    run shellcheck -x "$shell_file"
+    run shellcheck -x -P SCRIPTDIR "$shell_file"
   done <<EOF
 $SHELL_FILES
 EOF

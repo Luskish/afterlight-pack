@@ -626,17 +626,20 @@ def _classify_retention_paths(
     for path in paths:
         name = path.name
         remainder = name[len(marker):] if name.startswith(marker) else ""
-        key, separator, token = remainder.partition("-")
+        key, separator, state_digest = remainder.partition("-")
         verified = (
             separator == "-"
             and len(key) == 32
-            and len(token) == 64
-            and all(character in "0123456789abcdef" for character in key + token)
+            and len(state_digest) == 64
+            and all(
+                character in "0123456789abcdef"
+                for character in key + state_digest
+            )
         )
         if verified:
             try:
                 state = _read_path(path)
-                verified = _state_token(state) == token
+                verified = _state_token(state) == state_digest
                 if state.kind == "directory":
                     descriptor = os.open(path, _directory_flags())
                     try:
@@ -938,20 +941,20 @@ def candidate_workspace(
     candidate = transaction.repository_root.parent / (
         f".{transaction.repository_root.name}.quest-candidate-{uuid.uuid4().hex}"
     )
-    authorized = False
+    workspace_approved = False
     primary_error: BaseException | None = None
     cleanup_error: BaseException | None = None
     try:
         frozen.materialize(candidate)
         transaction.authorize_workspace(candidate)
-        authorized = True
+        workspace_approved = True
         yield candidate
     except BaseException as error:
         primary_error = error
         raise
     finally:
         try:
-            if authorized:
+            if workspace_approved:
                 transaction.revoke_workspace(candidate)
             if candidate.exists():
                 shutil.rmtree(candidate)

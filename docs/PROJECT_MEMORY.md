@@ -287,3 +287,27 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/afterlight_quests/field_manuals.py`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, `docs/PROJECT_MEMORY.md`
 - **Impact:** Players can receive beginner guidance for Heavy Industry, Matter Systems, Storage Lattice, Kinetics, Pressure, Power Networks, Frontier Machines, and Nuclear Safety without making any manual part of required Story progression. PneumaticCraft uses the component-bearing Patchouli guide and AE2 uses the craftable blank pattern.
 - **Follow-up:** Task 7 may add approved quest links, and Task 8 must generate the quest corpus and exact acquisition fixture, then prove all 81 acquisition records against the effective runtime.
+
+### MEM-2026-08-13-023
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** Cross-agent handoff continuity
+- **Summary:** The handoff now records the exact Story-cohesion checkpoint, integrated safeguards and content, active task boundaries, expected pre-generation audit drift, Prism automation limitation, and progress-safe release sequence.
+- **Evidence:** `docs/HANDOFF.md` names the local integration lineage through `7825f92`, preserves the dirty-checkout warning, and gives a restart prompt that requires the memory ledger and defers Packwiz, publication, and VPS deployment to their verified gates.
+- **Files or Commit:** `docs/HANDOFF.md`, `docs/PROJECT_MEMORY.md`
+- **Impact:** A replacement Codex or Claude session can resume without repeating completed work, weakening release gates, regenerating too early, or risking live player progress.
+- **Follow-up:** Update the checkpoint again with final commit, CI, release, backup, and production evidence before declaring RC2 complete.
+
+### MEM-2026-08-13-024
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Quest transaction release integration
+- **Summary:** The first complete post-integration Python sweep exposed a credential-scanner false positive on a retention-state variable and a stale transaction test inventory that omitted the newly integrated manual and commodity outputs.
+- **Evidence:** `python3 -m unittest discover -s tools/tests -p 'test_*.py' -v` ended with `Ran 768 tests in 250.123s` and `FAILED (failures=9, errors=6, skipped=77)`. Six errors and six failures were downstream forms of the intentionally stale generated audit, while three integration failures identified credential-like local names and a changed-file expectation that predated the integrated content. The locals were renamed without changing behavior, and the expected inventory now names the exact managed state, 20 changed chapter files, localization, and generated item audit.
+- **Files or Commit:** `tools/afterlight_quests/quest_build_transaction.py`, `tools/tests/test_quest_build_transaction.py`, `docs/PROJECT_MEMORY.md`
+- **Impact:** The secret scanner no longer confuses a cryptographic filesystem-state suffix with credential material, and the whole-build transaction test remains exact after optional manuals and generalized commodities were integrated.
+- **Follow-up:** Re-run the focused transaction, repository scan, release-policy regression, memory contract, and the complete suite after final Task 8 generation removes the deliberate audit drift.

@@ -1530,6 +1530,16 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
         "7C611E8A94BC5CE5",
         "099200314296766A",
     )
+    MANUAL_CHAPTERS = (
+        "150C6F996983394C",
+        "4DE10FFCDEEF9892",
+        "01749E1554DFF98B",
+        "4690C88367D47FF3",
+        "0A510C4BD2A3818B",
+        "67F13F819570ED52",
+        "67C126F7B1338CB1",
+        "0B7C7859EBD6EFF3",
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -2078,10 +2088,18 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
                 changed,
                 sorted(
                     [
+                        "config/ftbquests/quests/.afterlight-managed.json",
                         *(
                             f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                             for chapter_id in self.ORDER_CHAPTERS
                         ),
+                        *(
+                            f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
+                            for chapter_id in self.MANUAL_CHAPTERS
+                        ),
+                        "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
+                        "config/ftbquests/quests/chapters/5B93C6934B230CFB.snbt",
+                        "config/ftbquests/quests/lang/en_us.snbt",
                         "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
                     ]
                 ),

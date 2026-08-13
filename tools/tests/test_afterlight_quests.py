@@ -4063,10 +4063,10 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             ):
                 continue
             value_index = index + 2
-            value_token = tokens[value_index]
-            value_start = value_token[2]
-            if value_token[0] not in {"{", "["}:
-                matches.append((value_start, value_token[3]))
+            value_atom = tokens[value_index]
+            value_start = value_atom[2]
+            if value_atom[0] not in {"{", "["}:
+                matches.append((value_start, value_atom[3]))
                 continue
             brace_balance = 0
             bracket_balance = 0

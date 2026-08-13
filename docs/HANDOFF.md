@@ -1,6 +1,6 @@
 # AFTERLIGHT Handoff Guide
 
-This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex while preparing the `1.0.0-rc.2` client hotfix.
+This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-13 by Codex during the progress-safe Story cohesion release.
 
 ## Hard rules the prompts assume (also in AGENTS.md)
 
@@ -42,6 +42,17 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Publication, live portal selection, and the transactional VPS rollout completed on 2026-08-12 Eastern time.
 - RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, changes Slow Fire to the real Coke Oven formation advancement, makes Steel Yourself accept the common `c:ingots/steel` tag through FTB Filter System `21.1.4`, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
 - Before RC2 reaches production, an operator can repair only Slow Fire with `/ftbquests change_progress @a complete 78E07ADD5BCD1F19` and only Steel Yourself with `/ftbquests change_progress @a complete 27F6D0AB957BBB8C`. Both commands affect online players selected by `@a`; replace `@a` with one username for an individual repair.
+
+### Story cohesion checkpoint
+
+- The active local `dev` lineage through `7825f92` contains the compatibility baseline, first-class quest-link compiler, race-safe transactional legacy overlays, deterministic generated-corpus snapshots, four approved common commodity declarations, and eight optional field manuals.
+- Existing quest, chapter, task, reward, and group IDs remain frozen. No generated quest corpus has been committed yet, and no production update has occurred.
+- Common commodity scope is deliberately narrow: bread for Rations, plus `c:ingots/steel` for Steel Yourself, Automated Steel Batch, and Industry Quota. Unique machines, components, resources, and story items remain exact.
+- The field manuals contain 81 optional guided quests across Heavy Industry, Matter Systems, Storage Lattice, Kinetics, Pressure, Power Networks, Frontier Machines, and Nuclear Safety. They do not gate Story completion.
+- Task 7 is implementing the approved Story prose and quest-link map. Task 8 is implementing exact acquisition declarations and runtime proofs for all manual nodes. Task 9 has a committed progress guard, quest-safe updater, and reboot quarantine gate under independent review.
+- The generated-corpus audit is intentionally stale until the one owned final generation pass. Broad quest tests may report that exact drift before Task 8, and no other failure is accepted as expected.
+- Official Prism Launcher 11.0.3 passed immutable artifact, architecture, and signing checks, but its tagged source and three disposable-root probes proved that a sterile Offline account cannot bypass the ownership-valid setup gate. Do not add that impossible credential-free probe as a release gate or claim it passed. Keep the established install, static, server-boot, and user-operated real-account checks.
+- Before any production deployment, integrate and independently review Tasks 7 through 9, generate twice and compare complete snapshots, run Packwiz once in the final owned pass, require `VERIFY: ALL GREEN`, require `SERVER BOOT: OK`, require exact-head CI and release-gauntlet acceptance, publish the release, then use the quest-safe update with a verified backup and zero players.
 
 ## Signal Companion
 
@@ -151,5 +162,5 @@ Use the same skills-first, fail-closed workflow. Require exact command evidence,
 Use this prompt in a new Codex task if recovery is needed:
 
 ```text
-Open /private/tmp/afterlight-release-dev-8ec43b76969ada8dd5d1f0986777d886db0fa1cd and read its AGENTS.md plus docs/HANDOFF.md. Invoke every applicable skill before acting. Continue the RC2 release from the first incomplete gate. Never use em dashes. Do not touch the dirty checkout at /Users/shaneliszewski/MinecraftTest. Do not update the VPS until the exact release is published, no players are online, and a verified backup exists. Run every required gate and report failures verbatim.
+Open /private/tmp/afterlight-release-dev-8ec43b76969ada8dd5d1f0986777d886db0fa1cd and read its AGENTS.md, docs/PROJECT_MEMORY.md, and docs/HANDOFF.md. Invoke every applicable skill before acting. Continue the progress-safe Story cohesion RC2 release from the first incomplete gate in the Story cohesion checkpoint. Never use em dashes. Do not touch the dirty checkout at /Users/shaneliszewski/MinecraftTest. Do not regenerate the quest corpus or run Packwiz until Tasks 7 and 8 are integrated and reviewed. Do not update the VPS until the exact release is published, no players are online, and a verified backup exists. Run every required gate and report failures verbatim.
 ```

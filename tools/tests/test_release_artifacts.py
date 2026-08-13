@@ -4001,7 +4001,21 @@ class ReleaseWorkflowPolicyTests(unittest.TestCase):
             r"^\s+timeout-minutes:\s+(\d+)$", self.workflow, re.MULTILINE
         )
         self.assertIsNotNone(match)
-        self.assertGreaterEqual(int(match.group(1)), 60)
+        self.assertGreaterEqual(int(match.group(1)), 120)
+
+    def test_checkout_fetches_frozen_fixture_history(self):
+        checkout_step = self.workflow.split(
+            "      - uses: actions/setup-java@", maxsplit=1
+        )[0]
+        self.assertIn("fetch-depth: 0", checkout_step)
+        self.assertIn("persist-credentials: false", checkout_step)
+
+    def test_shellcheck_resolves_sibling_includes(self):
+        shellcheck_step = self._step_block("ShellCheck")
+        self.assertIn(
+            'shellcheck -x -P SCRIPTDIR "${shell_files[@]}"',
+            shellcheck_step,
+        )
 
     def test_pull_requests_keep_all_read_only_verification_steps(self):
         required_steps = (

@@ -60,6 +60,50 @@ class Task9Rereview3Tests(unittest.TestCase):
         path.write_text(textwrap.dedent(source).lstrip(), encoding="utf-8")
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
+    def test_safety_contract_reads_modes_on_gnu_and_bsd_stat(self) -> None:
+        fake_bin = self.temp_path / "bin"
+        fake_stat = fake_bin / "stat"
+        self._write_executable(
+            fake_stat,
+            r"""
+            #!/usr/bin/env bash
+            if [[ ${FAKE_STAT_STYLE:?} == gnu ]]; then
+              if [[ $1 == -c && $2 == %a ]]; then
+                printf '600\n'
+                exit 0
+              fi
+              if [[ $1 == -c && $2 == %Lp ]]; then
+                printf '%%Lp\n'
+                exit 0
+              fi
+              exit 9
+            fi
+            if [[ $1 == -c ]]; then
+              exit 9
+            fi
+            if [[ $1 == -f && $2 == %Lp ]]; then
+              printf '600\n'
+              exit 0
+            fi
+            exit 9
+            """,
+        )
+        command = (
+            f"source {CONTRACT!s}; "
+            "afterlight_contract_stat '%Lp' /fixture-marker"
+        )
+        for style in ("gnu", "bsd"):
+            with self.subTest(style=style):
+                result = self._run(
+                    ["bash", "-c", command],
+                    environment={
+                        "FAKE_STAT_STYLE": style,
+                        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    },
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), "600")
+
     def _git(self, repository: Path, *arguments: str) -> str:
         result = self._run(["git", "-C", str(repository), *arguments])
         self.assertEqual(result.returncode, 0, result.stderr)

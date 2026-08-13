@@ -587,3 +587,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/client-install-test.sh`, `tools/tests/test_client_install.py`, and `mods/ftb-filter-system.pw.toml`
 - **Impact:** The released client contents were correct; only the stale release assertion failed. No artifact was published or deployed, and no production or player state changed.
 - **Follow-up:** Keep the explicit 157 and 13 inventory locks, run exact-head CI in parallel with the final gauntlet, and promote only after both are green.
+
+### MEM-2026-08-13-048
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** GitHub Actions Linux portability and release budget
+- **Summary:** The first pushed RC2 count-lock candidate failed the Linux Python gate because CI used a shallow checkout that omitted frozen fixture objects and the safety contract passed BSD mode format `%Lp` to GNU `stat`, which accepted it literally instead of falling back. The workflow also retained the already-corrected local ShellCheck include bug and only a 60-minute budget for the complete release build.
+- **Evidence:** GitHub Actions run `31743038857` ended with `Ran 931 tests in 207.028s` and `FAILED (failures=108, errors=50, skipped=80)`. The log showed `fatal: git cat-file: could not get object info` for history-bound fixtures and `ERROR: Explicit safety test contract marker mode must be 0600` for safety fixtures. Four regressions were written first and all four failed. Adding full-history checkout, explicit GNU `%a` and BSD `%Lp` mode handling, `SCRIPTDIR` ShellCheck resolution, and a 120-minute job budget made those regressions pass. Every tracked shell script then passed `shellcheck -x -P SCRIPTDIR`; the release-controller matrix ended with `Ran 342 tests in 170.459s` and `OK (skipped=50)`, and the server safety matrix ended with `Ran 116 tests in 335.504s` and `OK`.
+- **Files or Commit:** `.github/workflows/pack-ci.yml`, `server/afterlight-safety-contract.sh`, `tools/tests/test_release_artifacts.py`, and `tools/tests/test_task9_rereview3.py`
+- **Impact:** Linux now receives the exact frozen Git history, validates test-contract permissions portably, resolves sibling shell includes, and has enough time to complete archive normalization without weakening any release check. No pack content, quest identity, artifact, production service, or player state changed.
+- **Follow-up:** Push the corrected exact head, require green GitHub Actions and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.

@@ -9,7 +9,17 @@ afterlight_contract_fail() {
 
 afterlight_contract_stat() {
   local format=$1 target=$2
-  stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+  case "$format" in
+    '%Lp')
+      stat -c '%a' "$target" 2>/dev/null || stat -f '%Lp' "$target"
+      ;;
+    '%u'|'%g')
+      stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 afterlight_reject_production_override() {

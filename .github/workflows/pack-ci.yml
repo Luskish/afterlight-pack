@@ -12,10 +12,11 @@ concurrency:
 jobs:
   verify-and-export:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with: { distribution: temurin, java-version: "21" }
@@ -60,7 +61,7 @@ jobs:
       - name: ShellCheck
         run: |
           mapfile -d '' shell_files < <(git ls-files -z -- '*.sh')
-          shellcheck -x "${shell_files[@]}"
+          shellcheck -x -P SCRIPTDIR "${shell_files[@]}"
       - name: Build release
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:

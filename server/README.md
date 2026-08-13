@@ -30,11 +30,11 @@ sudo sed -i "s/^AFTERLIGHT_DATA_UID=.*/AFTERLIGHT_DATA_UID=$AFTERLIGHT_DATA_UID/
 sudo sed -i "s/^AFTERLIGHT_DATA_GID=.*/AFTERLIGHT_DATA_GID=$AFTERLIGHT_DATA_GID/" server/.env
 sudo chown root:root server/.env
 sudo chmod 0600 server/.env
-RCON_SECRET=$(mktemp)
+RCON_TEMP_FILE=$(mktemp)
 umask 077
-openssl rand -base64 36 > "$RCON_SECRET"
-sudo install -o root -g root -m 0600 "$RCON_SECRET" /etc/afterlight/secrets/rcon_password
-rm -f "$RCON_SECRET"
+openssl rand -base64 36 > "$RCON_TEMP_FILE"
+sudo install -o root -g root -m 0600 "$RCON_TEMP_FILE" /etc/afterlight/secrets/rcon_password
+rm -f "$RCON_TEMP_FILE"
 ```
 
 Each path in `server/.env` must remain the exact canonical value shown above and must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected. `AFTERLIGHT_DATA_UID` and `AFTERLIGHT_DATA_GID` must each appear exactly once, must be greater than zero, and must equal the owner and group of both data directories. Production preflight also requires the matching `afterlight` passwd entry with home `/nonexistent` and shell `/usr/sbin/nologin`.

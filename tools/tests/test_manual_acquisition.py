@@ -1186,7 +1186,8 @@ class CommodityRuntimeParserTests(unittest.TestCase):
         )
         lines.append(
             "[AFTERLIGHT QUEST COMMODITY AUDIT] OK "
-            f"{self.contract['fixture_sha256']} {self.item_digest} 4 {self.nonce}"
+            f"{self.contract['fixture_sha256']} {self.item_digest} "
+            f"{self.contract['declaration_count']} {self.nonce}"
         )
         return lines
 

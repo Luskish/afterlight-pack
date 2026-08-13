@@ -256,7 +256,7 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** decision
-- **Status:** accepted
+- **Status:** superseded
 - **Subsystem:** FTB Quests, common commodity declarations
 - **Summary:** Task 5 permits only Rations, Steel Yourself, Automated Steel Batch, and Industry Quota to use installed-runtime-backed common commodity filters. Steel Yourself is already generalized, while the other three retain their IDs, counts, consumption behavior, and every non-item field.
 - **Evidence:** `tools/fixtures/quests/common-commodity-tasks.json` binds frozen baseline SHA-256 `b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c` and exact Git object `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25`. Focused fixture, compatibility, compiler, and overlay validation ended with `Ran 53 tests in 9.705s` and `OK` against temporary roots. Local installed-jar inspection proved two bread producers and four declared steel producers. The complete quest suite retained two expected generated-corpus drift failures because Task 5 intentionally did not run the generator.
@@ -295,7 +295,7 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** Cross-agent handoff continuity
 - **Summary:** The handoff records the exact Story-cohesion checkpoint, integrated safeguards and content, active Task 9 review boundary, expected pre-generation drift, Prism automation limitation, and progress-safe release sequence.
-- **Evidence:** `docs/HANDOFF.md` names the local integration lineage through `795bae0`, the isolated Task 9 worktree and unresolved review counts, the fifth commodity declaration, the latest full-matrix outcome, the dirty-checkout warning, and a restart prompt that defers generation, Packwiz, publication, and VPS deployment to their verified gates.
+- **Evidence:** `docs/HANDOFF.md` names the local integration lineage through `420a978`, the accepted source-level commodity review, the isolated Task 9 worktree and unresolved review counts, the fifth commodity declaration, the latest full-matrix outcome, the dirty-checkout warning, and a restart prompt that defers generation, Packwiz, publication, and VPS deployment to their verified gates.
 - **Files or Commit:** `docs/HANDOFF.md`, `docs/PROJECT_MEMORY.md`
 - **Impact:** A replacement Codex or Claude session can resume without repeating completed work, weakening release gates, regenerating too early, or risking live player progress.
 - **Follow-up:** Update the checkpoint again after Task 9 integration, final generation, CI, release, backup, and production verification.
@@ -415,7 +415,7 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** FTB Quests, generalized common commodities
 - **Summary:** The exhaustive item-task audit permits Shelter Protocol to accept any installed bed and completes steel evidence for all five installed steel ingots while preserving every quest, task, count, consumption, and non-item field.
-- **Evidence:** The audit reviewed 235 frozen-baseline and 319 current-source item tasks and found exactly five eligible declarations. Installed jars prove all 16 vanilla beds plus `aether:skyroot_bed` in `minecraft:beds`, their two representative recipes, and `oritech:biosteel_ingot` plus its smelting recipe in `c:ingots/steel`. The test-first run ended with three failures and two errors before the fifth declaration existed; the complete interoperability and acquisition matrix then ended with `Ran 31 tests in 29.796s` and `OK`.
+- **Evidence:** The audit reviewed 235 frozen-baseline and 319 current-source item tasks and found exactly five eligible declarations. Installed jars prove all 16 vanilla beds plus `aether:skyroot_bed` in `minecraft:beds`, their two representative recipes, and `oritech:biosteel_ingot` plus its smelting recipe in `c:ingots/steel`. The test-first run ended with three failures and two errors before the fifth declaration existed; the complete interoperability and acquisition matrix then ended with `Ran 31 tests in 29.796s` and `OK`. Independent source-level review of `5e52a01..af17684` reported Critical 0 and Important 0, with only the two documentation minors corrected in `docs/PROJECT_MEMORY.md` and `docs/HANDOFF.md`.
 - **Files or Commit:** `tools/fixtures/quests/common-commodity-tasks.json`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/tests/test_afterlight_quests.py`, and `tools/tests/test_manual_acquisition.py`
 - **Impact:** Any installed vanilla or Aether bed can satisfy Shelter Protocol, and every installed interoperable steel ingot remains valid for all declared steel quests without broadening machine, component, or unique-resource requirements.
 - **Follow-up:** Generate the corpus once, then require exact runtime tag membership and producer records during the release server boot.

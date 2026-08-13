@@ -13,7 +13,8 @@ AFTERLIGHT is a story-driven kitchen-sink Minecraft modpack (NeoForge 1.21.1, Ja
 
 ## Skills-first workflow (hard rule)
 
-- Six project skills live in `.agents/skills/` (committed to this repo). Before ANY task, check whether one applies and follow it:
+- Seven project skills live in `.agents/skills/` (committed to this repo). Before ANY task, check whether one applies and follow it:
+  - project history / prior failures / verified outcomes / handoff continuity: `afterlight-project-memory`
   - packwiz / pack structure / exports / server validation: `minecraft-modpack-authoring`
   - FTB Quests SNBT work: `ftb-quests`
   - KubeJS scripts: `kubejs-modding`
@@ -21,6 +22,15 @@ AFTERLIGHT is a story-driven kitchen-sink Minecraft modpack (NeoForge 1.21.1, Ja
   - NeoForge specifics or Java mod work: `neoforge-modding`, `minecraft-modding`
 - If a task has no matching skill, search for one first (`npx skills find <topic>`) before improvising. Vet anything under 100 installs by reading it.
 - If you think there is even a small chance a skill applies, read it. This is not optional.
+
+## Project memory (hard rule)
+
+- Before starting any task, invoke `afterlight-project-memory`, search `docs/PROJECT_MEMORY.md`, and search any available external memory index for matching subsystems, symptoms, files, or decisions.
+- Before completing every task, update `docs/PROJECT_MEMORY.md` for each verified issue, vulnerability, addition, failure, success, or decision encountered. Update an existing event when its status changes instead of creating contradictory entries.
+- The repository ledger is canonical across Codex, Claude, and other agents. External memory is a recall aid, not the source of truth.
+- Every memory event records date, category, status, subsystem, summary, evidence, files or commit, impact, and follow-up.
+- Never record secrets, player names, UUIDs, raw live progress, tokens, private keys, or unredacted production backups.
+- Never record a success without same-session evidence. Record failures verbatim enough to make recurrence searchable.
 
 ## Verification before claims (hard rule)
 

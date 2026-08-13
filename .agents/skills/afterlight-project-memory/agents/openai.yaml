@@ -1,0 +1,4 @@
+interface:
+  display_name: "Afterlight Project Memory"
+  short_description: "Search and update AFTERLIGHT's durable ledger"
+  default_prompt: "Search the AFTERLIGHT project ledger before work, then record verified outcomes before completion."

@@ -26,6 +26,18 @@ COMMODITY_FIXTURE = (
 )
 
 
+def _legacy_quest_ids(quest_root, catalog):
+    specification = importlib.util.spec_from_file_location(
+        "afterlight_task8_integrated_build_quests",
+        ROOT / "tools" / "build-quests.py",
+    )
+    assert specification is not None
+    assert specification.loader is not None
+    build_script = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(build_script)
+    return build_script._legacy_quest_ids(quest_root, catalog)
+
+
 class AcquisitionModuleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -341,7 +353,11 @@ class AcquisitionModuleTests(unittest.TestCase):
                 COMMODITY_FIXTURE.read_bytes()
             )
             quest_root = root / "config" / "ftbquests" / "quests"
-            builder._write_catalog_workspace(catalog, quest_root)
+            builder._write_catalog_workspace(
+                catalog,
+                quest_root,
+                legacy_quest_ids=_legacy_quest_ids(quest_root, catalog),
+            )
             self.assertEqual(
                 self.acquisition.validate_fixture_to_quests(manifest, quest_root),
                 [],
@@ -470,7 +486,12 @@ class AcquisitionModuleTests(unittest.TestCase):
                 COMMODITY_FIXTURE.read_bytes()
             )
             quest_root = root / "config" / "ftbquests" / "quests"
-            builder._write_catalog_workspace(quests.build_catalog(), quest_root)
+            catalog = quests.build_catalog()
+            builder._write_catalog_workspace(
+                catalog,
+                quest_root,
+                legacy_quest_ids=_legacy_quest_ids(quest_root, catalog),
+            )
             chapter = next(
                 path
                 for path in (quest_root / "chapters").glob("*.snbt")
@@ -915,13 +936,14 @@ class AcquisitionBuilderTests(unittest.TestCase):
         raw = COMMODITY_FIXTURE.read_bytes()
         self.assertEqual(
             hashlib.sha256(raw).hexdigest(),
-            "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c",
+            "52ca9efb512a97827c25494fb4070287709c50f968547b6a1d0d33f2d855af27",
         )
         fixture = json.loads(raw)
         self.assertEqual(
             [entry["task"]["id"] for entry in fixture["declarations"]],
             [
                 "39C717BFFEE3D235",
+                "1D73FB79ED38668F",
                 "374F658F034EF8C5",
                 "33B5B56650A6AEDF",
                 "1679C5714C2F2A74",
@@ -936,10 +958,14 @@ class AcquisitionBuilderTests(unittest.TestCase):
             "TAG c:foods/bread minecraft:bread,pneumaticcraft:sourdough_bread",
             "PRODUCER c:foods/bread minecraft:bread OK",
             "PRODUCER c:foods/bread pneumaticcraft:sourdough_bread OK",
+            "TAG minecraft:beds minecraft:black_bed,minecraft:blue_bed,minecraft:brown_bed,minecraft:cyan_bed,minecraft:gray_bed,minecraft:green_bed,minecraft:light_blue_bed,minecraft:light_gray_bed,minecraft:lime_bed,minecraft:magenta_bed,minecraft:orange_bed,minecraft:pink_bed,minecraft:purple_bed,minecraft:red_bed,minecraft:white_bed,minecraft:yellow_bed,aether:skyroot_bed",
+            "PRODUCER minecraft:beds minecraft:red_bed OK",
+            "PRODUCER minecraft:beds aether:skyroot_bed OK",
             "TAG c:ingots/steel immersiveengineering:ingot_steel,mekanism:ingot_steel,modern_industrialization:steel_ingot,oritech:biosteel_ingot,oritech:steel_ingot",
             "PRODUCER c:ingots/steel immersiveengineering:ingot_steel OK",
             "PRODUCER c:ingots/steel mekanism:ingot_steel OK",
             "PRODUCER c:ingots/steel modern_industrialization:steel_ingot OK",
+            "PRODUCER c:ingots/steel oritech:biosteel_ingot OK",
             "PRODUCER c:ingots/steel oritech:steel_ingot OK",
         ]
         positions = [source.index(marker) for marker in expected_markers]
@@ -951,6 +977,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             contract["changed_old_items"],
             [
                 {"tag": "c:foods/bread", "item": "minecraft:bread"},
+                {"tag": "minecraft:beds", "item": "minecraft:red_bed"},
                 {
                     "tag": "c:ingots/steel",
                     "item": "immersiveengineering:ingot_steel",
@@ -974,9 +1001,14 @@ class AcquisitionBuilderTests(unittest.TestCase):
     def test_workspace_builder_writes_both_canonical_audits(self) -> None:
         with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
             root, quest_root = self.make_workspace(Path(temporary))
+            catalog = self.quests.build_catalog()
             self.builder._write_catalog_workspace(
-                self.quests.build_catalog(),
+                catalog,
                 quest_root,
+                legacy_quest_ids=self.build_script._legacy_quest_ids(
+                    quest_root,
+                    catalog,
+                ),
             )
 
             item_audit = (
@@ -1024,7 +1056,14 @@ class AcquisitionBuilderTests(unittest.TestCase):
             target.data["item"]["id"] = "minecraft:book"
 
             with self.assertRaisesRegex(ValueError, "task stack ID mismatch"):
-                self.quests.write_catalog(catalog, quest_root)
+                self.quests.write_catalog(
+                    catalog,
+                    quest_root,
+                    legacy_quest_ids=self.build_script._legacy_quest_ids(
+                        quest_root,
+                        catalog,
+                    ),
+                )
 
             after = {
                 path.relative_to(root).as_posix(): path.read_bytes()
@@ -1050,9 +1089,14 @@ class AcquisitionBuilderTests(unittest.TestCase):
                 ValueError,
                 "generated quest audit inventory mismatch",
             ):
+                catalog = self.quests.build_catalog()
                 self.quests.write_catalog(
-                    self.quests.build_catalog(),
+                    catalog,
                     quest_root,
+                    legacy_quest_ids=self.build_script._legacy_quest_ids(
+                        quest_root,
+                        catalog,
+                    ),
                 )
 
             after = {

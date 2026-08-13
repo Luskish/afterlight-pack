@@ -62,12 +62,31 @@ COMMODITY_FIXTURE_RELATIVE = Path(
     "tools/fixtures/quests/common-commodity-tasks.json"
 )
 COMMODITY_FIXTURE_SHA256 = (
-    "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+    "52ca9efb512a97827c25494fb4070287709c50f968547b6a1d0d33f2d855af27"
 )
 COMMODITY_EXPECTED_TAG_MEMBERS = {
     "c:foods/bread": (
         "minecraft:bread",
         "pneumaticcraft:sourdough_bread",
+    ),
+    "minecraft:beds": (
+        "minecraft:black_bed",
+        "minecraft:blue_bed",
+        "minecraft:brown_bed",
+        "minecraft:cyan_bed",
+        "minecraft:gray_bed",
+        "minecraft:green_bed",
+        "minecraft:light_blue_bed",
+        "minecraft:light_gray_bed",
+        "minecraft:lime_bed",
+        "minecraft:magenta_bed",
+        "minecraft:orange_bed",
+        "minecraft:pink_bed",
+        "minecraft:purple_bed",
+        "minecraft:red_bed",
+        "minecraft:white_bed",
+        "minecraft:yellow_bed",
+        "aether:skyroot_bed",
     ),
     "c:ingots/steel": (
         "immersiveengineering:ingot_steel",
@@ -3195,15 +3214,33 @@ def _item_references_from_parsed(parsed_files: Mapping[Path, Any]) -> dict[str, 
     return item_references
 
 
-def _parsed_quest_files(quest_root: Path) -> dict[Path, Any]:
+def _parsed_quest_files(
+    quest_root: Path,
+    file_overrides: Mapping[Path, bytes] | None = None,
+) -> dict[Path, Any]:
+    overrides = dict(file_overrides or {})
+    paths = set(quest_root.rglob("*.snbt"))
+    for path in overrides:
+        try:
+            path.relative_to(quest_root)
+        except ValueError:
+            continue
+        if path.suffix == ".snbt":
+            paths.add(path)
     parsed_files: dict[Path, Any] = {}
-    for path in sorted(quest_root.rglob("*.snbt")):
-        parsed_files[path] = _parse_snbt(path.read_text(encoding="utf-8"))
+    for path in sorted(paths):
+        payload = overrides[path] if path in overrides else path.read_bytes()
+        parsed_files[path] = _parse_snbt(payload.decode("utf-8"))
     return parsed_files
 
 
-def _quest_item_ids(quest_root: Path) -> tuple[str, ...]:
-    quest_item_ids = _item_references_from_parsed(_parsed_quest_files(quest_root))
+def _quest_item_ids(
+    quest_root: Path,
+    file_overrides: Mapping[Path, bytes] | None = None,
+) -> tuple[str, ...]:
+    quest_item_ids = _item_references_from_parsed(
+        _parsed_quest_files(quest_root, file_overrides)
+    )
     return tuple(sorted(quest_item_ids.keys() | KUBEJS_ITEM_ALLOWLIST))
 
 
@@ -3238,7 +3275,7 @@ def _quest_item_audit_digest(
     repo_root = quest_root.parents[2]
     payload = json.dumps(
         {
-            "items": _quest_item_ids(quest_root),
+            "items": _quest_item_ids(quest_root, file_overrides),
             "registry_inputs": _registry_input_digest(repo_root, file_overrides),
             "version": 3,
         },
@@ -3332,11 +3369,12 @@ def _commodity_contract_from_fixture(
                 {"tag": tag_id, "item": old_item["id"]}
             )
 
-    if len(declarations) != 4:
-        raise ValueError("commodity fixture must contain exactly four declarations")
+    if len(declarations) != 5:
+        raise ValueError("commodity fixture must contain exactly five declarations")
 
     expected_task_ids = (
         "39C717BFFEE3D235",
+        "1D73FB79ED38668F",
         "374F658F034EF8C5",
         "33B5B56650A6AEDF",
         "1679C5714C2F2A74",
@@ -3380,7 +3418,7 @@ def _render_quest_item_audit(
     quest_root: Path,
     file_overrides: Mapping[Path, bytes] | None = None,
 ) -> str:
-    item_ids = _quest_item_ids(quest_root)
+    item_ids = _quest_item_ids(quest_root, file_overrides)
     digest = _quest_item_audit_digest(quest_root, file_overrides)
     commodity = _commodity_runtime_contract(quest_root.parents[2])
     rendered_ids = json.dumps(item_ids, indent=2)

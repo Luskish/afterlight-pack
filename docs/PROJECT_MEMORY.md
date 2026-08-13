@@ -28,7 +28,7 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** decision
-- **Status:** accepted
+- **Status:** superseded
 - **Subsystem:** Cross-agent continuity
 - **Summary:** The committed project ledger is canonical because the available external memory index had no prior AFTERLIGHT observations and exposed no write operation.
 - **Evidence:** External memory search returned no matching observations; repository guardrails and contract tests define the fallback.
@@ -262,7 +262,7 @@ Every event uses the following fields. Update the original event when its status
 - **Evidence:** `tools/fixtures/quests/common-commodity-tasks.json` binds frozen baseline SHA-256 `b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c` and exact Git object `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25`. Focused fixture, compatibility, compiler, and overlay validation ended with `Ran 53 tests in 9.705s` and `OK` against temporary roots. Local installed-jar inspection proved two bread producers and four declared steel producers. The complete quest suite retained two expected generated-corpus drift failures because Task 5 intentionally did not run the generator.
 - **Files or Commit:** `tools/fixtures/quests/common-commodity-tasks.json`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/compatibility.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
 - **Impact:** Interchangeable bread and steel outputs can satisfy the named quests without admitting machines, components, unique resources, custom progression items, or ambiguous story materials.
-- **Follow-up:** Task 8 must generate the corpus once, emit and validate fresh commodity-audit records, and run the required pack and server gates before this event becomes verified.
+- **Follow-up:** Superseded by MEM-2026-08-13-033 after the exhaustive audit proved Shelter Protocol is a fifth safe common-commodity task.
 
 ### MEM-2026-08-13-021
 
@@ -371,3 +371,63 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/tests/test_quest_build_transaction.py` and `docs/PROJECT_MEMORY.md`
 - **Impact:** Direct writer coverage now supplies the same external quest identity context as production orchestration, and transaction idempotence checks the complete integrated output set without weakening exactness.
 - **Follow-up:** Extend the same exact inventory once Task 8 adds its second generated audit, then require the complete suite after final generation.
+
+### MEM-2026-08-13-030
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Task 8 independent review transport
+- **Summary:** The first Task 8 final-review agent stalled without producing a verdict and was shut down before a replacement review.
+- **Evidence:** The stalled reviewer produced no final report; the replacement independently reviewed the completed Task 8 range and reported Critical 0, Important 0, and Minor 0.
+- **Files or Commit:** `.superpowers/sdd/2026-08-13-afterlight-story-cohesion/task-8-acquisition-rereview-3-final.md`
+- **Impact:** No tracked file or runtime state changed during the stalled review, and Task 8 was not integrated until an independent replacement accepted it.
+- **Follow-up:** Replace a stalled reviewer rather than inferring acceptance from silence.
+
+### MEM-2026-08-13-031
+
+- **Date:** 2026-08-13
+- **Category:** success
+- **Status:** verified
+- **Subsystem:** FTB Quests, manual acquisition runtime audit
+- **Summary:** Task 8 now proves every one of the 81 optional field-manual quests has an exact effective-runtime acquisition route while retaining all established quest identities.
+- **Evidence:** The controller completed 44 focused tests and 200 quest tests with two authenticated-live skips. A disposable dedicated server emitted `BEGIN=1 NODE=81 OK=1 FAIL=0` with zero strict parser errors in each required KubeJS log, and independent review reported no findings.
+- **Files or Commit:** `873ca68`, `1d70420`, `5e52a01`, `tools/afterlight_quests/acquisition.py`, `tools/fixtures/quests/manual-acquisition.json`, and `kubejs/server_scripts/afterlight/generated_manual_acquisition_audit.js`
+- **Impact:** Missing manual tasks, missing localization, unavailable item stacks, and unsupported acquisition methods fail closed before release instead of silently publishing unreachable guidance.
+- **Follow-up:** Re-run the exact acquisition audit after final corpus generation and dedicated-server boot.
+
+### MEM-2026-08-13-032
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Task 8 integration, legacy quest-link context
+- **Summary:** Integrating Task 8 exposed four direct catalog-writer tests that omitted the exact unmanaged quest ID context now required by Story links.
+- **Evidence:** The first integrated matrix ended with `Ran 322 tests in 60.692s` and `FAILED (failures=3, errors=3, skipped=2)`. Four failures traced to missing `legacy_quest_ids`; the two remaining failures were the already documented pre-generation corpus drift. Supplying IDs through the production extractor made the four focused regressions end with `Ran 4 tests in 2.037s` and `OK`.
+- **Files or Commit:** `tools/tests/test_manual_acquisition.py`
+- **Impact:** Test writers now exercise the same complete external-identity context as production, without weakening saved-progress compatibility or link validation.
+- **Follow-up:** Final generation must resolve the two deliberate corpus-drift failures recorded in MEM-2026-08-13-021.
+
+### MEM-2026-08-13-033
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** FTB Quests, generalized common commodities
+- **Summary:** The exhaustive item-task audit permits Shelter Protocol to accept any installed bed and completes steel evidence for all five installed steel ingots while preserving every quest, task, count, consumption, and non-item field.
+- **Evidence:** The audit reviewed 235 frozen-baseline and 319 current-source item tasks and found exactly five eligible declarations. Installed jars prove all 16 vanilla beds plus `aether:skyroot_bed` in `minecraft:beds`, their two representative recipes, and `oritech:biosteel_ingot` plus its smelting recipe in `c:ingots/steel`. The test-first run ended with three failures and two errors before the fifth declaration existed; the complete interoperability and acquisition matrix then ended with `Ran 31 tests in 29.796s` and `OK`.
+- **Files or Commit:** `tools/fixtures/quests/common-commodity-tasks.json`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/tests/test_afterlight_quests.py`, and `tools/tests/test_manual_acquisition.py`
+- **Impact:** Any installed vanilla or Aether bed can satisfy Shelter Protocol, and every installed interoperable steel ingot remains valid for all declared steel quests without broadening machine, component, or unique-resource requirements.
+- **Follow-up:** Generate the corpus once, then require exact runtime tag membership and producer records during the release server boot.
+
+### MEM-2026-08-13-034
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** FTB Quests, same-chapter commodity overlays and generated audit
+- **Summary:** The first five-declaration implementation validated each Cold Boot item span independently and rendered the audit from pre-overlay quest items, breaking same-chapter digest validation and second-run byte identity.
+- **Evidence:** The broader run ended with `Ran 31 tests in 30.283s` and `FAILED (failures=4)`, including audit digest mismatch, changed second-run audit bytes, transaction non-idempotence, and a specialized duplicate-span diagnostic regression. Grouping overlays by chapter, validating one digest outside both item spans, and parsing audit item IDs from candidate overrides made the four focused regressions end with `Ran 4 tests in 7.595s` and `OK`, followed by all 31 tests passing.
+- **Files or Commit:** `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/tests/test_afterlight_quests.py`, and `tools/tests/test_manual_acquisition.py`
+- **Impact:** Multiple generalized tasks can safely coexist in one legacy chapter, generation remains byte-idempotent, and the audit digest binds the exact candidate corpus rather than stale on-disk items.
+- **Follow-up:** Keep grouped-span, override-aware audit, and two-build identity regressions in the release matrix.

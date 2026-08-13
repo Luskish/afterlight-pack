@@ -48,6 +48,46 @@
       ]
     },
     {
+      "chapter": { "id": "5B93C6934B230CFB", "title": "Cold Boot" },
+      "quest": { "id": "2B27B2D887F61D7F", "title": "Shelter Protocol" },
+      "task": { "id": "1D73FB79ED38668F", "type": "item" },
+      "old_item": { "count": "1", "id": "minecraft:red_bed" },
+      "smart_filter_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(minecraft:beds)"
+        }
+      },
+      "tag": "minecraft:beds",
+      "count_snbt": "1L",
+      "consume_items": false,
+      "match_components": "absent",
+      "classification": "common_commodity",
+      "already_generalized": false,
+      "producers": [
+        {
+          "item": "minecraft:red_bed",
+          "tag_source": "data/minecraft/tags/item/beds.json",
+          "jar": "server-test/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-extra.jar"
+        },
+        {
+          "item": "aether:skyroot_bed",
+          "tag_source": "data/minecraft/tags/item/beds.json",
+          "jar": "server-test/mods/aether-1.21.1-1.5.10-neoforge.jar"
+        }
+      ],
+      "installed_jars": [
+        "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar",
+        "server-test/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-extra.jar",
+        "server-test/mods/aether-1.21.1-1.5.10-neoforge.jar"
+      ],
+      "recipe_or_process_evidence": [
+        "data/minecraft/recipe/red_bed.json in server-test/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-extra.jar crafts minecraft:red_bed from red wool and planks.",
+        "data/aether/recipe/skyroot_bed.json in server-test/mods/aether-1.21.1-1.5.10-neoforge.jar crafts aether:skyroot_bed from wool and skyroot planks."
+      ]
+    },
+    {
       "chapter": { "id": "45491A24F6B8C192", "title": "Foothold" },
       "quest": { "id": "27F6D0AB957BBB8C", "title": "Steel Yourself" },
       "task": { "id": "374F658F034EF8C5", "type": "item" },
@@ -88,6 +128,11 @@
           "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
         },
         {
+          "item": "oritech:biosteel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        },
+        {
           "item": "oritech:steel_ingot",
           "tag_source": "data/c/tags/item/ingots/steel.json",
           "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
@@ -103,7 +148,9 @@
       "recipe_or_process_evidence": [
         "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
         "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
-        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot.",
+        "data/oritech/recipe/biosteel_ingot_from_smelting_biosteel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:biosteel_ingot.",
+        "data/oritech/recipe/steel_ingot_from_smelting_steel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:steel_ingot."
       ]
     },
     {
@@ -141,6 +188,11 @@
           "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
         },
         {
+          "item": "oritech:biosteel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        },
+        {
           "item": "oritech:steel_ingot",
           "tag_source": "data/c/tags/item/ingots/steel.json",
           "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
@@ -156,7 +208,9 @@
       "recipe_or_process_evidence": [
         "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
         "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
-        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot.",
+        "data/oritech/recipe/biosteel_ingot_from_smelting_biosteel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:biosteel_ingot.",
+        "data/oritech/recipe/steel_ingot_from_smelting_steel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:steel_ingot."
       ]
     },
     {
@@ -194,6 +248,11 @@
           "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
         },
         {
+          "item": "oritech:biosteel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        },
+        {
           "item": "oritech:steel_ingot",
           "tag_source": "data/c/tags/item/ingots/steel.json",
           "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
@@ -209,7 +268,9 @@
       "recipe_or_process_evidence": [
         "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
         "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
-        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot.",
+        "data/oritech/recipe/biosteel_ingot_from_smelting_biosteel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:biosteel_ingot.",
+        "data/oritech/recipe/steel_ingot_from_smelting_steel_dust.json in server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar outputs oritech:steel_ingot."
       ]
     }
   ]

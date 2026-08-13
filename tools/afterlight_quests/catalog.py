@@ -67,7 +67,7 @@ COMMON_COMMODITY_BASELINE_SHA256 = (
     "b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c"
 )
 COMMON_COMMODITY_FIXTURE_SHA256 = (
-    "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+    "52ca9efb512a97827c25494fb4070287709c50f968547b6a1d0d33f2d855af27"
 )
 COMMON_COMMODITY_TASK_CONTRACTS = MappingProxyType(
     {
@@ -78,6 +78,16 @@ COMMON_COMMODITY_TASK_CONTRACTS = MappingProxyType(
             "quest_title": "Rations",
             "tag": "c:foods/bread",
             "count_snbt": "8L",
+            "classification": "common_commodity",
+            "already_generalized": False,
+        },
+        "1D73FB79ED38668F": {
+            "chapter_id": "5B93C6934B230CFB",
+            "chapter_title": "Cold Boot",
+            "quest_id": "2B27B2D887F61D7F",
+            "quest_title": "Shelter Protocol",
+            "tag": "minecraft:beds",
+            "count_snbt": "1L",
             "classification": "common_commodity",
             "already_generalized": False,
         },

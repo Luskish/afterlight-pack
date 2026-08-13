@@ -219,9 +219,17 @@ LEGACY_COMMODITY_TASK_OVERLAYS = (
         chapter_id="5B93C6934B230CFB",
         task_id="39C717BFFEE3D235",
         expected_outside_sha256=(
-            "097452385aa86dcc1d136db46492b424043d4a23dc57803d3e25136707d5a5cb"
+            "9e2a4c886d154cb52a9a5623c53b71e0d3e0cf690156a5860e412bde92013270"
         ),
         declaration_key="39C717BFFEE3D235",
+    ),
+    LegacyCommodityTaskOverlay(
+        chapter_id="5B93C6934B230CFB",
+        task_id="1D73FB79ED38668F",
+        expected_outside_sha256=(
+            "9e2a4c886d154cb52a9a5623c53b71e0d3e0cf690156a5860e412bde92013270"
+        ),
+        declaration_key="1D73FB79ED38668F",
     ),
 )
 
@@ -595,6 +603,8 @@ def _apply_legacy_quest_overlays_workspace(
 
     commodity_pairs: set[tuple[str, str]] = set()
     commodity_task_ids: set[str] = set()
+    commodity_chapter_digests: dict[str, str] = {}
+    commodity_overlays_by_chapter: dict[str, list[LegacyCommodityTaskOverlay]] = {}
     commodity_manifest = load_common_commodity_declarations()
     commodity_declarations = commodity_manifest.by_task_id
     for overlay_index, overlay in enumerate(commodity_overlays):
@@ -620,10 +630,20 @@ def _apply_legacy_quest_overlays_workspace(
         if task_id in commodity_task_ids:
             raise ValueError(f"duplicate commodity overlay task ID: {task_id}")
         commodity_task_ids.add(task_id)
-        _validated_sha256(
+        chapter_digest = _validated_sha256(
             overlay.expected_outside_sha256,
             f"commodity overlay {chapter_id}/{task_id}",
         )
+        previous_digest = commodity_chapter_digests.setdefault(
+            chapter_id,
+            chapter_digest,
+        )
+        if previous_digest != chapter_digest:
+            raise ValueError(
+                "commodity overlays in chapter must share outside-span digest: "
+                f"{chapter_id}"
+            )
+        commodity_overlays_by_chapter.setdefault(chapter_id, []).append(overlay)
         declaration = commodity_declarations.get(overlay.declaration_key)
         if declaration is None:
             raise ValueError(
@@ -724,8 +744,8 @@ def _apply_legacy_quest_overlays_workspace(
         originals[path] = original
         replacements.setdefault(path, []).append((span, str(overlay.order_index)))
 
-    for overlay in commodity_overlays:
-        path = quest_root / "chapters" / f"{overlay.chapter_id}.snbt"
+    for chapter_id, chapter_overlays in commodity_overlays_by_chapter.items():
+        path = quest_root / "chapters" / f"{chapter_id}.snbt"
         try:
             original = path.read_bytes()
             text = original.decode("utf-8")
@@ -733,71 +753,87 @@ def _apply_legacy_quest_overlays_workspace(
             raise ValueError(
                 f"missing or unreadable commodity overlay target {path}: {error}"
             ) from error
-        try:
-            quest_index, task_index, _ = _commodity_task_location(
-                text, overlay.task_id, path
-            )
-        except ValueError as error:
-            if " is missing from " not in str(error):
+        chapter_replacements: list[tuple[object, str]] = []
+        item_spans: list[object] = []
+        task_locations: list[tuple[int, int]] = []
+        for overlay in chapter_overlays:
+            try:
+                quest_index, task_index, _ = _commodity_task_location(
+                    text, overlay.task_id, path
+                )
+            except ValueError as error:
+                if " is missing from " not in str(error):
+                    raise
+                owner_paths: list[Path] = []
+                for candidate_path in sorted(
+                    (quest_root / "chapters").glob("*.snbt")
+                ):
+                    if candidate_path == path:
+                        continue
+                    try:
+                        _commodity_task_location(
+                            candidate_path.read_text(encoding="utf-8"),
+                            overlay.task_id,
+                            candidate_path,
+                        )
+                    except (OSError, UnicodeDecodeError, ValueError):
+                        continue
+                    owner_paths.append(candidate_path)
+                if owner_paths:
+                    raise ValueError(
+                        f"commodity overlay task {overlay.task_id} is outside declared "
+                        f"chapter {overlay.chapter_id}: {owner_paths[0]}"
+                    ) from error
                 raise
-            owner_paths: list[Path] = []
-            for candidate_path in sorted((quest_root / "chapters").glob("*.snbt")):
-                if candidate_path == path:
-                    continue
-                try:
-                    _commodity_task_location(
-                        candidate_path.read_text(encoding="utf-8"),
-                        overlay.task_id,
-                        candidate_path,
-                    )
-                except (OSError, UnicodeDecodeError, ValueError):
-                    continue
-                owner_paths.append(candidate_path)
-            if owner_paths:
-                raise ValueError(
-                    f"commodity overlay task {overlay.task_id} is outside declared "
-                    f"chapter {overlay.chapter_id}: {owner_paths[0]}"
-                ) from error
-            raise
-        span = _commodity_task_item_span(text, overlay.task_id, path)
-        declaration = commodity_declarations[overlay.declaration_key]
-        if declaration.task_id != overlay.task_id:
-            raise ValueError(
-                f"commodity overlay task {overlay.task_id} does not match fixture "
-                f"declaration {overlay.declaration_key}"
-            )
-        actual_digest = _outside_span_sha256(text, (span,))
-        if actual_digest != overlay.expected_outside_sha256:
-            raise ValueError(
-                f"outside-span digest mismatch for {path}: expected "
-                f"{overlay.expected_outside_sha256}, found {actual_digest}"
-            )
+            span = _commodity_task_item_span(text, overlay.task_id, path)
+            item_spans.append(span)
+            task_locations.append((quest_index, task_index))
         try:
             chapter = _parse_snbt(text)
         except SnbtParseError as error:
             raise ValueError(f"malformed SNBT in {path}: {error}") from error
-        task = chapter["quests"][quest_index]["tasks"][task_index]
-        baseline_task = dict(declaration.baseline_task)
-        if {
-            key: value for key, value in task.items() if key != "item"
-        } != {
-            key: value for key, value in baseline_task.items() if key != "item"
-        }:
+        for overlay, (quest_index, task_index), span in zip(
+            chapter_overlays,
+            task_locations,
+            item_spans,
+            strict=True,
+        ):
+            declaration = commodity_declarations[overlay.declaration_key]
+            if declaration.task_id != overlay.task_id:
+                raise ValueError(
+                    f"commodity overlay task {overlay.task_id} does not match fixture "
+                    f"declaration {overlay.declaration_key}"
+                )
+            task = chapter["quests"][quest_index]["tasks"][task_index]
+            baseline_task = dict(declaration.baseline_task)
+            if {
+                key: value for key, value in task.items() if key != "item"
+            } != {
+                key: value for key, value in baseline_task.items() if key != "item"
+            }:
+                raise ValueError(
+                    f"commodity overlay task {overlay.task_id} fields outside item differ "
+                    "from the frozen task"
+                )
+            if task.get("item") == declaration.old_item:
+                replacement = _render_commodity_item_value(declaration.tag)
+            elif task.get("item") == declaration.smart_filter_item:
+                replacement = text[span.offset : span.end]
+            else:
+                raise ValueError(
+                    f"commodity overlay task {overlay.task_id} item differs from both "
+                    "the frozen and declared payloads"
+                )
+            chapter_replacements.append((span, replacement))
+        actual_digest = _outside_span_sha256(text, item_spans)
+        expected_digest = commodity_chapter_digests[chapter_id]
+        if actual_digest != expected_digest:
             raise ValueError(
-                f"commodity overlay task {overlay.task_id} fields outside item differ "
-                "from the frozen task"
-            )
-        if task.get("item") == declaration.old_item:
-            replacement = _render_commodity_item_value(declaration.tag)
-        elif task.get("item") == declaration.smart_filter_item:
-            replacement = text[span.offset : span.end]
-        else:
-            raise ValueError(
-                f"commodity overlay task {overlay.task_id} item differs from both "
-                "the frozen and declared payloads"
+                f"outside-span digest mismatch for {path}: expected "
+                f"{expected_digest}, found {actual_digest}"
             )
         originals[path] = original
-        replacements.setdefault(path, []).append((span, replacement))
+        replacements.setdefault(path, []).extend(chapter_replacements)
 
     for path, path_replacements in replacements.items():
         text = originals[path].decode("utf-8")

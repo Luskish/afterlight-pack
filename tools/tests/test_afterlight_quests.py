@@ -1150,9 +1150,10 @@ class CommonCommodityFixtureTests(unittest.TestCase):
     )
     SOURCE_COMMIT = "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
     BASELINE_SHA256 = "b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c"
-    FIXTURE_SHA256 = "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+    FIXTURE_SHA256 = "52ca9efb512a97827c25494fb4070287709c50f968547b6a1d0d33f2d855af27"
     DECLARATIONS = {
         "39C717BFFEE3D235": ("5B93C6934B230CFB", "c:foods/bread", False),
+        "1D73FB79ED38668F": ("5B93C6934B230CFB", "minecraft:beds", False),
         "374F658F034EF8C5": ("45491A24F6B8C192", "c:ingots/steel", True),
         "33B5B56650A6AEDF": ("11CA083771CCB5BE", "c:ingots/steel", False),
         "1679C5714C2F2A74": ("5070DE6E2B300F4B", "c:ingots/steel", False),
@@ -1362,6 +1363,7 @@ class CommonCommodityCompilerTests(unittest.TestCase):
     )
     DECLARED_TASK_IDS = {
         "39C717BFFEE3D235",
+        "1D73FB79ED38668F",
         "374F658F034EF8C5",
         "33B5B56650A6AEDF",
         "1679C5714C2F2A74",
@@ -1456,7 +1458,7 @@ class CommonCommodityCompilerTests(unittest.TestCase):
                 item_filter=invalid,
             )
 
-    def test_compatibility_accepts_exact_four_declarations_only(self) -> None:
+    def test_compatibility_accepts_exact_five_declarations_only(self) -> None:
         manifest = self.manifest()
         baseline = self.baseline()
         current = self.declared_current_corpus()
@@ -3979,6 +3981,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
     }
     COMMODITY_CHAPTER = "5B93C6934B230CFB"
     COMMODITY_TASK = "39C717BFFEE3D235"
+    BED_TASK = "1D73FB79ED38668F"
     LOCALIZATION_KEY = "chapter_group.4A20F33642175B95.title"
     LOCALIZATION_DIGEST = "a37815245672902454ff0daf4a642c4c81bea408b030029dc4fa83fbb5155c83"
     KNOWN_TARGET_ID = "0576C37E9FA4116C"
@@ -4290,9 +4293,17 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     chapter_id=self.COMMODITY_CHAPTER,
                     task_id=self.COMMODITY_TASK,
                     expected_outside_sha256=(
-                        "097452385aa86dcc1d136db46492b424043d4a23dc57803d3e25136707d5a5cb"
+                        "9e2a4c886d154cb52a9a5623c53b71e0d3e0cf690156a5860e412bde92013270"
                     ),
                     declaration_key=self.COMMODITY_TASK,
+                ),
+                self.overlays.LegacyCommodityTaskOverlay(
+                    chapter_id=self.COMMODITY_CHAPTER,
+                    task_id=self.BED_TASK,
+                    expected_outside_sha256=(
+                        "9e2a4c886d154cb52a9a5623c53b71e0d3e0cf690156a5860e412bde92013270"
+                    ),
+                    declaration_key=self.BED_TASK,
                 ),
             ),
         )
@@ -4356,50 +4367,64 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                     self.outside_value_span(after[relative], "quest_links"),
                 )
 
-    def test_rations_replaces_only_item_span_and_preserves_steel_bytes(self) -> None:
+    def test_cold_boot_commodities_replace_only_item_spans_and_are_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
-            rations_path = (
+            cold_boot_path = (
                 quest_root / "chapters" / f"{self.COMMODITY_CHAPTER}.snbt"
             )
             steel_path = quest_root / "chapters" / "45491A24F6B8C192.snbt"
-            before_rations = rations_path.read_bytes()
+            before_cold_boot = cold_boot_path.read_bytes()
             before_steel = steel_path.read_bytes()
 
             self.write_default(quest_root)
 
-            after_rations = rations_path.read_bytes()
+            after_cold_boot = cold_boot_path.read_bytes()
             chapter = self.parsed_chapter(quest_root, self.COMMODITY_CHAPTER)
-            task = next(
-                task
+            tasks = {
+                task["id"]: task
                 for quest in chapter["quests"]
                 for task in quest.get("tasks", [])
-                if task.get("id") == self.COMMODITY_TASK
+                if task.get("id") in {self.COMMODITY_TASK, self.BED_TASK}
+            }
+            manifest = self.quests.load_common_commodity_declarations(
+                repository_root=ROOT
             )
-            self.assertEqual(
-                task["item"],
-                self.quests.load_common_commodity_declarations(
-                    repository_root=ROOT
-                ).by_task_id[self.COMMODITY_TASK].smart_filter_item,
-            )
+            for task_id in (self.COMMODITY_TASK, self.BED_TASK):
+                with self.subTest(task_id=task_id):
+                    self.assertEqual(
+                        tasks[task_id]["item"],
+                        manifest.by_task_id[task_id].smart_filter_item,
+                    )
             self.assertEqual(
                 self.outside_value_span(before_steel, "quest_links"),
                 self.outside_value_span(steel_path.read_bytes(), "quest_links"),
             )
-            before_span = self.overlays._commodity_task_item_span(
-                before_rations.decode("utf-8"),
-                self.COMMODITY_TASK,
-                rations_path,
+            before_text = before_cold_boot.decode("utf-8")
+            after_text = after_cold_boot.decode("utf-8")
+            before_spans = tuple(
+                self.overlays._commodity_task_item_span(
+                    before_text,
+                    task_id,
+                    cold_boot_path,
+                )
+                for task_id in (self.COMMODITY_TASK, self.BED_TASK)
             )
-            after_span = self.overlays._commodity_task_item_span(
-                after_rations.decode("utf-8"),
-                self.COMMODITY_TASK,
-                rations_path,
+            after_spans = tuple(
+                self.overlays._commodity_task_item_span(
+                    after_text,
+                    task_id,
+                    cold_boot_path,
+                )
+                for task_id in (self.COMMODITY_TASK, self.BED_TASK)
             )
             self.assertEqual(
-                before_rations[: before_span.offset] + before_rations[before_span.end :],
-                after_rations[: after_span.offset] + after_rations[after_span.end :],
+                self.overlays._outside_span_sha256(before_text, before_spans),
+                self.overlays._outside_span_sha256(after_text, after_spans),
             )
+            first = cold_boot_path.read_bytes()
+            self.write_default(quest_root)
+            self.assertEqual(cold_boot_path.read_bytes(), first)
 
     def test_commodity_overlay_manifest_and_target_shape_fail_closed(self) -> None:
         base_overlay = self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS[0]
@@ -4421,10 +4446,20 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 declaration_key=base_overlay.declaration_key,
             ),
         )
+        mismatched_chapter_digest = (
+            base_overlay,
+            replace(
+                self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS[1],
+                expected_outside_sha256="0" * 64,
+            ),
+        )
         cases = {
             "duplicate commodity overlay chapter-task pair": duplicate_pair,
             "duplicate commodity overlay task ID": duplicate_task,
             "outside declared chapter": outside_chapter,
+            "commodity overlays in chapter must share outside-span digest": (
+                mismatched_chapter_digest
+            ),
         }
         for expected, overlays in cases.items():
             with self.subTest(expected=expected), tempfile.TemporaryDirectory() as temp_dir:

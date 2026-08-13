@@ -19,7 +19,7 @@ import tomllib
 import unittest
 import zipfile
 from collections import Counter
-from dataclasses import fields
+from dataclasses import MISSING, FrozenInstanceError, fields
 from pathlib import Path
 from unittest import mock
 
@@ -2292,6 +2292,403 @@ class Plan06PostgameContractTests(unittest.TestCase):
             self.assertIn(scenario, verification_text)
         self.assertIn("Plan 07 manual acceptance", verification_text)
         self.assertNotIn("\u2014", verification_text)
+
+
+class QuestLinkCompilerTests(unittest.TestCase):
+    GROUP_ID = "4525BB3160467FCB"
+    SOURCE_CHAPTER_ID = "3123456789ABCDEF"
+    TARGET_CHAPTER_ID = "3234567890ABCDEF"
+    EXPLICIT_LINK_ID = "1234567890ABCDEF"
+    EXPLICIT_TARGET_ID = "2AAAAAAAAAAAAAAA"
+    LEGACY_TARGET_ID = "2BBBBBBBBBBBBBBB"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+
+    def setUp(self) -> None:
+        self.migration_state = tempfile.TemporaryDirectory()
+        self.migration_environment = mock.patch.dict(
+            os.environ,
+            {
+                "AFTERLIGHT_QUEST_MIGRATION_STATE_ROOT": self.migration_state.name
+            },
+        )
+        self.migration_environment.start()
+
+    def tearDown(self) -> None:
+        self.migration_environment.stop()
+        self.migration_state.cleanup()
+
+    def make_link(
+        self,
+        *,
+        slug: str = "story/test/link",
+        linked_quest: str = "story/test/target",
+        x: object = 8.0,
+        y: object = -2.0,
+        explicit_id: str | None = None,
+    ):
+        return self.quests.QuestLinkSpec(
+            slug=slug,
+            linked_quest=linked_quest,
+            x=x,
+            y=y,
+            explicit_id=explicit_id,
+        )
+
+    def make_catalog(self, quest_links=()):
+        group = self.quests.GroupSpec(
+            slug="story",
+            title="The Story",
+            id=self.GROUP_ID,
+        )
+        source_quest = self.quests.QuestSpec(
+            slug="story/test/source",
+            title="Source",
+            description=("Source quest.",),
+            x=0.0,
+            y=0.0,
+            tasks=(
+                self.quests.TaskSpec(
+                    slug="story/test/source/task",
+                    task_type="checkmark",
+                ),
+            ),
+            rewards=(
+                self.quests.RewardSpec(
+                    slug="story/test/source/reward",
+                    reward_type="xp",
+                    data={"xp": 1},
+                ),
+            ),
+        )
+        target_quest = self.quests.QuestSpec(
+            slug="story/test/target",
+            title="Target",
+            description=("Target quest.",),
+            x=1.0,
+            y=0.0,
+        )
+        return [
+            self.quests.ChapterSpec(
+                slug="story/test/source-chapter",
+                title="Source Chapter",
+                group=group,
+                icon="minecraft:compass",
+                order_index=0,
+                quests=(source_quest,),
+                explicit_id=self.SOURCE_CHAPTER_ID,
+                quest_links=tuple(quest_links),
+            ),
+            self.quests.ChapterSpec(
+                slug="story/test/target-chapter",
+                title="Target Chapter",
+                group=group,
+                icon="minecraft:recovery_compass",
+                order_index=1,
+                quests=(target_quest,),
+                explicit_id=self.TARGET_CHAPTER_ID,
+            ),
+        ]
+
+    def make_sentinel_quest_root(self, base: Path) -> Path:
+        quest_root = base / "config" / "ftbquests" / "quests"
+        (quest_root / "chapters").mkdir(parents=True)
+        (quest_root / "lang").mkdir()
+        (quest_root / "chapter_groups.snbt").write_text(
+            '{\n\tchapter_groups: [{ id: "4525BB3160467FCB" }]\n}\n',
+            encoding="utf-8",
+        )
+        (quest_root / "chapters" / "FEDCBA9876543210.snbt").write_text(
+            "{\n"
+            '\tfilename: "FEDCBA9876543210"\n'
+            '\tgroup: "4525BB3160467FCB"\n'
+            '\tid: "FEDCBA9876543210"\n'
+            "\tquest_links: [ ]\n"
+            "\tquests: [{\n"
+            '\t\tid: "EEDCBA9876543210"\n'
+            '\t\ttasks: [{ id: "DEDCBA9876543210", type: "checkmark" }]\n'
+            '\t\trewards: [{ id: "CEDCBA9876543210", type: "xp", xp: 1 }]\n'
+            "\t}]\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "lang" / "en_us.snbt").write_text(
+            "{\n"
+            '\tchapter_group.4525BB3160467FCB.title: "The Story"\n'
+            '\tchapter.FEDCBA9876543210.title: "Sentinel"\n'
+            '\tquest.EEDCBA9876543210.title: "Sentinel Quest"\n'
+            '\tquest.EEDCBA9876543210.quest_desc: ["Sentinel description."]\n'
+            "}\n",
+            encoding="utf-8",
+        )
+        (quest_root / "sentinel.bin").write_bytes(b"quest-root-sentinel\x00\xff")
+        return quest_root
+
+    def snapshot_files(self, root: Path) -> dict[str, bytes]:
+        return {
+            path.relative_to(root).as_posix(): path.read_bytes()
+            for path in sorted(root.rglob("*"))
+            if path.is_file()
+        }
+
+    def test_quest_link_spec_is_exported_with_frozen_interface(self) -> None:
+        self.assertTrue(hasattr(self.quests, "QuestLinkSpec"))
+        self.assertEqual(
+            [(field.name, field.default) for field in fields(self.quests.QuestLinkSpec)],
+            [
+                ("slug", MISSING),
+                ("linked_quest", MISSING),
+                ("x", MISSING),
+                ("y", MISSING),
+                ("explicit_id", None),
+            ],
+        )
+        link = self.make_link()
+        with self.assertRaises(FrozenInstanceError):
+            link.x = 0.0
+
+    def test_link_id_is_deterministic_and_explicit_id_remains_exact(self) -> None:
+        self.assertEqual(self.make_link().id, "4DE13D77A9649752")
+        explicit = self.make_link(explicit_id=self.EXPLICIT_LINK_ID)
+        self.assertEqual(explicit.id, self.EXPLICIT_LINK_ID)
+
+    def test_link_targets_resolve_slugs_and_preserve_explicit_ids(self) -> None:
+        slug_target = self.make_link()
+        explicit_target = self.make_link(linked_quest=self.EXPLICIT_TARGET_ID)
+
+        self.assertEqual(slug_target.linked_quest_id, "146BD13E3B28B192")
+        self.assertEqual(explicit_target.linked_quest_id, self.EXPLICIT_TARGET_ID)
+
+    def test_link_ids_reject_malformed_low_and_high_bit_values(self) -> None:
+        for identifier in (
+            "not-an-ftb-id",
+            "0000000000000001",
+            "8000000000000000",
+        ):
+            with self.subTest(identifier=identifier):
+                with self.assertRaisesRegex(ValueError, "signed-safe"):
+                    _ = self.make_link(explicit_id=identifier).id
+
+    def test_explicit_targets_reject_low_and_high_bit_values(self) -> None:
+        for identifier in ("0000000000000001", "8000000000000000"):
+            with self.subTest(identifier=identifier):
+                with self.assertRaisesRegex(ValueError, "signed-safe"):
+                    _ = self.make_link(linked_quest=identifier).linked_quest_id
+
+    def test_render_chapter_emits_exact_installed_quest_link_schema(self) -> None:
+        group = self.quests.GroupSpec("story", "The Story", self.GROUP_ID)
+        chapter = self.quests.ChapterSpec(
+            slug="story/test/source-chapter",
+            title="Source Chapter",
+            group=group,
+            icon="minecraft:compass",
+            order_index=0,
+            quests=(),
+            explicit_id=self.SOURCE_CHAPTER_ID,
+            quest_links=(self.make_link(linked_quest=self.EXPLICIT_TARGET_ID),),
+        )
+
+        self.assertEqual(
+            self.quests.render_chapter(chapter),
+            "{\n"
+            '\tdefault_hide_dependency_lines: false\n'
+            '\tdefault_quest_shape: ""\n'
+            '\tfilename: "3123456789ABCDEF"\n'
+            '\tgroup: "4525BB3160467FCB"\n'
+            '\ticon: { id: "minecraft:compass" }\n'
+            '\tid: "3123456789ABCDEF"\n'
+            "\timages: [ ]\n"
+            "\torder_index: 0\n"
+            "\tquest_links: [\n"
+            '\t\t{ id: "4DE13D77A9649752", linked_quest: "2AAAAAAAAAAAAAAA", x: 8.0d, y: -2.0d }\n'
+            "\t]\n"
+            "\tquests: [\n"
+            "\t]\n"
+            "}\n",
+        )
+
+    def test_empty_links_preserve_existing_render_and_positional_callers(self) -> None:
+        chapter = self.quests.ChapterSpec(
+            "story/test/empty",
+            "Empty",
+            self.quests.GroupSpec("story", "The Story", self.GROUP_ID),
+            "minecraft:compass",
+            0,
+            (),
+            "circle",
+            self.SOURCE_CHAPTER_ID,
+        )
+
+        self.assertEqual(chapter.quest_links, ())
+        self.assertEqual(chapter.default_quest_shape, "circle")
+        self.assertEqual(chapter.id, self.SOURCE_CHAPTER_ID)
+        self.assertEqual(
+            self.quests.render_chapter(chapter),
+            "{\n"
+            "\tdefault_hide_dependency_lines: false\n"
+            '\tdefault_quest_shape: "circle"\n'
+            '\tfilename: "3123456789ABCDEF"\n'
+            '\tgroup: "4525BB3160467FCB"\n'
+            '\ticon: { id: "minecraft:compass" }\n'
+            '\tid: "3123456789ABCDEF"\n'
+            "\timages: [ ]\n"
+            "\torder_index: 0\n"
+            "\tquest_links: [ ]\n"
+            "\tquests: [\n"
+            "\t]\n"
+            "}\n",
+        )
+
+    def test_link_ids_share_the_complete_managed_collision_namespace(self) -> None:
+        baseline = self.make_catalog()
+        identifiers = {
+            "chapter_group": baseline[0].group.resolved_id,
+            "chapter": baseline[0].id,
+            "quest": baseline[0].quests[0].id,
+            "task": baseline[0].quests[0].tasks[0].id,
+            "reward": baseline[0].quests[0].rewards[0].id,
+        }
+        for kind, identifier in identifiers.items():
+            with self.subTest(kind=kind):
+                catalog = self.make_catalog(
+                    [self.make_link(explicit_id=identifier)]
+                )
+                with self.assertRaisesRegex(ValueError, "collision"):
+                    self.quests.assert_no_id_collisions(catalog)
+
+        duplicate_links = self.make_catalog(
+            [
+                self.make_link(explicit_id=self.EXPLICIT_LINK_ID),
+                self.make_link(
+                    slug="story/test/other-link",
+                    x=9.0,
+                    explicit_id=self.EXPLICIT_LINK_ID,
+                ),
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "collision"):
+            self.quests.assert_no_id_collisions(duplicate_links)
+
+    def test_link_targets_resolve_against_complete_catalog_and_legacy_ids(self) -> None:
+        managed_catalog = self.make_catalog([self.make_link()])
+        self.quests.assert_no_id_collisions(managed_catalog)
+
+        legacy_catalog = self.make_catalog(
+            [self.make_link(linked_quest=self.LEGACY_TARGET_ID)]
+        )
+        self.quests.assert_no_id_collisions(
+            legacy_catalog,
+            legacy_quest_ids=[self.LEGACY_TARGET_ID],
+        )
+
+    def test_unresolved_link_targets_are_rejected(self) -> None:
+        catalog = self.make_catalog(
+            [self.make_link(linked_quest="story/test/missing")]
+        )
+
+        with self.assertRaisesRegex(ValueError, "unresolved"):
+            self.quests.assert_no_id_collisions(catalog)
+
+    def test_duplicate_target_coordinate_triples_use_resolved_target_ids(self) -> None:
+        catalog = self.make_catalog(
+            [
+                self.make_link(),
+                self.make_link(
+                    slug="story/test/explicit-target",
+                    linked_quest="146BD13E3B28B192",
+                    explicit_id="76232DDF37C81CAB",
+                ),
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "duplicate.*target.*coordinate"):
+            self.quests.assert_no_id_collisions(catalog)
+
+    def test_nan_link_coordinate_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "finite SNBT double"):
+            self.quests.assert_no_id_collisions(
+                self.make_catalog([self.make_link(x=float("nan"))])
+            )
+
+    def test_positive_infinity_link_coordinate_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "finite SNBT double"):
+            self.quests.assert_no_id_collisions(
+                self.make_catalog([self.make_link(x=float("inf"))])
+            )
+
+    def test_negative_infinity_link_coordinate_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "finite SNBT double"):
+            self.quests.assert_no_id_collisions(
+                self.make_catalog([self.make_link(y=float("-inf"))])
+            )
+
+    def test_non_float_link_coordinates_are_rejected(self) -> None:
+        for value in (1, True, "1.0"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "finite SNBT double"):
+                    self.quests.assert_no_id_collisions(
+                        self.make_catalog([self.make_link(x=value)])
+                    )
+
+    def test_declared_legacy_ids_reject_malformed_and_duplicate_values(self) -> None:
+        catalog = self.make_catalog()
+        for identifiers in (
+            ["0000000000000001"],
+            ["8000000000000000"],
+            [self.LEGACY_TARGET_ID, self.LEGACY_TARGET_ID],
+        ):
+            with self.subTest(identifiers=identifiers):
+                with self.assertRaisesRegex(ValueError, "legacy quest"):
+                    self.quests.assert_no_id_collisions(
+                        catalog,
+                        legacy_quest_ids=identifiers,
+                    )
+
+    def test_managed_identity_cannot_reuse_declared_legacy_quest_id(self) -> None:
+        catalog = self.make_catalog()
+        managed_quest_id = catalog[0].quests[0].id
+
+        with self.assertRaisesRegex(ValueError, "collision"):
+            self.quests.assert_no_id_collisions(
+                catalog,
+                legacy_quest_ids=[managed_quest_id],
+            )
+
+    def test_write_preflight_preserves_quest_root_for_every_failure_class(self) -> None:
+        duplicate_links = [
+            self.make_link(),
+            self.make_link(
+                slug="story/test/explicit-target",
+                linked_quest="146BD13E3B28B192",
+                explicit_id="76232DDF37C81CAB",
+            ),
+        ]
+        failure_catalogs = {
+            "collision": self.make_catalog(
+                [self.make_link(explicit_id=self.GROUP_ID)]
+            ),
+            "unresolved target": self.make_catalog(
+                [self.make_link(linked_quest="story/test/missing")]
+            ),
+            "duplicate triple": self.make_catalog(duplicate_links),
+            "malformed ID": self.make_catalog(
+                [self.make_link(explicit_id="0000000000000001")]
+            ),
+            "malformed coordinate": self.make_catalog(
+                [self.make_link(x=float("nan"))]
+            ),
+        }
+
+        for failure_class, catalog in failure_catalogs.items():
+            with self.subTest(failure_class=failure_class):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    quest_root = self.make_sentinel_quest_root(Path(temp_dir))
+                    before = self.snapshot_files(quest_root)
+                    with self.assertRaises(ValueError):
+                        self.quests.write_catalog(catalog, quest_root)
+                    self.assertEqual(self.snapshot_files(quest_root), before)
 
 
 class QuestCompilerTests(unittest.TestCase):

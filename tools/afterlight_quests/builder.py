@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -168,6 +169,33 @@ class RewardSpec:
         return ftb_safe_id(self.explicit_id) if self.explicit_id else stable_id("reward", self.slug)
 
 
+@dataclass(frozen=True)
+class QuestLinkSpec:
+    slug: str
+    linked_quest: str
+    x: float
+    y: float
+    explicit_id: str | None = None
+
+    @property
+    def id(self) -> str:
+        if self.explicit_id is not None:
+            return _require_signed_safe_ftb_identity(
+                self.explicit_id,
+                f"quest link {self.slug}",
+            )
+        return stable_id("quest_link", self.slug)
+
+    @property
+    def linked_quest_id(self) -> str:
+        if re.fullmatch(r"[0-9A-Fa-f]{16}", self.linked_quest):
+            return _require_signed_safe_ftb_identity(
+                self.linked_quest,
+                f"linked quest target for {self.slug}",
+            )
+        return stable_id("quest", self.linked_quest)
+
+
 @dataclass
 class QuestSpec:
     slug: str
@@ -226,6 +254,7 @@ class ChapterSpec:
     quests: tuple[QuestSpec, ...]
     default_quest_shape: str = ""
     explicit_id: str | None = None
+    quest_links: tuple[QuestLinkSpec, ...] = ()
 
     @property
     def id(self) -> str:
@@ -241,14 +270,52 @@ def ftb_safe_id(identifier: str) -> str:
     return f"{value:016X}"
 
 
+def _require_signed_safe_ftb_identity(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or HEX_ID.fullmatch(value) is None
+        or ftb_safe_id(value) != value
+    ):
+        raise ValueError(f"signed-safe FTB identity required for {label}: {value!r}")
+    return value
+
+
 def stable_id(kind: str, slug: str) -> str:
     digest = hashlib.sha256(f"{kind}:{slug}".encode("utf-8")).hexdigest()[:16].upper()
     return ftb_safe_id(digest)
 
 
-def assert_no_id_collisions(catalog: Sequence[ChapterSpec]) -> None:
+def _validated_legacy_quest_ids(legacy_quest_ids: Iterable[str]) -> tuple[str, ...]:
+    if isinstance(legacy_quest_ids, str):
+        raise ValueError("legacy quest IDs must be an iterable of signed-safe identities")
+    validated: list[str] = []
+    seen: set[str] = set()
+    for index, identifier in enumerate(legacy_quest_ids):
+        identifier = _require_signed_safe_ftb_identity(
+            identifier,
+            f"legacy quest ID at index {index}",
+        )
+        if identifier in seen:
+            raise ValueError(f"duplicate legacy quest ID: {identifier}")
+        seen.add(identifier)
+        validated.append(identifier)
+    return tuple(validated)
+
+
+def _require_quest_link_coordinate(value: object, label: str) -> float:
+    if type(value) is not float or not math.isfinite(value):
+        raise ValueError(f"finite SNBT double required for {label}: {value!r}")
+    return value
+
+
+def assert_no_id_collisions(
+    catalog: Sequence[ChapterSpec],
+    *,
+    legacy_quest_ids: Iterable[str] = (),
+) -> None:
     owners: dict[str, tuple[str, str]] = {}
     seen_groups: set[tuple[str, str]] = set()
+    legacy_ids = _validated_legacy_quest_ids(legacy_quest_ids)
 
     def register(identifier: str, kind: str, slug: str, allow_repeat: bool = False) -> None:
         if not HEX_ID.fullmatch(identifier):
@@ -266,15 +333,47 @@ def assert_no_id_collisions(catalog: Sequence[ChapterSpec]) -> None:
         if allow_repeat:
             seen_groups.add(owner)
 
+    for legacy_id in legacy_ids:
+        register(legacy_id, "legacy_quest", legacy_id)
+
+    managed_quest_ids: set[str] = set()
     for chapter in catalog:
         register(chapter.group.resolved_id, "chapter_group", chapter.group.slug, True)
         register(chapter.id, "chapter", chapter.slug)
+        for link in chapter.quest_links:
+            register(link.id, "quest_link", link.slug)
         for quest in chapter.quests:
             register(quest.id, "quest", quest.slug)
+            managed_quest_ids.add(quest.id)
             for task in quest.tasks:
                 register(task.id, "task", task.slug)
             for reward in quest.rewards:
                 register(reward.id, "reward", reward.slug)
+
+    valid_target_ids = managed_quest_ids | set(legacy_ids)
+    for chapter in catalog:
+        target_coordinates: set[tuple[str, float, float]] = set()
+        for link in chapter.quest_links:
+            x = _require_quest_link_coordinate(
+                link.x,
+                f"quest link {link.slug} x coordinate",
+            )
+            y = _require_quest_link_coordinate(
+                link.y,
+                f"quest link {link.slug} y coordinate",
+            )
+            linked_quest_id = link.linked_quest_id
+            if linked_quest_id not in valid_target_ids:
+                raise ValueError(
+                    f"unresolved linked quest target for {link.slug}: {linked_quest_id}"
+                )
+            target_coordinate = (linked_quest_id, x, y)
+            if target_coordinate in target_coordinates:
+                raise ValueError(
+                    f"duplicate quest link target and coordinate triple in "
+                    f"chapter {chapter.slug}: {linked_quest_id}, {x}, {y}"
+                )
+            target_coordinates.add(target_coordinate)
 
 
 def _escape(value: str) -> str:
@@ -327,9 +426,27 @@ def render_chapter(chapter: ChapterSpec) -> str:
         f"\tid: {_escape(chapter.id)}",
         "\timages: [ ]",
         f"\torder_index: {chapter.order_index}",
-        "\tquest_links: [ ]",
-        "\tquests: [",
     ]
+    if chapter.quest_links:
+        lines.append("\tquest_links: [")
+        for link in chapter.quest_links:
+            x = _require_quest_link_coordinate(
+                link.x,
+                f"quest link {link.slug} x coordinate",
+            )
+            y = _require_quest_link_coordinate(
+                link.y,
+                f"quest link {link.slug} y coordinate",
+            )
+            lines.append(
+                f"\t\t{{ id: {_escape(link.id)}, "
+                f"linked_quest: {_escape(link.linked_quest_id)}, "
+                f"x: {_format_scalar(x)}, y: {_format_scalar(y)} }}"
+            )
+        lines.append("\t]")
+    else:
+        lines.append("\tquest_links: [ ]")
+    lines.append("\tquests: [")
     for quest in chapter.quests:
         quest_fields: list[tuple[str, Any]] = [("id", quest.id)]
         if quest.dependency_ids:
@@ -484,8 +601,14 @@ def normalize_quest_corpus_ids(quest_root: Path) -> int:
     return _normalize_quest_corpus_ids_transaction(quest_root)
 
 
-def write_catalog(catalog: Sequence[ChapterSpec], quest_root: Path) -> list[Path]:
-    assert_no_id_collisions(catalog)
+def write_catalog(
+    catalog: Sequence[ChapterSpec],
+    quest_root: Path,
+    *,
+    legacy_quest_ids: Iterable[str] = (),
+) -> list[Path]:
+    assert_no_id_collisions(catalog, legacy_quest_ids=legacy_quest_ids)
+    rendered_chapters = {chapter.id: render_chapter(chapter) for chapter in catalog}
     normalize_quest_corpus_ids(quest_root)
     state_path = quest_root / MANAGED_STATE_NAME
     old_chapters, old_localization_keys = _load_managed_state(state_path)
@@ -506,7 +629,7 @@ def write_catalog(catalog: Sequence[ChapterSpec], quest_root: Path) -> list[Path
     written: list[Path] = []
     for chapter in catalog:
         chapter_path = quest_root / "chapters" / f"{chapter.id}.snbt"
-        _atomic_write(chapter_path, render_chapter(chapter))
+        _atomic_write(chapter_path, rendered_chapters[chapter.id])
         written.append(chapter_path)
 
     managed_entries = {
@@ -1600,16 +1723,6 @@ def _migration_apply_transaction(quest_root: Path, transaction: Path) -> int:
     shutil.rmtree(completed)
     _fsync_directory(completed.parent)
     return changed
-
-
-def _require_signed_safe_ftb_identity(value: object, label: str) -> str:
-    if (
-        not isinstance(value, str)
-        or HEX_ID.fullmatch(value) is None
-        or ftb_safe_id(value) != value
-    ):
-        raise ValueError(f"signed-safe FTB identity required for {label}: {value!r}")
-    return value
 
 
 def _migration_reward_table_id(value: object, label: str) -> int:

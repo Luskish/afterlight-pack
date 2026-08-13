@@ -179,3 +179,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `0568dae`, `4d0fca3`, `tools/afterlight_quests/compatibility.py`, `tools/fixtures/quests/story-cohesion-baseline.json`, and `tools/tests/test_afterlight_quests.py`
 - **Impact:** Additive entities can appear at any position without rebinding saved progress. Missing IDs, duplicate IDs, cross-kind collisions, frozen-order mutations, undeclared payload changes, and covered contamination anywhere in the supplied baseline fixture wrapper or current input fail with searchable paths. This is a compatibility-input validation guarantee, not a broader runtime or live-state guarantee.
 - **Follow-up:** Run independent Task 2 re-review before beginning story-corpus generation, and use commodity declarations only for Shane-approved runtime-backed interchangeable tags.
+
+### MEM-2026-08-13-014
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** verified
+- **Subsystem:** FTB Quests, quest-link compiler
+- **Summary:** Managed chapters now compile deterministic first-class quest links with strict signed-safe identities, exact target resolution, finite-double coordinates, global collision checks, and mutation-free write preflight failures.
+- **Evidence:** The focused TDD run first ended with `Ran 18 tests in 0.016s` and `FAILED (failures=1, errors=22)` because the link model and chapter field did not exist. The completed focused run ended with `Ran 18 tests in 0.019s` and `OK`. The existing compiler regression class ended with `Ran 72 tests in 0.644s` and `OK (skipped=2)`; both skips required an authenticated live install and were outside this task.
+- **Files or Commit:** `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Story and manual chapters can add visual navigation without dependency or completion semantics, while unresolved targets, unsafe IDs, duplicate target-coordinate triples, malformed coordinates, and legacy identity reuse fail before quest-root mutation.
+- **Follow-up:** Pass declared unmanaged quest identities through `legacy_quest_ids` when later overlay tasks compile links to frozen legacy quests.

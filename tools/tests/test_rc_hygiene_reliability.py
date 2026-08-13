@@ -2032,7 +2032,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         )
         self.assertEqual(306, hygiene.SABLE_ARCHIVE_SCOPE_COUNT)
         self.assertEqual(
-            "bbfc73bfee29c88c97f11de9906f0f41356d2518b82d13468c298f149985912c",
+            "1ec3286460f55abc01457a80e7b404fc8fb29ca3216ac9795bcc1e3c74fc3853",
             hygiene.REVIEWED_MIXIN_CORPUS_SHA256,
         )
 

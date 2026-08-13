@@ -19,7 +19,7 @@ import tomllib
 import unittest
 import zipfile
 from collections import Counter
-from dataclasses import MISSING, FrozenInstanceError, fields
+from dataclasses import MISSING, FrozenInstanceError, fields, replace
 from pathlib import Path
 from unittest import mock
 
@@ -1139,6 +1139,451 @@ class StoryCohesionCompatibilityTests(unittest.TestCase):
             current,
             f"$.chapters.{chapter_name}.group",
         )
+
+
+class CommonCommodityFixtureTests(unittest.TestCase):
+    FIXTURE_PATH = (
+        ROOT / "tools" / "fixtures" / "quests" / "common-commodity-tasks.json"
+    )
+    BASELINE_PATH = (
+        ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
+    )
+    SOURCE_COMMIT = "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
+    BASELINE_SHA256 = "b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c"
+    FIXTURE_SHA256 = "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+    DECLARATIONS = {
+        "39C717BFFEE3D235": ("5B93C6934B230CFB", "c:foods/bread", False),
+        "374F658F034EF8C5": ("45491A24F6B8C192", "c:ingots/steel", True),
+        "33B5B56650A6AEDF": ("11CA083771CCB5BE", "c:ingots/steel", False),
+        "1679C5714C2F2A74": ("5070DE6E2B300F4B", "c:ingots/steel", False),
+    }
+    REJECTED = {
+        "6752A54D673DCABA": "mod_specific_resource",
+        "03EDA6E84C30FCEE": "mod_specific_resource",
+        "4DBFE04EBC41F9CD": "mod_specific_resource",
+        "4E5C0E7E0F83C736": "machine_or_component",
+        "1482D851ED4D0F4F": "mod_specific_resource",
+        "6541783226B9AF4F": "mod_specific_resource",
+        "78A80A386E538375": "mod_specific_resource",
+        "275B887D6E8EC53C": "mod_specific_resource",
+        "6A10840DA3CB2850": "mod_specific_resource",
+        "48CA55FFEC0E520A": "machine_or_component",
+        "73060E37DDB3FD85": "machine_or_component",
+        "356CA551BA15487D": "mod_specific_resource",
+        "3A46F6A985DB59C6": "mod_specific_resource",
+        "6CB2D194AE6405FD": "machine_or_component",
+        "48BFA44FF5CAF4A2": "mod_specific_resource",
+        "5A71F2AD98C1F1C4": "mod_specific_resource",
+        "3EB8EAFCC475A224": "mod_specific_resource",
+        "1BAAD2BEF727856C": "mod_specific_resource",
+        "1E71BF7AB5EEE038": "ambiguous_retain_exact_item",
+        "1B19222FF3A3BA79": "ambiguous_retain_exact_item",
+        "7B9589772D6405FD": "mod_specific_resource",
+        "7A63B7029431C343": "mod_specific_resource",
+        "70386E249F64C241": "mod_specific_resource",
+        "1B970E9ED406757F": "machine_or_component",
+        "043F4A19C7D0C484": "mod_specific_resource",
+        "18E162671E1F06CA": "ambiguous_retain_exact_item",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+
+    def setUp(self) -> None:
+        self.generated_before = self.generated_snapshot()
+
+    def tearDown(self) -> None:
+        self.assertEqual(self.generated_snapshot(), self.generated_before)
+
+    @staticmethod
+    def generated_snapshot() -> dict[str, str]:
+        paths = [
+            *sorted((ROOT / "config" / "ftbquests" / "quests").rglob("*")),
+            ROOT
+            / "kubejs"
+            / "server_scripts"
+            / "afterlight"
+            / "generated_quest_item_audit.js",
+        ]
+        return {
+            path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in paths
+            if path.is_file()
+        }
+
+    def load(self, path: Path | None = None, *, runtime: bool = False):
+        loader = getattr(self.quests, "load_common_commodity_declarations", None)
+        self.assertTrue(callable(loader), "commodity fixture loader is missing")
+        return loader(
+            self.FIXTURE_PATH if path is None else path,
+            repository_root=ROOT,
+            runtime_root=(
+                Path(os.environ.get("AFTERLIGHT_QUEST_RUNTIME_ROOT", ROOT))
+                if runtime
+                else None
+            ),
+        )
+
+    def fixture(self) -> dict[str, object]:
+        self.assertTrue(self.FIXTURE_PATH.is_file(), "commodity fixture is missing")
+        return json.loads(self.FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    def write_fixture(self, root: Path, fixture: dict[str, object]) -> Path:
+        path = root / "common-commodity-tasks.json"
+        path.write_text(
+            json.dumps(fixture, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_fixture_is_canonical_exact_and_source_bound(self) -> None:
+        manifest = self.load()
+        fixture = self.fixture()
+        self.assertEqual(
+            hashlib.sha256(self.FIXTURE_PATH.read_bytes()).hexdigest(),
+            self.FIXTURE_SHA256,
+        )
+        self.assertTrue(self.FIXTURE_PATH.read_bytes().endswith(b"\n"))
+        self.assertNotIn(b"\r", self.FIXTURE_PATH.read_bytes())
+        self.assertEqual(fixture["schema_version"], 1)
+        self.assertEqual(
+            fixture["baseline"],
+            {
+                "fixture_path": "tools/fixtures/quests/story-cohesion-baseline.json",
+                "git_object": self.SOURCE_COMMIT,
+                "sha256": self.BASELINE_SHA256,
+            },
+        )
+        self.assertEqual(
+            hashlib.sha256(self.BASELINE_PATH.read_bytes()).hexdigest(),
+            self.BASELINE_SHA256,
+        )
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "cat-file", "-t", manifest.git_object],
+                cwd=ROOT,
+                text=True,
+            ).strip(),
+            "commit",
+        )
+        self.assertEqual(set(manifest.by_task_id), set(self.DECLARATIONS))
+        self.assertEqual(
+            manifest.compatibility_replacements,
+            {task_id: expected[1] for task_id, expected in self.DECLARATIONS.items()},
+        )
+        for task_id, (chapter_id, tag, already_generalized) in self.DECLARATIONS.items():
+            declaration = manifest.by_task_id[task_id]
+            self.assertEqual(declaration.chapter_id, chapter_id)
+            self.assertEqual(declaration.tag, tag)
+            self.assertEqual(declaration.already_generalized, already_generalized)
+            self.assertEqual(
+                declaration.smart_filter_item,
+                {
+                    "components": {
+                        "ftbfiltersystem:filter": f"ftbfiltersystem:item_tag({tag})"
+                    },
+                    "count": "1",
+                    "id": "ftbfiltersystem:smart_filter",
+                },
+            )
+
+    def test_fixture_rejects_duplicates_staleness_and_undeclared_tasks(self) -> None:
+        fixture = self.fixture()
+        mutations = {
+            "baseline SHA-256": lambda value: value["baseline"].__setitem__("sha256", "0" * 64),
+            "Git object": lambda value: value["baseline"].__setitem__("git_object", "0" * 40),
+            "old item": lambda value: value["declarations"][0]["old_item"].__setitem__("id", "minecraft:stick"),
+            "outer count": lambda value: value["declarations"][0].__setitem__("count_snbt", "9L"),
+            "chapter ownership": lambda value: value["declarations"][0]["chapter"].__setitem__("id", "0123456789ABCDEF"),
+            "already generalized": lambda value: value["declarations"][0].__setitem__("already_generalized", True),
+        }
+        for expected, mutate in mutations.items():
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as temp_dir:
+                changed = copy.deepcopy(fixture)
+                mutate(changed)
+                path = self.write_fixture(Path(temp_dir), changed)
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.load(path)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            duplicate = copy.deepcopy(fixture)
+            duplicate_declaration = copy.deepcopy(duplicate["declarations"][0])
+            duplicate_declaration["tag"] = "c:ingots/steel"
+            duplicate_declaration["smart_filter_item"]["components"][
+                "ftbfiltersystem:filter"
+            ] = "ftbfiltersystem:item_tag(c:ingots/steel)"
+            duplicate["declarations"].append(duplicate_declaration)
+            path = self.write_fixture(Path(temp_dir), duplicate)
+            with self.assertRaisesRegex(ValueError, "39C717BFFEE3D235.*duplicate"):
+                self.load(path)
+
+        for task_id, classification in self.REJECTED.items():
+            with self.subTest(task_id=task_id), tempfile.TemporaryDirectory() as temp_dir:
+                rejected = copy.deepcopy(fixture)
+                rejected["declarations"][0]["task"]["id"] = task_id
+                path = self.write_fixture(Path(temp_dir), rejected)
+                with self.assertRaisesRegex(ValueError, f"{task_id}.*{classification}"):
+                    self.load(path)
+
+    def test_static_runtime_evidence_proves_tags_and_producers(self) -> None:
+        manifest = self.load(runtime=True)
+        for declaration in manifest.declarations:
+            producers = {producer.item for producer in declaration.producers}
+            self.assertGreaterEqual(len(producers), 2, declaration.task_id)
+            if declaration.already_generalized:
+                self.assertEqual(
+                    declaration.old_item["id"], "ftbfiltersystem:smart_filter"
+                )
+            else:
+                self.assertIn(declaration.old_item["id"], producers)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing = copy.deepcopy(self.fixture())
+            declaration = missing["declarations"][0]
+            declaration["tag"] = "c:foods/uninstalled"
+            declaration["smart_filter_item"]["components"]["ftbfiltersystem:filter"] = (
+                "ftbfiltersystem:item_tag(c:foods/uninstalled)"
+            )
+            declaration["producers"][0]["tag_source"] = (
+                "data/c/tags/item/foods/uninstalled.json"
+            )
+            path = self.write_fixture(Path(temp_dir), missing)
+            with self.assertRaisesRegex(ValueError, "c:foods/uninstalled"):
+                self.load(path, runtime=True)
+
+
+class CommonCommodityCompilerTests(unittest.TestCase):
+    FIXTURE_PATH = (
+        ROOT / "tools" / "fixtures" / "quests" / "common-commodity-tasks.json"
+    )
+    BASELINE_PATH = (
+        ROOT / "tools" / "fixtures" / "quests" / "story-cohesion-baseline.json"
+    )
+    DECLARED_TASK_IDS = {
+        "39C717BFFEE3D235",
+        "374F658F034EF8C5",
+        "33B5B56650A6AEDF",
+        "1679C5714C2F2A74",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.quests = importlib.import_module("afterlight_quests")
+        cls.catalog_module = importlib.import_module("afterlight_quests.catalog")
+        cls.builder = importlib.import_module("afterlight_quests.builder")
+
+    def setUp(self) -> None:
+        self.generated_before = CommonCommodityFixtureTests.generated_snapshot()
+
+    def tearDown(self) -> None:
+        self.assertEqual(
+            CommonCommodityFixtureTests.generated_snapshot(),
+            self.generated_before,
+        )
+
+    def manifest(self):
+        return self.quests.load_common_commodity_declarations(
+            self.FIXTURE_PATH,
+            repository_root=ROOT,
+        )
+
+    def baseline(self) -> dict[str, object]:
+        return json.loads(self.BASELINE_PATH.read_text(encoding="utf-8"))["corpus"]
+
+    @staticmethod
+    def task_index(corpus: dict[str, object]) -> dict[str, dict[str, object]]:
+        return {
+            task["id"]: task
+            for chapter in corpus["chapters"].values()
+            for quest in chapter["quests"]
+            for task in quest.get("tasks", [])
+        }
+
+    def rendered_managed_tasks(self) -> dict[str, dict[str, object]]:
+        tasks: dict[str, dict[str, object]] = {}
+        for chapter in self.quests.build_catalog():
+            parsed = self.builder._parse_snbt(self.builder._render_chapter(chapter))
+            for quest in parsed["quests"]:
+                for task in quest.get("tasks", []):
+                    tasks[task["id"]] = task
+        return tasks
+
+    def declared_current_corpus(self) -> dict[str, object]:
+        current = copy.deepcopy(self.baseline())
+        tasks = self.task_index(current)
+        for declaration in self.manifest().declarations:
+            tasks[declaration.task_id]["item"] = copy.deepcopy(
+                dict(declaration.smart_filter_item)
+            )
+        return current
+
+    def test_managed_routes_change_only_declared_item_compounds(self) -> None:
+        baseline_tasks = self.task_index(self.baseline())
+        managed_tasks = self.rendered_managed_tasks()
+        manifest = self.manifest()
+        managed_ids = {"33B5B56650A6AEDF", "1679C5714C2F2A74"}
+        for task_id in managed_ids:
+            with self.subTest(task_id=task_id):
+                declaration = manifest.by_task_id[task_id]
+                rendered = managed_tasks[task_id]
+                expected = copy.deepcopy(baseline_tasks[task_id])
+                expected["item"] = copy.deepcopy(dict(declaration.smart_filter_item))
+                self.assertEqual(rendered, expected)
+                self.assertEqual(
+                    set(rendered["item"]), {"count", "id", "components"}
+                )
+                self.assertNotIn("match_components", rendered)
+
+        first = self.rendered_managed_tasks()
+        second = self.rendered_managed_tasks()
+        self.assertEqual(first, second)
+
+    def test_item_filter_argument_rejects_nonfixture_declarations(self) -> None:
+        declaration = self.manifest().by_task_id["33B5B56650A6AEDF"]
+        invalid = replace(declaration, tag="c:ingots/iron")
+        with self.assertRaisesRegex(ValueError, "fixture declaration"):
+            self.catalog_module._item_quest(
+                "story/11-convergence/steel-batch",
+                "Automated Steel Batch",
+                "Industry should continue while unwatched.",
+                ("Test description.",),
+                "immersiveengineering:ingot_steel",
+                64,
+                (),
+                0.0,
+                0.0,
+                item_filter=invalid,
+            )
+
+    def test_compatibility_accepts_exact_four_declarations_only(self) -> None:
+        manifest = self.manifest()
+        baseline = self.baseline()
+        current = self.declared_current_corpus()
+        self.assertEqual(
+            self.quests.compare_quest_corpus(
+                baseline,
+                current,
+                commodity_replacements=manifest.compatibility_replacements,
+            ),
+            [],
+        )
+        for task_id in self.DECLARED_TASK_IDS:
+            with self.subTest(task_id=task_id):
+                reduced = dict(manifest.compatibility_replacements)
+                del reduced[task_id]
+                errors = self.quests.compare_quest_corpus(
+                    baseline,
+                    current,
+                    commodity_replacements=reduced,
+                )
+                if task_id == "374F658F034EF8C5":
+                    self.assertTrue(
+                        any(task_id in error and "undeclared" in error for error in errors),
+                        errors,
+                    )
+                else:
+                    self.assertTrue(
+                        any(".item:" in error for error in errors),
+                        errors,
+                    )
+
+    def test_allowlist_shape_and_nonitem_fields_are_exhaustive(self) -> None:
+        manifest = self.manifest()
+        baseline = self.baseline()
+        current = self.declared_current_corpus()
+        baseline_tasks = self.task_index(baseline)
+        current_tasks = self.task_index(current)
+        filter_tasks = {
+            task_id
+            for task_id, task in current_tasks.items()
+            if task.get("item", {}).get("id") == "ftbfiltersystem:smart_filter"
+        }
+        self.assertEqual(filter_tasks, self.DECLARED_TASK_IDS)
+        self.assertFalse(
+            [
+                (task_id, task["item"]["id"])
+                for task_id, task in current_tasks.items()
+                if isinstance(task.get("item"), dict)
+                and isinstance(task["item"].get("id"), str)
+                and task["item"]["id"].startswith("c:")
+            ]
+        )
+        for task_id in filter_tasks:
+            declaration = manifest.by_task_id[task_id]
+            task = current_tasks[task_id]
+            expected_task = copy.deepcopy(baseline_tasks[task_id])
+            expected_task["item"] = copy.deepcopy(dict(declaration.smart_filter_item))
+            self.assertEqual(task, expected_task)
+            self.assertFalse(task["item"]["id"].startswith("c:"))
+            self.assertEqual(
+                task["item"]["components"],
+                {
+                    "ftbfiltersystem:filter": (
+                        f"ftbfiltersystem:item_tag({declaration.tag})"
+                    )
+                },
+            )
+
+        mutations = {
+            "id": lambda task: task.__setitem__("id", "0123456789ABCDEF"),
+            "type": lambda task: task.__setitem__("type", "checkmark"),
+            "count": lambda task: task.__setitem__("count", "65L"),
+            "consume_items": lambda task: task.__setitem__("consume_items", True),
+            "match_components": lambda task: task.__setitem__("match_components", "fuzzy"),
+        }
+        target_id = "33B5B56650A6AEDF"
+        for field, mutate in mutations.items():
+            with self.subTest(field=field):
+                changed = copy.deepcopy(current)
+                mutate(self.task_index(changed)[target_id])
+                errors = self.quests.compare_quest_corpus(
+                    baseline,
+                    changed,
+                    commodity_replacements=manifest.compatibility_replacements,
+                )
+                self.assertTrue(any(f".{field}:" in error for error in errors), errors)
+
+        for field in ("dependencies", "rewards"):
+            with self.subTest(field=field):
+                changed = copy.deepcopy(current)
+                chapter = changed["chapters"]["11CA083771CCB5BE.snbt"]
+                quest = next(
+                    quest for quest in chapter["quests"]
+                    if quest["id"] == "28F212A9C22AEEAA"
+                )
+                if field == "dependencies":
+                    quest[field][0] = "0123456789ABCDEF"
+                else:
+                    quest[field][0]["type"] = "xp_levels"
+                errors = self.quests.compare_quest_corpus(
+                    baseline,
+                    changed,
+                    commodity_replacements=manifest.compatibility_replacements,
+                )
+                self.assertTrue(any(f".{field}" in error for error in errors), errors)
+
+    def test_steel_yourself_is_declared_but_byte_unchanged(self) -> None:
+        declaration = self.manifest().by_task_id["374F658F034EF8C5"]
+        path = (
+            ROOT
+            / "config"
+            / "ftbquests"
+            / "quests"
+            / "chapters"
+            / "45491A24F6B8C192.snbt"
+        )
+        before = path.read_bytes()
+        chapter = self.builder._parse_snbt(before.decode("utf-8"))
+        task = next(
+            task
+            for quest in chapter["quests"]
+            for task in quest.get("tasks", [])
+            if task.get("id") == declaration.task_id
+        )
+        self.assertEqual(task["item"], declaration.old_item)
+        self.assertEqual(task["item"], declaration.smart_filter_item)
+        self.assertEqual(path.read_bytes(), before)
 
 
 class Plan06GateDependencyTests(unittest.TestCase):
@@ -2381,6 +2826,9 @@ class QuestLinkCompilerTests(unittest.TestCase):
         cls.quests = importlib.import_module("afterlight_quests")
 
     def setUp(self) -> None:
+        self.repository_generated_before = (
+            CommonCommodityFixtureTests.generated_snapshot()
+        )
         self.migration_state = tempfile.TemporaryDirectory()
         self.migration_environment = mock.patch.dict(
             os.environ,
@@ -2393,6 +2841,10 @@ class QuestLinkCompilerTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.migration_environment.stop()
         self.migration_state.cleanup()
+        self.assertEqual(
+            CommonCommodityFixtureTests.generated_snapshot(),
+            self.repository_generated_before,
+        )
 
     def make_link(
         self,
@@ -3111,6 +3563,8 @@ class LegacyQuestOverlayTests(unittest.TestCase):
         "7C611E8A94BC5CE5": 31,
         "099200314296766A": 32,
     }
+    COMMODITY_CHAPTER = "5B93C6934B230CFB"
+    COMMODITY_TASK = "39C717BFFEE3D235"
     LOCALIZATION_KEY = "chapter_group.4A20F33642175B95.title"
     LOCALIZATION_DIGEST = "0712cdefe59c27dd3b487616122da45a0f657166612cd6704762227a274a5e24"
     KNOWN_TARGET_ID = "0576C37E9FA4116C"
@@ -3279,6 +3733,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
         link_overlays=None,
         order_overlays=None,
         localization_overlays=None,
+        commodity_overlays=None,
         known_quest_ids=None,
     ):
         return self.overlays._write_legacy_quest_overlays(
@@ -3286,6 +3741,7 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             link_overlays=self.overlays.LEGACY_QUEST_LINK_OVERLAYS if link_overlays is None else link_overlays,
             order_overlays=self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS if order_overlays is None else order_overlays,
             localization_overlays=self.overlays.LEGACY_LOCALIZATION_OVERLAYS if localization_overlays is None else localization_overlays,
+            commodity_overlays=self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS if commodity_overlays is None else commodity_overlays,
             catalog=self.quests.build_catalog(),
             known_quest_ids=(self.KNOWN_TARGET_ID,) if known_quest_ids is None else known_quest_ids,
         )
@@ -3348,6 +3804,23 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             )
         self.assertEqual(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.overlays, ())
         self.assertIsNone(self.overlays.LEGACY_LOCALIZATION_OVERLAYS.expected_outside_sha256)
+        self.assertEqual(
+            self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS,
+            (
+                self.overlays.LegacyCommodityTaskOverlay(
+                    chapter_id=self.COMMODITY_CHAPTER,
+                    task_id=self.COMMODITY_TASK,
+                    expected_outside_sha256=(
+                        "097452385aa86dcc1d136db46492b424043d4a23dc57803d3e25136707d5a5cb"
+                    ),
+                    declaration_key=self.COMMODITY_TASK,
+                ),
+            ),
+        )
+        self.assertNotIn(
+            "374F658F034EF8C5",
+            {overlay.task_id for overlay in self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS},
+        )
         with self.assertRaises(FrozenInstanceError):
             self.overlays.LEGACY_CHAPTER_ORDER_OVERLAYS[0].order_index = 99
         with self.assertRaises(FrozenInstanceError):
@@ -3371,6 +3844,9 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                 f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                 for chapter_id in self.ORDER_OVERLAYS
             ]
+            expected_chapters.append(
+                f"config/ftbquests/quests/chapters/{self.COMMODITY_CHAPTER}.snbt"
+            )
             self.assertEqual(
                 changed_names,
                 sorted([*expected_chapters, "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"]),
@@ -3393,6 +3869,156 @@ class LegacyQuestOverlayTests(unittest.TestCase):
             for chapter_id in self.LINK_CHAPTERS:
                 relative = f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                 self.assertEqual(before[relative], after[relative])
+
+    def test_rations_replaces_only_item_span_and_preserves_steel_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            rations_path = (
+                quest_root / "chapters" / f"{self.COMMODITY_CHAPTER}.snbt"
+            )
+            steel_path = quest_root / "chapters" / "45491A24F6B8C192.snbt"
+            before_rations = rations_path.read_bytes()
+            before_steel = steel_path.read_bytes()
+
+            self.overlays.write_legacy_quest_overlays(
+                quest_root,
+                catalog=self.quests.build_catalog(),
+            )
+
+            after_rations = rations_path.read_bytes()
+            chapter = self.parsed_chapter(quest_root, self.COMMODITY_CHAPTER)
+            task = next(
+                task
+                for quest in chapter["quests"]
+                for task in quest.get("tasks", [])
+                if task.get("id") == self.COMMODITY_TASK
+            )
+            self.assertEqual(
+                task["item"],
+                self.quests.load_common_commodity_declarations(
+                    repository_root=ROOT
+                ).by_task_id[self.COMMODITY_TASK].smart_filter_item,
+            )
+            self.assertEqual(steel_path.read_bytes(), before_steel)
+            before_span = self.overlays._commodity_task_item_span(
+                before_rations.decode("utf-8"),
+                self.COMMODITY_TASK,
+                rations_path,
+            )
+            after_span = self.overlays._commodity_task_item_span(
+                after_rations.decode("utf-8"),
+                self.COMMODITY_TASK,
+                rations_path,
+            )
+            self.assertEqual(
+                before_rations[: before_span.offset] + before_rations[before_span.end :],
+                after_rations[: after_span.offset] + after_rations[after_span.end :],
+            )
+
+    def test_commodity_overlay_manifest_and_target_shape_fail_closed(self) -> None:
+        base_overlay = self.overlays.LEGACY_COMMODITY_TASK_OVERLAYS[0]
+        duplicate_pair = (base_overlay, base_overlay)
+        duplicate_task = (
+            base_overlay,
+            self.overlays.LegacyCommodityTaskOverlay(
+                chapter_id="45491A24F6B8C192",
+                task_id=base_overlay.task_id,
+                expected_outside_sha256="0" * 64,
+                declaration_key=base_overlay.declaration_key,
+            ),
+        )
+        outside_chapter = (
+            self.overlays.LegacyCommodityTaskOverlay(
+                chapter_id="45491A24F6B8C192",
+                task_id=base_overlay.task_id,
+                expected_outside_sha256="0" * 64,
+                declaration_key=base_overlay.declaration_key,
+            ),
+        )
+        cases = {
+            "duplicate commodity overlay chapter-task pair": duplicate_pair,
+            "duplicate commodity overlay task ID": duplicate_task,
+            "outside declared chapter": outside_chapter,
+        }
+        for expected, overlays in cases.items():
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as temp_dir:
+                repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+                before = self.snapshot_files(repo_root)
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.apply_custom(quest_root, commodity_overlays=overlays)
+                self.assertEqual(self.snapshot_files(repo_root), before)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            path = quest_root / "chapters" / f"{self.COMMODITY_CHAPTER}.snbt"
+            text = path.read_text(encoding="utf-8")
+            task_id = next(
+                task["id"]
+                for quest in self.builder._parse_snbt(text)["quests"]
+                for task in quest.get("tasks", [])
+                if task.get("type") != "item"
+            )
+            overlay = self.overlays.LegacyCommodityTaskOverlay(
+                chapter_id=self.COMMODITY_CHAPTER,
+                task_id=task_id,
+                expected_outside_sha256="0" * 64,
+                declaration_key=self.COMMODITY_TASK,
+            )
+            before = self.snapshot_files(repo_root)
+            with self.assertRaisesRegex(ValueError, "non-item commodity overlay task"):
+                self.apply_custom(quest_root, commodity_overlays=(overlay,))
+            self.assertEqual(self.snapshot_files(repo_root), before)
+
+    def test_commodity_overlay_rejects_span_digest_and_shape_drift(self) -> None:
+        mutations = {
+            "missing item span": lambda text: text.replace(
+                '\n\t\t\t\titem: { count: 1, id: "minecraft:bread" }', "", 1
+            ),
+            "duplicate item span": lambda text: text.replace(
+                '\n\t\t\t\titem: { count: 1, id: "minecraft:bread" }',
+                '\n\t\t\t\titem: { count: 1, id: "minecraft:bread" }'
+                '\n\t\t\t\titem: { count: 1, id: "minecraft:bread" }',
+                1,
+            ),
+            "outside-span digest mismatch": lambda text: text.replace(
+                '\timages: [ ]', '\timages: [{ x: 0.0d }]', 1
+            ),
+        }
+        for expected, mutate in mutations.items():
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as temp_dir:
+                repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+                path = quest_root / "chapters" / f"{self.COMMODITY_CHAPTER}.snbt"
+                path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
+                before = self.snapshot_files(repo_root)
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.overlays.write_legacy_quest_overlays(
+                        quest_root,
+                        catalog=self.quests.build_catalog(),
+                    )
+                self.assertEqual(self.snapshot_files(repo_root), before)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root, quest_root = self.copy_repo_inputs(Path(temp_dir))
+            path = quest_root / "chapters" / f"{self.COMMODITY_CHAPTER}.snbt"
+            text = path.read_text(encoding="utf-8").replace(
+                "\t\t\t\tcount: 8L", "\t\t\t\tcount: 9L", 1
+            )
+            path.write_text(text, encoding="utf-8")
+            span = self.overlays._commodity_task_item_span(
+                text, self.COMMODITY_TASK, path
+            )
+            overlay = self.overlays.LegacyCommodityTaskOverlay(
+                chapter_id=self.COMMODITY_CHAPTER,
+                task_id=self.COMMODITY_TASK,
+                expected_outside_sha256=self.overlays._outside_span_sha256(
+                    text, (span,)
+                ),
+                declaration_key=self.COMMODITY_TASK,
+            )
+            before = self.snapshot_files(repo_root)
+            with self.assertRaisesRegex(ValueError, "fields outside item differ"):
+                self.apply_custom(quest_root, commodity_overlays=(overlay,))
+            self.assertEqual(self.snapshot_files(repo_root), before)
 
     def test_four_legacy_story_owners_replace_unique_top_level_link_spans(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -3875,6 +4501,8 @@ class LegacyQuestOverlayTests(unittest.TestCase):
                         f"config/ftbquests/quests/chapters/{chapter_id}.snbt"
                         for chapter_id in self.ORDER_OVERLAYS
                     ],
+                    "config/ftbquests/quests/chapters/11CA083771CCB5BE.snbt",
+                    f"config/ftbquests/quests/chapters/{self.COMMODITY_CHAPTER}.snbt",
                     "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
                 ]),
             )

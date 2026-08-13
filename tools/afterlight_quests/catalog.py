@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import re
+import zipfile
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from pathlib import Path
+from types import MappingProxyType
 
 from .builder import (
     ChapterSpec,
@@ -45,6 +51,567 @@ CERTIFICATION_FINALES = (
     "7C9EA276C2D84333",
 )
 INFRASTRUCTURE_FINALE = "6524EE78235F0942"
+
+COMMON_COMMODITY_FIXTURE_PATH = Path(
+    "tools/fixtures/quests/common-commodity-tasks.json"
+)
+COMMON_COMMODITY_BASELINE_PATH = Path(
+    "tools/fixtures/quests/story-cohesion-baseline.json"
+)
+COMMON_COMMODITY_BASELINE_GIT_OBJECT = (
+    "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25"
+)
+COMMON_COMMODITY_BASELINE_SHA256 = (
+    "b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c"
+)
+COMMON_COMMODITY_FIXTURE_SHA256 = (
+    "1a84b75ae973bbe5e9f41a3ee7c76a501991e2296b5742f3648f18d8a860d02c"
+)
+COMMON_COMMODITY_TASK_CONTRACTS = MappingProxyType(
+    {
+        "39C717BFFEE3D235": {
+            "chapter_id": "5B93C6934B230CFB",
+            "chapter_title": "Cold Boot",
+            "quest_id": "038F61D9ECA32B48",
+            "quest_title": "Rations",
+            "tag": "c:foods/bread",
+            "count_snbt": "8L",
+            "classification": "common_commodity",
+            "already_generalized": False,
+        },
+        "374F658F034EF8C5": {
+            "chapter_id": "45491A24F6B8C192",
+            "chapter_title": "Foothold",
+            "quest_id": "27F6D0AB957BBB8C",
+            "quest_title": "Steel Yourself",
+            "tag": "c:ingots/steel",
+            "count_snbt": "12L",
+            "classification": "common_commodity_already_generalized",
+            "already_generalized": True,
+        },
+        "33B5B56650A6AEDF": {
+            "chapter_id": "11CA083771CCB5BE",
+            "chapter_title": "Convergence",
+            "quest_id": "28F212A9C22AEEAA",
+            "quest_title": "Automated Steel Batch",
+            "tag": "c:ingots/steel",
+            "count_snbt": "64L",
+            "classification": "common_commodity",
+            "already_generalized": False,
+        },
+        "1679C5714C2F2A74": {
+            "chapter_id": "5070DE6E2B300F4B",
+            "chapter_title": "Infrastructure II",
+            "quest_id": "792E405CE058FD1A",
+            "quest_title": "Industry Quota",
+            "tag": "c:ingots/steel",
+            "count_snbt": "1024L",
+            "classification": "common_commodity",
+            "already_generalized": False,
+        },
+    }
+)
+REJECTED_COMMODITY_TASKS = MappingProxyType(
+    {
+        "6752A54D673DCABA": "mod_specific_resource",
+        "03EDA6E84C30FCEE": "mod_specific_resource",
+        "4DBFE04EBC41F9CD": "mod_specific_resource",
+        "4E5C0E7E0F83C736": "machine_or_component",
+        "1482D851ED4D0F4F": "mod_specific_resource",
+        "6541783226B9AF4F": "mod_specific_resource",
+        "78A80A386E538375": "mod_specific_resource",
+        "275B887D6E8EC53C": "mod_specific_resource",
+        "6A10840DA3CB2850": "mod_specific_resource",
+        "48CA55FFEC0E520A": "machine_or_component",
+        "73060E37DDB3FD85": "machine_or_component",
+        "356CA551BA15487D": "mod_specific_resource",
+        "3A46F6A985DB59C6": "mod_specific_resource",
+        "6CB2D194AE6405FD": "machine_or_component",
+        "48BFA44FF5CAF4A2": "mod_specific_resource",
+        "5A71F2AD98C1F1C4": "mod_specific_resource",
+        "3EB8EAFCC475A224": "mod_specific_resource",
+        "1BAAD2BEF727856C": "mod_specific_resource",
+        "1E71BF7AB5EEE038": "ambiguous_retain_exact_item",
+        "1B19222FF3A3BA79": "ambiguous_retain_exact_item",
+        "7B9589772D6405FD": "mod_specific_resource",
+        "7A63B7029431C343": "mod_specific_resource",
+        "70386E249F64C241": "mod_specific_resource",
+        "1B970E9ED406757F": "machine_or_component",
+        "043F4A19C7D0C484": "mod_specific_resource",
+        "18E162671E1F06CA": "ambiguous_retain_exact_item",
+    }
+)
+_FTB_ID = re.compile(r"^[0-7][0-9A-F]{15}$")
+_ITEM_ID = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
+_RECIPE_EVIDENCE = re.compile(r"^(?P<entry>data/\S+) in (?P<jar>server-test/\S+\.jar) ")
+
+
+@dataclass(frozen=True)
+class CommodityProducer:
+    item: str
+    tag_source: str
+    jar: str
+
+
+@dataclass(frozen=True)
+class CommodityTaskDeclaration:
+    chapter_id: str
+    chapter_title: str
+    quest_id: str
+    quest_title: str
+    task_id: str
+    old_item: Mapping[str, object]
+    smart_filter_item: Mapping[str, object]
+    tag: str
+    count_snbt: str
+    consume_items: bool
+    match_components: str
+    classification: str
+    already_generalized: bool
+    producers: tuple[CommodityProducer, ...]
+    installed_jars: tuple[str, ...]
+    recipe_or_process_evidence: tuple[str, ...]
+    baseline_task: Mapping[str, object]
+
+    def rendered_item(self) -> dict[str, object]:
+        return {
+            "count": 1,
+            "id": "ftbfiltersystem:smart_filter",
+            "components": {
+                "ftbfiltersystem:filter": f"ftbfiltersystem:item_tag({self.tag})"
+            },
+        }
+
+
+@dataclass(frozen=True)
+class CommonCommodityManifest:
+    fixture_path: Path
+    baseline_fixture_path: Path
+    git_object: str
+    baseline_sha256: str
+    declarations: tuple[CommodityTaskDeclaration, ...]
+
+    @property
+    def by_task_id(self) -> Mapping[str, CommodityTaskDeclaration]:
+        return MappingProxyType(
+            {declaration.task_id: declaration for declaration in self.declarations}
+        )
+
+    @property
+    def compatibility_replacements(self) -> dict[str, str]:
+        return {
+            declaration.task_id: declaration.tag
+            for declaration in self.declarations
+        }
+
+
+def _exact_keys(value: object, expected: set[str], path: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{path} must be an object")
+    actual = set(value)
+    if actual != expected:
+        raise ValueError(
+            f"{path} has invalid fields: expected {sorted(expected)}, found {sorted(actual)}"
+        )
+    return value
+
+
+def _string(value: object, path: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{path} must be a non-empty string")
+    return value
+
+
+def _baseline_task_index(corpus: Mapping[str, object]) -> dict[str, tuple[str, str, Mapping[str, object]]]:
+    indexed: dict[str, tuple[str, str, Mapping[str, object]]] = {}
+    chapters = corpus.get("chapters")
+    if not isinstance(chapters, Mapping):
+        raise ValueError("baseline fixture corpus chapters must be an object")
+    for chapter_name, chapter_value in chapters.items():
+        if not isinstance(chapter_value, Mapping):
+            continue
+        chapter_id = chapter_value.get("id")
+        quests = chapter_value.get("quests")
+        if not isinstance(chapter_id, str) or not isinstance(quests, list):
+            continue
+        for quest in quests:
+            if not isinstance(quest, Mapping) or not isinstance(quest.get("id"), str):
+                continue
+            for task in quest.get("tasks", []):
+                if not isinstance(task, Mapping) or not isinstance(task.get("id"), str):
+                    continue
+                task_id = task["id"]
+                if task_id in indexed:
+                    raise ValueError(f"baseline fixture has duplicate task ID {task_id}")
+                indexed[task_id] = (chapter_id, quest["id"], task)
+    return indexed
+
+
+def _validate_item(value: object, path: str, *, filter_item: bool) -> dict[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{path} must be an object")
+    item = value
+    allowed_keys = (
+        {"count", "id", "components"}
+        if "components" in item
+        else {"count", "id"}
+    )
+    if set(item) != allowed_keys or (filter_item and "components" not in item):
+        raise ValueError(f"{path} has invalid item fields")
+    if item.get("count") != "1":
+        raise ValueError(f"{path}.count must be \"1\"")
+    item_id = _string(item.get("id"), f"{path}.id")
+    if _ITEM_ID.fullmatch(item_id) is None or item_id.startswith("c:"):
+        raise ValueError(f"{path}.id is not an approved item ID: {item_id}")
+    if filter_item and item_id != "ftbfiltersystem:smart_filter":
+        raise ValueError(f"{path}.id must be ftbfiltersystem:smart_filter")
+    if "components" in item:
+        components = _exact_keys(
+            item["components"], {"ftbfiltersystem:filter"}, f"{path}.components"
+        )
+        _string(
+            components.get("ftbfiltersystem:filter"),
+            f"{path}.components.ftbfiltersystem:filter",
+        )
+    return json.loads(json.dumps(item))
+
+
+def _recipe_output_ids(recipe: object) -> set[str]:
+    if not isinstance(recipe, Mapping):
+        return set()
+    outputs: set[str] = set()
+    for field in ("result", "output", "outputs", "item_outputs"):
+        value = recipe.get(field)
+        values = value if isinstance(value, list) else [value]
+        for candidate in values:
+            if not isinstance(candidate, Mapping):
+                continue
+            for key in ("id", "item", "tag"):
+                identifier = candidate.get(key)
+                if isinstance(identifier, str):
+                    outputs.add(identifier)
+    return outputs
+
+
+def _validate_runtime_evidence(
+    manifest: CommonCommodityManifest,
+    runtime_root: Path,
+) -> None:
+    for declaration in manifest.declarations:
+        installed = set(declaration.installed_jars)
+        if "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar" not in installed:
+            raise ValueError(
+                f"{declaration.task_id} does not declare the installed FTB Filter System jar"
+            )
+        for relative in declaration.installed_jars:
+            if not (runtime_root / relative).is_file():
+                raise ValueError(f"missing installed jar for {declaration.tag}: {relative}")
+        for producer in declaration.producers:
+            jar_path = runtime_root / producer.jar
+            try:
+                with zipfile.ZipFile(jar_path) as archive:
+                    tag_payload = json.loads(archive.read(producer.tag_source))
+            except (OSError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as error:
+                raise ValueError(
+                    f"missing static tag {declaration.tag} in {producer.jar}: {error}"
+                ) from error
+            values = tag_payload.get("values") if isinstance(tag_payload, Mapping) else None
+            direct_members = {
+                member if isinstance(member, str) else member.get("id")
+                for member in values or []
+                if isinstance(member, (str, Mapping))
+            }
+            if producer.item not in direct_members:
+                raise ValueError(
+                    f"producer {producer.item} is not a direct member of {declaration.tag}"
+                )
+        producer_items = {producer.item for producer in declaration.producers}
+        if len(producer_items) < 2:
+            raise ValueError(
+                f"{declaration.task_id} requires at least two distinct producers for {declaration.tag}"
+            )
+        for evidence in declaration.recipe_or_process_evidence:
+            match = _RECIPE_EVIDENCE.match(evidence)
+            if match is None:
+                raise ValueError(
+                    f"invalid recipe or process evidence for {declaration.task_id}: {evidence}"
+                )
+            entry = match.group("entry")
+            jar = match.group("jar")
+            if jar not in installed:
+                raise ValueError(
+                    f"recipe evidence jar is not installed for {declaration.tag}: {jar}"
+                )
+            try:
+                with zipfile.ZipFile(runtime_root / jar) as archive:
+                    recipe = json.loads(archive.read(entry))
+            except (OSError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as error:
+                raise ValueError(
+                    f"missing recipe evidence for {declaration.tag}: {entry} in {jar}: {error}"
+                ) from error
+            if not (_recipe_output_ids(recipe) & (producer_items | {declaration.tag})):
+                raise ValueError(
+                    f"recipe evidence output does not match {declaration.tag}: {entry}"
+                )
+
+
+def load_common_commodity_declarations(
+    fixture_path: Path | None = None,
+    *,
+    repository_root: Path | None = None,
+    runtime_root: Path | None = None,
+) -> CommonCommodityManifest:
+    repository_root = (
+        Path(__file__).resolve().parents[2]
+        if repository_root is None
+        else Path(repository_root)
+    )
+    fixture_path = (
+        repository_root / COMMON_COMMODITY_FIXTURE_PATH
+        if fixture_path is None
+        else Path(fixture_path)
+    )
+    try:
+        fixture_bytes = fixture_path.read_bytes()
+        fixture = json.loads(fixture_bytes)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid common commodity fixture {fixture_path}: {error}") from error
+    if not fixture_bytes.endswith(b"\n") or b"\r" in fixture_bytes:
+        raise ValueError(f"common commodity fixture is not canonical: {fixture_path}")
+    canonical_fixture_path = repository_root / COMMON_COMMODITY_FIXTURE_PATH
+    if fixture_path.resolve() == canonical_fixture_path.resolve():
+        actual_fixture_sha256 = hashlib.sha256(fixture_bytes).hexdigest()
+        if actual_fixture_sha256 != COMMON_COMMODITY_FIXTURE_SHA256:
+            raise ValueError(
+                "common commodity fixture SHA-256 mismatch: "
+                f"expected {COMMON_COMMODITY_FIXTURE_SHA256}, "
+                f"found {actual_fixture_sha256}"
+            )
+
+    root = _exact_keys(fixture, {"schema_version", "baseline", "declarations"}, "fixture")
+    if root.get("schema_version") != 1:
+        raise ValueError("fixture schema_version must be 1")
+    baseline = _exact_keys(
+        root.get("baseline"), {"fixture_path", "git_object", "sha256"}, "fixture.baseline"
+    )
+    if baseline.get("fixture_path") != COMMON_COMMODITY_BASELINE_PATH.as_posix():
+        raise ValueError("baseline fixture path does not match the frozen contract")
+    if baseline.get("git_object") != COMMON_COMMODITY_BASELINE_GIT_OBJECT:
+        raise ValueError("baseline Git object does not match the frozen contract")
+    if baseline.get("sha256") != COMMON_COMMODITY_BASELINE_SHA256:
+        raise ValueError("baseline SHA-256 does not match the frozen contract")
+    baseline_path = repository_root / COMMON_COMMODITY_BASELINE_PATH
+    try:
+        baseline_bytes = baseline_path.read_bytes()
+        baseline_fixture = json.loads(baseline_bytes)
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid frozen baseline fixture {baseline_path}: {error}") from error
+    actual_sha256 = hashlib.sha256(baseline_bytes).hexdigest()
+    if actual_sha256 != COMMON_COMMODITY_BASELINE_SHA256:
+        raise ValueError(
+            "baseline SHA-256 mismatch: "
+            f"expected {COMMON_COMMODITY_BASELINE_SHA256}, found {actual_sha256}"
+        )
+    corpus = baseline_fixture.get("corpus")
+    if baseline_fixture.get("source_commit") != COMMON_COMMODITY_BASELINE_GIT_OBJECT:
+        raise ValueError("frozen baseline fixture Git object does not match the contract")
+    if not isinstance(corpus, Mapping):
+        raise ValueError("frozen baseline fixture has no corpus object")
+    baseline_tasks = _baseline_task_index(corpus)
+
+    raw_declarations = root.get("declarations")
+    if not isinstance(raw_declarations, list):
+        raise ValueError("fixture.declarations must be an array")
+    declarations: list[CommodityTaskDeclaration] = []
+    seen_task_ids: set[str] = set()
+    declaration_fields = {
+        "chapter",
+        "quest",
+        "task",
+        "old_item",
+        "smart_filter_item",
+        "tag",
+        "count_snbt",
+        "consume_items",
+        "match_components",
+        "classification",
+        "already_generalized",
+        "producers",
+        "installed_jars",
+        "recipe_or_process_evidence",
+    }
+    for index, raw_declaration in enumerate(raw_declarations):
+        path = f"fixture.declarations[{index}]"
+        declaration = _exact_keys(raw_declaration, declaration_fields, path)
+        task = _exact_keys(declaration.get("task"), {"id", "type"}, f"{path}.task")
+        task_id = _string(task.get("id"), f"{path}.task.id")
+        rejected_classification = REJECTED_COMMODITY_TASKS.get(task_id)
+        if rejected_classification is not None:
+            raise ValueError(
+                f"commodity task {task_id} is prohibited: {rejected_classification}"
+            )
+        if task_id in seen_task_ids:
+            raise ValueError(f"commodity task {task_id} has a duplicate declaration")
+        seen_task_ids.add(task_id)
+        contract = COMMON_COMMODITY_TASK_CONTRACTS.get(task_id)
+        if contract is None:
+            raise ValueError(f"undeclared commodity task ID {task_id}")
+        if task.get("type") != "item" or _FTB_ID.fullmatch(task_id) is None:
+            raise ValueError(f"commodity task {task_id} is not a valid item task")
+        chapter = _exact_keys(declaration.get("chapter"), {"id", "title"}, f"{path}.chapter")
+        quest = _exact_keys(declaration.get("quest"), {"id", "title"}, f"{path}.quest")
+        chapter_id = _string(chapter.get("id"), f"{path}.chapter.id")
+        quest_id = _string(quest.get("id"), f"{path}.quest.id")
+        if chapter_id != contract["chapter_id"]:
+            raise ValueError(f"chapter ownership mismatch for commodity task {task_id}")
+        if quest_id != contract["quest_id"]:
+            raise ValueError(f"quest ownership mismatch for commodity task {task_id}")
+        if chapter.get("title") != contract["chapter_title"]:
+            raise ValueError(f"chapter title mismatch for commodity task {task_id}")
+        if quest.get("title") != contract["quest_title"]:
+            raise ValueError(f"quest title mismatch for commodity task {task_id}")
+        tag = _string(declaration.get("tag"), f"{path}.tag")
+        if tag != contract["tag"]:
+            raise ValueError(f"unapproved commodity tag {tag} for task {task_id}")
+        count_snbt = _string(declaration.get("count_snbt"), f"{path}.count_snbt")
+        if count_snbt != contract["count_snbt"]:
+            raise ValueError(f"outer count mismatch for commodity task {task_id}")
+        if declaration.get("consume_items") is not False:
+            raise ValueError(f"consume_items must remain false for commodity task {task_id}")
+        if declaration.get("match_components") != "absent":
+            raise ValueError(f"match_components must remain absent for commodity task {task_id}")
+        if declaration.get("classification") != contract["classification"]:
+            raise ValueError(f"classification mismatch for commodity task {task_id}")
+        already_generalized = declaration.get("already_generalized")
+        if type(already_generalized) is not bool:
+            raise ValueError(f"already_generalized must be boolean for commodity task {task_id}")
+        old_item = _validate_item(declaration.get("old_item"), f"{path}.old_item", filter_item=False)
+        smart_filter_item = _validate_item(
+            declaration.get("smart_filter_item"),
+            f"{path}.smart_filter_item",
+            filter_item=True,
+        )
+        expected_filter = {
+            "components": {
+                "ftbfiltersystem:filter": f"ftbfiltersystem:item_tag({tag})"
+            },
+            "count": "1",
+            "id": "ftbfiltersystem:smart_filter",
+        }
+        if smart_filter_item != expected_filter:
+            raise ValueError(f"smart filter payload mismatch for commodity task {task_id}")
+        baseline_owner = baseline_tasks.get(task_id)
+        if baseline_owner is None:
+            raise ValueError(f"baseline task {task_id} is missing")
+        baseline_chapter_id, baseline_quest_id, baseline_task = baseline_owner
+        if (baseline_chapter_id, baseline_quest_id) != (chapter_id, quest_id):
+            raise ValueError(f"chapter ownership mismatch for commodity task {task_id}")
+        if baseline_task.get("type") != "item":
+            raise ValueError(f"baseline task {task_id} is not an item task")
+        if baseline_task.get("item") != old_item:
+            raise ValueError(f"old item mismatch for commodity task {task_id}")
+        if baseline_task.get("count") != count_snbt:
+            raise ValueError(f"outer count mismatch for commodity task {task_id}")
+        if baseline_task.get("consume_items") is not False:
+            raise ValueError(f"baseline consume_items changed for commodity task {task_id}")
+        if "match_components" in baseline_task:
+            raise ValueError(f"baseline match_components is not absent for commodity task {task_id}")
+        baseline_is_filter = old_item.get("id") == "ftbfiltersystem:smart_filter"
+        if baseline_is_filter and not already_generalized:
+            raise ValueError(f"commodity task {task_id} is already generalized")
+        if not baseline_is_filter and already_generalized:
+            raise ValueError(f"commodity task {task_id} is not already generalized")
+        if already_generalized and old_item != smart_filter_item:
+            raise ValueError(
+                f"already generalized commodity task {task_id} differs from its declared filter"
+            )
+        if already_generalized != contract["already_generalized"]:
+            raise ValueError(f"already generalized contract mismatch for commodity task {task_id}")
+
+        raw_producers = declaration.get("producers")
+        if not isinstance(raw_producers, list) or len(raw_producers) < 2:
+            raise ValueError(f"commodity task {task_id} requires at least two producers")
+        producers: list[CommodityProducer] = []
+        for producer_index, raw_producer in enumerate(raw_producers):
+            producer_path = f"{path}.producers[{producer_index}]"
+            producer = _exact_keys(raw_producer, {"item", "tag_source", "jar"}, producer_path)
+            item_id = _string(producer.get("item"), f"{producer_path}.item")
+            if _ITEM_ID.fullmatch(item_id) is None:
+                raise ValueError(f"invalid producer item for commodity task {task_id}: {item_id}")
+            producer_jar = _string(
+                producer.get("jar"), f"{producer_path}.jar"
+            )
+            if not producer_jar.startswith("server-test/"):
+                raise ValueError(
+                    f"invalid producer jar for commodity task {task_id}: {producer_jar}"
+                )
+            producers.append(
+                CommodityProducer(
+                    item=item_id,
+                    tag_source=_string(producer.get("tag_source"), f"{producer_path}.tag_source"),
+                    jar=producer_jar,
+                )
+            )
+        if len({producer.item for producer in producers}) < 2:
+            raise ValueError(f"commodity task {task_id} requires distinct producers")
+        installed_jars = declaration.get("installed_jars")
+        if not isinstance(installed_jars, list) or not installed_jars or not all(
+            isinstance(jar, str) and jar.startswith(("server-test/", "tools/"))
+            for jar in installed_jars
+        ):
+            raise ValueError(f"invalid installed_jars for commodity task {task_id}")
+        evidence = declaration.get("recipe_or_process_evidence")
+        if not isinstance(evidence, list) or len(evidence) < 2 or not all(
+            isinstance(record, str) and record for record in evidence
+        ):
+            raise ValueError(f"invalid recipe evidence for commodity task {task_id}")
+        declarations.append(
+            CommodityTaskDeclaration(
+                chapter_id=chapter_id,
+                chapter_title=str(chapter["title"]),
+                quest_id=quest_id,
+                quest_title=str(quest["title"]),
+                task_id=task_id,
+                old_item=MappingProxyType(old_item),
+                smart_filter_item=MappingProxyType(smart_filter_item),
+                tag=tag,
+                count_snbt=count_snbt,
+                consume_items=False,
+                match_components="absent",
+                classification=str(declaration["classification"]),
+                already_generalized=already_generalized,
+                producers=tuple(producers),
+                installed_jars=tuple(installed_jars),
+                recipe_or_process_evidence=tuple(evidence),
+                baseline_task=MappingProxyType(json.loads(json.dumps(baseline_task))),
+            )
+        )
+
+    expected_ids = set(COMMON_COMMODITY_TASK_CONTRACTS)
+    observed_ids = {declaration.task_id for declaration in declarations}
+    if observed_ids != expected_ids or len(declarations) != len(expected_ids):
+        raise ValueError(
+            "commodity declarations must contain exactly: "
+            + ", ".join(sorted(expected_ids))
+        )
+    manifest = CommonCommodityManifest(
+        fixture_path=fixture_path,
+        baseline_fixture_path=baseline_path,
+        git_object=COMMON_COMMODITY_BASELINE_GIT_OBJECT,
+        baseline_sha256=COMMON_COMMODITY_BASELINE_SHA256,
+        declarations=tuple(declarations),
+    )
+    if runtime_root is not None:
+        _validate_runtime_evidence(manifest, Path(runtime_root))
+    return manifest
+
+
+def _fixture_commodity_declaration(task_id: str) -> CommodityTaskDeclaration:
+    manifest = load_common_commodity_declarations()
+    try:
+        return manifest.by_task_id[task_id]
+    except KeyError as error:
+        raise ValueError(f"undeclared commodity task ID {task_id}") from error
 
 
 def _echo_protocols() -> ChapterSpec:
@@ -169,6 +736,43 @@ def _certification_rewards(
     )
 
 
+def _item_payload(
+    slug: str,
+    item_id: str,
+    count: int,
+    components: Mapping[str, str] | None,
+    item_filter: CommodityTaskDeclaration | None,
+) -> dict[str, object]:
+    if item_filter is None:
+        item: dict[str, object] = {"count": 1, "id": item_id}
+        if components:
+            item["components"] = dict(components)
+        return item
+    if not isinstance(item_filter, CommodityTaskDeclaration):
+        raise ValueError(f"item_filter must be a fixture declaration: {item_filter!r}")
+    fixture_declaration = _fixture_commodity_declaration(item_filter.task_id)
+    if item_filter != fixture_declaration:
+        raise ValueError(
+            f"item_filter must equal the fixture declaration for {item_filter.task_id}"
+        )
+    expected_task_id = TaskSpec(f"{slug}/task", "item").id
+    if item_filter.task_id != expected_task_id:
+        raise ValueError(
+            f"fixture declaration {item_filter.task_id} does not own {slug}"
+        )
+    if item_filter.old_item.get("id") != item_id:
+        raise ValueError(
+            f"fixture declaration {item_filter.task_id} old item does not match {item_id}"
+        )
+    if item_filter.count_snbt != f"{count}L":
+        raise ValueError(
+            f"fixture declaration {item_filter.task_id} count does not match {count}"
+        )
+    if components is not None:
+        raise ValueError("fixture item filters cannot be combined with item components")
+    return item_filter.rendered_item()
+
+
 def _item_quest(
     slug: str,
     title: str,
@@ -181,12 +785,11 @@ def _item_quest(
     y: float,
     *,
     components: Mapping[str, str] | None = None,
+    item_filter: CommodityTaskDeclaration | None = None,
     finale: tuple[int, int] | None = None,
     deep_vault_key: bool = False,
 ) -> QuestSpec:
-    item: dict[str, object] = {"count": 1, "id": item_id}
-    if components:
-        item["components"] = dict(components)
+    item = _item_payload(slug, item_id, count, components, item_filter)
     task_data: dict[str, object] = {
         "item": item,
         "count": SnbtLong(count),
@@ -317,7 +920,9 @@ def _certification_item_quest(
     y: float,
     *,
     stage: str = "",
+    item_filter: CommodityTaskDeclaration | None = None,
 ) -> QuestSpec:
+    item = _item_payload(slug, item_id, count, None, item_filter)
     return _certification_quest(
         slug,
         title,
@@ -325,7 +930,7 @@ def _certification_item_quest(
         description,
         "item",
         {
-            "item": {"count": 1, "id": item_id},
+            "item": item,
             "count": SnbtLong(count),
             "consume_items": False,
         },
@@ -724,7 +1329,8 @@ def _chapter_eleven(previous: str) -> ChapterSpec:
         _item_quest(steel, "Automated Steel Batch", "Industry should continue while unwatched.", (
             "Produce sixty-four Steel Ingots through the assembler-side supply chain.",
             "Leave, return, and inspect the buffers before calling it unattended.",
-        ), "immersiveengineering:ingot_steel", 64, (assembler, laser), 10.0, 1.0),
+        ), "immersiveengineering:ingot_steel", 64, (assembler, laser), 10.0, 1.0,
+            item_filter=_fixture_commodity_declaration("33B5B56650A6AEDF")),
         _energy_quest(power, "Stable Power Proof", "Submit fifty million FE without exceeding the input cap.", (
             "Submit fifty million FE at no more than 500,000 FE per transfer.",
             "This proves production capacity, not reserve stability. Watch the grid under load.",
@@ -1999,7 +2605,8 @@ def _certification_infrastructure() -> ChapterSpec:
         _certification_item_quest(steel, "Industry Quota", "One thousand twenty-four ingots through shared logistics.", (
             "Produce 1,024 Steel Ingots while the other certified systems remain online.",
             "The count proves inventory. Your logs prove the factory did not borrow manual intervention.",
-        ), "immersiveengineering:ingot_steel", 1024, (proof,), 2.0, 2.5),
+        ), "immersiveengineering:ingot_steel", 1024, (proof,), 2.0, 2.5,
+            item_filter=_fixture_commodity_declaration("1679C5714C2F2A74")),
         _certification_quest(finale, "Unattended Cycle", "Leave the facility. Return to evidence, not hope.", (
             "Run all four quotas unattended through one complete buffer cycle, then inspect every failure boundary.",
             "Submit the checkmark when full outputs, power loss, and restart recovery have all been tested.",

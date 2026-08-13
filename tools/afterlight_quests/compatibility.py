@@ -343,17 +343,18 @@ def _commodity_item(
         return False
     if not isinstance(baseline, Mapping) or not isinstance(current, Mapping):
         return False
-    if set(baseline) - {"count", "id"}:
-        return False
-    baseline_id = baseline.get("id")
-    if not isinstance(baseline_id, str) or baseline_id == FILTER_ITEM_ID:
-        return False
     expected: dict[str, object] = {
         "id": FILTER_ITEM_ID,
         "components": {
             FILTER_COMPONENT: f"ftbfiltersystem:item_tag({tag})",
         },
     }
+    baseline_id = baseline.get("id")
+    if baseline_id == FILTER_ITEM_ID:
+        expected["count"] = baseline.get("count")
+        return baseline == _canonicalize(expected) and current == baseline
+    if set(baseline) - {"count", "id"} or not isinstance(baseline_id, str):
+        return False
     if "count" in baseline:
         expected["count"] = baseline["count"]
     return current == _canonicalize(expected)
@@ -404,6 +405,21 @@ def compare_quest_corpus(
             errors.append(
                 f"{declaration_path}: invalid item tag {_render_value(tag)}"
             )
+
+    if declarations:
+        for identity in current_catalog.by_id.values():
+            if identity.kind != "task":
+                continue
+            item = identity.value.get("item")
+            if (
+                isinstance(item, Mapping)
+                and item.get("id") == FILTER_ITEM_ID
+                and identity.identifier not in declarations
+            ):
+                errors.append(
+                    f"{identity.path}.item: smart filter task {identity.identifier} "
+                    "is undeclared"
+                )
 
     def compare_entity_list(
         expected: object,

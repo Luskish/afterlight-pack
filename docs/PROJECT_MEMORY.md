@@ -251,3 +251,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `.superpowers/sdd/2026-08-13-afterlight-story-cohesion/task-8-client-blueprint.md`, `docs/PROJECT_MEMORY.md`
 - **Impact:** This impossible credential-free probe must not be presented as client acceptance or added as a mandatory gauntlet step. The established install, static, server-boot, and manual real-account client checks remain the truthful release evidence.
 - **Follow-up:** Revisit only after an official Prism change enables direct Offline startup, or use an explicitly user-operated real-account smoke without copying, fabricating, or retaining credentials.
+
+### MEM-2026-08-13-020
+
+- **Date:** 2026-08-13
+- **Category:** decision
+- **Status:** accepted
+- **Subsystem:** FTB Quests, common commodity declarations
+- **Summary:** Task 5 permits only Rations, Steel Yourself, Automated Steel Batch, and Industry Quota to use installed-runtime-backed common commodity filters. Steel Yourself is already generalized, while the other three retain their IDs, counts, consumption behavior, and every non-item field.
+- **Evidence:** `tools/fixtures/quests/common-commodity-tasks.json` binds frozen baseline SHA-256 `b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c` and exact Git object `7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25`. Focused fixture, compatibility, compiler, and overlay validation ended with `Ran 53 tests in 9.705s` and `OK` against temporary roots. Local installed-jar inspection proved two bread producers and four declared steel producers. The complete quest suite retained two expected generated-corpus drift failures because Task 5 intentionally did not run the generator.
+- **Files or Commit:** `tools/fixtures/quests/common-commodity-tasks.json`, `tools/afterlight_quests/catalog.py`, `tools/afterlight_quests/compatibility.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Interchangeable bread and steel outputs can satisfy the named quests without admitting machines, components, unique resources, custom progression items, or ambiguous story materials.
+- **Follow-up:** Task 8 must generate the corpus once, emit and validate fresh commodity-audit records, and run the required pack and server gates before this event becomes verified.

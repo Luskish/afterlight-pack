@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "fixture_path": "tools/fixtures/quests/story-cohesion-baseline.json",
+    "git_object": "7fcbc3a99fedcb8f6a62861ef86a2fd1e05fef25",
+    "sha256": "b0e2fe06bb712e0f19f9fd3e94f5c4d75a570315c4d1956b6e95478b45df2d5c"
+  },
+  "declarations": [
+    {
+      "chapter": { "id": "5B93C6934B230CFB", "title": "Cold Boot" },
+      "quest": { "id": "038F61D9ECA32B48", "title": "Rations" },
+      "task": { "id": "39C717BFFEE3D235", "type": "item" },
+      "old_item": { "count": "1", "id": "minecraft:bread" },
+      "smart_filter_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:foods/bread)"
+        }
+      },
+      "tag": "c:foods/bread",
+      "count_snbt": "8L",
+      "consume_items": false,
+      "match_components": "absent",
+      "classification": "common_commodity",
+      "already_generalized": false,
+      "producers": [
+        {
+          "item": "minecraft:bread",
+          "tag_source": "data/c/tags/item/foods/bread.json",
+          "jar": "server-test/libraries/net/neoforged/neoforge/21.1.248/neoforge-21.1.248-universal.jar"
+        },
+        {
+          "item": "pneumaticcraft:sourdough_bread",
+          "tag_source": "data/c/tags/item/foods/bread.json",
+          "jar": "server-test/mods/pneumaticcraft-repressurized-8.2.23+mc1.21.1.jar"
+        }
+      ],
+      "installed_jars": [
+        "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar",
+        "server-test/libraries/net/neoforged/neoforge/21.1.248/neoforge-21.1.248-universal.jar",
+        "server-test/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-extra.jar",
+        "server-test/mods/pneumaticcraft-repressurized-8.2.23+mc1.21.1.jar"
+      ],
+      "recipe_or_process_evidence": [
+        "data/minecraft/recipe/bread.json in server-test/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-extra.jar crafts minecraft:bread from three minecraft:wheat.",
+        "data/pneumaticcraft/recipe/sourdough_bread.json in server-test/mods/pneumaticcraft-repressurized-8.2.23+mc1.21.1.jar smelts pneumaticcraft:sourdough into pneumaticcraft:sourdough_bread."
+      ]
+    },
+    {
+      "chapter": { "id": "45491A24F6B8C192", "title": "Foothold" },
+      "quest": { "id": "27F6D0AB957BBB8C", "title": "Steel Yourself" },
+      "task": { "id": "374F658F034EF8C5", "type": "item" },
+      "old_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)"
+        }
+      },
+      "smart_filter_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)"
+        }
+      },
+      "tag": "c:ingots/steel",
+      "count_snbt": "12L",
+      "consume_items": false,
+      "match_components": "absent",
+      "classification": "common_commodity_already_generalized",
+      "already_generalized": true,
+      "producers": [
+        {
+          "item": "immersiveengineering:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar"
+        },
+        {
+          "item": "mekanism:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar"
+        },
+        {
+          "item": "modern_industrialization:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
+        },
+        {
+          "item": "oritech:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        }
+      ],
+      "installed_jars": [
+        "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar",
+        "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar",
+        "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar",
+        "server-test/mods/Modern-Industrialization-2.5.6.jar",
+        "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+      ],
+      "recipe_or_process_evidence": [
+        "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
+        "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+      ]
+    },
+    {
+      "chapter": { "id": "11CA083771CCB5BE", "title": "Convergence" },
+      "quest": { "id": "28F212A9C22AEEAA", "title": "Automated Steel Batch" },
+      "task": { "id": "33B5B56650A6AEDF", "type": "item" },
+      "old_item": { "count": "1", "id": "immersiveengineering:ingot_steel" },
+      "smart_filter_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)"
+        }
+      },
+      "tag": "c:ingots/steel",
+      "count_snbt": "64L",
+      "consume_items": false,
+      "match_components": "absent",
+      "classification": "common_commodity",
+      "already_generalized": false,
+      "producers": [
+        {
+          "item": "immersiveengineering:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar"
+        },
+        {
+          "item": "mekanism:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar"
+        },
+        {
+          "item": "modern_industrialization:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
+        },
+        {
+          "item": "oritech:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        }
+      ],
+      "installed_jars": [
+        "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar",
+        "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar",
+        "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar",
+        "server-test/mods/Modern-Industrialization-2.5.6.jar",
+        "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+      ],
+      "recipe_or_process_evidence": [
+        "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
+        "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+      ]
+    },
+    {
+      "chapter": { "id": "5070DE6E2B300F4B", "title": "Infrastructure II" },
+      "quest": { "id": "792E405CE058FD1A", "title": "Industry Quota" },
+      "task": { "id": "1679C5714C2F2A74", "type": "item" },
+      "old_item": { "count": "1", "id": "immersiveengineering:ingot_steel" },
+      "smart_filter_item": {
+        "count": "1",
+        "id": "ftbfiltersystem:smart_filter",
+        "components": {
+          "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)"
+        }
+      },
+      "tag": "c:ingots/steel",
+      "count_snbt": "1024L",
+      "consume_items": false,
+      "match_components": "absent",
+      "classification": "common_commodity",
+      "already_generalized": false,
+      "producers": [
+        {
+          "item": "immersiveengineering:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar"
+        },
+        {
+          "item": "mekanism:ingot_steel",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar"
+        },
+        {
+          "item": "modern_industrialization:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/Modern-Industrialization-2.5.6.jar"
+        },
+        {
+          "item": "oritech:steel_ingot",
+          "tag_source": "data/c/tags/item/ingots/steel.json",
+          "jar": "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+        }
+      ],
+      "installed_jars": [
+        "server-test/mods/ftb-filter-system-neoforge-21.1.4.jar",
+        "server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar",
+        "server-test/mods/Mekanism-1.21.1-10.7.19.85.jar",
+        "server-test/mods/Modern-Industrialization-2.5.6.jar",
+        "server-test/mods/oritech-neoforge-1.21.1-1.2.10.jar"
+      ],
+      "recipe_or_process_evidence": [
+        "data/immersiveengineering/recipe/blastfurnace/steel.json in server-test/mods/ImmersiveEngineering-1.21.1-12.4.2-194.jar outputs tag c:ingots/steel from c:ingots/iron.",
+        "data/mekanism/recipe/processing/steel/ingot/from_dust_smelting.json in server-test/mods/Mekanism-1.21.1-10.7.19.85.jar outputs mekanism:ingot_steel.",
+        "data/modern_industrialization/recipe/materials/blast_furnace/steel.json in server-test/mods/Modern-Industrialization-2.5.6.jar outputs modern_industrialization:steel_ingot."
+      ]
+    }
+  ]
+}

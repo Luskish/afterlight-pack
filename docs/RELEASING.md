@@ -72,3 +72,9 @@ The publisher creates a draft GitHub release without assets through the GitHub A
 ## Recovery
 
 If `dev` CI, `main` CI, Pages parity, publication, or a manual gate fails, fix forward through a new candidate SHA. Never force-push `dev` or `main`, and never move a published tag.
+
+## Server Deployment
+
+Artifact publication does not authorize an unsafe server update. For a revision with any quest corpus change, derive the exact deployed SHA from the accepted release and run `sudo server/afterlight-quest-safe-update.sh "$SHA" --confirm` on the VPS only after the repository checkout equals that SHA. Ordinary `server/afterlight-server.sh update` is reserved for non-quest revisions.
+
+The quest-safe transaction holds the maintenance lock and external connection gate through two zero-player checks, a direct verified backup, the candidate's first start and clean stop, canonical FTB Quests and FTB Teams comparison, whitelist verification, and the second healthy start. Any durable quarantine marker blocks ordinary updates and scheduled maintenance. Follow `server/README.md` exactly for quarantine recovery, and remove only the transaction's exact owned firewall rule after the restored release passes every recovery proof.

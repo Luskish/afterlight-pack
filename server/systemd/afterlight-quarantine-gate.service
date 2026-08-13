@@ -1,0 +1,21 @@
+[Unit]
+Description=AFTERLIGHT durable quest update quarantine gate
+Requires=docker.service
+After=docker.service
+Before=afterlight-maintenance.service
+ConditionFileIsExecutable=/opt/afterlight/server/afterlight-quarantine-gate.sh
+
+[Service]
+Type=oneshot
+ExecStart=/opt/afterlight/server/afterlight-quarantine-gate.sh
+RemainAfterExit=yes
+UMask=0077
+TimeoutStartSec=2min
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/afterlight /etc/afterlight
+ReadWritePaths=/var/lib/afterlight
+
+[Install]
+WantedBy=multi-user.target

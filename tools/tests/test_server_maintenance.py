@@ -27,6 +27,7 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.docker_log = self.temp_path / "docker.log"
         self.event_log = self.temp_path / "events.log"
         self.operator_log = self.temp_path / "operator.log"
+        self.quarantine_dir = self.temp_path / "quarantine"
         self.backup_path = self.temp_path / "backups" / "verified.tar.zst"
         self.backup_path.parent.mkdir()
         self.operator = self.temp_path / "operator"
@@ -46,6 +47,7 @@ class ServerMaintenanceTests(unittest.TestCase):
                 "FAKE_RCON_OUTPUT": (
                     "There are 0 of a max of 12 players online: "
                 ),
+                "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
             }
         )
 
@@ -367,6 +369,19 @@ class ServerMaintenanceTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self._operator_calls(), ["backup"])
         self.assertIn("server was not stopped", result.stderr)
+
+    def test_durable_quest_quarantine_rejects_all_maintenance_before_docker(self) -> None:
+        self.quarantine_dir.mkdir(mode=0o700)
+        marker = self.quarantine_dir / "state"
+        marker.write_text("test-only-marker\n", encoding="utf-8")
+        marker.chmod(0o600)
+
+        for mode in ("idle", "scheduled"):
+            with self.subTest(mode=mode):
+                result = self._run(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("quest update quarantine", result.stderr.lower())
+                self.assertFalse(self.docker_log.exists())
 
     def test_health_drift_after_backup_never_stops_server(self) -> None:
         self.environment["FAKE_CONTAINER_STATE_AFTER_BACKUP"] = (

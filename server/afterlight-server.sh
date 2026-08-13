@@ -11,6 +11,7 @@ CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
 MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
 RAW_PACK_URL_PREFIX=https://raw.githubusercontent.com/Luskish/afterlight-pack
+QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
 
 DATA_DIR=""
 BACKUP_DIR=""
@@ -650,6 +651,10 @@ stop_after_failed_update() {
 run_update() {
   local backup_path
   local pack_sha
+  if [[ -e "$QUARANTINE_DIR/state" || -L "$QUARANTINE_DIR/state" ]]; then
+    fail "Ordinary update rejected because quest update quarantine is active"
+    return 1
+  fi
   prepare_paths || return 1
   pack_sha=$(repository_pack_sha) || return 1
   use_pack_sha "$pack_sha" || return 1

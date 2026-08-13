@@ -223,7 +223,31 @@ Every event uses the following fields. Update the original event when its status
 - **Status:** resolved
 - **Subsystem:** Production read-only audit tooling
 - **Summary:** Early operator audit probes hit Git repository trust, shell quoting, zsh variable shadowing, and command-policy errors before corrected read-only commands completed the audit.
-- **Evidence:** The failed probes produced a Git safe-directory rejection, two malformed byte-sum commands, command-not-found output after a loop variable replaced shell PATH, and one rejected command that unnecessarily included cleanup. Corrected read-only probes completed without changing production state.
+- **Evidence:** The failed probes produced a Git safe-directory rejection, two malformed byte-sum commands, command-not-found output after a loop variable replaced shell PATH, and one rejected command that unnecessarily included cleanup. During Task 9 local verification, an overbroad privacy expression matched the public `Friend Server` title and zsh rejected the reserved variable name `status`; narrowed identity sentinels and a neutral `git_state` variable completed the guards. Corrected read-only probes and local guards completed without changing production state.
 - **Files or Commit:** `docs/PROJECT_MEMORY.md`
 - **Impact:** No server, world, quest progress, firewall, service, or release state changed, and future audits have searchable warnings against these four operator-tooling mistakes.
-- **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never name a zsh loop variable `path`, and omit cleanup from read-only probes.
+- **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never use zsh special names such as `path` or `status` for local variables, and omit cleanup from read-only probes.
+
+### MEM-2026-08-13-018
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Quest-safe server deployment review
+- **Summary:** Initial Task 9 slices lacked a deployable transaction, then review found snapshot inventory coupling, nonfinite scalar gaps, ambiguous firewall insertion, unverified container Packwiz URL, symlinked backup acceptance, inaccessible quarantine discovery, and rollback archive reauthentication gaps.
+- **Evidence:** Strict TDD began with the progress guard at `Ran 12 tests` and `FAILED (failures=17)`, the transaction at `Ran 9 tests` and `FAILED (failures=23)`, and quarantine integration at `Ran 7 tests` and `FAILED (failures=7)`. Review regressions reproduced the additional gaps at `Ran 6 tests` and `FAILED (failures=12)`, and the archive-tamper regression separately ended with `Ran 1 test` and `FAILED (failures=1)`. The implementation isolated progress manifests under `snapshot/progress`, rejected nonfinite SNBT and JSON values, detected uncertain insertion ownership, inspected the live container's exact immutable Packwiz URL, rejected links after preflight extraction, changed the root-owned marker directory to traversal-only mode `0711`, and rehashed the mode `0600` checksum record immediately before rollback extraction.
+- **Files or Commit:** `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `tools/tests/test_quest_safe_update.py`, and `server/README.md`
+- **Impact:** Candidate failure cannot silently open the server, trust a replaced backup, accept unsupported progress values, or hide durable quarantine from the unprivileged maintenance service.
+- **Follow-up:** Keep every quest deployment on the tested exact-SHA transaction and fix forward through a new release if any production proof fails.
+
+### MEM-2026-08-13-019
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** verified
+- **Subsystem:** Quest-safe server deployment and reboot quarantine
+- **Summary:** AFTERLIGHT now has a dependency-free canonical progress guard, an exact-SHA two-start quest deployment transaction, durable rollback-failure quarantine, and early rejection in ordinary updates and scheduled maintenance.
+- **Evidence:** Final bounded focused runs passed all 29 quest-safe tests as `Ran 17 tests`, `Ran 6 tests`, `Ran 3 tests`, and `Ran 3 tests`, each with `OK`. Friend-server tests ended with `Ran 30 tests in 9.026s` and `OK`; maintenance tests ended with `Ran 29 tests in 11.166s` and `OK`. ShellCheck printed `SHELLCHECK: OK`, Bash parsing printed `BASH SYNTAX: OK`, Python compilation printed `PYTHON COMPILE: OK`, diff validation printed `DIFF CHECK: OK`, Unicode validation printed `U+2014: NONE`, privacy sentinels printed `PRIVACY LOG SOURCE GUARD: OK`, and scope guards printed `PACKWIZ AND GENERATED CORPUS GUARD: OK` plus `NO GENERATED-CORPUS OR PACKWIZ FILES TOUCHED`.
+- **Files or Commit:** `server/afterlight-progress-guard.py`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-gate.sh`, `server/systemd/afterlight-quarantine-gate.service`, `server/afterlight-server.sh`, `server/afterlight-maintenance.sh`, `tools/tests/test_quest_safe_update.py`, `tools/tests/test_friend_server.py`, `tools/tests/test_server_maintenance.py`, `server/README.md`, and `docs/RELEASING.md`
+- **Impact:** Quest deployments remain externally closed until zero-player, backup, exact revision, canonical progress, whitelist, clean-stop, and second-start proofs pass. Failed rollback persists `restart: no`, stopped containers, the exact owned rule identity, and a privacy-safe recovery marker across reboot.
+- **Follow-up:** Install and enable the post-Docker quarantine unit before the first quest deployment, then follow the documented exact-marker recovery without removing the gate early.

@@ -7,6 +7,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
 OPERATOR=${AFTERLIGHT_OPERATOR:-$SCRIPT_DIR/afterlight-server.sh}
 RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
+QUARANTINE_DIR=${AFTERLIGHT_QUARANTINE_DIR:-/var/lib/afterlight/quest-update-quarantine}
 MIN_UPTIME_SECONDS=${AFTERLIGHT_MIN_UPTIME_SECONDS:-72000}
 ENV_FILE="$SCRIPT_DIR/.env"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
@@ -129,6 +130,11 @@ main() {
       return 1
       ;;
   esac
+
+  if [[ -e "$QUARANTINE_DIR/state" || -L "$QUARANTINE_DIR/state" ]]; then
+    fail "Maintenance rejected because quest update quarantine is active"
+    return 1
+  fi
 
   require_command date || return 1
   require_command docker || return 1

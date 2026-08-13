@@ -38,6 +38,7 @@ REQUIRED_OPERATOR_TESTS = {
     "test_backup_requires_a_new_regular_archive",
     "test_update_backs_up_before_recreating_minecraft",
     "test_failed_update_stops_services_and_prints_exact_rollback_command",
+    "test_update_rejects_durable_quest_quarantine_before_docker",
     "test_backup_rejects_archives_missing_required_markers",
     "test_rollback_rejects_invalid_archive_before_stopping_services",
     "test_rollback_requires_confirm_and_archive_beneath_backup_root",
@@ -72,6 +73,7 @@ class FriendServerTests(unittest.TestCase):
         self.docker_log = self.temp_path / "docker.log"
         self.pack_url_log = self.temp_path / "pack-url.log"
         self.rm_log = self.temp_path / "rm.log"
+        self.quarantine_dir = self.temp_path / "quarantine"
         self._write_env()
         self._install_fakes()
 
@@ -85,6 +87,7 @@ class FriendServerTests(unittest.TestCase):
                 "FAKE_PACK_URL_LOG": str(self.pack_url_log),
                 "FAKE_GIT_SHA": CURRENT_PACK_SHA,
                 "FAKE_RM_LOG": str(self.rm_log),
+                "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
             }
         )
 
@@ -906,6 +909,18 @@ class FriendServerTests(unittest.TestCase):
             {value for value in self._pack_urls() if value},
             {f"{RAW_PACK_URL_PREFIX}/{CURRENT_PACK_SHA}/pack.toml"},
         )
+
+    def test_update_rejects_durable_quest_quarantine_before_docker(self) -> None:
+        self.quarantine_dir.mkdir(mode=0o700)
+        marker = self.quarantine_dir / "state"
+        marker.write_text("test-only-marker\n", encoding="utf-8")
+        marker.chmod(0o600)
+
+        result = self._run_operator("update")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("quest update quarantine", result.stderr.lower())
+        self.assertEqual(self._docker_calls(), [])
 
     def test_update_separates_backup_process_output_from_selected_path(self) -> None:
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"

@@ -27,6 +27,16 @@ from .catalog import (
     build_catalog,
 )
 from .compatibility import capture_quest_corpus, compare_quest_corpus
+from .legacy_quest_overlays import (
+    LEGACY_CHAPTER_ORDER_OVERLAYS,
+    LEGACY_LOCALIZATION_OVERLAYS,
+    LEGACY_QUEST_LINK_OVERLAYS,
+    LegacyChapterOrderOverlay,
+    LegacyLocalizationManifest,
+    LegacyLocalizationOverlay,
+    LegacyQuestLinkOverlay,
+    write_legacy_quest_overlays,
+)
 
 
 __all__ = [
@@ -38,6 +48,13 @@ __all__ = [
     "DEPOT_MID_TABLE",
     "GroupSpec",
     "KUBEJS_ITEM_ALLOWLIST",
+    "LEGACY_CHAPTER_ORDER_OVERLAYS",
+    "LEGACY_LOCALIZATION_OVERLAYS",
+    "LEGACY_QUEST_LINK_OVERLAYS",
+    "LegacyChapterOrderOverlay",
+    "LegacyLocalizationManifest",
+    "LegacyLocalizationOverlay",
+    "LegacyQuestLinkOverlay",
     "QuestCounts",
     "QuestLinkSpec",
     "QuestSpec",
@@ -56,4 +73,5 @@ __all__ = [
     "stable_id",
     "validate_quests",
     "write_catalog",
+    "write_legacy_quest_overlays",
 ]

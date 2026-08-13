@@ -191,3 +191,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/__init__.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
 - **Impact:** Catalog-aware slug links resolve to each managed quest's exact ID, including explicit IDs. Direct in-memory rendering fails closed for slug targets without catalog context while preserving no-link and explicit-ID output. Writer preflight rejects invalid target syntax, absent aliases, duplicate quest slugs, canonical serialized coordinate duplicates including signed zero, divergent repeated groups, global collisions, and declared legacy reuse before quest-root mutation. These are compiler and in-memory rendering guarantees, not Minecraft runtime guarantees.
 - **Follow-up:** Pass declared unmanaged quest identities only as exact signed-safe IDs through `legacy_quest_ids` when later overlay tasks compile links to frozen legacy quests.
+
+### MEM-2026-08-13-015
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** verified
+- **Subsystem:** FTB Quests, legacy story overlays
+- **Summary:** Legacy Story quest links, Certification and Depot orders, and exact localization values now use immutable manifests with frozen outside-span digests, structural SNBT value replacement, complete target resolution, and rollback-safe atomic commits.
+- **Evidence:** The initial focused TDD run ended with `Ran 0 tests in 0.007s` and `FAILED (errors=1)` because `afterlight_quests.legacy_quest_overlays` did not exist. The final focused suite ended with `Ran 12 tests in 3.068s` and `OK`, including exact ten-chapter ordering, four synthetic link owners, digest drift, malformed and duplicate spans, localization conflicts, preflight races, injected later-write rollback, byte idempotence, and temporary-root build ordering. The final relevant compiler and compatibility run ended with `Ran 130 tests in 1.644s` and `OK (skipped=2)`; both skips require an authenticated live install and are outside this task. The project-memory suite ended with `Ran 7 tests in 0.006s` and `OK`; compile, diff check, generated-corpus diff, and U+2014 scan printed `OK` or `CLEAN`.
+- **Files or Commit:** `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/builder.py`, `tools/afterlight_quests/__init__.py`, `tools/build-quests.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Unmanaged chapter overlays fail before target writes on source drift or invalid structure and restore exact original bytes after an injected mid-commit failure. Compiler-managed output is written first, overlays and the derived item-audit digest are applied second, and complete corpus validation runs last.
+- **Follow-up:** Task 7 may populate only the declared immutable link and localization manifests after Task 6 creates the exact manual roots; Task 8 remains the sole task that generates and commits the tracked quest corpus.

@@ -196,13 +196,13 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** failure
-- **Status:** investigating
+- **Status:** verified
 - **Subsystem:** FTB Quests, legacy story overlays
-- **Summary:** Legacy overlays and managed quest builds have candidate-only orchestration, atomic promotion, durable Git-backed ownership, and broad adversarial coverage, but destructive private cleanup still has a final verification-to-delete race.
-- **Evidence:** Independent Fix Round 1 review reproduced data loss and stale success with `COMMIT_RACE_CLOBBERED True`, `ROLLBACK_CLOBBERED_THIRD_PARTY True`, `PARTIAL_BUILD_DELETED_VICTIM True`, `SYMLINK_ACCEPTED_AND_REPLACED True`, `HARDLINK_NOOP_VIOLATION True True`, `CLEANUP_FAILURE_REPORTED_SUCCESS True`, and `NON_TARGET_RACE_STALE_AUDIT True`. Fix Round 2 suites passed 42 transaction tests and 159 relevant tests with 2 authenticated-live skips. Independent Fix Round 2 re-review then reproduced `PRIVATE_THIRD_PARTY_DELETED True` and `DIR_MODE_DRIFT_DELETED True` by racing private artifact unlink and private created-directory removal after their final verification reads.
+- **Summary:** Legacy overlays and managed quest builds now retire private artifacts and rollback-created directories through a second atomic no-replace move, record that transition before later work, verify the moved object, and restore or retain raced state with explicit cleanup evidence.
+- **Evidence:** Independent Fix Round 2 re-review reproduced `PRIVATE_THIRD_PARTY_DELETED True` and `DIR_MODE_DRIFT_DELETED True` by racing private artifact unlink and private created-directory removal after their prior verification reads. Fix Round 3 added exact boundary regressions, whose red run ended with `Ran 2 tests in 0.027s` and `FAILED (failures=1, errors=1)`. After the final retirement move and moved-object verification, `python3 -m unittest tools.tests.test_quest_build_transaction` ended with `Ran 44 tests in 10.893s` and `OK`; the relevant Story compatibility, QuestLink, overlay, QuestCompiler, and memory run ended with `Ran 160 tests in 9.265s` and `OK (skipped=2)`. Compile, diff, U+2014, and generated-corpus guards passed without editing the quest corpus.
 - **Files or Commit:** `tools/afterlight_quests/quest_build_transaction.py`, `tools/afterlight_quests/legacy_quest_overlays.py`, `tools/afterlight_quests/builder.py`, `tools/build-quests.py`, `tools/tests/test_quest_build_transaction.py`, `tools/tests/test_afterlight_quests.py`, and `docs/PROJECT_MEMORY.md`
-- **Impact:** Downstream overlay use remains blocked because a concurrent private-object replacement or mode change can be deleted while cleanup reports success.
-- **Follow-up:** Add boundary injections immediately before unlink and rmdir, bind deletion to the verified object, and restore `verified` only after a clean independent rereview.
+- **Impact:** A replacement private file keeps its exact payload, inode, mode, owner, and link metadata as a reported recovery object. A rollback-created directory changed at the removal boundary is restored publicly with its exact inode, mode, and children and is reported unresolved.
+- **Follow-up:** Keep future cleanup paths on the same atomic-retirement pattern and require independent rereview before downstream overlay population.
 
 ### MEM-2026-08-13-016
 

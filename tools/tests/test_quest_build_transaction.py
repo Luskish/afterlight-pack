@@ -593,12 +593,12 @@ class QuestBuildTransactionTests(unittest.TestCase):
             original_unlink = self.transaction_module._unlink_artifact
             failed = False
 
-            def fail_once(parent_fd, name):
+            def fail_once(artifact):
                 nonlocal failed
                 if not failed:
                     failed = True
                     raise OSError("injected cleanup failure")
-                return original_unlink(parent_fd, name)
+                return original_unlink(artifact)
 
             with self.transaction_module.QuestBuildTransaction(root) as transaction:
                 frozen = self.freeze(transaction, root)
@@ -662,6 +662,46 @@ class QuestBuildTransactionTests(unittest.TestCase):
                 else:
                     self.assertEqual(stat.S_IMODE(retained.stat().st_mode), 0o711)
                 retained.unlink()
+
+    def test_private_artifact_replacement_at_unlink_boundary_is_retained(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            real_unlink = self.transaction_module._unlink_artifact
+            replacement_identity: tuple[object, ...] | None = None
+            injected = False
+
+            def replace_then_unlink(*arguments, **keywords):
+                nonlocal injected, replacement_identity
+                private_path = arguments[0].path
+                if not injected and ".afterlight-stage-" in private_path.name:
+                    injected = True
+                    replacement = private_path.with_name(
+                        f".{private_path.name}.third-party"
+                    )
+                    replacement.write_bytes(b"third-party cleanup boundary\n")
+                    os.chmod(replacement, 0o711)
+                    os.replace(replacement, private_path)
+                    replacement_identity = self.path_identity(private_path)
+                return real_unlink(*arguments, **keywords)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_unlink_artifact",
+                    side_effect=replace_then_unlink,
+                ):
+                    result = transaction.promote_bytes({first: b"new\n"}, frozen)
+
+            self.assertTrue(injected)
+            self.assertIsNotNone(replacement_identity)
+            self.assertTrue(result.committed)
+            self.assertTrue(result.cleanup_warnings)
+            self.assertEqual(len(result.recovery_paths), 1)
+            self.assertEqual(
+                self.path_identity(result.recovery_paths[0]),
+                replacement_identity,
+            )
 
     def test_artifact_is_registered_before_fsync_and_cleanup_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -728,12 +768,12 @@ class QuestBuildTransactionTests(unittest.TestCase):
                     expected = self.install_raced_object(first, "regular")
                 return real_no_replace(parent_fd, source_name, destination_name)
 
-            def reject_public_unlink(parent_fd, name):
+            def reject_public_unlink(artifact):
                 nonlocal expected, raced
-                if name == first.name:
+                if artifact.name == first.name:
                     raced = True
                     expected = self.install_raced_object(first, "regular")
-                return real_unlink(parent_fd, name)
+                return real_unlink(artifact)
 
             with self.transaction_module.QuestBuildTransaction(root) as transaction:
                 frozen = self.freeze(transaction, root)
@@ -773,12 +813,12 @@ class QuestBuildTransactionTests(unittest.TestCase):
                     expected = self.install_raced_object(target, "regular")
                 return real_no_replace(parent_fd, source_name, destination_name)
 
-            def reject_public_unlink(parent_fd, name):
+            def reject_public_unlink(artifact):
                 nonlocal expected, raced
-                if name == target.name:
+                if artifact.name == target.name:
                     raced = True
                     expected = self.install_raced_object(target, "regular")
-                return real_unlink(parent_fd, name)
+                return real_unlink(artifact)
 
             with self.transaction_module.QuestBuildTransaction(root) as transaction:
                 frozen = self.freeze(transaction, root)
@@ -967,6 +1007,64 @@ class QuestBuildTransactionTests(unittest.TestCase):
             self.assertTrue(changed)
             self.assertTrue(created_parent.is_dir())
             self.assertEqual(stat.S_IMODE(created_parent.stat().st_mode), 0o711)
+            self.assertIn(created_parent, raised.exception.unresolved_paths)
+            self.assertIn(created_parent, raised.exception.recovery_paths)
+
+    def test_created_directory_mutation_at_rmdir_boundary_is_restored(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            created_parent = first.parent / "new-parent"
+            target = created_parent / "new.snbt"
+            real_remove = getattr(
+                self.transaction_module,
+                "_remove_created_directory",
+                None,
+            )
+            replacement_identity: tuple[object, ...] | None = None
+            injected = False
+
+            def mutate_then_remove(*arguments, **keywords):
+                nonlocal injected, replacement_identity
+                private_path = arguments[2]
+                if not injected:
+                    injected = True
+                    os.chmod(private_path, 0o711)
+                    (private_path / "third-party").write_bytes(
+                        b"third-party directory child\n"
+                    )
+                    replacement_identity = self.path_identity(private_path)
+                assert real_remove is not None
+                return real_remove(*arguments, **keywords)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_remove_created_directory",
+                    create=True,
+                    side_effect=mutate_then_remove,
+                ):
+                    with self.assertRaises(
+                        self.transaction_module.QuestBuildRollbackError
+                    ) as raised:
+                        transaction.promote_bytes(
+                            {target: b"transaction-output\n"},
+                            frozen,
+                            post_validate=lambda: (_ for _ in ()).throw(
+                                ValueError("force rollback")
+                            ),
+                        )
+
+            self.assertTrue(injected)
+            self.assertIsNotNone(replacement_identity)
+            self.assertEqual(
+                self.path_identity(created_parent),
+                replacement_identity,
+            )
+            self.assertEqual(
+                (created_parent / "third-party").read_bytes(),
+                b"third-party directory child\n",
+            )
             self.assertIn(created_parent, raised.exception.unresolved_paths)
             self.assertIn(created_parent, raised.exception.recovery_paths)
 
@@ -1395,12 +1493,12 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
             real_unlink = transaction_module._unlink_artifact
             failed = False
 
-            def fail_once(parent_fd, name):
+            def fail_once(artifact):
                 nonlocal failed
                 if not failed:
                     failed = True
                     raise OSError("catalog cleanup warning")
-                return real_unlink(parent_fd, name)
+                return real_unlink(artifact)
 
             with mock.patch.object(
                 transaction_module,
@@ -1424,12 +1522,12 @@ class WholeQuestBuildTransactionTests(unittest.TestCase):
             real_unlink = transaction_module._unlink_artifact
             failed = False
 
-            def fail_once(parent_fd, name):
+            def fail_once(artifact):
                 nonlocal failed
                 if not failed:
                     failed = True
                     raise OSError("build cleanup warning")
-                return real_unlink(parent_fd, name)
+                return real_unlink(artifact)
 
             with mock.patch.object(
                 transaction_module,

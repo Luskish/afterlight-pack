@@ -107,6 +107,8 @@ class _CreatedDirectory:
     name: str
     state: _NodeState | None = None
     phase: str = "public"
+    private_name: str | None = None
+    private_path: Path | None = None
 
 
 class PromotionResult(list[Path]):
@@ -915,9 +917,54 @@ def _create_artifact(
         os.close(descriptor)
 
 
-def _unlink_artifact(parent_fd: int, name: str) -> None:
-    os.unlink(name, dir_fd=parent_fd)
-    _fsync_directory_fd(parent_fd)
+def _unlink_artifact(artifact: _Artifact) -> None:
+    expected = artifact.state or artifact.created_state
+    original_name = artifact.name
+    original_path = artifact.path
+    cleanup_name = f".{original_name}.afterlight-remove-{uuid.uuid4().hex}"
+    cleanup_path = original_path.parent / cleanup_name
+    _atomic_no_replace(artifact.parent_fd, original_name, cleanup_name)
+    artifact.name = cleanup_name
+    artifact.path = cleanup_path
+    sync_error: BaseException | None = None
+    try:
+        _fsync_directory_fd(artifact.parent_fd)
+    except BaseException as error:
+        sync_error = error
+    moved = _artifact_current_state(artifact)
+    if moved is None or not _states_match(expected, moved):
+        try:
+            if moved is not None:
+                _atomic_no_replace(
+                    artifact.parent_fd,
+                    cleanup_name,
+                    original_name,
+                )
+                artifact.name = original_name
+                artifact.path = original_path
+                _fsync_directory_fd(artifact.parent_fd)
+                restored = _artifact_current_state(artifact)
+                if restored is None or not _states_match(moved, restored):
+                    raise ValueError(
+                        "quest transaction could not verify restored private "
+                        f"artifact: {original_path}"
+                    )
+        except BaseException:
+            artifact.retain = True
+            raise
+        artifact.retain = True
+        raise ValueError(
+            f"quest transaction lost private artifact ownership: {original_path}"
+        )
+    os.unlink(cleanup_name, dir_fd=artifact.parent_fd)
+    artifact.present = False
+    try:
+        _fsync_directory_fd(artifact.parent_fd)
+    except BaseException as error:
+        if sync_error is None:
+            sync_error = error
+    if sync_error is not None:
+        raise sync_error
 
 
 def _artifact_current_state(artifact: _Artifact) -> _NodeState | None:
@@ -936,12 +983,56 @@ def _cleanup_private_artifact(artifact: _Artifact) -> None:
         artifact.retain = True
         raise ValueError(f"quest transaction lost private artifact ownership: {artifact.path}")
     try:
-        _unlink_artifact(artifact.parent_fd, artifact.name)
+        _unlink_artifact(artifact)
     except BaseException:
         if _artifact_current_state(artifact) is None:
             artifact.present = False
         raise
     artifact.present = False
+
+
+def _remove_created_directory(
+    record: _CreatedDirectory,
+    private_name: str,
+    private_path: Path,
+    expected: _NodeState,
+) -> None:
+    cleanup_name = f".{record.name}.afterlight-remove-{uuid.uuid4().hex}"
+    cleanup_path = record.path.parent / cleanup_name
+    _atomic_no_replace(record.parent_fd, private_name, cleanup_name)
+    record.phase = "cleanup-private"
+    record.private_name = cleanup_name
+    record.private_path = cleanup_path
+    _fsync_directory_fd(record.parent_fd)
+    moved = _read_any_at(record.parent_fd, cleanup_name, cleanup_path)
+    mismatch = moved is None or not _same_identity(expected, moved)
+    if not mismatch:
+        descriptor = os.open(cleanup_name, _directory_flags(), dir_fd=record.parent_fd)
+        try:
+            mismatch = bool(os.listdir(descriptor))
+        finally:
+            os.close(descriptor)
+    if mismatch:
+        if moved is not None:
+            _atomic_no_replace(record.parent_fd, cleanup_name, private_name)
+            record.phase = "moved-private"
+            record.private_name = private_name
+            record.private_path = private_path
+            _fsync_directory_fd(record.parent_fd)
+            restored = _read_any_at(record.parent_fd, private_name, private_path)
+            if restored is None or not _same_identity(moved, restored):
+                raise ValueError(
+                    "quest transaction could not verify restored private "
+                    f"directory: {record.path}"
+                )
+        raise ValueError(
+            f"quest transaction lost created-directory ownership: {record.path}"
+        )
+    os.rmdir(cleanup_name, dir_fd=record.parent_fd)
+    record.phase = "removed"
+    record.private_name = None
+    record.private_path = None
+    _fsync_directory_fd(record.parent_fd)
 
 
 class QuestBuildTransaction:
@@ -1757,33 +1848,39 @@ class QuestBuildTransaction:
                     )
                 _atomic_no_replace(record.parent_fd, record.name, private_name)
                 record.phase = "moved-private"
+                record.private_name = private_name
+                record.private_path = private_path
                 _fsync_directory_fd(record.parent_fd)
                 moved = _read_any_at(record.parent_fd, private_name, private_path)
                 if moved is None or not _same_identity(record.state, moved):
                     raise ValueError(
                         f"quest transaction lost created-directory ownership: {record.path}"
                     )
-                descriptor = os.open(private_name, _directory_flags(), dir_fd=record.parent_fd)
-                try:
-                    if os.listdir(descriptor):
-                        raise ValueError(
-                            f"quest transaction created directory is not empty: {record.path}"
-                        )
-                finally:
-                    os.close(descriptor)
-                os.rmdir(private_name, dir_fd=record.parent_fd)
-                record.phase = "removed"
-                _fsync_directory_fd(record.parent_fd)
+                _remove_created_directory(
+                    record,
+                    private_name,
+                    private_path,
+                    moved,
+                )
             except BaseException as error:
                 restore_error: BaseException | None = None
-                if record.phase == "moved-private":
+                if record.phase in {"moved-private", "cleanup-private"}:
                     try:
+                        source_name = record.private_name
+                        source_path = record.private_path
+                        if source_name is None or source_path is None:
+                            raise ValueError(
+                                "quest transaction lost private created-directory "
+                                f"record: {record.path}"
+                            )
                         _atomic_no_replace(
                             record.parent_fd,
-                            private_name,
+                            source_name,
                             record.name,
                         )
                         record.phase = "public"
+                        record.private_name = None
+                        record.private_path = None
                         _fsync_directory_fd(record.parent_fd)
                         restored = _read_any_at(
                             record.parent_fd,
@@ -1812,8 +1909,9 @@ class QuestBuildTransaction:
                 unresolved.append(record.path)
                 if restore_error is not None:
                     errors.append(restore_error)
-                if record.phase == "moved-private":
-                    recovery.append(private_path)
+                if record.phase in {"moved-private", "cleanup-private"}:
+                    if record.private_path is not None:
+                        recovery.append(record.private_path)
                 elif record.phase == "public":
                     recovery.append(record.path)
         return errors, recovery, unresolved

@@ -227,3 +227,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `docs/PROJECT_MEMORY.md`
 - **Impact:** No server, world, quest progress, firewall, service, or release state changed, and future audits have searchable warnings against these four operator-tooling mistakes.
 - **Follow-up:** Use an explicit Git safe directory or the service account, avoid shell interpolation inside remote byte sums, never name a zsh loop variable `path`, and omit cleanup from read-only probes.
+
+### MEM-2026-08-13-018
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** resolved
+- **Subsystem:** FTB Quests, deterministic generated inventory
+- **Summary:** A standalone hash tool records every generated quest file plus the two exact generated audit scripts by relative path, mode, size, and SHA-256, including files not tracked by Git.
+- **Evidence:** The red run ended with `Ran 5 tests in 0.001s` and `FAILED (errors=5)` because the tool did not exist. After implementation, the focused run ended with `Ran 5 tests in 0.017s` and `OK`, covering complete recursive inventory, untracked-file detection, missing or extra audit rejection, link and nonregular-file rejection, output isolation, canonical JSON, and directory mode.
+- **Files or Commit:** `tools/hash-generated-quests.py`, `tools/tests/test_hash_generated_quests.py`, and `docs/PROJECT_MEMORY.md`
+- **Impact:** Consecutive quest builds can compare the complete generated filesystem rather than relying on Git state or timestamps.
+- **Follow-up:** Run the tool after both final Task 8 build passes and require byte-identical inventory manifests before Packwiz refresh.

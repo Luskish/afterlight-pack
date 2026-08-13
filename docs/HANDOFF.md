@@ -1,6 +1,6 @@
 # AFTERLIGHT Handoff Guide
 
-This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex while preparing `1.0.0-rc.1`.
+This is the current recovery record for Codex, Claude, or another capable agent. Last updated 2026-08-12 by Codex after publishing and deploying `1.0.0-rc.1`.
 
 ## Hard rules the prompts assume (also in AGENTS.md)
 
@@ -16,7 +16,7 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Do not update the VPS until the accepted release is published, no players are online, and a verified backup exists.
 - Pregen remains deferred.
 
-## Current Release Candidate
+## Current Release
 
 - Pack worktree: `/private/tmp/afterlight-echo-signal-reliquary-20260811`.
 - Working branch: `codex/echo-signal-reliquary`.
@@ -35,7 +35,11 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Accepted transcript SHA-256: `c3568ffd29e2410025e17e14ad22bf514f8521fb885227f394784036fabb5f92`.
 - Shane authorized an expedited acceptance on 2026-08-12. The duplicate second local artifact build and duplicate local post-generation CurseForge scan were omitted only after exact artifact bytes matched the successful exact-SHA `dev` CI build. Pages parity, two launcher installation paths, checksums, archive CRCs, backup, and production verification remained required.
 - Release hardening now includes replacement-ref-resistant CurseForge and Modrinth commit-tree reconciliation, an upstream-verified 140-record Modrinth manifest lock, typed, quoted, and oversized credential detection, exact automated evidence binding, direct explicit-refspec pushes to one captured production URL, HTTPS-only ordinary and cache-busted Pages parity, rejection of unexpected installed files, accepted-versus-hosted client mod-set and complete payload equality, numeric release ownership without automatic deletion, and authenticated plus unauthenticated byte verification.
-- Publication, portal selection, and VPS rollout remain pending until recorded below.
+- Public prerelease: `https://github.com/Luskish/afterlight-pack/releases/tag/v1.0.0-rc.1`.
+- GitHub release ID: `369594848`.
+- Published at: `2026-08-13T00:11:21Z`.
+- Release evidence documentation commit on `dev`: `7dc4d8eb16a1c8916a58d164c98b7a365346f191`.
+- Publication, live portal selection, and the transactional VPS rollout completed on 2026-08-12 Eastern time.
 
 ## Signal Companion
 
@@ -63,7 +67,7 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 
 - Portal: `https://rl-labs.org/afterlight/`.
 - Website repository: `R-L-Labs/Website`.
-- The portal is live and currently falls back to the previous complete release until `1.0.0-rc.1` publishes with all five canonical assets.
+- The portal is live, selects the complete public `v1.0.0-rc.1` release without fallback, and renders all three launcher downloads.
 - Canonical assets are `AFTERLIGHT-prism-instance.zip`, `AFTERLIGHT-curseforge.zip`, `AFTERLIGHT.mrpack`, `SHA256SUMS`, and `release-metadata.json`.
 - Prism uses the stable GitHub Pages Packwiz manifest and updates before launch.
 - CurseForge uses complete replacement imports and does not auto-update.
@@ -91,16 +95,31 @@ tools/publish-release.sh "$SHA" 1.0.0-rc.1 "$RECEIPT_SHA256" --prerelease --conf
 
 The publisher creates an ID-owned draft, verifies all five assets through authenticated asset-ID downloads, never automatically deletes a release, and then repeats equality through unauthenticated downloads. Any failure after creation preserves the exact numeric release for manual inspection. Confirm that `https://rl-labs.org/afterlight/` selects RC1.
 
-## VPS Preflight
+## VPS Production State
 
 - SSH alias: `afterlight-vps`, persistent root access already works.
 - Host: `theboys`, Ubuntu 20.04.6, 8 cores, 23 GiB RAM, and more than 100 GiB free storage at the last preflight.
 - Repository: `/opt/afterlight`, owned operationally by user `afterlight`.
-- Current live marker before RC1: `7630bccff75b9faeb1415db3070d8f6b9e2aa88e`.
+- Previous live marker: `7630bccff75b9faeb1415db3070d8f6b9e2aa88e`.
+- Current checkout, `origin/main`, and live marker: `fc3bb555f240e7d8a51d30570404413305bf5b9f`.
 - Memory policy: 6 GiB initial heap, 14 GiB maximum heap, 17 GiB container limit.
 - Required whitelist: `NRNJ`, `Liszewski`, `ZSmitt`, and `DylnDark`.
 - The daily systemd timer warns for 15 minutes and restarts around 5:00 AM Eastern, even when players are online, only after a verified backup.
 - Do not expose RCON. Keep TCP `25565` available and UDP `24454` optional.
+
+### RC1 deployment evidence
+
+- Deployment used `server/afterlight-server.sh update` with zero players online and 113 GiB free.
+- Independent pre-update backup: `/srv/afterlight/backups/world-20260813-001329.tar.zst`, SHA-256 `b86318b2fa3a0b4339d8313a2af36cdbfb137db3508ca404e1c15159d7a40864`.
+- Transactional update backup: `/srv/afterlight/backups/world-20260813-001354.tar.zst`, SHA-256 `b0266f368573d7783099e6cb77117a1794bed990f82caf9c09d85bd33d938e0b`.
+- Both backups passed `zstd --test`, contain `world/level.dat`, and bind the previous marker `7630bccff75b9faeb1415db3070d8f6b9e2aa88e`.
+- Supported rollback command: `server/afterlight-server.sh rollback '/srv/afterlight/backups/world-20260813-001354.tar.zst' --confirm` from `/opt/afterlight` as `afterlight`.
+- Minecraft reached `Done (3.960s)!`, remains healthy with restart count zero and no OOM event, and answers the public 1.21.1 status handshake on TCP `25565`.
+- Signal `0.2.0`, FTB Ultimine, Lootr, and SmartBrainLib are installed. VeinMiner is absent.
+- FTB Quests loaded 6 groups, 47 chapters, 315 total quests, and 6 reward tables. The ECHO route file is byte-identical to the accepted source and contains 169 guided quests across 21 segments.
+- `/echo recover` and `/echo inspect <player>` are registered. A read-only command executed successfully inside `afterlight:far_relay`.
+- The production log contains only the 14 reviewed error records and 39 named residual warnings. The Tectonic overlay stack uses the production Temurin `21.0.11` shape rather than the CI Temurin `21.0.12` shape, with the same error class and count.
+- The whitelist remains exactly `NRNJ`, `Liszewski`, `ZSmitt`, and `DylnDark`. The daily maintenance timer is enabled and active. Chunky reports no tasks running, so pregen remains deferred.
 
 ## VPS Rollout
 

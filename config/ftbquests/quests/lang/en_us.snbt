@@ -189,10 +189,11 @@
 		"Nothing about the old world was fast at first. Remember that when the reactors come."
 	]
 	quest.27F6D0AB957BBB8C.title: "Steel Yourself"
+	task.374F658F034EF8C5.title: "Any #c:ingots/steel"
 	quest.27F6D0AB957BBB8C.quest_subtitle: "Twelve ingots of intent."
 	quest.27F6D0AB957BBB8C.quest_desc: [
-		"Steel is iron that graduated. Twelve ingots says your foothold has a spine."
-		"The blast furnace remembers the recipe even when I do not. Trust the bricks."
+		"Steel is iron that graduated. Twelve ingots says your foothold has a spine. Any ingot in the common steel family qualifies."
+		"Use whichever recovered process you trust. The alloy matters more than which machine remembers it."
 	]
 	quest.1AC07872BABAC949.title: "First Current"
 	quest.1AC07872BABAC949.quest_subtitle: "Electricity, rediscovered."

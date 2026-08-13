@@ -1333,7 +1333,7 @@ class MixinCorpusNegativeTests(unittest.TestCase):
     def test_real_corpus_processes_every_mixin_scope(self) -> None:
         hygiene = hygiene_module()
         evidence = hygiene.verify_sable_source_evidence(ROOT, ROOT / "server-test")
-        self.assertEqual(evidence["archive_scopes"], 306)
+        self.assertEqual(evidence["archive_scopes"], 307)
         self.assertEqual(evidence["mixin_configs"], 265)
         self.assertEqual(evidence["common_mixins"], 2320)
         self.assertEqual(evidence["server_mixins"], 5)
@@ -2015,11 +2015,11 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
                     expected_digest=expected["digest"],
                 )
 
-    def test_signal_release_updates_reviewed_server_artifact_seal(self) -> None:
+    def test_current_release_updates_reviewed_server_artifact_seal(self) -> None:
         hygiene = hygiene_module()
-        self.assertEqual(158, hygiene.REVIEWED_SERVER_ARTIFACT_COUNT)
+        self.assertEqual(159, hygiene.REVIEWED_SERVER_ARTIFACT_COUNT)
         self.assertEqual(
-            "d2046b987739bb9139016a6ce33f6a89e1b1f4e011624ea37940f088a4a8594c",
+            "1efcf4537b3aaa0f72f9b4b49c3480dcd16003ec562ec035a5614581943cdcad",
             hygiene.REVIEWED_SERVER_ARTIFACT_INVENTORY_SHA256,
         )
         self.assertEqual(
@@ -2030,10 +2030,19 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
             hygiene.REVIEWED_SERVER_ARTIFACT_COUNT,
             hygiene.SABLE_TOP_LEVEL_ARTIFACT_COUNT,
         )
-        self.assertEqual(306, hygiene.SABLE_ARCHIVE_SCOPE_COUNT)
+        self.assertEqual(307, hygiene.SABLE_ARCHIVE_SCOPE_COUNT)
         self.assertEqual(
-            "1ec3286460f55abc01457a80e7b404fc8fb29ca3216ac9795bcc1e3c74fc3853",
+            "2cf50d4b9af27d7868fb1332be39ab604c3b87a5b44b27aa4a3c04fc62ee3318",
             hygiene.REVIEWED_MIXIN_CORPUS_SHA256,
+        )
+
+    def test_ftb_filter_system_updates_reviewed_warning_seal(self) -> None:
+        hygiene = hygiene_module()
+        self.assertEqual(473, hygiene.REVIEWED_WARNING_TOTAL)
+        self.assertEqual(379, hygiene.REVIEWED_WARNING_UNIQUE)
+        self.assertEqual(
+            "f693303650af44b70cd2cfe1eaf78c6d44bd1e70ce111857870a20de9bf3c295",
+            hygiene.REVIEWED_WARNING_MULTISET_SHA256,
         )
 
     def test_duplicate_ae2_metadata_is_removed(self) -> None:
@@ -2155,7 +2164,7 @@ class ManifestAndProvenanceNegativeTests(unittest.TestCase):
         hygiene = hygiene_module()
         manifest = hygiene.verify_manifest(ROOT)
         indexed = manifest["indexed_hashes"]
-        self.assertEqual(len(indexed), 311)
+        self.assertEqual(len(indexed), 312)
         self.assertEqual(
             {relative.split("/", 1)[0] for relative in indexed},
             {"config", "global_packs", "kubejs", "mods"},
@@ -3165,8 +3174,8 @@ class CanonicalBootOracleNegativeTests(unittest.TestCase):
         self.assertEqual(
             self.hygiene.quest_audit_expectation(ROOT),
             (
-                "3e20a870fc24f824c0a1693fe6314286169973d3f24c75af1d99d57b18ad2626",
-                237,
+                "cbed5a3a1b3157edd9971fcfb6ad8634f3da4e5bd4d6207273fd1c1c537c889c",
+                238,
             ),
         )
 
@@ -4058,7 +4067,7 @@ class GateRecipeAdversarialTests(unittest.TestCase):
         self.assertEqual(self.hygiene.EXPECTED_SEAL_CODE_CORPUS_COUNT, 9)
         self.assertEqual(
             self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
-            "96259f73a2f6055040675bdbe850f74788920316f232787edbb13360825a52e8",
+            "6a202fc7cb6c7d563d03ec953c4b8f3785beac69df613f06153aa132bb28975b",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root, install = self.copy_seal_corpus(Path(temporary))

@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 import zipfile
 from collections import Counter
@@ -4344,6 +4345,70 @@ class LegacyStoryQuestContractTests(unittest.TestCase):
                     "criterion": "",
                 }
             ],
+        )
+
+    def test_steel_yourself_accepts_the_common_steel_ingot_tag(self) -> None:
+        from afterlight_quests.builder import _parse_snbt
+
+        chapter_path = (
+            ROOT
+            / "config"
+            / "ftbquests"
+            / "quests"
+            / "chapters"
+            / "45491A24F6B8C192.snbt"
+        )
+        chapter = _parse_snbt(chapter_path.read_text(encoding="utf-8"))
+        quest = next(
+            quest for quest in chapter["quests"] if quest["id"] == "27F6D0AB957BBB8C"
+        )
+
+        self.assertEqual(
+            quest["tasks"],
+            [
+                {
+                    "id": "374F658F034EF8C5",
+                    "type": "item",
+                    "item": {
+                        "count": "1",
+                        "id": "ftbfiltersystem:smart_filter",
+                        "components": {
+                            "ftbfiltersystem:filter": (
+                                "ftbfiltersystem:item_tag(c:ingots/steel)"
+                            )
+                        },
+                    },
+                    "count": "12L",
+                    "consume_items": False,
+                }
+            ],
+        )
+
+        language_path = (
+            ROOT / "config" / "ftbquests" / "quests" / "lang" / "en_us.snbt"
+        )
+        language = _parse_snbt(language_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            language["task.374F658F034EF8C5.title"], "Any #c:ingots/steel"
+        )
+
+    def test_steel_tag_filter_runtime_is_installed_on_both_sides(self) -> None:
+        metadata_path = ROOT / "mods" / "ftb-filter-system.pw.toml"
+        self.assertTrue(metadata_path.is_file())
+        metadata = tomllib.loads(metadata_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["name"], "FTB Filter System")
+        self.assertEqual(
+            metadata["filename"], "ftb-filter-system-neoforge-21.1.4.jar"
+        )
+        self.assertEqual(metadata["side"], "both")
+        self.assertEqual(metadata["download"]["hash-format"], "sha1")
+        self.assertEqual(
+            metadata["download"]["hash"], "a48e54edeacc59aaba29a1b627799c052112ee0b"
+        )
+        self.assertEqual(
+            metadata["update"]["curseforge"],
+            {"file-id": 7429011, "project-id": 943925},
         )
 
 

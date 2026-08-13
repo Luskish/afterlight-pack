@@ -208,6 +208,7 @@ class ClientInventoryTests(unittest.TestCase):
         ftb_ultimine = "ftb-ultimine-neoforge-2101.1.15.jar"
         lootr = "lootr-neoforge-1.21.1-1.11.38.123.jar"
         afterlight_signal = "afterlight-signal-0.2.1+1.21.1.jar"
+        ftb_filter_system = "ftb-filter-system-neoforge-21.1.4.jar"
         veinminer = "veinminer-neoforge-2.11.2+1.21.1.jar"
         veinminer_hotkey = "veinminer-client-neoforge-2.11.2+1.21.1.jar"
         self.assertIn(smartbrainlib, client_required)
@@ -218,9 +219,10 @@ class ClientInventoryTests(unittest.TestCase):
         self.assertIn(ftb_ultimine, client_required)
         self.assertIn(lootr, client_required)
         self.assertIn(afterlight_signal, client_required)
+        self.assertIn(ftb_filter_system, client_required)
         self.assertNotIn(veinminer, client_required)
         self.assertNotIn(veinminer_hotkey, client_required)
-        self.assertEqual(len(client_required), 156)
+        self.assertEqual(len(client_required), 157)
         self.assertEqual(len(server_only), 13)
 
 

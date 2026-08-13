@@ -40,7 +40,8 @@ This is the current recovery record for Codex, Claude, or another capable agent.
 - Published at: `2026-08-13T00:11:21Z`.
 - Release evidence documentation commit on `dev`: `7dc4d8eb16a1c8916a58d164c98b7a365346f191`.
 - Publication, live portal selection, and the transactional VPS rollout completed on 2026-08-12 Eastern time.
-- RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, changes Slow Fire to the real Coke Oven formation advancement, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
+- RC2 work updates Signal to `0.2.1`, restores ECHO Pin and Claim networking, restores the Signal title over Aether's Cumulus menu, changes Slow Fire to the real Coke Oven formation advancement, makes Steel Yourself accept the common `c:ingots/steel` tag through FTB Filter System `21.1.4`, and includes the already-green VPS swappiness optimization from `93650ac8fa18c6bcd79f56d8f8c500734a4e1a35`.
+- Before RC2 reaches production, an operator can repair only Slow Fire with `/ftbquests change_progress @a complete 78E07ADD5BCD1F19` and only Steel Yourself with `/ftbquests change_progress @a complete 27F6D0AB957BBB8C`. Both commands affect online players selected by `@a`; replace `@a` with one username for an individual repair.
 
 ## Signal Companion
 

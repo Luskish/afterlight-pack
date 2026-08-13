@@ -70,7 +70,11 @@
 			tasks: [
 				{ id: "374F658F034EF8C5"
 				type: "item"
-				item: { count: 1, id: "immersiveengineering:ingot_steel" }
+				item: {
+					count: 1
+					id: "ftbfiltersystem:smart_filter"
+					components: { "ftbfiltersystem:filter": "ftbfiltersystem:item_tag(c:ingots/steel)" }
+				}
 				count: 12L
 				consume_items: false }
 			]

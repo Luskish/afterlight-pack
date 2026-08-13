@@ -24,6 +24,7 @@ FIXTURE = ROOT / "tools" / "fixtures" / "quests" / "manual-acquisition.json"
 COMMODITY_FIXTURE = (
     ROOT / "tools" / "fixtures" / "quests" / "common-commodity-tasks.json"
 )
+TEMP_ROOT = Path(tempfile.gettempdir()).resolve()
 
 
 def _legacy_quest_ids(quest_root, catalog):
@@ -225,7 +226,7 @@ class AcquisitionModuleTests(unittest.TestCase):
             '  "schema_version": 1,\n  "schema_version": 1',
             1,
         )
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             path = Path(temporary) / "duplicate.json"
             path.write_text(raw, encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "duplicate JSON key schema_version"):
@@ -233,7 +234,7 @@ class AcquisitionModuleTests(unittest.TestCase):
 
     def test_loader_rejects_noncanonical_bytes(self) -> None:
         data = json.loads(FIXTURE.read_text(encoding="utf-8"))
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             path = Path(temporary) / "compact.json"
             path.write_text(json.dumps(data, sort_keys=True), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "fixture bytes are not canonical"):
@@ -270,7 +271,9 @@ class AcquisitionModuleTests(unittest.TestCase):
             ),
         }
         for label, mutate in mutations.items():
-            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                dir=TEMP_ROOT
+            ) as temporary:
                 data = deepcopy(original)
                 mutate(data)
                 path = Path(temporary) / "mutated.json"
@@ -341,7 +344,7 @@ class AcquisitionModuleTests(unittest.TestCase):
             self.acquisition.validate_fixture_to_quests(manifest, catalog),
             [],
         )
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root = Path(temporary)
             shutil.copytree(ROOT / "config", root / "config")
             fixture_root = root / "tools" / "fixtures" / "quests"
@@ -474,7 +477,7 @@ class AcquisitionModuleTests(unittest.TestCase):
             catalog_errors,
         )
 
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root = Path(temporary)
             shutil.copytree(ROOT / "config", root / "config")
             fixture_root = root / "tools" / "fixtures" / "quests"
@@ -765,7 +768,7 @@ class AcquisitionRuntimeParserTests(unittest.TestCase):
         return lines
 
     def validate_lines(self, lines_by_log: tuple[list[str], list[str], list[str]]):
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root = Path(temporary)
             paths = []
             for index, lines in enumerate(lines_by_log):
@@ -999,7 +1002,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             )
 
     def test_workspace_builder_writes_both_canonical_audits(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root, quest_root = self.make_workspace(Path(temporary))
             catalog = self.quests.build_catalog()
             self.builder._write_catalog_workspace(
@@ -1031,7 +1034,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             )
 
     def test_catalog_acquisition_failure_leaves_all_outputs_unchanged(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root, quest_root = self.make_workspace(Path(temporary))
             audit_root = root / "kubejs" / "server_scripts" / "afterlight"
             audit_root.mkdir(parents=True)
@@ -1073,7 +1076,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             self.assertEqual(after, before)
 
     def test_unexpected_generated_audit_fails_transaction_without_changes(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root, quest_root = self.make_workspace(Path(temporary))
             audit_root = root / "kubejs" / "server_scripts" / "afterlight"
             audit_root.mkdir(parents=True)
@@ -1107,7 +1110,7 @@ class AcquisitionBuilderTests(unittest.TestCase):
             self.assertEqual(after, before)
 
     def test_two_transactional_builds_are_byte_identical(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             root = Path(temporary) / "repository"
             shutil.copytree(ROOT / "config", root / "config")
             shutil.copytree(ROOT / "mods", root / "mods")
@@ -1192,7 +1195,7 @@ class CommodityRuntimeParserTests(unittest.TestCase):
         return lines
 
     def validate(self, logs: tuple[list[str], list[str], list[str]]) -> list[str]:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             paths = []
             for index, lines in enumerate(logs):
                 path = Path(temporary) / f"log-{index}.log"

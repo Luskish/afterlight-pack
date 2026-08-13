@@ -14,6 +14,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
+TEMP_ROOT = Path(tempfile.gettempdir()).resolve()
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -36,6 +37,16 @@ class ManualAcquisitionRcTests(unittest.TestCase):
         assert specification.loader is not None
         cls.build_script = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(cls.build_script)
+
+    def test_manual_acquisition_tests_use_platform_temp_root(self) -> None:
+        forbidden_root = "/private" "/tmp"
+        for relative in (
+            "tools/tests/test_manual_acquisition.py",
+            "tools/tests/test_manual_acquisition_rc.py",
+        ):
+            with self.subTest(relative=relative):
+                source = (ROOT / relative).read_text(encoding="utf-8")
+                self.assertNotIn(forbidden_root, source)
 
     def canonical_sources(self) -> dict[str, bytes]:
         return {
@@ -76,7 +87,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
         before_inventory = self.hygiene._seal_code_inventory(ROOT, "repository")
         before_digest = self.hygiene._seal_code_corpus_digest(before_inventory)
 
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             generated_root = self.make_generated_pack(Path(temporary))
             generated_inventory = self.hygiene._seal_code_inventory(
                 generated_root,
@@ -100,7 +111,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
             )
 
     def test_seal_digest_normalization_still_rejects_generated_data_tamper(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             base = Path(temporary)
             generated_root = self.make_generated_pack(base)
             install = base / "install"
@@ -139,7 +150,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
                 self.hygiene._verify_seal_code_corpus(generated_root, install)
 
     def test_dual_renderer_uses_one_nonce_and_writes_canonical_provenance(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             install, sources = self.make_install(Path(temporary))
             result = self.hygiene.render_installed_quest_audits(
                 ROOT,
@@ -187,17 +198,18 @@ class ManualAcquisitionRcTests(unittest.TestCase):
 
     def test_cli_exposes_exact_dual_audit_commands(self) -> None:
         parser = self.hygiene.build_parser()
+        install_path = str(TEMP_ROOT / "install")
         for command in (
             "render-installed-quest-audits",
             "verify-quest-audits",
         ):
             parsed = parser.parse_args(
-                [command, "--install", "/private/tmp/install", "--nonce", self.nonce]
+                [command, "--install", install_path, "--nonce", self.nonce]
             )
             self.assertEqual(parsed.command, command)
 
     def test_preflight_failure_rolls_back_without_rendering_first_audit(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             install, sources = self.make_install(Path(temporary))
             acquisition_path = install / (
                 "kubejs/server_scripts/afterlight/"
@@ -222,7 +234,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
             )
 
     def test_second_write_failure_restores_first_source(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             install, sources = self.make_install(Path(temporary))
             original_write = self.hygiene._atomic_runtime_write
             call_count = 0
@@ -251,7 +263,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
                 self.assertEqual((install / relative).read_bytes(), source)
 
     def test_symlink_and_post_render_tamper_are_rejected(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             base = Path(temporary)
             install, _ = self.make_install(base)
             acquisition_path = install / (
@@ -272,7 +284,7 @@ class ManualAcquisitionRcTests(unittest.TestCase):
                     self.nonce,
                 )
 
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as temporary:
             install, _ = self.make_install(Path(temporary))
             self.hygiene.render_installed_quest_audits(
                 ROOT,

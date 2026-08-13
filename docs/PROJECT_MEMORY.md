@@ -599,3 +599,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `.github/workflows/pack-ci.yml`, `server/afterlight-safety-contract.sh`, `tools/tests/test_release_artifacts.py`, and `tools/tests/test_task9_rereview3.py`
 - **Impact:** Linux now receives the exact frozen Git history, validates test-contract permissions portably, resolves sibling shell includes, and has enough time to complete archive normalization without weakening any release check. No pack content, quest identity, artifact, production service, or player state changed.
 - **Follow-up:** Push the corrected exact head, require green GitHub Actions and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.
+
+### MEM-2026-08-13-049
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Manual-acquisition test temp-root portability
+- **Summary:** The second pushed RC2 candidate passed the prior Linux fixes but 14 manual-acquisition tests still created fixtures beneath the macOS-only `/private/tmp` path, which does not exist on Ubuntu runners.
+- **Evidence:** GitHub Actions run `31744429417` ended with `Ran 934 tests in 617.851s` and `FAILED (errors=14, skipped=80)`; every error was a `FileNotFoundError` beneath `/private/tmp`. A source-level portability regression was added first and failed for both affected test modules. Using Python's resolved system temp root initially exposed macOS's symlinked `/var` alias, which the product security checks correctly reject. Resolving the system temp root before fixture creation preserved that security boundary and made both affected modules end with `Ran 38 tests in 13.279s` and `OK`.
+- **Files or Commit:** `tools/tests/test_manual_acquisition.py` and `tools/tests/test_manual_acquisition_rc.py`
+- **Impact:** Manual-acquisition fixtures now use a real platform temp root on macOS and Linux without weakening symlink rejection. No pack content, quest identity, artifact, production service, or player state changed.
+- **Follow-up:** Push the corrected exact head, require green Linux CI and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.

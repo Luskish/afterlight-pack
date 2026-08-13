@@ -329,7 +329,10 @@ def _require_quest_link_coordinate(value: object, label: str) -> float:
 
 def _canonical_quest_link_coordinate(value: object, label: str) -> str:
     coordinate = _require_quest_link_coordinate(value, label)
-    return f"{coordinate:.1f}d"
+    literal = f"{coordinate:.1f}"
+    if literal == "-0.0":
+        literal = "0.0"
+    return f"{literal}d"
 
 
 def _require_project_quest_slug(value: object, label: str) -> str:
@@ -575,10 +578,9 @@ def _render_object(fields: Iterable[tuple[str, Any]], indent: int) -> list[str]:
     return lines
 
 
-def render_chapter(
+def _render_chapter(
     chapter: ChapterSpec,
-    *,
-    _resolved_quest_links: Sequence[_ResolvedQuestLink] | None = None,
+    resolved_quest_links: Sequence[_ResolvedQuestLink] | None = None,
 ) -> str:
     lines = [
         "{",
@@ -593,8 +595,8 @@ def render_chapter(
     ]
     if chapter.quest_links:
         if (
-            _resolved_quest_links is not None
-            and len(_resolved_quest_links) != len(chapter.quest_links)
+            resolved_quest_links is not None
+            and len(resolved_quest_links) != len(chapter.quest_links)
         ):
             raise ValueError(
                 f"resolved quest link target count mismatch for chapter {chapter.slug}"
@@ -602,8 +604,8 @@ def render_chapter(
         lines.append("\tquest_links: [")
         for link_index, link in enumerate(chapter.quest_links):
             resolved_link = (
-                _resolved_quest_links[link_index]
-                if _resolved_quest_links is not None
+                resolved_quest_links[link_index]
+                if resolved_quest_links is not None
                 else _ResolvedQuestLink(
                     linked_quest_id=link.linked_quest_id,
                     x_literal=_canonical_quest_link_coordinate(
@@ -661,6 +663,43 @@ def render_chapter(
         lines.append("\t\t}")
     lines.extend(("\t]", "}"))
     return "\n".join(lines) + "\n"
+
+
+def render_chapter(
+    chapter: ChapterSpec,
+    *,
+    catalog: Sequence[ChapterSpec] | None = None,
+    legacy_quest_ids: Iterable[str] = (),
+) -> str:
+    if catalog is None:
+        for link_index, link in enumerate(chapter.quest_links):
+            if (
+                isinstance(link.linked_quest, str)
+                and PROJECT_QUEST_SLUG.fullmatch(link.linked_quest) is not None
+            ):
+                raise ValueError(
+                    "render_chapter requires catalog= to resolve "
+                    f"chapter {chapter.slug!r} quest_links[{link_index}]"
+                    f".linked_quest: {link.linked_quest!r}"
+                )
+        return _render_chapter(chapter)
+
+    resolved_quest_links = _validate_catalog(
+        catalog,
+        legacy_quest_ids=legacy_quest_ids,
+    )
+    matching_indexes = [
+        chapter_index
+        for chapter_index, catalog_chapter in enumerate(catalog)
+        if catalog_chapter == chapter
+    ]
+    if len(matching_indexes) != 1:
+        raise ValueError(
+            "render_chapter catalog= must contain the rendered chapter exactly once: "
+            f"{chapter.slug!r}"
+        )
+    chapter_index = matching_indexes[0]
+    return _render_chapter(chapter, resolved_quest_links[chapter_index])
 
 
 def _localization_entries(catalog: Sequence[ChapterSpec]) -> dict[str, str | tuple[str, ...]]:
@@ -790,9 +829,9 @@ def write_catalog(
         legacy_quest_ids=legacy_quest_ids,
     )
     rendered_chapters = {
-        chapter.id: render_chapter(
+        chapter.id: _render_chapter(
             chapter,
-            _resolved_quest_links=resolved_quest_links[chapter_index],
+            resolved_quest_links[chapter_index],
         )
         for chapter_index, chapter in enumerate(catalog)
     }

@@ -2594,6 +2594,44 @@ class QuestLinkCompilerTests(unittest.TestCase):
             "}\n",
         )
 
+    def test_render_chapter_resolves_stable_slug_with_catalog(self) -> None:
+        catalog = self.make_catalog([self.make_link()])
+
+        rendered = self.quests.render_chapter(catalog[0], catalog=catalog)
+
+        self.assertIn('linked_quest: "146BD13E3B28B192"', rendered)
+
+    def test_render_chapter_resolves_explicit_id_backed_slug_with_catalog(self) -> None:
+        catalog = self.make_catalog(
+            [self.make_link()],
+            target_explicit_id=self.EXPLICIT_TARGET_ID,
+        )
+
+        rendered = self.quests.render_chapter(catalog[0], catalog=catalog)
+
+        self.assertIn(
+            f'linked_quest: "{self.EXPLICIT_TARGET_ID}"',
+            rendered,
+        )
+
+    def test_render_chapter_slug_target_requires_complete_catalog_context(self) -> None:
+        catalog = self.make_catalog([self.make_link()])
+        chapter = catalog[0]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"render_chapter.*catalog=.*quest_links\[0\]\.linked_quest"
+            + r".*'story/test/target'",
+        ):
+            self.quests.render_chapter(chapter)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"catalog\[0\]\.quest_links\[0\]\.linked_quest"
+            + r".*'story/test/target'",
+        ):
+            self.quests.render_chapter(chapter, catalog=(chapter,))
+
     def test_empty_links_preserve_existing_render_and_positional_callers(self) -> None:
         chapter = self.quests.ChapterSpec(
             "story/test/empty",
@@ -2714,6 +2752,45 @@ class QuestLinkCompilerTests(unittest.TestCase):
                     "duplicate.*target.*coordinate",
                 ):
                     self.quests.assert_no_id_collisions(catalog)
+
+    def test_positive_and_negative_zero_share_one_coordinate_identity(self) -> None:
+        coordinate_pairs = (
+            ({"x": 0.0, "y": 2.0}, {"x": -0.0, "y": 2.0}),
+            ({"x": 2.0, "y": 0.0}, {"x": 2.0, "y": -0.0}),
+        )
+        for first, second in coordinate_pairs:
+            with self.subTest(first=first, second=second):
+                catalog = self.make_catalog(
+                    [
+                        self.make_link(**first),
+                        self.make_link(
+                            slug="story/test/other-link",
+                            explicit_id=self.EXPLICIT_LINK_ID,
+                            **second,
+                        ),
+                    ]
+                )
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate.*target.*coordinate",
+                ):
+                    self.quests.assert_no_id_collisions(catalog)
+
+    def test_negative_zero_renders_as_canonical_positive_zero(self) -> None:
+        chapter = self.make_catalog(
+            [
+                self.make_link(
+                    linked_quest=self.EXPLICIT_TARGET_ID,
+                    x=-0.0,
+                    y=-0.0,
+                )
+            ]
+        )[0]
+
+        rendered = self.quests.render_chapter(chapter)
+
+        self.assertIn("x: 0.0d, y: 0.0d", rendered)
+        self.assertNotIn("-0.0d", rendered)
 
     def test_nan_link_coordinate_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "finite SNBT double"):
@@ -2862,6 +2939,26 @@ class QuestLinkCompilerTests(unittest.TestCase):
                 ),
             ]
         )
+        signed_zero_x_duplicate = self.make_catalog(
+            [
+                self.make_link(x=0.0),
+                self.make_link(
+                    slug="story/test/other-link",
+                    x=-0.0,
+                    explicit_id=self.EXPLICIT_LINK_ID,
+                ),
+            ]
+        )
+        signed_zero_y_duplicate = self.make_catalog(
+            [
+                self.make_link(y=0.0),
+                self.make_link(
+                    slug="story/test/other-link",
+                    y=-0.0,
+                    explicit_id=self.EXPLICIT_LINK_ID,
+                ),
+            ]
+        )
         divergent_group = self.make_catalog()
         divergent_group[1].group = self.quests.GroupSpec(
             "story",
@@ -2882,6 +2979,8 @@ class QuestLinkCompilerTests(unittest.TestCase):
                 "absent slug hash alias": absent_alias,
                 "duplicate quest slug": duplicate_slug,
                 "serialized duplicate triple": serialized_duplicate,
+                "signed zero x duplicate": signed_zero_x_duplicate,
+                "signed zero y duplicate": signed_zero_y_duplicate,
                 "divergent repeated group": divergent_group,
             }
         )

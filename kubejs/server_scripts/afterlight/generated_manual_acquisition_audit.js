@@ -85,9 +85,8 @@ const AFTERLIGHT_ACQUISITION_SPECS = [
 ].map(canonical => ({ canonical: canonical, data: JSON.parse(canonical) }))
 const AFTERLIGHT_ACQUISITION_FAILURE_REASONS = ["ADVANCEMENT_CRITERIA_MISMATCH", "ADVANCEMENT_FIELD_MISMATCH", "ADVANCEMENT_INSTANCE_MISMATCH", "ADVANCEMENT_MISSING", "ADVANCEMENT_REQUIREMENTS_MISMATCH", "ADVANCEMENT_RESOURCE_MISMATCH", "ADVANCEMENT_TRIGGER_MISMATCH", "LOOT_TABLE_MISSING", "MANUAL_KEY_MISMATCH", "MANUAL_PARENT_MISMATCH", "MANUAL_TASK_CLASS_MISMATCH", "MANUAL_TASK_MISSING", "MANUAL_TRANSLATION_EMPTY", "MANUAL_TRANSLATION_MISSING", "MANUAL_TRANSLATION_UNRESOLVED", "METHOD_UNSUPPORTED", "NATIVE_BLOCK_MISSING", "PROCESS_ATTRIBUTE_MISMATCH", "PROCESS_FINAL_MISMATCH", "PROCESS_INTERMEDIATE_MISMATCH", "PROCESS_NATIVE_MISMATCH", "PROCESS_STEP_MISSING", "RECIPE_ID_MISMATCH", "RECIPE_MISSING", "RECIPE_OUTPUT_COMPONENTS_MISMATCH", "RECIPE_OUTPUT_COUNT_MISMATCH", "RECIPE_OUTPUT_ITEM_MISMATCH", "RECIPE_SERIALIZER_MISMATCH", "RECIPE_TYPE_MISMATCH", "RUNTIME_EXCEPTION", "WORLDGEN_BIOME_TAG_MISMATCH", "WORLDGEN_REGISTRY_MISSING", "WORLDGEN_RESOURCE_MISMATCH", "WORLDGEN_RESOURCE_MISSING", "WORLDGEN_TAG_MISMATCH", "WORLDGEN_TAG_MISSING"]
 const AfterlightMessageDigest = Java.loadClass('java.security.MessageDigest')
-const AfterlightString = Java.loadClass('java.lang.String')
-const AfterlightStandardCharsets = Java.loadClass('java.nio.charset.StandardCharsets')
 const AfterlightHexFormat = Java.loadClass('java.util.HexFormat')
+const AfterlightByte = Java.loadClass('java.lang.Byte')
 const AfterlightLong = Java.loadClass('java.lang.Long')
 const AfterlightResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation')
 const AfterlightResourceKey = Java.loadClass('net.minecraft.resources.ResourceKey')
@@ -123,7 +122,15 @@ ServerEvents.loaded(event => {
   }
 
   function digestText(text) {
-    return digestBytes(new AfterlightString(String(text)).getBytes(AfterlightStandardCharsets.UTF_8))
+    const value = String(text)
+    const digest = AfterlightMessageDigest.getInstance('SHA-256')
+    for (let index = 0; index < value.length; index++) {
+      const code = value.charCodeAt(index)
+      if (code > 0x7F) throw new Error('acquisition proof material is not ASCII')
+      const byteValue = Java.cast(AfterlightByte.TYPE, code)
+      digest.update(byteValue)
+    }
+    return AfterlightHexFormat.of().formatHex(digest.digest())
   }
 
   function proof(spec) {

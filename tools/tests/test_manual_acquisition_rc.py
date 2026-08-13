@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
+import shutil
 import stat
 import sys
 import tempfile
@@ -26,6 +28,14 @@ class ManualAcquisitionRcTests(unittest.TestCase):
             ROOT / cls.acquisition.FIXTURE_RELATIVE
         )
         cls.nonce = "task8-rc-shared-nonce"
+        specification = importlib.util.spec_from_file_location(
+            "afterlight_task8_rereview_build_quests",
+            TOOLS / "build-quests.py",
+        )
+        assert specification is not None
+        assert specification.loader is not None
+        cls.build_script = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(cls.build_script)
 
     def canonical_sources(self) -> dict[str, bytes]:
         return {
@@ -49,6 +59,84 @@ class ManualAcquisitionRcTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(payload)
         return install, sources
+
+    def make_generated_pack(self, base: Path) -> Path:
+        root = base / "pack"
+        for relative in ("config", "global_packs", "kubejs", "mods"):
+            shutil.copytree(ROOT / relative, root / relative)
+        shutil.copytree(
+            ROOT / "tools" / "fixtures",
+            root / "tools" / "fixtures",
+        )
+        (root / "server-test" / "mods").mkdir(parents=True)
+        self.build_script._build_quests(root)
+        return root
+
+    def test_seal_digest_is_stable_after_deterministic_quest_generation(self) -> None:
+        before_inventory = self.hygiene._seal_code_inventory(ROOT, "repository")
+        before_digest = self.hygiene._seal_code_corpus_digest(before_inventory)
+
+        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+            generated_root = self.make_generated_pack(Path(temporary))
+            generated_inventory = self.hygiene._seal_code_inventory(
+                generated_root,
+                "generated repository",
+            )
+            generated_digest = self.hygiene._seal_code_corpus_digest(
+                generated_inventory
+            )
+            self.assertNotEqual(
+                before_inventory[
+                    "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+                ],
+                generated_inventory[
+                    "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+                ],
+            )
+            self.assertEqual(generated_digest, before_digest)
+            self.assertEqual(
+                generated_digest,
+                self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
+            )
+
+    def test_seal_digest_normalization_still_rejects_generated_data_tamper(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+            base = Path(temporary)
+            generated_root = self.make_generated_pack(base)
+            install = base / "install"
+            shutil.copytree(generated_root / "kubejs", install / "kubejs")
+            generated_digest = self.hygiene._seal_code_corpus_digest(
+                self.hygiene._seal_code_inventory(
+                    generated_root,
+                    "generated repository",
+                )
+            )
+            self.assertEqual(
+                generated_digest,
+                self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
+            )
+            self.assertEqual(
+                self.hygiene._verify_seal_code_corpus(generated_root, install),
+                self.hygiene.EXPECTED_SEAL_CODE_CORPUS_SHA256,
+            )
+            relative = Path(
+                "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
+            )
+            for corpus_root in (generated_root, install):
+                audit = corpus_root / relative
+                source = audit.read_bytes()
+                changed = source.replace(
+                    b'"ae2:blank_pattern",',
+                    b'"ae2:wrong_pattern",',
+                    1,
+                )
+                self.assertNotEqual(changed, source)
+                audit.write_bytes(changed)
+            with self.assertRaisesRegex(
+                self.hygiene.VerificationError,
+                "not canonical",
+            ):
+                self.hygiene._verify_seal_code_corpus(generated_root, install)
 
     def test_dual_renderer_uses_one_nonce_and_writes_canonical_provenance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:

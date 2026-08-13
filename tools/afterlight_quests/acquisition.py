@@ -17,6 +17,20 @@ ACQUISITION_AUDIT_RELATIVE = (
 )
 FIXTURE_RELATIVE = "tools/fixtures/quests/manual-acquisition.json"
 
+_APPROVED_EXPLICIT_QUEST_IDS = MappingProxyType(
+    {
+        "manuals/applied-energistics-2/read-the-lattice": "70380821D8D0339D",
+        "manuals/create/ponder-kinetics": "686943DC0749D6E0",
+        "manuals/immersive-engineering/recover-field-manual": "3E77A16CB0C0AD11",
+        "manuals/mekanism/configure-the-first-machine": "6B09A1A11CD08E68",
+        "manuals/nuclear-systems/safety-before-output": "4EEAB6F41DB426E7",
+        "manuals/oritech/frontier-orientation": "6CC0CCE16F9FB5BE",
+        "manuals/pneumaticcraft/read-pressure-safely": "084209B68927F9FC",
+        "manuals/power-networks/define-the-grid": "5334545A948815F6",
+    }
+)
+_APPROVED_EXPLICIT_TASK_IDS: Mapping[str, str] = MappingProxyType({})
+
 
 JSONScalar: TypeAlias = str | int | float | bool | None
 JSONValue: TypeAlias = JSONScalar | tuple["JSONValue", ...] | Mapping[str, "JSONValue"]
@@ -1100,9 +1114,8 @@ def proof_digest(node: AcquisitionNode, manifest_sha256: str, nonce: str) -> str
 
 _AUDIT_RUNTIME_SOURCE = r"""
 const AfterlightMessageDigest = Java.loadClass('java.security.MessageDigest')
-const AfterlightString = Java.loadClass('java.lang.String')
-const AfterlightStandardCharsets = Java.loadClass('java.nio.charset.StandardCharsets')
 const AfterlightHexFormat = Java.loadClass('java.util.HexFormat')
+const AfterlightByte = Java.loadClass('java.lang.Byte')
 const AfterlightLong = Java.loadClass('java.lang.Long')
 const AfterlightResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation')
 const AfterlightResourceKey = Java.loadClass('net.minecraft.resources.ResourceKey')
@@ -1138,7 +1151,15 @@ ServerEvents.loaded(event => {
   }
 
   function digestText(text) {
-    return digestBytes(new AfterlightString(String(text)).getBytes(AfterlightStandardCharsets.UTF_8))
+    const value = String(text)
+    const digest = AfterlightMessageDigest.getInstance('SHA-256')
+    for (let index = 0; index < value.length; index++) {
+      const code = value.charCodeAt(index)
+      if (code > 0x7F) throw new Error('acquisition proof material is not ASCII')
+      const byteValue = Java.cast(AfterlightByte.TYPE, code)
+      digest.update(byteValue)
+    }
+    return AfterlightHexFormat.of().formatHex(digest.digest())
   }
 
   function proof(spec) {
@@ -1593,6 +1614,18 @@ def _task_stack_errors(
         errors.append(f"{prefix} task count mismatch: expected one non-consuming item")
     if data.get("consume_items") is not False:
         errors.append(f"{prefix} task consume_items must be false")
+    match_components = data.get("match_components")
+    if expected.components:
+        if match_components != "fuzzy":
+            errors.append(
+                f"{prefix} match_components mismatch: expected fuzzy, "
+                f"got {match_components!r}"
+            )
+    elif "match_components" in data:
+        errors.append(
+            f"{prefix} match_components mismatch: expected absent, "
+            f"got {match_components!r}"
+        )
     return errors
 
 
@@ -1688,6 +1721,13 @@ def _validate_catalog_agreement(
                 f"expected {node.quest_id}, got {quest_id!r}"
             )
         explicit_id = getattr(quest, "explicit_id", None)
+        approved_explicit_id = _APPROVED_EXPLICIT_QUEST_IDS.get(node.quest_slug)
+        if explicit_id != approved_explicit_id:
+            errors.append(
+                f"acquisition quest explicit ID ownership mismatch for "
+                f"{node.quest_slug}: expected {approved_explicit_id!r}, "
+                f"got {explicit_id!r}"
+            )
         if explicit_id is None and stable_id is not None:
             stable = stable_id("quest", node.quest_slug)
             if quest_id != stable:
@@ -1707,6 +1747,17 @@ def _validate_catalog_agreement(
                 break
             task_slug = getattr(task, "slug", None)
             task_explicit_id = getattr(task, "explicit_id", None)
+            approved_task_explicit_id = (
+                _APPROVED_EXPLICIT_TASK_IDS.get(task_slug)
+                if isinstance(task_slug, str)
+                else None
+            )
+            if task_explicit_id != approved_task_explicit_id:
+                errors.append(
+                    f"acquisition task explicit ID ownership mismatch for "
+                    f"{task_slug!r}: expected {approved_task_explicit_id!r}, "
+                    f"got {task_explicit_id!r}"
+                )
             if task_explicit_id is None and stable_id is not None and isinstance(
                 task_slug, str
             ):

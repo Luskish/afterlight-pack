@@ -4308,12 +4308,15 @@ SEAL_METADATA_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 SEAL_SEMANTIC_DESCRIPTOR_MAX_INLINE_CHARS = 4_096
 EXPECTED_SEAL_CODE_CORPUS_COUNT = 10
 EXPECTED_SEAL_CODE_CORPUS_SHA256 = (
-    "fa46a0e76f16fb2413fe83ac71ba43f0ba46e9ecb73fa6d74fe87e446188d53f"
+    "ef5ff936bfc0504a9555b64f913918ff29138ad6a057a7a227a378e64e703d48"
+)
+SEAL_GENERATED_ITEM_AUDIT_RELATIVE = (
+    "kubejs/server_scripts/afterlight/generated_quest_item_audit.js"
 )
 SEAL_RENDERED_CODE_RELATIVES = frozenset(
     {
         "kubejs/server_scripts/afterlight/gate_recipe_audit.js",
-        "kubejs/server_scripts/afterlight/generated_quest_item_audit.js",
+        SEAL_GENERATED_ITEM_AUDIT_RELATIVE,
     }
 )
 SEAL_ARCHIVE_MAX_DEPTH = 8
@@ -5305,9 +5308,62 @@ def _seal_code_inventory(root: Path, label: str) -> dict[str, bytes]:
     return inventory
 
 
+def _seal_code_digest_payload(relative: str, payload: bytes) -> bytes:
+    if relative != SEAL_GENERATED_ITEM_AUDIT_RELATIVE:
+        return payload
+    digest_pattern = re.compile(
+        rb"^const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = '[0-9a-f]{64}'$",
+        re.MULTILINE,
+    )
+    digest_matches = tuple(digest_pattern.finditer(payload))
+    if len(digest_matches) != 1:
+        raise VerificationError(
+            "generated quest item audit digest declaration changed"
+        )
+    item_pattern = re.compile(
+        rb"^const AFTERLIGHT_QUEST_ITEM_IDS = (?P<items>\[.*?\])\n\n"
+        rb"const AFTERLIGHT_QUEST_COMMODITY =",
+        re.MULTILINE | re.DOTALL,
+    )
+    item_matches = tuple(item_pattern.finditer(payload))
+    if len(item_matches) != 1:
+        raise VerificationError("generated quest item audit item array changed")
+    try:
+        items = json.loads(item_matches[0].group("items").decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise VerificationError(
+            f"generated quest item audit item array is malformed: {error}"
+        ) from error
+    if (
+        not isinstance(items, list)
+        or not all(isinstance(item, str) for item in items)
+        or items != sorted(set(items))
+    ):
+        raise VerificationError(
+            "generated quest item audit item array is not sorted and unique"
+        )
+    normalized = digest_pattern.sub(
+        b"const AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST = "
+        b"'__AFTERLIGHT_QUEST_ITEM_AUDIT_DIGEST__'",
+        payload,
+        count=1,
+    )
+    normalized_match = item_pattern.search(normalized)
+    if normalized_match is None:
+        raise VerificationError("generated quest item audit normalization failed")
+    return (
+        normalized[: normalized_match.start("items")]
+        + b"__AFTERLIGHT_QUEST_ITEM_IDS__"
+        + normalized[normalized_match.end("items") :]
+    )
+
+
 def _seal_code_corpus_digest(inventory: dict[str, bytes]) -> str:
     canonical = tuple(
-        (relative, _hash_bytes(payload, "sha256"))
+        (
+            relative,
+            _hash_bytes(_seal_code_digest_payload(relative, payload), "sha256"),
+        )
         for relative, payload in sorted(inventory.items())
     )
     return _hash_bytes(
@@ -5337,6 +5393,12 @@ def _seal_rendered_code_nonce(payload: bytes, relative: str) -> str:
 
 def _verify_seal_code_corpus(root: Path, install: Path) -> str:
     root_inventory = _seal_code_inventory(root, "repository")
+    if (root / FIXTURE_RELATIVE).is_file():
+        for relative, renderer in QUEST_RUNTIME_AUDITS:
+            if root_inventory.get(relative) != renderer(root):
+                raise VerificationError(
+                    f"repository generated quest audit is not canonical: {relative}"
+                )
     root_digest = _seal_code_corpus_digest(root_inventory)
     if (
         len(root_inventory) != EXPECTED_SEAL_CODE_CORPUS_COUNT

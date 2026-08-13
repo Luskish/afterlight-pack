@@ -434,6 +434,118 @@ class AcquisitionModuleTests(unittest.TestCase):
                     errors,
                 )
 
+    def test_fixture_agreement_requires_exact_component_matching_mode(self) -> None:
+        quests = importlib.import_module("tools.afterlight_quests")
+        builder = importlib.import_module("tools.afterlight_quests.builder")
+        manifest = self.acquisition.load_manifest(FIXTURE)
+        catalog = deepcopy(quests.build_catalog())
+        task = next(
+            task_value
+            for chapter in catalog
+            for quest in chapter.quests
+            for task_value in quest.tasks
+            if task_value.slug
+            == "manuals/pneumaticcraft/read-pressure-safely/task/item"
+        )
+        self.assertEqual(task.data.pop("match_components"), "fuzzy")
+        catalog_errors = self.acquisition.validate_fixture_to_quests(
+            manifest,
+            catalog,
+        )
+        self.assertTrue(
+            any("match_components" in error for error in catalog_errors),
+            catalog_errors,
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(ROOT / "config", root / "config")
+            fixture_root = root / "tools" / "fixtures" / "quests"
+            fixture_root.mkdir(parents=True)
+            fixture_root.joinpath("manual-acquisition.json").write_bytes(
+                FIXTURE.read_bytes()
+            )
+            fixture_root.joinpath("common-commodity-tasks.json").write_bytes(
+                COMMODITY_FIXTURE.read_bytes()
+            )
+            quest_root = root / "config" / "ftbquests" / "quests"
+            builder._write_catalog_workspace(quests.build_catalog(), quest_root)
+            chapter = next(
+                path
+                for path in (quest_root / "chapters").glob("*.snbt")
+                if "1B763EBDB1D20149" in path.read_text(encoding="utf-8")
+            )
+            source = chapter.read_text(encoding="utf-8")
+            changed = source.replace(
+                '\t\t\t\t\tmatch_components: "fuzzy"\n',
+                "",
+                1,
+            )
+            self.assertNotEqual(changed, source)
+            chapter.write_text(changed, encoding="utf-8")
+            parsed_errors = self.acquisition.validate_fixture_to_quests(
+                manifest,
+                quest_root,
+            )
+            self.assertTrue(
+                any("match_components" in error for error in parsed_errors),
+                parsed_errors,
+            )
+
+    def test_fixture_agreement_rejects_unapproved_explicit_id_ownership(self) -> None:
+        quests = importlib.import_module("tools.afterlight_quests")
+        manifest = self.acquisition.load_manifest(FIXTURE)
+
+        for owner_kind, target_slug in (
+            ("quest", "manuals/mekanism/enrichment-chamber"),
+            ("task", "manuals/mekanism/enrichment-chamber/task/item"),
+        ):
+            with self.subTest(owner_kind=owner_kind):
+                catalog = deepcopy(quests.build_catalog())
+                if owner_kind == "quest":
+                    owner = next(
+                        quest
+                        for chapter in catalog
+                        for quest in chapter.quests
+                        if quest.slug == target_slug
+                    )
+                else:
+                    owner = next(
+                        task
+                        for chapter in catalog
+                        for quest in chapter.quests
+                        for task in quest.tasks
+                        if task.slug == target_slug
+                    )
+                self.assertIsNone(owner.explicit_id)
+                resolved_id = owner.id
+                owner.explicit_id = resolved_id
+                self.assertEqual(owner.id, resolved_id)
+                errors = self.acquisition.validate_fixture_to_quests(
+                    manifest,
+                    catalog,
+                )
+                self.assertTrue(
+                    any(
+                        f"{owner_kind} explicit ID ownership" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_renderer_avoids_kubejs_blocked_charset_class(self) -> None:
+        manifest = self.acquisition.load_manifest(FIXTURE)
+        source = self.acquisition.render_manual_acquisition_audit(manifest)
+
+        self.assertNotIn("java.nio.charset.StandardCharsets", source)
+        self.assertNotIn("Java.loadClass('java.lang.String')", source)
+        self.assertNotIn("new AfterlightString", source)
+        self.assertNotIn("Java.to(", source)
+        self.assertIn("value.charCodeAt(index)", source)
+        self.assertNotIn("digest.update(code)", source)
+        self.assertIn("Java.cast(AfterlightByte.TYPE, code)", source)
+        self.assertIn("digest.update(byteValue)", source)
+
     def test_renderer_is_deterministic_ascii_and_boot_bound(self) -> None:
         manifest = self.acquisition.load_manifest(FIXTURE)
         first = self.acquisition.render_manual_acquisition_audit(manifest)
@@ -470,7 +582,10 @@ class AcquisitionModuleTests(unittest.TestCase):
             "AfterlightExplosionCraftingRecipe.class.isInstance(recipe)",
             first,
         )
-        self.assertIn("new AfterlightString(String(text))", first)
+        self.assertIn(
+            "return AfterlightHexFormat.of().formatHex(digest.digest())",
+            first,
+        )
         self.assertNotIn(
             "spec.requirements.map(requirement => requirement.slice().sort()",
             first,

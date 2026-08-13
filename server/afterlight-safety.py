@@ -81,6 +81,16 @@ def stable_directory_identity(before: os.stat_result, after: os.stat_result) -> 
     )
 
 
+def stable_regular_file_identity(before: os.stat_result, after: os.stat_result) -> bool:
+    return (
+        stat.S_ISREG(before.st_mode)
+        and stat.S_ISREG(after.st_mode)
+        and identity(before) == identity(after)
+        and mode_of(before) == mode_of(after)
+        and before.st_mtime_ns == after.st_mtime_ns
+    )
+
+
 def require_canonical_absolute(path: Path, label: str, *, exists: bool = True) -> Path:
     if not path.is_absolute():
         raise SafetyError(f"{label} must be absolute")
@@ -2513,30 +2523,159 @@ def command_receipt_verify(arguments: argparse.Namespace) -> int:
     return 0
 
 
-def hash_tree(root: Path) -> str:
-    require_canonical_absolute(root, "tree root")
-    records: list[list[str | int]] = []
-    for path in sorted(root.rglob("*")):
-        relative = path.relative_to(root).as_posix()
-        metadata = path.lstat()
-        if path.is_symlink():
-            raise SafetyError("tree contains a link")
-        if path.is_dir():
-            records.append([relative, "directory", mode_of(metadata)])
-        elif path.is_file():
-            if metadata.st_nlink != 1:
-                raise SafetyError("tree file link count must equal one")
-            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+def hash_tree(
+    root: Path,
+    *,
+    owner_uid: int | None = None,
+    group_gid: int | None = None,
+) -> str:
+    root = require_canonical_absolute(root, "tree root")
+    if (owner_uid is None) != (group_gid is None):
+        raise SafetyError("tree owner policy is incomplete")
+    if owner_uid is not None and (
+        not isinstance(owner_uid, int)
+        or not isinstance(group_gid, int)
+        or owner_uid < 0
+        or group_gid < 0
+    ):
+        raise SafetyError("tree owner policy is invalid")
+
+    def require_owner(metadata: os.stat_result) -> None:
+        if owner_uid is not None and (
+            metadata.st_uid != owner_uid or metadata.st_gid != group_gid
+        ):
+            raise SafetyError("tree entry owner or group is invalid")
+
+    directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    file_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        root_metadata = root.lstat()
+        root_descriptor = os.open(root, directory_flags)
+    except OSError as error:
+        raise SafetyError("tree root could not be opened safely") from error
+    try:
+        opened_root = os.fstat(root_descriptor)
+        if not stable_directory_identity(root_metadata, opened_root):
+            raise SafetyError("tree root identity changed during open")
+        require_owner(opened_root)
+        records: list[list[str | int]] = []
+
+        def visit(directory_descriptor: int, relative_parent: str) -> None:
+            opened_directory = os.fstat(directory_descriptor)
+            require_owner(opened_directory)
             try:
-                digest = file_digest_from_fd(descriptor)
-                after = os.fstat(descriptor)
-            finally:
-                os.close(descriptor)
-            if identity(after) != identity(metadata):
-                raise SafetyError("tree file identity changed during read")
-            records.append([relative, "file", metadata.st_size, digest])
-        else:
-            raise SafetyError("tree contains an unsupported entry")
+                names = sorted(os.listdir(directory_descriptor))
+            except OSError as error:
+                raise SafetyError("tree directory could not be listed safely") from error
+            for name in names:
+                relative = f"{relative_parent}/{name}" if relative_parent else name
+                try:
+                    metadata = os.stat(
+                        name,
+                        dir_fd=directory_descriptor,
+                        follow_symlinks=False,
+                    )
+                except OSError as error:
+                    raise SafetyError("tree pathname changed during traversal") from error
+                require_owner(metadata)
+                if stat.S_ISDIR(metadata.st_mode):
+                    try:
+                        child_descriptor = os.open(
+                            name,
+                            directory_flags,
+                            dir_fd=directory_descriptor,
+                        )
+                    except OSError as error:
+                        raise SafetyError("tree directory could not be opened safely") from error
+                    try:
+                        opened_child = os.fstat(child_descriptor)
+                        if not stable_directory_identity(metadata, opened_child):
+                            raise SafetyError("tree directory identity changed during open")
+                        records.append([relative, "directory", mode_of(opened_child)])
+                        visit(child_descriptor, relative)
+                        child_after = os.fstat(child_descriptor)
+                        try:
+                            path_after = os.stat(
+                                name,
+                                dir_fd=directory_descriptor,
+                                follow_symlinks=False,
+                            )
+                        except OSError as error:
+                            raise SafetyError("tree directory pathname changed during read") from error
+                        if (
+                            not stable_directory_identity(opened_child, child_after)
+                            or not stable_directory_identity(opened_child, path_after)
+                        ):
+                            raise SafetyError("tree directory pathname changed during read")
+                    finally:
+                        os.close(child_descriptor)
+                elif stat.S_ISREG(metadata.st_mode):
+                    if metadata.st_nlink != 1:
+                        raise SafetyError("tree file link count must equal one")
+                    try:
+                        descriptor = os.open(
+                            name,
+                            file_flags,
+                            dir_fd=directory_descriptor,
+                        )
+                    except OSError as error:
+                        raise SafetyError("tree file could not be opened safely") from error
+                    try:
+                        opened = os.fstat(descriptor)
+                        if not stable_regular_file_identity(metadata, opened):
+                            raise SafetyError("tree file identity changed during open")
+                        digest = file_digest_from_fd(descriptor)
+                        after = os.fstat(descriptor)
+                        try:
+                            path_after = os.stat(
+                                name,
+                                dir_fd=directory_descriptor,
+                                follow_symlinks=False,
+                            )
+                        except OSError as error:
+                            raise SafetyError("tree file pathname changed during read") from error
+                        if (
+                            not stable_regular_file_identity(opened, after)
+                            or not stable_regular_file_identity(opened, path_after)
+                        ):
+                            raise SafetyError("tree file pathname changed during read")
+                    finally:
+                        os.close(descriptor)
+                    records.append([relative, "file", opened.st_size, digest])
+                else:
+                    raise SafetyError("tree contains a link or unsupported entry")
+            try:
+                final_names = sorted(os.listdir(directory_descriptor))
+            except OSError as error:
+                raise SafetyError("tree directory could not be relisted safely") from error
+            if final_names != names:
+                raise SafetyError("tree directory inventory changed during traversal")
+            directory_after = os.fstat(directory_descriptor)
+            if not stable_directory_identity(opened_directory, directory_after):
+                raise SafetyError("tree directory identity changed during traversal")
+
+        visit(root_descriptor, "")
+        root_after = os.fstat(root_descriptor)
+        try:
+            root_path_after = root.lstat()
+        except OSError as error:
+            raise SafetyError("tree root pathname changed during read") from error
+        if (
+            not stable_directory_identity(opened_root, root_after)
+            or not stable_directory_identity(opened_root, root_path_after)
+        ):
+            raise SafetyError("tree root pathname changed during read")
+    finally:
+        os.close(root_descriptor)
     return digest_bytes(canonical_json_bytes(records))
 
 
@@ -2760,7 +2899,13 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("live release marker differs from the accepted revision")
     expected_quests = repository / "config" / "ftbquests" / "quests"
     installed_quests = data / "config" / "ftbquests" / "quests"
-    if hash_tree(expected_quests) != hash_tree(installed_quests):
+    expected_quest_digest = hash_tree(expected_quests)
+    installed_quest_digest = hash_tree(
+        installed_quests,
+        owner_uid=arguments.data_owner_uid,
+        group_gid=arguments.data_group_gid,
+    )
+    if expected_quest_digest != installed_quest_digest:
         raise SafetyError("live quest corpus differs from accepted checkout")
     manifest_json = getattr(arguments, "server_mod_manifest_json", None)
     if manifest_json is None:
@@ -2775,6 +2920,7 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         expected_manifest = validate_server_mod_manifest(parsed_manifest)
     expected_mods = {record["filename"]: record for record in expected_manifest}
     actual_mods: set[str] = set()
+    verified_mods: dict[str, os.stat_result] = {}
     directory_flags = (
         os.O_RDONLY
         | getattr(os, "O_CLOEXEC", 0)
@@ -2839,15 +2985,41 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
                         size += len(chunk)
                     after = os.fstat(descriptor)
                     if (
-                        identity(after) != identity(opened)
-                        or mode_of(after) != mode_of(opened)
-                        or after.st_mtime_ns != opened.st_mtime_ns
+                        not stable_regular_file_identity(opened, after)
                     ):
                         raise SafetyError("live server mod identity changed during verification")
+                    try:
+                        path_after = os.stat(
+                            name,
+                            dir_fd=mods_descriptor,
+                            follow_symlinks=False,
+                        )
+                    except OSError as error:
+                        raise SafetyError("live server mod pathname changed during verification") from error
+                    if not stable_regular_file_identity(opened, path_after):
+                        raise SafetyError("live server mod pathname changed during verification")
                 finally:
                     os.close(descriptor)
                 if size != expected["size"] or digest.hexdigest() != expected["hash"]:
                     raise SafetyError("live server mod digest or size differs from acceptance")
+                verified_mods[name] = opened
+            try:
+                final_names = sorted(os.listdir(mods_descriptor))
+            except OSError as error:
+                raise SafetyError("live server mod inventory could not be relisted safely") from error
+            if final_names != names:
+                raise SafetyError("live server mod inventory changed during verification")
+            for name, opened in verified_mods.items():
+                try:
+                    path_after = os.stat(
+                        name,
+                        dir_fd=mods_descriptor,
+                        follow_symlinks=False,
+                    )
+                except OSError as error:
+                    raise SafetyError("live server mod pathname changed during verification") from error
+                if not stable_regular_file_identity(opened, path_after):
+                    raise SafetyError("live server mod pathname changed during verification")
             mods_after = os.fstat(mods_descriptor)
             try:
                 mods_path_after = os.stat("mods", dir_fd=data_descriptor, follow_symlinks=False)
@@ -2944,7 +3116,7 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
     print(
         canonical_json_bytes(
             {
-                "quest_corpus_sha256": hash_tree(installed_quests),
+                "quest_corpus_sha256": installed_quest_digest,
                 "server_mod_count": len(actual_mods),
             }
         ).decode("utf-8"),

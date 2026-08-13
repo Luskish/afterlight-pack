@@ -402,19 +402,38 @@ class Task9Rereview4Tests(unittest.TestCase):
         self.assertIsNotNone(spec.loader)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        original_lstat = Path.lstat
+        installed_directories = {
+            (path.lstat().st_dev, path.lstat().st_ino)
+            for path in (installed, *sorted(installed.rglob("*")))
+            if path.is_dir()
+        }
+        original_stat = os.stat
+        original_lstat = os.lstat
+        original_fstat = os.fstat
 
-        def simulated_lstat(path: Path) -> os.stat_result:
-            metadata = original_lstat(path)
-            if path.is_relative_to(installed) and path.is_dir():
-                values = list(metadata)
-                values[4] = metadata.st_uid + 1000
-                values[5] = metadata.st_gid + 1000
-                return os.stat_result(values)
-            return metadata
+        def replace_owner(metadata: os.stat_result) -> os.stat_result:
+            if (metadata.st_dev, metadata.st_ino) not in installed_directories:
+                return metadata
+            values = list(metadata)
+            values[4] = metadata.st_uid + 1000
+            values[5] = metadata.st_gid + 1000
+            return os.stat_result(values)
+
+        def simulated_stat(*arguments, **keywords) -> os.stat_result:
+            return replace_owner(original_stat(*arguments, **keywords))
+
+        def simulated_lstat(*arguments, **keywords) -> os.stat_result:
+            return replace_owner(original_lstat(*arguments, **keywords))
+
+        def simulated_fstat(*arguments, **keywords) -> os.stat_result:
+            return replace_owner(original_fstat(*arguments, **keywords))
 
         expected_hash = module.hash_tree(expected)
-        with mock.patch.object(Path, "lstat", simulated_lstat):
+        with (
+            mock.patch.object(module.os, "stat", simulated_stat),
+            mock.patch.object(module.os, "lstat", simulated_lstat),
+            mock.patch.object(module.os, "fstat", simulated_fstat),
+        ):
             installed_hash = module.hash_tree(installed)
         self.assertEqual(installed_hash, expected_hash)
 

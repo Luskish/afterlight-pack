@@ -7,9 +7,14 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 source "$SCRIPT_DIR/afterlight-safety-contract.sh"
 afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMMAND_TIMEOUT=${AFTERLIGHT_COMMAND_TIMEOUT:-600}
-TRANSACTION_TIMEOUT=${AFTERLIGHT_TRANSACTION_TIMEOUT:-3600}
+TRANSACTION_TIMEOUT=${AFTERLIGHT_TRANSACTION_TIMEOUT:-}
 HEALTH_TIMEOUT=${AFTERLIGHT_HEALTH_TIMEOUT:-600}
 POLL_INTERVAL=${AFTERLIGHT_POLL_INTERVAL:-2}
+RECOVERY_COMMAND_STEPS=26
+RECOVERY_OPERATOR_START_STEPS=2
+RECOVERY_DIRECT_HEALTH_STEPS=2
+INNER_TERMINATION_GRACE=5
+LOCK_TERMINATION_GRACE=300
 
 fail() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -58,9 +63,19 @@ run_operator_start() {
   run_bounded_with_timeout "$timeout" "$OPERATOR" start
 }
 
+recovery_timeout_budget() {
+  local operator_start_timeout=$((COMMAND_TIMEOUT + 2 * HEALTH_TIMEOUT))
+  printf '%d\n' "$((
+    RECOVERY_COMMAND_STEPS * COMMAND_TIMEOUT +
+    RECOVERY_OPERATOR_START_STEPS * operator_start_timeout +
+    RECOVERY_DIRECT_HEALTH_STEPS * HEALTH_TIMEOUT +
+    INNER_TERMINATION_GRACE
+  ))"
+}
+
 acquire_lock() {
   load_identity
-  afterlight_verify_or_reexec_lock "$TRANSACTION_TIMEOUT" 300 "$@"
+  afterlight_verify_or_reexec_lock "$TRANSACTION_TIMEOUT" "$LOCK_TERMINATION_GRACE" "$@"
 }
 
 load_paths() {
@@ -119,11 +134,20 @@ main() {
     fail "Recovery helper dependency is unavailable"
     return 1
   }
-  [[ "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ &&
-     "$HEALTH_TIMEOUT" =~ ^[0-9]+$ && "$POLL_INTERVAL" =~ ^[0-9]+$ ]] || {
+  [[ "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$HEALTH_TIMEOUT" =~ ^[0-9]+$ &&
+     "$POLL_INTERVAL" =~ ^[0-9]+$ &&
+     ( -z "$TRANSACTION_TIMEOUT" || "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ ) ]] || {
     fail "Recovery timing values are invalid"
     return 1
   }
+  local minimum_transaction_timeout
+  minimum_transaction_timeout=$(recovery_timeout_budget) || return 1
+  if [[ -z "$TRANSACTION_TIMEOUT" ]]; then
+    TRANSACTION_TIMEOUT=$minimum_transaction_timeout
+  elif ((TRANSACTION_TIMEOUT < minimum_transaction_timeout)); then
+    fail "Recovery transaction timeout is below the complete operation budget"
+    return 1
+  fi
   acquire_lock "$@"
   load_identity
   load_paths || { fail "Server paths are invalid"; return 1; }

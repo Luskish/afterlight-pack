@@ -7,6 +7,7 @@ afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 PROPERTIES_TEMPLATE="$SCRIPT_DIR/server.properties.example"
 AFTERLIGHT_HEALTH_TIMEOUT="${AFTERLIGHT_HEALTH_TIMEOUT:-600}"
+AFTERLIGHT_HEALTH_POLL_INTERVAL="${AFTERLIGHT_HEALTH_POLL_INTERVAL:-2}"
 CONFIGURED_PATH_GRAMMAR='^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$'
 MEMORY_GRAMMAR='^[1-9][0-9]*G$'
 PACK_SHA_FILE_NAME=.afterlight-pack-sha
@@ -252,6 +253,7 @@ load_paths() {
     fail "Data UID and GID must be nonnegative integers"
     return 1
   fi
+  afterlight_validate_data_identity "$DATA_OWNER_UID" "$DATA_GROUP_GID" || return 1
   validate_configured_path_syntax DATA_DIR "$DATA_DIR" || return 1
   validate_configured_path_syntax BACKUP_DIR "$BACKUP_DIR" || return 1
   validate_configured_path_syntax SECRETS_DIR "$SECRETS_DIR" || return 1
@@ -555,25 +557,24 @@ validate_ports() {
   fi
 }
 
-wait_healthy() {
-  if [[ ! "$AFTERLIGHT_HEALTH_TIMEOUT" =~ ^[0-9]+$ ]]; then
-    fail "AFTERLIGHT_HEALTH_TIMEOUT must be a nonnegative integer"
+wait_service_healthy() {
+  local service=$1 container_id
+  if [[ ! "$AFTERLIGHT_HEALTH_TIMEOUT" =~ ^[0-9]+$ ||
+        ! "$AFTERLIGHT_HEALTH_POLL_INTERVAL" =~ ^[0-9]+$ ]]; then
+    fail "Container health timing values must be nonnegative integers"
     return 1
   fi
-  local deadline=$((SECONDS + AFTERLIGHT_HEALTH_TIMEOUT))
-  local state
-
-  while true; do
-    state=$(minecraft_state 2>/dev/null || true)
-    if minecraft_is_healthy "$state"; then
-      return 0
-    fi
-    if ((SECONDS >= deadline)); then
-      fail "Minecraft did not become healthy within ${AFTERLIGHT_HEALTH_TIMEOUT}s"
+  container_id=$(compose ps -q "$service") || return 1
+  [[ "$container_id" =~ ^[0-9a-f]{12,64}$ ]] || {
+    fail "$service container identity is unavailable"
+    return 1
+  }
+  afterlight_wait_container_healthy \
+    "$container_id" "$AFTERLIGHT_HEALTH_TIMEOUT" "$AFTERLIGHT_HEALTH_POLL_INTERVAL" || {
+      fail "$service did not become healthy within ${AFTERLIGHT_HEALTH_TIMEOUT}s"
       return 1
-    fi
-    sleep 2
-  done
+    }
+  printf '%s\n' "$container_id"
 }
 
 latest_backup_snapshot() {
@@ -691,7 +692,7 @@ run_start() {
     fail "Minecraft start failed"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null; then
     compose stop backup minecraft || true
     fail "Minecraft health check failed"
     return 1
@@ -704,6 +705,11 @@ run_start() {
   if ! compose up -d backup; then
     compose stop backup minecraft || true
     fail "Backup service start failed"
+    return 1
+  fi
+  if ! wait_service_healthy backup >/dev/null; then
+    compose stop backup minecraft || true
+    fail "Backup health check failed"
     return 1
   fi
 }
@@ -771,8 +777,25 @@ stop_after_failed_update() {
 run_update() {
   local backup_path
   local pack_sha
+  local prior_sha
+  local quest_state
   prepare_paths || return 1
   pack_sha=$(repository_pack_sha) || return 1
+  prior_sha=$("$SAFETY_HELPER" release-marker-read \
+    --data "$DATA_DIR" \
+    --owner-uid "$DATA_OWNER_UID" \
+    --group-gid "$DATA_GROUP_GID") || return 1
+  quest_state=$("$SAFETY_HELPER" quest-corpus-state \
+    --repository "$REPOSITORY_ROOT" \
+    --prior-sha "$prior_sha" \
+    --candidate-sha "$pack_sha") || {
+      fail "Unable to classify the immutable quest corpus change"
+      return 1
+    }
+  if [[ "$quest_state" != unchanged ]]; then
+    fail "Ordinary update rejected a protected quest corpus change; use afterlight-quest-safe-update.sh"
+    return 1
+  fi
   use_pack_sha "$pack_sha" || return 1
   backup_path=$(run_backup) || return 1
   if ! compose stop backup minecraft; then
@@ -783,7 +806,7 @@ run_update() {
     stop_after_failed_update "$backup_path"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null; then
     stop_after_failed_update "$backup_path"
     return 1
   fi
@@ -792,6 +815,10 @@ run_update() {
     return 1
   fi
   if ! compose up -d backup; then
+    stop_after_failed_update "$backup_path"
+    return 1
+  fi
+  if ! wait_service_healthy backup >/dev/null; then
     stop_after_failed_update "$backup_path"
     return 1
   fi
@@ -868,7 +895,8 @@ run_rollback() {
     fail "Rollback start failed; archive, rescue tree, and restored tree were preserved"
     return 1
   fi
-  if ! wait_healthy; then
+  if ! wait_service_healthy minecraft >/dev/null ||
+     ! wait_service_healthy backup >/dev/null; then
     compose stop backup minecraft || true
     fail "Rollback health check failed; archive, rescue tree, and restored tree were preserved"
     return 1

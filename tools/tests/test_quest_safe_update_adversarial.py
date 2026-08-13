@@ -929,10 +929,30 @@ class ReviewRegressionTests(unittest.TestCase):
             "--data-group-gid",
             str(os.getgid()),
         ]
-        valid = subprocess.run(command, capture_output=True, text=True, check=False)
+        fake_bin = self.temp_path / "live-bin"
+        fake_bin.mkdir()
+        docker = fake_bin / "docker"
+        docker.write_text(
+            """#!/usr/bin/env python3
+import json
+import sys
+arguments = sys.argv[1:]
+if arguments[0] == "inspect":
+    print(json.dumps([{"Id": "a" * 64, "State": {"Running": True, "Status": "running", "StartedAt": "2000-01-01T00:00:00Z", "Health": {"Status": "healthy"}}}]))
+    raise SystemExit(0)
+if arguments[0] == "logs":
+    print("Loaded 1 chapter groups, 2 chapters, 3 quests, 0 reward tables")
+    raise SystemExit(0)
+raise SystemExit(90)
+""",
+            encoding="utf-8",
+        )
+        docker.chmod(0o755)
+        environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+        valid = subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
         self.assertEqual(valid.returncode, 0, valid.stderr)
         (data / "mods" / "unexpected.jar").write_bytes(b"unexpected")
-        invalid = subprocess.run(command, capture_output=True, text=True, check=False)
+        invalid = subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
         self.assertNotEqual(invalid.returncode, 0)
         self.assertIn("mod inventory", invalid.stderr.lower())
 

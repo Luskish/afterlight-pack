@@ -31,6 +31,8 @@ EXPECTED_PACK_URL = "https://luskish.github.io/afterlight-pack/pack.toml"
 RAW_PACK_URL_PREFIX = "https://raw.githubusercontent.com/Luskish/afterlight-pack"
 CURRENT_PACK_SHA = "2" * 40
 BACKUP_PACK_SHA = "1" * 40
+MINECRAFT_CONTAINER_ID = "a" * 64
+BACKUP_CONTAINER_ID = "b" * 64
 EXPECTED_PATH_GRAMMAR = "^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$"
 REQUIRED_OPERATOR_TESTS = {
     "test_unknown_command_fails_with_usage",
@@ -99,6 +101,8 @@ class FriendServerTests(unittest.TestCase):
                 "FAKE_DOCKER_LOG": str(self.docker_log),
                 "FAKE_PACK_URL_LOG": str(self.pack_url_log),
                 "FAKE_GIT_SHA": CURRENT_PACK_SHA,
+                "MINECRAFT_CONTAINER_ID": MINECRAFT_CONTAINER_ID,
+                "BACKUP_CONTAINER_ID": BACKUP_CONTAINER_ID,
                 "FAKE_RM_LOG": str(self.rm_log),
                 "AFTERLIGHT_QUARANTINE_DIR": str(self.quarantine_dir),
                 "AFTERLIGHT_RUNTIME_DIR": str(self.runtime_dir),
@@ -142,6 +146,16 @@ class FriendServerTests(unittest.TestCase):
               printf '\n'
             } >> "$FAKE_DOCKER_LOG"
 
+            if [ "${1:-}" = "inspect" ]; then
+              container_id="${@: -1}"
+              health=healthy
+              case "${FAKE_DOCKER_PS_OUTPUT:-}" in
+                *'"Health":"starting"'*) health=starting ;;
+                *'"Health":"unhealthy"'*) health=unhealthy ;;
+              esac
+              printf '[{"Id":"%s","State":{"Running":true,"Status":"running","StartedAt":"2026-08-13T12:00:00Z","Health":{"Status":"%s"}}}]\n' "$container_id" "$health"
+              exit 0
+            fi
             [ "${1:-}" = "compose" ] || exit 91
             shift
             if [ "${1:-}" = "version" ]; then
@@ -167,7 +181,13 @@ class FriendServerTests(unittest.TestCase):
                 exit_code="${FAKE_DOCKER_CONFIG_EXIT:-0}"
                 ;;
               ps)
-                output="${FAKE_DOCKER_PS_OUTPUT:-[{\"Service\":\"minecraft\",\"State\":\"running\",\"Health\":\"healthy\"}]}"
+                if [ "${2:-}" = "-q" ] && [ "${3:-}" = "minecraft" ]; then
+                  output="$MINECRAFT_CONTAINER_ID"
+                elif [ "${2:-}" = "-q" ] && [ "${3:-}" = "backup" ]; then
+                  output="$BACKUP_CONTAINER_ID"
+                else
+                  output="${FAKE_DOCKER_PS_OUTPUT:-[{\"Service\":\"minecraft\",\"State\":\"running\",\"Health\":\"healthy\"}]}"
+                fi
                 exit_code="${FAKE_DOCKER_PS_EXIT:-0}"
                 ;;
               up)
@@ -211,6 +231,12 @@ class FriendServerTests(unittest.TestCase):
             if [ "$#" -eq 5 ] && [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--verify" ] && [ "$5" = "HEAD^{commit}" ]; then
               printf '%s\n' "${FAKE_GIT_SHA:?FAKE_GIT_SHA must be set}"
               exit 0
+            fi
+            if [ "$#" -ge 5 ] && [ "$1" = "-C" ] && [ "$3" = "cat-file" ] && [ "$4" = "-e" ]; then
+              exit 0
+            fi
+            if [ "$#" -ge 8 ] && [ "$1" = "-C" ] && [ "$3" = "diff" ] && [ "$4" = "--quiet" ]; then
+              exit "${FAKE_QUEST_CORPUS_CHANGED:-0}"
             fi
             printf 'unexpected fake git command: %s\n' "$*" >&2
             exit 94
@@ -321,7 +347,8 @@ class FriendServerTests(unittest.TestCase):
         commands: list[tuple[str, ...]] = []
         for recorded_call in self._docker_calls():
             arguments = list(recorded_call)
-            self.assertEqual(arguments.pop(0), "compose")
+            if not arguments or arguments.pop(0) != "compose":
+                continue
             if arguments == ["version"]:
                 commands.append(("version",))
                 continue
@@ -394,6 +421,11 @@ class FriendServerTests(unittest.TestCase):
             "FAKE_DOCKER_EXEC_CREATE_ARCHIVE": str(archive),
             "FAKE_DOCKER_EXEC_ARCHIVE_SOURCE": str(source),
         }
+
+    def _write_pack_marker(self, revision: str = CURRENT_PACK_SHA) -> None:
+        marker = self.data_dir / ".afterlight-pack-sha"
+        marker.write_text(f"{revision}\n", encoding="ascii")
+        marker.chmod(0o600)
 
     def test_required_operator_contract_is_complete(self) -> None:
         methods = {
@@ -666,8 +698,9 @@ class FriendServerTests(unittest.TestCase):
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
                 ("up", "-d", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
         self.assertEqual(
@@ -694,8 +727,9 @@ class FriendServerTests(unittest.TestCase):
                 ("config", "--quiet"),
                 ("ps", "--format", "json", "minecraft"),
                 ("up", "-d", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
 
@@ -903,6 +937,7 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), str(archive))
 
     def test_update_backs_up_before_recreating_minecraft(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         result = self._run_operator(
             "update",
@@ -919,8 +954,9 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
         self.assertEqual(
@@ -944,6 +980,7 @@ class FriendServerTests(unittest.TestCase):
         self.assertEqual(self._docker_calls(), [])
 
     def test_update_separates_backup_process_output_from_selected_path(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         environment = self._valid_backup_environment(archive)
         environment.update(
@@ -966,12 +1003,14 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("up", "-d", "backup"),
+                ("ps", "-q", "backup"),
             ],
         )
 
     def test_failed_update_stops_services_and_prints_exact_rollback_command(self) -> None:
+        self._write_pack_marker()
         archive = self.backup_dir / "afterlight-20260809-120000.tar.zst"
         result = self._run_operator(
             "update",
@@ -998,7 +1037,7 @@ class FriendServerTests(unittest.TestCase):
                 ("exec", "backup", "backup", "now"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "--force-recreate", "minecraft"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("stop", "backup", "minecraft"),
             ],
         )
@@ -1111,7 +1150,8 @@ class FriendServerTests(unittest.TestCase):
                 ("ps", "--format", "json", "minecraft"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "minecraft", "backup"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
+                ("ps", "-q", "backup"),
             ],
         )
 
@@ -1173,7 +1213,7 @@ class FriendServerTests(unittest.TestCase):
                 ("ps", "--format", "json", "minecraft"),
                 ("stop", "backup", "minecraft"),
                 ("up", "-d", "minecraft", "backup"),
-                ("ps", "--format", "json", "minecraft"),
+                ("ps", "-q", "minecraft"),
                 ("stop", "backup", "minecraft"),
             ],
         )

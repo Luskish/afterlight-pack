@@ -22,6 +22,7 @@ afterlight_reject_production_override() {
     AFTERLIGHT_SAFETY_HELPER \
     AFTERLIGHT_OPERATOR \
     AFTERLIGHT_PROGRESS_GUARD \
+    AFTERLIGHT_TRANSACTION_FINALIZER \
     AFTERLIGHT_LOCK_OWNER_UID \
     AFTERLIGHT_LOCK_GROUP_GID \
     AFTERLIGHT_STATE_OWNER_UID \
@@ -103,6 +104,7 @@ afterlight_load_safety_contract() {
     SAFETY_HELPER=${AFTERLIGHT_SAFETY_HELPER:-$script_dir/afterlight-safety.py}
     OPERATOR=${AFTERLIGHT_OPERATOR:-$script_dir/afterlight-server.sh}
     PROGRESS_GUARD=${AFTERLIGHT_PROGRESS_GUARD:-$script_dir/afterlight-progress-guard.py}
+    TRANSACTION_FINALIZER=${AFTERLIGHT_TRANSACTION_FINALIZER:-$script_dir/afterlight-transaction-finalize.sh}
     afterlight_require_test_path "$ENV_FILE" "$test_root/server.env" "Test environment file" || return 1
     afterlight_require_test_path "$RUNTIME_DIR" "$test_root/run" "Test runtime directory" || return 1
     afterlight_require_test_path "$STATE_DIR" "$test_root/quarantine" "Test state directory" || return 1
@@ -116,7 +118,7 @@ afterlight_load_safety_contract() {
     SNAPSHOT_ROOT_MODE=700
     AFTERLIGHT_CONTRACT_MODE='test'
     export REPOSITORY_ROOT ENV_FILE RUNTIME_DIR STATE_DIR QUARANTINE_DIR SNAPSHOT_ROOT
-    export DATA_DIR BACKUP_DIR SECRETS_DIR SAFETY_HELPER OPERATOR PROGRESS_GUARD
+    export DATA_DIR BACKUP_DIR SECRETS_DIR SAFETY_HELPER OPERATOR PROGRESS_GUARD TRANSACTION_FINALIZER
     export CONTROL_UID CONTROL_GID RUNTIME_MODE LOCK_MODE STATE_DIR_MODE STATE_FILE_MODE
     export SNAPSHOT_ROOT_MODE AFTERLIGHT_CONTRACT_MODE
     return 0
@@ -139,6 +141,7 @@ afterlight_load_safety_contract() {
   SAFETY_HELPER=/opt/afterlight/server/afterlight-safety.py
   OPERATOR=/opt/afterlight/server/afterlight-server.sh
   PROGRESS_GUARD=/opt/afterlight/server/afterlight-progress-guard.py
+  TRANSACTION_FINALIZER=/opt/afterlight/server/afterlight-transaction-finalize.sh
   CONTROL_UID=0
   CONTROL_GID=0
   RUNTIME_MODE=700
@@ -148,7 +151,7 @@ afterlight_load_safety_contract() {
   SNAPSHOT_ROOT_MODE=700
   AFTERLIGHT_CONTRACT_MODE='production'
   export REPOSITORY_ROOT ENV_FILE RUNTIME_DIR STATE_DIR QUARANTINE_DIR SNAPSHOT_ROOT
-  export DATA_DIR BACKUP_DIR SECRETS_DIR SAFETY_HELPER OPERATOR PROGRESS_GUARD
+  export DATA_DIR BACKUP_DIR SECRETS_DIR SAFETY_HELPER OPERATOR PROGRESS_GUARD TRANSACTION_FINALIZER
   export CONTROL_UID CONTROL_GID RUNTIME_MODE LOCK_MODE STATE_DIR_MODE STATE_FILE_MODE
   export SNAPSHOT_ROOT_MODE AFTERLIGHT_CONTRACT_MODE
 }
@@ -158,6 +161,37 @@ afterlight_require_control_root() {
     afterlight_contract_fail "AFTERLIGHT host control actions must run as root"
     return 1
   fi
+}
+
+afterlight_validate_data_identity() {
+  local data_uid=$1 data_gid=$2
+  if [[ ! "$data_uid" =~ ^[1-9][0-9]*$ || ! "$data_gid" =~ ^[1-9][0-9]*$ ]]; then
+    afterlight_contract_fail "Data UID and GID must identify a nonzero unprivileged account"
+    return 1
+  fi
+  if [[ "$AFTERLIGHT_CONTRACT_MODE" != production ]]; then
+    return 0
+  fi
+  local account
+  account=$(getent passwd afterlight) || {
+    afterlight_contract_fail "Production data account afterlight is unavailable"
+    return 1
+  }
+  local account_name _password account_uid account_gid _gecos home shell extra
+  IFS=: read -r account_name _password account_uid account_gid _gecos home shell extra <<< "$account"
+  if [[ -n ${extra:-} || "$account_name" != afterlight || "$account_uid" != "$data_uid" ||
+        "$account_gid" != "$data_gid" || "$home" != /nonexistent || "$shell" != /usr/sbin/nologin ]]; then
+    afterlight_contract_fail "Production data identity must be the documented non-login afterlight account"
+    return 1
+  fi
+}
+
+afterlight_wait_container_healthy() {
+  local container_id=$1 timeout=$2 poll_interval=${3:-1}
+  "$SAFETY_HELPER" container-health-wait \
+    --container-id "$container_id" \
+    --timeout "$timeout" \
+    --poll-interval "$poll_interval"
 }
 
 afterlight_verify_or_reexec_lock() {

@@ -34,7 +34,8 @@ SNAPSHOT_READY=0
 BACKUP_VERIFIED=0
 TRANSACTION_COMPLETE=0
 CLEANUP_ACTIVE=0
-SERVER_MOD_MANIFEST_JSON=""
+CANDIDATE_SERVER_MOD_MANIFEST_JSON=""
+PRIOR_SERVER_MOD_MANIFEST_JSON=""
 
 usage() {
   printf '%s\n' \
@@ -162,6 +163,7 @@ load_paths() {
     fail "Data UID and GID must be nonnegative integers"
     return 1
   }
+  afterlight_validate_data_identity "$DATA_OWNER_UID" "$DATA_GROUP_GID" || return 1
   [[ $(path_uid "$DATA_DIR") == "$DATA_OWNER_UID" && $(path_gid "$DATA_DIR") == "$DATA_GROUP_GID" ]] || {
     fail "Data directory owner or group differs from the explicit runtime identity"
     return 1
@@ -213,22 +215,6 @@ container_restart_policy() {
   run_bounded docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' "$1"
 }
 
-wait_healthy() {
-  local container_id=$1
-  local deadline=$((SECONDS + HEALTH_TIMEOUT))
-  local health
-  while true; do
-    health=$(container_health "$container_id" 2>/dev/null || true)
-    if [[ "$health" == "running|healthy" ]]; then
-      return 0
-    fi
-    if ((SECONDS >= deadline)); then
-      return 1
-    fi
-    sleep "$POLL_INTERVAL"
-  done
-}
-
 player_count() {
   local output cleaned reported maximum listed
   if ! output=$(run_bounded docker exec "$MINECRAFT_ID" rcon-cli list </dev/null 2>&1); then
@@ -277,16 +263,6 @@ ensure_gate() {
   run_bounded iptables -w -C DOCKER-USER "${rule[@]}" || return 1
 }
 
-remove_gate() {
-  local -a rule=()
-  while IFS= read -r -d '' value; do rule+=("$value"); done < <(gate_rule)
-  run_bounded iptables -w -C DOCKER-USER "${rule[@]}" || return 1
-  run_bounded iptables -w -D DOCKER-USER "${rule[@]}" || return 1
-  if run_bounded iptables -w -C DOCKER-USER "${rule[@]}"; then
-    return 1
-  fi
-}
-
 write_pack_sha() {
   local pack_sha=$1
   run_bounded "$SAFETY_HELPER" release-marker-write \
@@ -321,6 +297,9 @@ stop_minecraft_cleanly() {
 
 verify_live_release() {
   local pack_sha=$1 container_id=$2 started_at=$3
+  local server_mod_manifest_json
+  server_mod_manifest_json=$(authority_command authority-server-mod-manifest \
+    --release-sha "$pack_sha") || return 1
   run_bounded "$SAFETY_HELPER" live-verify \
     --repository "$REPOSITORY_ROOT" \
     --data "$DATA_DIR" \
@@ -329,7 +308,7 @@ verify_live_release() {
     --started-at "$started_at" \
     --data-owner-uid "$DATA_OWNER_UID" \
     --data-group-gid "$DATA_GROUP_GID" \
-    --server-mod-manifest-json "$SERVER_MOD_MANIFEST_JSON" >/dev/null
+    --server-mod-manifest-json "$server_mod_manifest_json" >/dev/null
 }
 
 start_minecraft() {
@@ -340,7 +319,7 @@ start_minecraft() {
   compose up -d --force-recreate minecraft || return 1
   MINECRAFT_ID=$(compose ps -q minecraft) || return 1
   [[ -n "$MINECRAFT_ID" ]] || return 1
-  wait_healthy "$MINECRAFT_ID" || return 1
+  afterlight_wait_container_healthy "$MINECRAFT_ID" "$HEALTH_TIMEOUT" "$POLL_INTERVAL" || return 1
   configured_urls=$(
     run_bounded docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$MINECRAFT_ID" |
       sed -n 's/^PACKWIZ_URL=//p'
@@ -424,7 +403,12 @@ compare_progress() {
 
 rollback_transaction() {
   [[ "$SNAPSHOT_READY" -eq 1 && "$BACKUP_VERIFIED" -eq 1 ]] || return 1
-  authority_update --phase rollback-started || return 1
+  authority_update \
+    --phase rollback-checkout-prior \
+    --checkout-target-sha "$PRIOR_SHA" || return 1
+  authority_command checkout-reconcile \
+    --repository "$REPOSITORY_ROOT" || return 1
+  authority_update --phase rollback-checkout-complete || return 1
   ACTIVE_SHA=$PRIOR_SHA
   compose stop backup minecraft >/dev/null 2>&1 || true
   restore_verified_archive || return 1
@@ -438,7 +422,7 @@ rollback_transaction() {
   compose up -d backup || return 1
   BACKUP_ID=$(compose ps -q backup) || return 1
   [[ -n "$BACKUP_ID" ]] || return 1
-  [[ "$(container_health "$BACKUP_ID")" == "running|healthy" ]] || return 1
+  afterlight_wait_container_healthy "$BACKUP_ID" "$HEALTH_TIMEOUT" "$POLL_INTERVAL" || return 1
   authority_update --phase rollback-verified || return 1
 }
 
@@ -472,21 +456,6 @@ reconcile_one_container() {
   return "$failed"
 }
 
-restore_restart_policies() {
-  local failed=0
-  local service container_id
-  for service in minecraft backup; do
-    container_id=$(compose ps -aq "$service") || failed=1
-    if [[ -z "$container_id" ]]; then
-      failed=1
-      continue
-    fi
-    run_bounded docker update --restart=unless-stopped "$container_id" >/dev/null || failed=1
-    [[ "$(container_restart_policy "$container_id")" == "unless-stopped" ]] || failed=1
-  done
-  return "$failed"
-}
-
 quarantine_reconcile() {
   local failed=0
   authority_update --status quarantine --phase quarantine-reconciling || failed=1
@@ -514,8 +483,19 @@ on_exit() {
   fi
   CLEANUP_ACTIVE=1
   ensure_gate >/dev/null 2>&1 || true
-  if rollback_transaction && restore_restart_policies && remove_gate && authority_command authority-complete --transaction-id "$TRANSACTION_ID"; then
-    printf 'ROLLBACK: VERIFIED\n' >&2
+  if rollback_transaction; then
+    if authority_update --status terminal --phase rollback-verified; then
+      if "$SAFETY_HELPER" run-command --timeout "$CLEANUP_TIMEOUT" -- \
+        "$TRANSACTION_FINALIZER" --transaction-id "$TRANSACTION_ID"; then
+        printf 'ROLLBACK: VERIFIED\n' >&2
+      else
+        printf 'ROLLBACK: VERIFIED, TERMINAL CLEANUP PENDING\n' >&2
+      fi
+    elif quarantine_reconcile; then
+      printf 'ROLLBACK FAILED: QUARANTINED\n' >&2
+    else
+      printf 'ROLLBACK FAILED: QUARANTINE INCOMPLETE\n' >&2
+    fi
   elif quarantine_reconcile; then
     printf 'ROLLBACK FAILED: QUARANTINED\n' >&2
   else
@@ -549,11 +529,11 @@ verify_release_acceptance() {
     fail "Accepted server mod manifest is missing"
     return 1
   }
-  if [[ -n "$SERVER_MOD_MANIFEST_JSON" && "$SERVER_MOD_MANIFEST_JSON" != "$observed_manifest" ]]; then
+  if [[ -n "$CANDIDATE_SERVER_MOD_MANIFEST_JSON" && "$CANDIDATE_SERVER_MOD_MANIFEST_JSON" != "$observed_manifest" ]]; then
     fail "Accepted server mod manifest changed during transaction"
     return 1
   fi
-  SERVER_MOD_MANIFEST_JSON=$observed_manifest
+  CANDIDATE_SERVER_MOD_MANIFEST_JSON=$observed_manifest
 }
 
 main() {
@@ -586,6 +566,7 @@ main() {
   [[ -x "$OPERATOR" ]] || { fail "Operator preflight command is unavailable"; return 1; }
   [[ -x "$PROGRESS_GUARD" ]] || { fail "Progress guard is unavailable"; return 1; }
   [[ -x "$SAFETY_HELPER" ]] || { fail "Safety helper is unavailable"; return 1; }
+  [[ -x "$TRANSACTION_FINALIZER" ]] || { fail "Transaction finalizer is unavailable"; return 1; }
   acquire_shared_lock "$@"
   derive_security_identity || return 1
   load_paths || return 1
@@ -609,6 +590,9 @@ main() {
     fail "Prior pack SHA marker is invalid"
     return 1
   }
+  PRIOR_SERVER_MOD_MANIFEST_JSON=$(run_bounded "$SAFETY_HELPER" server-mod-manifest \
+    --repository "$REPOSITORY_ROOT" \
+    --revision "$PRIOR_SHA") || return 1
   ACTIVE_SHA=$PRIOR_SHA
   MINECRAFT_ID=$(compose ps -q minecraft) || return 1
   BACKUP_ID=$(compose ps -q backup) || return 1
@@ -631,7 +615,8 @@ main() {
     --data-root "$DATA_DIR" \
     --data-owner-uid "$DATA_OWNER_UID" \
     --data-group-gid "$DATA_GROUP_GID" \
-    --server-mod-manifest-json "$SERVER_MOD_MANIFEST_JSON") || return 1
+    --candidate-server-mod-manifest-json "$CANDIDATE_SERVER_MOD_MANIFEST_JSON" \
+    --prior-server-mod-manifest-json "$PRIOR_SERVER_MOD_MANIFEST_JSON") || return 1
   GATE_COMMENT="afterlight-quest-update-$EXPECTED_SHA-$TRANSACTION_ID"
   authority_update --phase gate-installing || return 1
   ensure_gate || { fail "Firewall gate insertion failed"; return 1; }
@@ -684,7 +669,8 @@ main() {
     return 1
   fi
   BACKUP_ID=$(compose ps -q backup) || return 1
-  if [[ -z "$BACKUP_ID" ]] || ! wait_healthy "$BACKUP_ID"; then
+  if [[ -z "$BACKUP_ID" ]] ||
+     ! afterlight_wait_container_healthy "$BACKUP_ID" "$HEALTH_TIMEOUT" "$POLL_INTERVAL"; then
     fail "Backup service did not become healthy"
     return 1
   fi
@@ -699,9 +685,10 @@ main() {
     --transaction-id "$TRANSACTION_ID" \
     --owner-uid "$CONTROL_UID" \
     --group-gid "$CONTROL_GID" || return 1
-  restore_restart_policies || { fail "Container restart policy restoration failed"; return 1; }
-  remove_gate || return 1
-  authority_command authority-complete --transaction-id "$TRANSACTION_ID" || return 1
+  CLEANUP_ACTIVE=1
+  authority_update --status terminal --phase transaction-verified || return 1
+  "$SAFETY_HELPER" run-command --timeout "$CLEANUP_TIMEOUT" -- \
+    "$TRANSACTION_FINALIZER" --transaction-id "$TRANSACTION_ID" || return 1
   TRANSACTION_COMPLETE=1
   printf 'QUEST-SAFE UPDATE: OK %s\n' "$EXPECTED_SHA"
 }

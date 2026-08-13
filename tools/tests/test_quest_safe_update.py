@@ -437,10 +437,24 @@ class QuestSafeUpdateTests(unittest.TestCase):
                   printf '%s\n' 'ERROR: repository HEAD does not equal the accepted release' >&2
                   exit 1
                 fi
-                if [ "${{FAKE_SAFETY_VERIFY_EXIT:-0}}" -eq 0 ]; then printf '%s\n' '[]'; fi
+                if [ "${{FAKE_SAFETY_VERIFY_EXIT:-0}}" -eq 0 ]; then
+                  printf '%s\n' "${{FAKE_CANDIDATE_SERVER_MOD_MANIFEST:-[]}}"
+                fi
                 exit "${{FAKE_SAFETY_VERIFY_EXIT:-0}}"
                 ;;
+              server-mod-manifest)
+                printf '%s\n' "${{FAKE_PRIOR_SERVER_MOD_MANIFEST:-[]}}"
+                exit 0
+                ;;
+              checkout-reconcile)
+                printf 'checkout-reconcile\n' >> "$FAKE_EVENT_LOG"
+                exit "${{FAKE_CHECKOUT_EXIT:-0}}"
+                ;;
+              container-health-wait)
+                exit "${{FAKE_HEALTH_WAIT_EXIT:-0}}"
+                ;;
               live-verify)
+                printf 'live-verify:%s\n' "$*" >> "$FAKE_EVENT_LOG"
                 exit "${{FAKE_SAFETY_VERIFY_EXIT:-0}}"
                 ;;
               archive-create)
@@ -688,6 +702,10 @@ class QuestSafeUpdateTests(unittest.TestCase):
             rule = arguments[operation_index + 1:]
             state_path = pathlib.Path(os.environ["FAKE_FIREWALL_STATE"])
             state = json.loads(state_path.read_text()) if state_path.exists() else []
+            if operation == "-S":
+                if state:
+                    print("-A " + " ".join(state))
+                raise SystemExit(0)
             if operation == "-I":
                 if os.environ.get("FAKE_IPTABLES_INSERT_DRIFT") == "1":
                     state = rule[:1] + rule[2:]
@@ -711,6 +729,22 @@ class QuestSafeUpdateTests(unittest.TestCase):
                     state_path.unlink(missing_ok=True)
                 raise SystemExit(0)
             raise SystemExit(90)
+            """,
+        )
+        self._write_executable(
+            self.fake_bin / "systemctl",
+            r"""
+            #!/usr/bin/env bash
+            printf 'systemctl:%s\n' "$*" >> "$FAKE_EVENT_LOG"
+            case "$*" in
+              "reset-failed afterlight-quarantine-gate.service"|\
+              "enable afterlight-quarantine-gate.service"|\
+              "is-enabled --quiet afterlight-quarantine-gate.service"|\
+              "enable --now afterlight-maintenance.timer"|\
+              "is-enabled --quiet afterlight-maintenance.timer"|\
+              "is-active --quiet afterlight-maintenance.timer") exit 0 ;;
+            esac
+            exit 90
             """,
         )
         self._write_executable(

@@ -9,6 +9,7 @@ import json
 import os
 import re
 import signal
+import shlex
 import stat
 import subprocess
 import sys
@@ -22,11 +23,12 @@ from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO
 
 
-STATE_FORMAT = "afterlight.transaction.v2"
+STATE_FORMAT = "afterlight.transaction.v3"
 ARCHIVE_FORMAT = "afterlight.archive.v1"
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
+SAFE_MOD_FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._+()'&@#=-]{0,246}[.]jar$")
 MAX_STATE_BYTES = 64 * 1024
 MAX_RECEIPT_BYTES = 32 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024 * 1024
@@ -267,7 +269,7 @@ def validate_server_mod_manifest(value: Any) -> list[dict[str, Any]]:
         expected_lengths = {"sha1": 40, "sha256": 64, "sha512": 128}
         if (
             not isinstance(filename, str)
-            or not SAFE_NAME.fullmatch(filename)
+            or not SAFE_MOD_FILENAME.fullmatch(filename)
             or filename <= previous
             or hash_format not in expected_lengths
             or not isinstance(digest, str)
@@ -322,8 +324,11 @@ def validate_state(value: Any, arguments: argparse.Namespace) -> dict[str, Any]:
         "snapshot_root",
         "receipt_sha256",
         "containers",
+        "candidate_server_mods",
+        "prior_server_mods",
+        "checkout_target_sha",
     }
-    optional = {"data_mutated", "original_data", "server_mods"}
+    optional = {"data_mutated", "original_data"}
     if (
         not isinstance(value, dict)
         or not required.issubset(value)
@@ -388,7 +393,11 @@ def validate_state(value: Any, arguments: argparse.Namespace) -> dict[str, Any]:
         if not all(isinstance(child[key], bool) for key in child):
             raise SafetyError("transaction container state is invalid")
     validate_original_data_record(value.get("original_data"))
-    validate_server_mod_manifest(value.get("server_mods", []))
+    validate_server_mod_manifest(value["candidate_server_mods"])
+    validate_server_mod_manifest(value["prior_server_mods"])
+    checkout_target_sha = value["checkout_target_sha"]
+    if checkout_target_sha not in {value["expected_sha"], value["prior_sha"]}:
+        raise SafetyError("transaction checkout target is invalid")
     if not isinstance(value.get("data_mutated", True), bool):
         raise SafetyError("transaction data mutation state is invalid")
     return value
@@ -478,13 +487,20 @@ def command_authority_create(arguments: argparse.Namespace) -> int:
     if marker.exists() or marker.is_symlink():
         raise SafetyError("transaction authority is already active")
     transaction_id = os.urandom(16).hex()
-    server_mods: list[dict[str, Any]] = []
-    if arguments.server_mod_manifest_json is not None:
+    candidate_server_mods: list[dict[str, Any]] = []
+    prior_server_mods: list[dict[str, Any]] = []
+    if arguments.candidate_server_mod_manifest_json is not None:
         try:
-            manifest_value = json.loads(arguments.server_mod_manifest_json)
+            manifest_value = json.loads(arguments.candidate_server_mod_manifest_json)
         except json.JSONDecodeError as error:
             raise SafetyError("accepted server mod manifest is invalid") from error
-        server_mods = validate_server_mod_manifest(manifest_value)
+        candidate_server_mods = validate_server_mod_manifest(manifest_value)
+    if arguments.prior_server_mod_manifest_json is not None:
+        try:
+            manifest_value = json.loads(arguments.prior_server_mod_manifest_json)
+        except json.JSONDecodeError as error:
+            raise SafetyError("accepted server mod manifest is invalid") from error
+        prior_server_mods = validate_server_mod_manifest(manifest_value)
     value = {
         "format": STATE_FORMAT,
         "transaction_id": transaction_id,
@@ -498,7 +514,9 @@ def command_authority_create(arguments: argparse.Namespace) -> int:
         "receipt_sha256": arguments.receipt_sha256,
         "data_mutated": False,
         "original_data": capture_original_data(arguments),
-        "server_mods": server_mods,
+        "candidate_server_mods": candidate_server_mods,
+        "prior_server_mods": prior_server_mods,
+        "checkout_target_sha": arguments.expected_sha,
         "containers": {
             "minecraft": {"restart_disabled": False, "stopped": False},
             "backup": {"restart_disabled": False, "stopped": False},
@@ -550,6 +568,8 @@ def command_authority_update(arguments: argparse.Namespace) -> int:
         value["snapshot_dir"] = arguments.snapshot_dir
     if arguments.data_mutated is not None:
         value["data_mutated"] = arguments.data_mutated
+    if arguments.checkout_target_sha is not None:
+        value["checkout_target_sha"] = arguments.checkout_target_sha
     if arguments.service is not None:
         if arguments.restart_disabled is not None:
             value["containers"][arguments.service]["restart_disabled"] = arguments.restart_disabled
@@ -571,17 +591,9 @@ def command_authority_complete(arguments: argparse.Namespace) -> int:
     value = read_state(arguments)
     if value["transaction_id"] != arguments.transaction_id:
         raise SafetyError("transaction authority identifier mismatch")
-    value["status"] = "terminal"
-    value["phase"] = "complete"
+    if value["status"] != "terminal" or value["phase"] != "cleanup-complete":
+        raise SafetyError("transaction authority cleanup is not complete")
     marker = state_path(arguments)
-    atomic_write(
-        marker,
-        canonical_json_bytes(value),
-        mode=arguments.state_file_mode,
-        owner_uid=arguments.owner_uid,
-        group_gid=arguments.group_gid,
-        replace=True,
-    )
     marker.unlink()
     fsync_directory(marker.parent)
     return 0
@@ -1859,6 +1871,173 @@ def command_archive_restore(arguments: argparse.Namespace) -> int:
         os.close(archive_fd)
 
 
+def run_git(
+    repository: Path,
+    arguments: list[str],
+    label: str,
+    *,
+    text: bool = False,
+) -> subprocess.CompletedProcess[Any]:
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repository), *arguments],
+            capture_output=True,
+            text=text,
+            timeout=30,
+            check=False,
+        )
+    except subprocess.SubprocessError as error:
+        raise SafetyError(f"{label} failed") from error
+
+
+def validate_repository_revision(repository: Path, revision: str, label: str) -> None:
+    if not SHA40.fullmatch(revision):
+        raise SafetyError(f"{label} revision is invalid")
+    result = run_git(repository, ["cat-file", "-e", f"{revision}^{{commit}}"], label)
+    if result.returncode != 0:
+        raise SafetyError(f"{label} revision is unavailable")
+
+
+def read_repository_revision_file(
+    repository: Path,
+    revision: str,
+    relative: str,
+    label: str,
+) -> bytes:
+    relative_path = PurePosixPath(relative)
+    if relative_path.is_absolute() or any(
+        part in {"", ".", ".."} or not SAFE_NAME.fullmatch(part)
+        for part in relative_path.parts
+    ):
+        raise SafetyError(f"{label} path is invalid")
+    object_name = f"{revision}:{relative}"
+    size_result = run_git(repository, ["cat-file", "-s", object_name], label, text=True)
+    if size_result.returncode != 0:
+        raise SafetyError(f"{label} is unavailable")
+    try:
+        size = int(size_result.stdout.strip())
+    except ValueError as error:
+        raise SafetyError(f"{label} size is invalid") from error
+    if size < 0 or size > MAX_MOD_METADATA_BYTES:
+        raise SafetyError(f"{label} exceeds the size limit")
+    payload_result = run_git(repository, ["show", object_name], label)
+    if payload_result.returncode != 0 or len(payload_result.stdout) != size:
+        raise SafetyError(f"{label} immutable bytes are unavailable")
+    return payload_result.stdout
+
+
+def list_repository_revision_paths(
+    repository: Path,
+    revision: str,
+    prefix: str,
+    label: str,
+) -> list[str]:
+    result = run_git(
+        repository,
+        ["ls-tree", "-r", "-z", "--name-only", revision, "--", prefix],
+        label,
+    )
+    if result.returncode != 0:
+        raise SafetyError(f"{label} inventory is unavailable")
+    try:
+        paths = [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
+    except UnicodeDecodeError as error:
+        raise SafetyError(f"{label} inventory is invalid") from error
+    return paths
+
+
+def command_quest_corpus_state(arguments: argparse.Namespace) -> int:
+    repository = require_canonical_absolute(Path(arguments.repository), "repository")
+    validate_repository_revision(repository, arguments.prior_sha, "prior quest corpus")
+    validate_repository_revision(repository, arguments.candidate_sha, "candidate quest corpus")
+    result = run_git(
+        repository,
+        [
+            "diff",
+            "--quiet",
+            arguments.prior_sha,
+            arguments.candidate_sha,
+            "--",
+            "config/ftbquests/quests",
+        ],
+        "quest corpus comparison",
+    )
+    if result.returncode == 0:
+        print("unchanged")
+        return 0
+    if result.returncode == 1:
+        print("changed")
+        return 0
+    raise SafetyError("quest corpus comparison failed")
+
+
+def command_checkout_reconcile(arguments: argparse.Namespace) -> int:
+    repository = require_canonical_absolute(Path(arguments.repository), "repository")
+    value = read_state(arguments)
+    target = value.get("checkout_target_sha")
+    if not isinstance(target, str):
+        raise SafetyError("transaction checkout target is missing")
+    validate_repository_revision(repository, target, "transaction checkout target")
+    clean = run_git(
+        repository,
+        ["status", "--porcelain=v1", "--untracked-files=all"],
+        "repository cleanliness verification",
+        text=True,
+    )
+    if clean.returncode != 0 or clean.stdout:
+        raise SafetyError("transaction repository checkout is not clean")
+    head = run_git(
+        repository,
+        ["rev-parse", "--verify", "HEAD^{commit}"],
+        "repository revision verification",
+        text=True,
+    )
+    if head.returncode != 0 or not SHA40.fullmatch(head.stdout.strip()):
+        raise SafetyError("transaction repository revision is unavailable")
+    if head.stdout.strip() != target:
+        checkout = run_git(
+            repository,
+            ["checkout", "--detach", target],
+            "transaction checkout reconciliation",
+            text=True,
+        )
+        if checkout.returncode != 0:
+            raise SafetyError("transaction checkout reconciliation failed")
+    verified_head = run_git(
+        repository,
+        ["rev-parse", "--verify", "HEAD^{commit}"],
+        "reconciled repository revision verification",
+        text=True,
+    )
+    verified_clean = run_git(
+        repository,
+        ["status", "--porcelain=v1", "--untracked-files=all"],
+        "reconciled repository cleanliness verification",
+        text=True,
+    )
+    if (
+        verified_head.returncode != 0
+        or verified_head.stdout.strip() != target
+        or verified_clean.returncode != 0
+        or verified_clean.stdout
+    ):
+        raise SafetyError("transaction checkout reconciliation did not reach the exact clean target")
+    print(target)
+    return 0
+
+
+def command_authority_server_mod_manifest(arguments: argparse.Namespace) -> int:
+    value = read_state(arguments)
+    if arguments.release_sha == value["expected_sha"]:
+        manifest = value["candidate_server_mods"]
+    elif arguments.release_sha == value["prior_sha"]:
+        manifest = value["prior_server_mods"]
+    else:
+        raise SafetyError("requested server mod manifest revision is outside the transaction")
+    sys.stdout.buffer.write(canonical_json_bytes(validate_server_mod_manifest(manifest)))
+    return 0
+
+
 def read_repository_file(repository: Path, relative: str, label: str) -> bytes:
     relative_path = PurePosixPath(relative)
     if relative_path.is_absolute() or any(
@@ -1922,12 +2101,38 @@ def release_policy_pack_url(repository: Path) -> str:
     return pack_url
 
 
-def accepted_server_mod_manifest(repository: Path) -> list[dict[str, Any]]:
-    mods_root = repository / "mods"
-    if not mods_root.is_dir() or mods_root.is_symlink():
+def accepted_server_mod_manifest(
+    repository: Path,
+    revision: str | None = None,
+) -> list[dict[str, Any]]:
+    if revision is None:
+        mods_root = repository / "mods"
+        if not mods_root.is_dir() or mods_root.is_symlink():
+            return []
+        metadata_paths = [path.relative_to(repository).as_posix() for path in sorted(mods_root.glob("*.pw.toml"))]
+
+        def read_file(relative: str, label: str) -> bytes:
+            return read_repository_file(repository, relative, label)
+
+    else:
+        validate_repository_revision(repository, revision, "accepted server mod manifest")
+        metadata_paths = [
+            path
+            for path in list_repository_revision_paths(
+                repository,
+                revision,
+                "mods",
+                "accepted server mod manifest",
+            )
+            if re.fullmatch(r"mods/[A-Za-z0-9._-]+[.]pw[.]toml", path)
+        ]
+
+        def read_file(relative: str, label: str) -> bytes:
+            return read_repository_revision_file(repository, revision, relative, label)
+
+    if not metadata_paths:
         return []
-    lock_payload = read_repository_file(
-        repository,
+    lock_payload = read_file(
         "tools/server-mod-manifest-lock.json",
         "accepted server-mod size lock",
     )
@@ -1958,9 +2163,8 @@ def accepted_server_mod_manifest(repository: Path) -> list[dict[str, Any]]:
 
     result: list[dict[str, Any]] = []
     expected_metadata_paths: set[str] = set()
-    for metadata_path in sorted(mods_root.glob("*.pw.toml")):
-        relative = metadata_path.relative_to(repository).as_posix()
-        payload = read_repository_file(repository, relative, "accepted Packwiz mod metadata")
+    for relative in metadata_paths:
+        payload = read_file(relative, "accepted Packwiz mod metadata")
         try:
             metadata = tomllib.loads(payload.decode("utf-8"))
         except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
@@ -1971,7 +2175,7 @@ def accepted_server_mod_manifest(repository: Path) -> list[dict[str, Any]]:
         download = metadata.get("download")
         if (
             not isinstance(filename, str)
-            or not SAFE_NAME.fullmatch(filename)
+            or not SAFE_MOD_FILENAME.fullmatch(filename)
             or not isinstance(download, dict)
         ):
             raise SafetyError("accepted Packwiz mod metadata is invalid")
@@ -2008,6 +2212,13 @@ def accepted_server_mod_manifest(repository: Path) -> list[dict[str, Any]]:
         raise SafetyError("accepted server-mod size lock inventory differs from Packwiz")
     result.sort(key=lambda record: record["filename"])
     return validate_server_mod_manifest(result)
+
+
+def command_server_mod_manifest(arguments: argparse.Namespace) -> int:
+    repository = require_canonical_absolute(Path(arguments.repository), "repository")
+    manifest = accepted_server_mod_manifest(repository, arguments.revision)
+    sys.stdout.buffer.write(canonical_json_bytes(manifest))
+    return 0
 
 
 def command_receipt_verify(arguments: argparse.Namespace) -> int:
@@ -2274,7 +2485,7 @@ def command_receipt_verify(arguments: argparse.Namespace) -> int:
             raise SafetyError("published Packwiz verification failed") from error
         if remote != local:
             raise SafetyError("published Packwiz bytes differ from accepted checkout")
-    server_mods = accepted_server_mod_manifest(repository)
+    server_mods = accepted_server_mod_manifest(repository, arguments.expected_sha)
     print(canonical_json_bytes(server_mods).decode("utf-8"), end="")
     return 0
 
@@ -2304,6 +2515,176 @@ def hash_tree(root: Path) -> str:
         else:
             raise SafetyError("tree contains an unsupported entry")
     return digest_bytes(canonical_json_bytes(records))
+
+
+def inspect_container(container_id: str, *, timeout: float) -> dict[str, Any]:
+    if not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{12,64}", container_id):
+        raise SafetyError("container identity is invalid")
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--type", "container", container_id],
+            capture_output=True,
+            timeout=max(timeout, 0.001),
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise SafetyError("container inspection timed out") from error
+    if result.returncode != 0:
+        raise SafetyError("container inspection failed")
+    try:
+        payload = json.loads(result.stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise SafetyError("container inspection response is invalid") from error
+    if not isinstance(payload, list) or len(payload) != 1 or not isinstance(payload[0], dict):
+        raise SafetyError("container inspection response is invalid")
+    record = payload[0]
+    inspected_id = record.get("Id")
+    if (
+        not isinstance(inspected_id, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", inspected_id)
+        or (len(container_id) == 64 and inspected_id != container_id)
+        or (len(container_id) < 64 and not inspected_id.startswith(container_id))
+    ):
+        raise SafetyError("container inspection identity mismatch")
+    return record
+
+
+def container_health_status(record: dict[str, Any]) -> tuple[str, str]:
+    state = record.get("State")
+    if not isinstance(state, dict):
+        raise SafetyError("container state is invalid")
+    status = state.get("Status")
+    running = state.get("Running")
+    health_record = state.get("Health")
+    health = health_record.get("Status") if isinstance(health_record, dict) else "none"
+    if not isinstance(status, str) or not isinstance(running, bool) or not isinstance(health, str):
+        raise SafetyError("container state is invalid")
+    if not running and status == "running":
+        raise SafetyError("container state is contradictory")
+    return status, health
+
+
+def command_container_health_wait(arguments: argparse.Namespace) -> int:
+    if arguments.timeout < 0 or arguments.poll_interval < 0:
+        raise SafetyError("container health timing is invalid")
+    deadline = time.monotonic() + arguments.timeout
+    last_error: SafetyError | None = None
+    while True:
+        remaining = max(0.0, deadline - time.monotonic())
+        try:
+            record = inspect_container(
+                arguments.container_id,
+                timeout=max(1.0, min(5.0, remaining if remaining > 0 else 1.0)),
+            )
+            status, health = container_health_status(record)
+            last_error = None
+            if status == "running" and health == "healthy":
+                return 0
+            if health == "unhealthy":
+                raise SafetyError("container became unhealthy")
+            if status in {"dead", "exited", "removing"}:
+                raise SafetyError(f"container entered terminal state {status}")
+        except SafetyError as error:
+            if "unhealthy" in str(error) or "terminal state" in str(error):
+                raise
+            last_error = error
+        if time.monotonic() >= deadline:
+            detail = f": {last_error}" if last_error is not None else ""
+            raise SafetyError(f"container health wait timed out{detail}")
+        time.sleep(min(arguments.poll_interval, max(0.0, deadline - time.monotonic())))
+
+
+def firewall_gate_tokens(comment: str) -> tuple[list[str], list[str]]:
+    if not re.fullmatch(r"afterlight-quest-update-[0-9a-f]{40}-[0-9a-f]{32}", comment):
+        raise SafetyError("firewall gate comment is invalid")
+    base = [
+        "-A",
+        "DOCKER-USER",
+        "-p",
+        "tcp",
+        "--dport",
+        "25565",
+        "-m",
+        "conntrack",
+        "--ctstate",
+        "NEW",
+        "-m",
+        "comment",
+        "--comment",
+        comment,
+        "-j",
+        "REJECT",
+    ]
+    with_tcp_match = base[:4] + ["-m", "tcp"] + base[4:]
+    return base, with_tcp_match
+
+
+def inspect_firewall_gate(comment: str, timeout: float) -> bool:
+    try:
+        result = subprocess.run(
+            ["iptables", "-w", "-S", "DOCKER-USER"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise SafetyError("firewall gate inspection timed out") from error
+    if result.returncode != 0:
+        raise SafetyError("firewall gate inspection failed")
+    expected = firewall_gate_tokens(comment)
+    matches = 0
+    for line in result.stdout.splitlines():
+        try:
+            tokens = shlex.split(line)
+        except ValueError as error:
+            raise SafetyError("firewall gate inspection output is invalid") from error
+        if comment not in tokens:
+            continue
+        if tokens not in expected:
+            raise SafetyError("owned firewall gate shape differs from authority")
+        matches += 1
+    if matches > 1:
+        raise SafetyError("owned firewall gate is duplicated")
+    return matches == 1
+
+
+def command_firewall_gate_remove(arguments: argparse.Namespace) -> int:
+    if arguments.timeout <= 0:
+        raise SafetyError("firewall gate timeout must be positive")
+    if not inspect_firewall_gate(arguments.comment, arguments.timeout):
+        return 0
+    rule = [
+        "-p",
+        "tcp",
+        "--dport",
+        "25565",
+        "-m",
+        "conntrack",
+        "--ctstate",
+        "NEW",
+        "-m",
+        "comment",
+        "--comment",
+        arguments.comment,
+        "-j",
+        "REJECT",
+    ]
+    try:
+        deleted = subprocess.run(
+            ["iptables", "-w", "-D", "DOCKER-USER", *rule],
+            capture_output=True,
+            text=True,
+            timeout=arguments.timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise SafetyError("firewall gate deletion timed out") from error
+    if deleted.returncode != 0:
+        raise SafetyError("firewall gate deletion failed")
+    if inspect_firewall_gate(arguments.comment, arguments.timeout):
+        raise SafetyError("firewall gate remains after deletion")
+    return 0
 
 
 def command_live_verify(arguments: argparse.Namespace) -> int:
@@ -2412,33 +2793,46 @@ def command_live_verify(arguments: argparse.Namespace) -> int:
         raise SafetyError("candidate container start time is invalid") from error
     if parsed_start.tzinfo is None:
         raise SafetyError("candidate container start time is invalid")
-    started_ns = int(parsed_start.timestamp() * 1_000_000_000)
-    log_path = data / "logs" / "latest.log"
-    log_descriptor = os.open(log_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    container = inspect_container(container_id, timeout=30)
+    inspected_id = container["Id"]
+    status, health = container_health_status(container)
+    state = container["State"]
+    inspected_start = state.get("StartedAt")
+    if status != "running" or health != "healthy":
+        raise SafetyError("candidate container is not healthy")
+    if inspected_start != started_at:
+        raise SafetyError("candidate container start identity mismatch")
     try:
-        log_metadata = os.fstat(log_descriptor)
-        if not stat.S_ISREG(log_metadata.st_mode) or log_metadata.st_nlink != 1 or log_metadata.st_size > MAX_LOG_BYTES:
-            raise SafetyError("live server log identity is invalid")
-        if log_metadata.st_mtime_ns < started_ns:
-            raise SafetyError("live server log predates the candidate container start")
-        log_payload = read_pinned(
-            log_descriptor,
-            log_metadata,
-            "live server log",
-            max_bytes=MAX_LOG_BYTES,
+        logs = subprocess.run(
+            [
+                "docker",
+                "logs",
+                "--timestamps",
+                "--since",
+                inspected_start,
+                inspected_id,
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
         )
-    finally:
-        os.close(log_descriptor)
+    except subprocess.TimeoutExpired as error:
+        raise SafetyError("candidate container log acquisition timed out") from error
+    if logs.returncode != 0:
+        raise SafetyError("candidate container log acquisition failed")
+    log_payload = logs.stdout + logs.stderr
+    if len(log_payload) > MAX_LOG_BYTES:
+        raise SafetyError("candidate container log evidence exceeds the size limit")
     try:
         log_text = log_payload.decode("utf-8")
     except UnicodeDecodeError as error:
-        raise SafetyError("live server log is not UTF-8") from error
+        raise SafetyError("candidate container log evidence is not UTF-8") from error
     load_pattern = re.compile(
         r"Loaded ([0-9]+) chapter groups, ([0-9]+) chapters, ([0-9]+) quests, ([0-9]+) reward tables"
     )
     load_match = load_pattern.search(log_text)
     if load_match is None:
-        raise SafetyError("live FTB Quests load evidence is missing")
+        raise SafetyError("candidate container quest log evidence is missing")
     if any(int(value) <= 0 for value in load_match.groups()[:3]):
         raise SafetyError("live FTB Quests load evidence requires positive quest counts")
     if any(
@@ -2502,6 +2896,17 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("command", nargs=argparse.REMAINDER)
     run.set_defaults(handler=command_run)
 
+    quest_corpus = subparsers.add_parser("quest-corpus-state")
+    quest_corpus.add_argument("--repository", type=Path, required=True)
+    quest_corpus.add_argument("--prior-sha", required=True)
+    quest_corpus.add_argument("--candidate-sha", required=True)
+    quest_corpus.set_defaults(handler=command_quest_corpus_state)
+
+    server_mod_manifest = subparsers.add_parser("server-mod-manifest")
+    server_mod_manifest.add_argument("--repository", type=Path, required=True)
+    server_mod_manifest.add_argument("--revision", required=True)
+    server_mod_manifest.set_defaults(handler=command_server_mod_manifest)
+
     create = subparsers.add_parser("authority-create")
     add_state_arguments(create)
     create.add_argument("--expected-sha", required=True)
@@ -2511,7 +2916,8 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--data-root", type=Path)
     create.add_argument("--data-owner-uid", type=int)
     create.add_argument("--data-group-gid", type=int)
-    create.add_argument("--server-mod-manifest-json")
+    create.add_argument("--candidate-server-mod-manifest-json")
+    create.add_argument("--prior-server-mod-manifest-json")
     create.set_defaults(handler=command_authority_create)
 
     status_parser = subparsers.add_parser("authority-status")
@@ -2528,7 +2934,9 @@ def build_parser() -> argparse.ArgumentParser:
             "prior_sha",
             "snapshot_dir",
             "original_data",
-            "server_mods",
+            "candidate_server_mods",
+            "prior_server_mods",
+            "checkout_target_sha",
             "data_mutated",
         ),
     )
@@ -2537,9 +2945,10 @@ def build_parser() -> argparse.ArgumentParser:
     update = subparsers.add_parser("authority-update")
     add_state_arguments(update)
     update.add_argument("--transaction-id", required=True)
-    update.add_argument("--status", choices=("pending", "quarantine"))
+    update.add_argument("--status", choices=("pending", "quarantine", "terminal"))
     update.add_argument("--phase")
     update.add_argument("--snapshot-dir")
+    update.add_argument("--checkout-target-sha")
     update.add_argument("--data-mutated", type=lambda value: value == "true")
     update.add_argument("--service", choices=("minecraft", "backup"))
     update.add_argument("--restart-disabled", type=lambda value: value == "true")
@@ -2550,6 +2959,16 @@ def build_parser() -> argparse.ArgumentParser:
     add_state_arguments(complete)
     complete.add_argument("--transaction-id", required=True)
     complete.set_defaults(handler=command_authority_complete)
+
+    authority_manifest = subparsers.add_parser("authority-server-mod-manifest")
+    add_state_arguments(authority_manifest)
+    authority_manifest.add_argument("--release-sha", required=True)
+    authority_manifest.set_defaults(handler=command_authority_server_mod_manifest)
+
+    checkout = subparsers.add_parser("checkout-reconcile")
+    add_state_arguments(checkout)
+    checkout.add_argument("--repository", type=Path, required=True)
+    checkout.set_defaults(handler=command_checkout_reconcile)
 
     recovery_original = subparsers.add_parser("recovery-original-verify")
     add_state_arguments(recovery_original)
@@ -2631,6 +3050,17 @@ def build_parser() -> argparse.ArgumentParser:
     live.add_argument("--data-group-gid", type=int, required=True)
     live.add_argument("--server-mod-manifest-json")
     live.set_defaults(handler=command_live_verify)
+
+    health = subparsers.add_parser("container-health-wait")
+    health.add_argument("--container-id", required=True)
+    health.add_argument("--timeout", type=float, required=True)
+    health.add_argument("--poll-interval", type=float, default=1.0)
+    health.set_defaults(handler=command_container_health_wait)
+
+    firewall = subparsers.add_parser("firewall-gate-remove")
+    firewall.add_argument("--comment", required=True)
+    firewall.add_argument("--timeout", type=float, required=True)
+    firewall.set_defaults(handler=command_firewall_gate_remove)
     return parser
 
 

@@ -16,7 +16,7 @@ The production server uses NeoForge 1.21.1, Java 21, Docker Compose v2, and a ro
 
 The `afterlight` account is an unprivileged file owner for the two container bind mounts. It does not run server scripts and does not need membership in the Docker group. Every host command below uses `sudo`.
 
-The first three values in `server/.env` are fixed canonical paths and must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected. The UID and GID must each occur exactly once. Follow the complete setup commands in `server/README.md` rather than creating an alternate layout.
+The first three values in `server/.env` are fixed canonical paths and must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected. The UID and GID must each occur exactly once, must be greater than zero, and must identify the documented non-login `afterlight` account. Follow the complete setup commands in `server/README.md` rather than creating an alternate layout.
 
 ## Firewall and Address
 
@@ -65,7 +65,7 @@ Use ordinary update only when the quest corpus does not change:
 sudo /opt/afterlight/server/afterlight-server.sh update
 ```
 
-It creates a verified backup before recreating Minecraft. A failure leaves both services stopped and prints the exact rollback command.
+Before any backup or Docker mutation, it compares the protected quest corpus from the immutable prior and candidate Git commits. It rejects quest changes and directs the operator to the quest-safe transaction. For an unchanged quest corpus, it creates a verified backup before recreating Minecraft. A failure leaves both services stopped and prints the exact rollback command.
 
 Use rollback only with a path printed by backup or update:
 
@@ -81,7 +81,7 @@ Quest changes require the accepted gauntlet receipt and the dedicated transactio
 sudo /opt/afterlight/server/afterlight-quest-safe-update.sh EXPECTED_40_CHARACTER_SHA /var/lib/afterlight/accepted/EXPECTED_40_CHARACTER_SHA/gauntlet-receipt.json RECEIPT_SHA256 --confirm
 ```
 
-The transaction requires a clean exact checkout and authentic release-policy URL, closes new IPv4 game ingress, proves zero players, takes an authenticated complete snapshot, checks every installed server jar hash and size, requires positive quest counts with no FTB Quests error, and binds log evidence to the candidate container start.
+The transaction requires a clean exact checkout and authentic release-policy URL, closes new IPv4 game ingress, proves zero players, takes an authenticated complete snapshot, checks every installed server jar hash and size, requires positive quest counts with no FTB Quests error, and acquires log evidence from the exact inspected container and start. It stores distinct immutable prior and candidate server-mod manifests and records every checkout target before checkout.
 
 ## Recovery and Retention
 
@@ -91,7 +91,7 @@ Pending or quarantined authority blocks every mutation and scheduled restart. Ne
 sudo /opt/afterlight/server/afterlight-quarantine-recover.sh --confirm
 ```
 
-Snapshot recovery resumes partial staging and rescue states and is idempotent. A no-snapshot recovery is allowed only while durable authority proves the original data and release marker are byte-for-byte and identity-for-identity unchanged. That path restores the prior checkout and leaves the server stopped. Start it afterward with the normal root command.
+Snapshot recovery resumes partial staging and rescue states and is idempotent. A no-snapshot recovery is allowed only while durable authority proves the original data and release marker are byte-for-byte and identity-for-identity unchanged. That path restores the prior checkout and leaves the server stopped. Start it afterward with the normal root command. All start paths use the same bounded Minecraft and backup health primitive. Firewall absence must be proven by an exact successful ruleset inspection. Restart-policy, firewall, and systemd cleanup phases remain durable until every reconciliation succeeds.
 
 The weekly `afterlight-snapshot-retention.timer` invokes the dedicated root retention helper while holding the same authenticated lock. It removes only successful transaction snapshots older than seven days. Failed and incomplete snapshots remain for review.
 

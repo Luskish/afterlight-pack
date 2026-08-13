@@ -149,7 +149,35 @@ class Task9Rereview2Tests(unittest.TestCase):
         marker.chmod(0o600)
         return repository, data, revision
 
-    def _live_verify(self, repository: Path, data: Path, revision: str) -> subprocess.CompletedProcess[str]:
+    def _live_verify(
+        self,
+        repository: Path,
+        data: Path,
+        revision: str,
+        *,
+        requested_start: str = "2000-01-01T00:00:00Z",
+        inspected_start: str = "2000-01-01T00:00:00Z",
+    ) -> subprocess.CompletedProcess[str]:
+        fake_bin = self.temp_path / f"docker-bin-{time.time_ns()}"
+        fake_bin.mkdir()
+        docker = fake_bin / "docker"
+        docker.write_text(
+            """#!/usr/bin/env python3
+import json
+import os
+import sys
+arguments = sys.argv[1:]
+if arguments[0] == "inspect":
+    print(json.dumps([{"Id": "a" * 64, "State": {"Running": True, "Status": "running", "StartedAt": os.environ["FAKE_CONTAINER_START"], "Health": {"Status": "healthy"}}}]))
+    raise SystemExit(0)
+if arguments[0] == "logs":
+    print(os.environ["FAKE_CONTAINER_LOG"], end="")
+    raise SystemExit(0)
+raise SystemExit(90)
+""",
+            encoding="utf-8",
+        )
+        docker.chmod(0o755)
         return self._run(
             [
                 sys.executable,
@@ -164,12 +192,17 @@ class Task9Rereview2Tests(unittest.TestCase):
                 "--container-id",
                 "a" * 64,
                 "--started-at",
-                "2000-01-01T00:00:00Z",
+                requested_start,
                 "--data-owner-uid",
                 str(os.getuid()),
                 "--data-group-gid",
                 str(os.getgid()),
-            ]
+            ],
+            environment={
+                "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                "FAKE_CONTAINER_START": inspected_start,
+                "FAKE_CONTAINER_LOG": (data / "logs" / "latest.log").read_text(encoding="utf-8"),
+            },
         )
 
     def test_c1_compose_binds_every_published_port_to_ipv4(self) -> None:
@@ -486,25 +519,15 @@ class Task9Rereview2Tests(unittest.TestCase):
             installed_jar=b"accepted server jar bytes\n",
             log_text="Loaded 1 chapter groups, 2 chapters, 3 quests, 1 reward tables\n",
         )
-        old_epoch = time.time() - 3600
-        os.utime(data / "logs" / "latest.log", (old_epoch, old_epoch))
-        spec = importlib.util.spec_from_file_location("afterlight_safety_live_log", SAFETY_HELPER)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        arguments = SimpleNamespace(
-            repository=repository,
-            data=data,
-            expected_sha=revision,
-            container_id="a" * 64,
-            started_at="2100-01-01T00:00:00Z",
-            data_owner_uid=os.getuid(),
-            data_group_gid=os.getgid(),
-            server_mod_manifest_json=None,
+        result = self._live_verify(
+            repository,
+            data,
+            revision,
+            requested_start="2100-01-01T00:00:00Z",
+            inspected_start="2000-01-01T00:00:00Z",
         )
-        with self.assertRaisesRegex(module.SafetyError, r"candidate|start|log"):
-            module.command_live_verify(arguments)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertRegex(result.stderr.lower(), r"candidate|start|log")
 
     def test_i9_archive_activation_resumes_partial_rename_and_is_idempotent(self) -> None:
         snapshot_root = self.temp_path / "snapshots"
@@ -637,7 +660,9 @@ class Task9Rereview2Tests(unittest.TestCase):
                 str(os.getuid()),
                 "--data-group-gid",
                 str(os.getgid()),
-                "--server-mod-manifest-json",
+                "--candidate-server-mod-manifest-json",
+                "[]",
+                "--prior-server-mod-manifest-json",
                 "[]",
             ]
         )

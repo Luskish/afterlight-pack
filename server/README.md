@@ -37,13 +37,13 @@ sudo install -o root -g root -m 0600 "$RCON_SECRET" /etc/afterlight/secrets/rcon
 rm -f "$RCON_SECRET"
 ```
 
-Each path in `server/.env` must remain the exact canonical value shown above and must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected. `AFTERLIGHT_DATA_UID` and `AFTERLIGHT_DATA_GID` must each appear exactly once and must equal the owner and group of both data directories.
+Each path in `server/.env` must remain the exact canonical value shown above and must match `^/([A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+$`. Dollar signs, quotes, backslashes, whitespace, and comments are rejected. `AFTERLIGHT_DATA_UID` and `AFTERLIGHT_DATA_GID` must each appear exactly once, must be greater than zero, and must equal the owner and group of both data directories. Production preflight also requires the matching `afterlight` passwd entry with home `/nonexistent` and shell `/usr/sbin/nologin`.
 
 Install the root-owned units and helpers:
 
 ```bash
 sudo install -m 0644 server/afterlight-safety-contract.sh /opt/afterlight/server/
-sudo install -m 0755 server/afterlight-safety.py server/afterlight-progress-guard.py server/afterlight-server.sh server/afterlight-maintenance.sh server/afterlight-quest-safe-update.sh server/afterlight-ingress-boot-gate.sh server/afterlight-quarantine-gate.sh server/afterlight-quarantine-recover.sh server/afterlight-snapshot-retention.sh /opt/afterlight/server/
+sudo install -m 0755 server/afterlight-safety.py server/afterlight-progress-guard.py server/afterlight-server.sh server/afterlight-maintenance.sh server/afterlight-quest-safe-update.sh server/afterlight-ingress-boot-gate.sh server/afterlight-quarantine-gate.sh server/afterlight-quarantine-recover.sh server/afterlight-transaction-finalize.sh server/afterlight-snapshot-retention.sh /opt/afterlight/server/
 sudo install -m 0644 server/systemd/*.service server/systemd/*.timer /etc/systemd/system/
 sudo systemd-analyze verify /etc/systemd/system/afterlight-ingress-boot-gate.service /etc/systemd/system/afterlight-quarantine-gate.service /etc/systemd/system/afterlight-maintenance.service /etc/systemd/system/afterlight-maintenance.timer /etc/systemd/system/afterlight-snapshot-retention.service /etc/systemd/system/afterlight-snapshot-retention.timer
 sudo systemctl daemon-reload
@@ -86,7 +86,7 @@ sudo /opt/afterlight/server/afterlight-server.sh update
 sudo /opt/afterlight/server/afterlight-server.sh rollback /srv/afterlight/backups/afterlight-20260809-120000.tar.zst --confirm
 ```
 
-The operator pins each start to the exact repository commit and writes `/srv/afterlight/data/.afterlight-pack-sha` as the data UID/GID with mode `0600`. Ordinary `update` is only for revisions that do not change the quest corpus. A usable backup must contain this marker and a nonempty `world/level.dat`.
+The operator pins each start to the exact repository commit and writes `/srv/afterlight/data/.afterlight-pack-sha` as the data UID/GID with mode `0600`. Before backup or Docker mutation, ordinary `update` compares the protected quest corpus in the immutable prior and candidate Git commits. Any quest change is rejected with a direction to the quest-safe transaction. A usable backup must contain this marker and a nonempty `world/level.dat`.
 
 The daily timer warns at 4:45 AM Eastern and restarts around 5:00 AM after 15-minute, 5-minute, 1-minute, and final warnings. It proceeds with players online only after a new verified backup. The backup image demotes its process to the owner of `/backups`. Its healthcheck uses the same demotion before proving readable server data, writable backup storage, and a successful `mc-monitor` connection to Minecraft.
 
@@ -98,9 +98,11 @@ Quest changes require a clean checkout at the exact accepted SHA and the complet
 sudo /opt/afterlight/server/afterlight-quest-safe-update.sh EXPECTED_40_CHARACTER_SHA /var/lib/afterlight/accepted/EXPECTED_40_CHARACTER_SHA/gauntlet-receipt.json RECEIPT_SHA256 --confirm
 ```
 
-The receipt verifier reads the accepted Packwiz URL from the exact checkout's `tools/release-policy.env`. It revalidates the annotated tag, published release, exact `dev` and `main` CI runs, five release assets, Pages `pack.toml` and `index.toml`, installed server jar names, hashes and sizes, positive FTB Quests counts, and candidate-bound log evidence.
+The receipt verifier reads the accepted Packwiz URL from the exact checkout's `tools/release-policy.env`. It revalidates the annotated tag, published release, exact `dev` and `main` CI runs, five release assets, Pages `pack.toml` and `index.toml`, installed server jar names, hashes and sizes, positive FTB Quests counts, and candidate-bound log evidence acquired with `docker inspect` plus `docker logs --since` from the exact inspected container start.
 
-The transaction parent-fsyncs durable authority before its first protected mutation. It then closes new IPv4 game ingress, proves zero players, flushes and stops both services, creates a root mode `0700` snapshot, authenticates the full backup through one descriptor, and tests the candidate behind the gate. Every mutating server script authenticates the same inherited lock descriptor. Caller-controlled environment text cannot bypass the lock.
+The transaction parent-fsyncs durable authority before its first protected mutation. Authority binds separate prior and candidate server-mod manifests to their immutable revisions and records the intended checkout before any checkout transition. It then closes new IPv4 game ingress, proves zero players, flushes and stops both services, creates a root mode `0700` snapshot, authenticates the full backup through one descriptor, and tests the candidate behind the gate. Every mutating server script authenticates the same inherited lock descriptor. Caller-controlled environment text cannot bypass the lock.
+
+Minecraft and backup readiness use one bounded exact-container health wait in ordinary start, update, candidate validation, rollback, and recovery. Terminal cleanup is recorded as restart-policy, systemd, and firewall phases. The exact owned firewall rule is removed only after systemd reconciliation and a successful `iptables -S DOCKER-USER` inspection. Authority is deleted only after the gate is proven absent and both systemd units are reconciled. Repeating recovery after interruption resumes the recorded phase.
 
 Successful snapshots receive a root mode `0600` retention marker. `afterlight-snapshot-retention.timer` runs the dedicated root helper weekly. The helper holds the shared lock and removes only successful snapshots older than seven days. Failed or incomplete snapshots are never selected.
 
@@ -114,7 +116,7 @@ Never edit authority, delete a staging or rescue directory, or run inline archiv
 sudo /opt/afterlight/server/afterlight-quarantine-recover.sh --confirm
 ```
 
-When an authenticated snapshot exists, recovery resumes any partial staging or rescue rename, restores the exact prior tree, checks progress, starts and stops the prior release for candidate-bound verification, then reopens service. Repeating the helper after a crash is safe.
+When an authenticated snapshot exists, recovery first records and reconciles the exact prior Git checkout, selects the prior revision's server-mod manifest, resumes any partial staging or rescue rename, restores the exact prior tree, checks progress, verifies the running prior release, then reopens service. Repeating the helper after a crash is safe, including during terminal firewall or systemd cleanup.
 
 When authority was created but no snapshot exists, recovery first proves that the original data root, release marker, ownership, modes, device, inode, link count, and bytes are unchanged. It restores the prior checkout, terminalizes authority, and intentionally leaves Minecraft stopped. Then run the normal root `start` command. If original identity changed or protected mutation began, the no-snapshot path fails closed.
 

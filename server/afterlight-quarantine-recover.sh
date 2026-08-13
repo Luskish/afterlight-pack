@@ -8,6 +8,8 @@ source "$SCRIPT_DIR/afterlight-safety-contract.sh"
 afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 COMMAND_TIMEOUT=${AFTERLIGHT_COMMAND_TIMEOUT:-600}
 TRANSACTION_TIMEOUT=${AFTERLIGHT_TRANSACTION_TIMEOUT:-3600}
+HEALTH_TIMEOUT=${AFTERLIGHT_HEALTH_TIMEOUT:-600}
+POLL_INTERVAL=${AFTERLIGHT_POLL_INTERVAL:-2}
 
 fail() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -69,6 +71,7 @@ load_paths() {
   [[ "$data_uid_seen" -le 1 && "$data_gid_seen" -le 1 ]] || return 1
   [[ "$data_uid_seen" -eq 1 && "$data_gid_seen" -eq 1 ]] || return 1
   [[ ${DATA_OWNER_UID:-} =~ ^[0-9]+$ && ${DATA_GROUP_GID:-} =~ ^[0-9]+$ ]] || return 1
+  afterlight_validate_data_identity "$DATA_OWNER_UID" "$DATA_GROUP_GID" || return 1
   [[ $(stat_value '%u' "$DATA_DIR") == "$DATA_OWNER_UID" && $(stat_value '%g' "$DATA_DIR") == "$DATA_GROUP_GID" ]] || return 1
   DATA_PARENT=$(dirname "$DATA_DIR")
   DATA_PARENT_UID=$(stat_value '%u' "$DATA_PARENT")
@@ -94,43 +97,37 @@ read_pack_sha() {
     --group-gid "$DATA_GROUP_GID"
 }
 
-remove_gate() {
-  local comment=$1
-  local -a rule=(
-    -p tcp --dport 25565
-    -m conntrack --ctstate NEW
-    -m comment --comment "$comment"
-    -j REJECT
-  )
-  run_bounded iptables -w -C DOCKER-USER "${rule[@]}" || return 1
-  run_bounded iptables -w -D DOCKER-USER "${rule[@]}" || return 1
-  ! run_bounded iptables -w -C DOCKER-USER "${rule[@]}"
-}
-
 main() {
   [[ "$#" -eq 1 && "$1" == "--confirm" ]] || {
     fail "Usage: server/afterlight-quarantine-recover.sh --confirm"
     return 1
   }
   afterlight_require_control_root || return 1
-  [[ -x "$SAFETY_HELPER" && -x "$PROGRESS_GUARD" && -x "$OPERATOR" ]] || {
+  [[ -x "$SAFETY_HELPER" && -x "$PROGRESS_GUARD" && -x "$OPERATOR" &&
+     -x "$TRANSACTION_FINALIZER" ]] || {
     fail "Recovery helper dependency is unavailable"
     return 1
   }
-  [[ "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || {
+  [[ "$COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ && "$TRANSACTION_TIMEOUT" =~ ^[1-9][0-9]*$ &&
+     "$HEALTH_TIMEOUT" =~ ^[0-9]+$ && "$POLL_INTERVAL" =~ ^[0-9]+$ ]] || {
     fail "Recovery timing values are invalid"
     return 1
   }
   acquire_lock "$@"
   load_identity
   load_paths || { fail "Server paths are invalid"; return 1; }
-  local transaction_id prior_sha expected_sha gate_comment snapshot_dir server_mods data_mutated
+  local transaction_id prior_sha expected_sha snapshot_dir prior_server_mods data_mutated status
   transaction_id=$(authority_command authority-status --field transaction_id) || return 1
+  status=$(authority_command authority-status --field status) || return 1
+  if [[ "$status" == terminal ]]; then
+    run_bounded "$TRANSACTION_FINALIZER" --transaction-id "$transaction_id" || return 1
+    printf 'QUARANTINE RECOVERY: TERMINAL CLEANUP OK\n'
+    return 0
+  fi
   prior_sha=$(authority_command authority-status --field prior_sha) || return 1
   expected_sha=$(authority_command authority-status --field expected_sha) || return 1
-  gate_comment=$(authority_command authority-status --field gate_comment) || return 1
   snapshot_dir=$(authority_command authority-status --field snapshot_dir) || return 1
-  server_mods=$(authority_command authority-status --field server_mods) || return 1
+  prior_server_mods=$(authority_command authority-server-mod-manifest --release-sha "$prior_sha") || return 1
   data_mutated=$(authority_command authority-status --field data_mutated) || return 1
   [[ "$prior_sha" =~ ^[0-9a-f]{40}$ && "$expected_sha" =~ ^[0-9a-f]{40}$ ]] || return 1
   local has_snapshot=0
@@ -158,11 +155,25 @@ main() {
     fail "Transaction data mutation phase is invalid"
     return 1
   fi
+  authority_command authority-update \
+    --transaction-id "$transaction_id" \
+    --status quarantine \
+    --phase recovery-preparing || return 1
   run_bounded systemctl disable --now afterlight-maintenance.timer >/dev/null
   run_bounded "$SCRIPT_DIR/afterlight-quarantine-gate.sh" || {
     fail "Boot quarantine reconciliation is incomplete"
     return 1
   }
+  authority_command authority-update \
+    --transaction-id "$transaction_id" \
+    --status quarantine \
+    --phase rollback-checkout-prior \
+    --checkout-target-sha "$prior_sha" || return 1
+  authority_command checkout-reconcile --repository "$REPOSITORY_ROOT" >/dev/null || return 1
+  authority_command authority-update \
+    --transaction-id "$transaction_id" \
+    --status quarantine \
+    --phase rollback-checkout-complete || return 1
   if [[ "$has_snapshot" -eq 1 ]]; then
     run_bounded "$SAFETY_HELPER" archive-restore \
       --archive "$archive" \
@@ -185,37 +196,24 @@ main() {
     fail "Restored pack revision does not equal prior release"
     return 1
   }
-  [[ -z "$(run_bounded git -C "$REPOSITORY_ROOT" status --porcelain=v1 --untracked-files=all)" ]] || {
-    fail "Repository checkout is not clean"
-    return 1
-  }
-  run_bounded git -C "$REPOSITORY_ROOT" cat-file -e "$prior_sha^{commit}"
-  run_bounded git -C "$REPOSITORY_ROOT" checkout --detach "$prior_sha"
   if [[ "$has_snapshot" -eq 0 ]]; then
-    local service container_id
-    for service in minecraft backup; do
-      container_id=$(compose ps -aq "$service") || return 1
-      if [[ -n "$container_id" ]]; then
-        run_bounded docker update --restart=unless-stopped "$container_id" >/dev/null || return 1
-      fi
-    done
-    remove_gate "$gate_comment"
-    authority_command authority-complete --transaction-id "$transaction_id"
-    run_bounded systemctl reset-failed afterlight-quarantine-gate.service
-    run_bounded systemctl enable afterlight-maintenance.timer
+    authority_command authority-update \
+      --transaction-id "$transaction_id" \
+      --status terminal \
+      --phase rollback-verified || return 1
+    run_bounded "$TRANSACTION_FINALIZER" --transaction-id "$transaction_id" || return 1
     printf 'QUARANTINE RECOVERY: OK %s, server remains stopped for reviewed restart\n' "$prior_sha"
     return 0
   fi
   export AFTERLIGHT_RECOVERY_TRANSACTION_ID=$transaction_id
   run_bounded "$OPERATOR" start
-  local minecraft_id started_at
+  local minecraft_id backup_id started_at
   minecraft_id=$(compose ps -q minecraft) || return 1
   [[ "$minecraft_id" =~ ^[0-9a-f]{12,64}$ ]] || return 1
   started_at=$(run_bounded docker inspect --format '{{.State.StartedAt}}' "$minecraft_id") || return 1
-  run_bounded "$OPERATOR" stop
-  run_bounded "$PROGRESS_GUARD" compare \
-    --world "$DATA_DIR/world" \
-    --snapshot "$snapshot_dir/progress" >/dev/null
+  backup_id=$(compose ps -q backup) || return 1
+  [[ "$backup_id" =~ ^[0-9a-f]{12,64}$ ]] || return 1
+  afterlight_wait_container_healthy "$backup_id" "$HEALTH_TIMEOUT" "$POLL_INTERVAL" || return 1
   run_bounded "$SAFETY_HELPER" live-verify \
     --repository "$REPOSITORY_ROOT" \
     --data "$DATA_DIR" \
@@ -224,23 +222,21 @@ main() {
     --started-at "$started_at" \
     --data-owner-uid "$DATA_OWNER_UID" \
     --data-group-gid "$DATA_GROUP_GID" \
-    --server-mod-manifest-json "$server_mods" >/dev/null
+    --server-mod-manifest-json "$prior_server_mods" >/dev/null
+  run_bounded "$OPERATOR" stop
+  run_bounded "$PROGRESS_GUARD" compare \
+    --world "$DATA_DIR/world" \
+    --snapshot "$snapshot_dir/progress" >/dev/null
   run_bounded "$OPERATOR" start
   run_bounded "$OPERATOR" status
-  local service container_id
-  for service in minecraft backup; do
-    container_id=$(run_bounded docker compose \
-      --project-name afterlight \
-      --env-file "$ENV_FILE" \
-      -f "$SCRIPT_DIR/docker-compose.yml" \
-      ps -aq "$service")
-    [[ -n "$container_id" ]] || return 1
-    run_bounded docker update --restart=unless-stopped "$container_id" >/dev/null
-  done
-  remove_gate "$gate_comment"
-  authority_command authority-complete --transaction-id "$transaction_id"
-  run_bounded systemctl reset-failed afterlight-quarantine-gate.service
-  run_bounded systemctl enable --now afterlight-maintenance.timer
+  backup_id=$(compose ps -q backup) || return 1
+  [[ "$backup_id" =~ ^[0-9a-f]{12,64}$ ]] || return 1
+  afterlight_wait_container_healthy "$backup_id" "$HEALTH_TIMEOUT" "$POLL_INTERVAL" || return 1
+  authority_command authority-update \
+    --transaction-id "$transaction_id" \
+    --status terminal \
+    --phase rollback-verified || return 1
+  run_bounded "$TRANSACTION_FINALIZER" --transaction-id "$transaction_id" || return 1
   printf 'QUARANTINE RECOVERY: OK %s\n' "$prior_sha"
 }
 

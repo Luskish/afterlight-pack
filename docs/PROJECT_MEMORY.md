@@ -268,13 +268,13 @@ Every event uses the following fields. Update the original event when its status
 
 - **Date:** 2026-08-13
 - **Category:** vulnerability
-- **Status:** resolved
+- **Status:** superseded
 - **Subsystem:** Quest-safe deployment rereview 2, temporary controller-renumberable event
 - **Summary:** Task 9 rereview 2 found an address-family ingress bypass plus release-policy, ownership, runtime-directory, lock-authentication, backup-readiness, canonical-path, world-identity, live-attestation, recovery-resumption, and snapshot-retention gaps; one explicit root control plane and unprivileged data identity now enforce those boundaries.
 - **Evidence:** Independent RED artifacts recorded expected failures for IPv4 publication, the real policy URL, distinct control and runtime identities, one runtime-directory owner, forged lock environment, backup health, canonical paths, world descriptor identity, jar digest and size, candidate-bound logs, positive quest counts, severity-first errors, resumable restoration, no-snapshot authority, and locked retention. Final same-session runs ended with `Ran 18 tests in 2.800s` and `OK`, `Ran 29 tests in 220.594s` and `OK`, and `Ran 80 tests in 66.082s` and `OK`. Compose rendering, Bash syntax, ShellCheck, Python compilation, diff validation, Unicode validation, protected-scope validation, and `VERIFY: ALL GREEN` also passed.
 - **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-safety-contract.sh`, `server/afterlight-progress-guard.py`, server control and recovery scripts, `server/docker-compose.yml`, root-owned systemd units, snapshot-retention units, `tools/server-mod-manifest-lock.json`, `tools/tests/test_task9_rereview2.py`, bounded server tests, and safe server documentation
 - **Impact:** Production publishes only the intended IPv4 game endpoints, mutating operations authenticate one inherited no-follow lock, root owns host control state, explicit numeric runtime identity owns data, receipts and live evidence bind accepted bytes, and phase-aware recovery resumes safe partial states while failing closed on ambiguity.
-- **Follow-up:** Renumber this temporary event during controller integration and run the unchanged units through `systemd-analyze verify` on a disposable Linux host before deployment.
+- **Follow-up:** Superseded by `MEM-2026-08-13-903`, which records the final rereview failures and their correction. Renumber both temporary events during controller integration.
 
 ### MEM-2026-08-13-902
 
@@ -287,3 +287,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `config/ftbquests/quests`, `kubejs/server_scripts/afterlight/generated_quest_item_audit.js`, and `tools/server-test.sh`; no protected file is part of the Task 9 diff
 - **Impact:** This branch cannot claim `SERVER BOOT: OK` or merge to `main` until the generated quest audit is reconciled in a separately scoped quest-generation task.
 - **Follow-up:** Regenerate and review the compiler-managed quest outputs in their owning task, then rerun the full server boot gate before integration.
+
+### MEM-2026-08-13-903
+
+- **Date:** 2026-08-13
+- **Category:** vulnerability
+- **Status:** resolved
+- **Subsystem:** Quest-safe deployment rereview 3, temporary controller-renumberable event
+- **Summary:** Final Task 9 rereview found that ordinary updates could bypass protected quest controls, rollback state did not preserve an exact prior checkout or manifest, quest logs were not candidate-container evidence, terminal cleanup was not crash-resumable, health and firewall results were ambiguous, and the runtime identity could be root; the correction centralizes immutable release classification, release-specific evidence, bounded health, durable cleanup, exact firewall inspection, and a non-login data identity.
+- **Evidence:** The first focused rereview run produced `Ran 17 tests` with 17 expected failures. A separate real-pack RED probe then rejected valid server mod filenames, which exposed and corrected an overly narrow immutable-manifest parser. Same-session GREEN evidence includes `Ran 20 tests` for rereview 3 and `Ran 147 tests in 359.556s` for the combined rereview, transaction, adversarial, operator, and maintenance matrix, both with `OK`. `VERIFY: ALL GREEN`, Bash syntax, ShellCheck, Python compilation, and canonical Compose rendering also passed. The server gate stopped at the separately tracked `MEM-2026-08-13-902` generated-audit mismatch before Minecraft boot. This macOS host has no `systemd-analyze`, Docker daemon, or alternate disposable Linux runtime, so Linux unit verification remains outstanding.
+- **Files or Commit:** `server/afterlight-safety.py`, `server/afterlight-safety-contract.sh`, `server/afterlight-server.sh`, `server/afterlight-quest-safe-update.sh`, `server/afterlight-quarantine-recover.sh`, `server/afterlight-transaction-finalize.sh`, focused server tests, and server release documentation
+- **Impact:** Ordinary updates reject immutable protected quest changes before backup or Docker; rollback and recovery resume an exact prior checkout with its own manifest; accepted quest evidence comes from the exact candidate container start; terminal cleanup remains durable until restart-policy, systemd, and firewall reconciliation finish; every start path shares one bounded health contract; firewall ambiguity retains authority; and production rejects root or login-capable data identities.
+- **Follow-up:** Renumber this temporary event during controller integration, resolve `MEM-2026-08-13-902` in its protected quest-generation task, run `systemd-analyze verify` in disposable Linux, then require independent rereview before deployment. Do not infer full release success from this focused correction.

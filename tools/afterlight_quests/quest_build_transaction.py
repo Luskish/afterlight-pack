@@ -86,6 +86,13 @@ class _RetentionStore:
     state: _NodeState
 
 
+@dataclass(frozen=True)
+class _AuthoringStore:
+    path: Path
+    descriptor: int
+    state: _NodeState
+
+
 @dataclass
 class _Artifact:
     path: Path
@@ -384,6 +391,47 @@ def _open_retention_store(
         return _RetentionStore(path=path, descriptor=descriptor, state=state)
     finally:
         os.close(parent_fd)
+
+
+def _open_authoring_store(store: _RetentionStore) -> _AuthoringStore:
+    name = ".afterlight-private-authoring"
+    path = store.path / name
+    created = False
+    try:
+        status = os.stat(name, dir_fd=store.descriptor, follow_symlinks=False)
+    except FileNotFoundError:
+        os.mkdir(name, 0o700, dir_fd=store.descriptor)
+        created = True
+        status = os.stat(name, dir_fd=store.descriptor, follow_symlinks=False)
+    if stat.S_ISLNK(status.st_mode) or not stat.S_ISDIR(status.st_mode):
+        raise ValueError(f"unsafe quest authoring directory: {path}")
+    descriptor = os.open(name, _directory_flags(), dir_fd=store.descriptor)
+    try:
+        opened = os.fstat(descriptor)
+        if opened.st_dev != status.st_dev or opened.st_ino != status.st_ino:
+            raise ValueError(f"quest authoring directory changed while opening: {path}")
+        state = _node_state(opened, None)
+        if (
+            state.device != store.state.device
+            or state.uid != os.geteuid()
+            or state.mode != 0o700
+        ):
+            raise ValueError(f"unsafe quest authoring directory metadata: {path}")
+        children = tuple(sorted(os.listdir(descriptor)))
+        if children:
+            recovery_paths = tuple(path / child for child in children)
+            error = ValueError(
+                "unresolved quest private authoring artifact: "
+                + ", ".join(str(child) for child in recovery_paths)
+            )
+            setattr(error, "recovery_paths", recovery_paths)
+            raise error
+        if created:
+            _fsync_directory_fd(store.descriptor)
+        return _AuthoringStore(path=path, descriptor=descriptor, state=state)
+    except BaseException:
+        os.close(descriptor)
+        raise
 
 
 def _open_root(path: Path) -> int:
@@ -1081,25 +1129,6 @@ def _require_same_device(
         )
 
 
-def _read_open_regular(descriptor: int, path: Path) -> _NodeState:
-    before = os.fstat(descriptor)
-    if not stat.S_ISREG(before.st_mode):
-        raise ValueError(f"quest retained object is not a regular file: {path}")
-    os.lseek(descriptor, 0, os.SEEK_SET)
-    chunks: list[bytes] = []
-    while True:
-        chunk = os.read(descriptor, 1024 * 1024)
-        if not chunk:
-            break
-        chunks.append(chunk)
-    payload = b"".join(chunks)
-    after = os.fstat(descriptor)
-    state = _node_state(after, payload)
-    if not _states_match(_node_state(before, payload), state):
-        raise ValueError(f"quest retained object changed while reading: {path}")
-    return state
-
-
 def _retained_candidates(
     store: _RetentionStore,
     key: str,
@@ -1142,14 +1171,16 @@ def _retained_candidates(
     return candidates
 
 
+def _before_private_artifact_authoring(artifact: _Artifact) -> None:
+    return None
+
+
 def _claim_retained_file(
     store: _RetentionStore,
     key: str,
-    parent_fd: int,
-    parent_path: Path,
-    name: str,
+    authoring_store: _AuthoringStore,
     registry: list[_Artifact],
-) -> tuple[_Artifact, int] | None:
+) -> _Artifact | None:
     candidates = _retained_candidates(
         store,
         key,
@@ -1158,25 +1189,41 @@ def _claim_retained_file(
     )
     if not candidates:
         return None
-    retained_name, _, retained_state = candidates[0]
-    _atomic_no_replace_between(
-        store.descriptor,
-        retained_name,
-        parent_fd,
-        name,
-    )
+    retained_name, retained_path, retained_state = candidates[0]
+    private_name = f".afterlight-recycle-{uuid.uuid4().hex}"
     artifact = _Artifact(
-        path=parent_path / name,
-        parent_fd=parent_fd,
-        name=name,
+        path=authoring_store.path / private_name,
+        parent_fd=authoring_store.descriptor,
+        name=private_name,
         created_state=retained_state,
         state=retained_state,
+        present=False,
         retention_store=store,
         retention_key=key,
     )
     registry.append(artifact)
+    try:
+        _atomic_no_replace_between(
+            store.descriptor,
+            retained_name,
+            authoring_store.descriptor,
+            private_name,
+        )
+    except BaseException:
+        source = _read_any_at(store.descriptor, retained_name, retained_path)
+        moved = _artifact_current_state(artifact)
+        if source is None and moved is not None:
+            artifact.present = True
+            artifact.state = moved
+            artifact.retain = not _states_match(retained_state, moved)
+        elif moved is not None:
+            artifact.present = True
+            artifact.state = moved
+            artifact.retain = True
+        raise
+    artifact.present = True
     _fsync_directory_fd(store.descriptor)
-    _fsync_directory_fd(parent_fd)
+    _fsync_directory_fd(authoring_store.descriptor)
     moved = _artifact_current_state(artifact)
     if moved is None or not _states_match(retained_state, moved):
         if moved is not None:
@@ -1185,22 +1232,7 @@ def _claim_retained_file(
         raise ValueError(
             f"quest transaction lost retained artifact ownership: {artifact.path}"
         )
-    flags = os.O_RDWR
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    descriptor = os.open(name, flags, dir_fd=parent_fd)
-    try:
-        opened = _read_open_regular(descriptor, artifact.path)
-    except BaseException:
-        os.close(descriptor)
-        raise
-    if not _states_match(retained_state, opened):
-        os.close(descriptor)
-        artifact.retain = True
-        raise ValueError(
-            f"quest retained artifact changed while claiming: {artifact.path}"
-        )
-    return artifact, descriptor
+    return artifact
 
 
 def _create_artifact(
@@ -1215,43 +1247,56 @@ def _create_artifact(
     registry: list[_Artifact],
     retention_store: _RetentionStore,
     retention_key: str,
+    authoring_store: _AuthoringStore,
 ) -> _Artifact:
     name = f".{target_name}.afterlight-{kind}-{uuid.uuid4().hex}"
     _require_same_device(
         os.fstat(parent_fd),
-        os.fstat(retention_store.descriptor),
-        retention_store.path,
+        os.fstat(authoring_store.descriptor),
+        authoring_store.path,
     )
-    claimed = _claim_retained_file(
+    recycled = _claim_retained_file(
         retention_store,
         retention_key,
-        parent_fd,
-        parent_path,
-        name,
+        authoring_store,
         registry,
     )
-    if claimed is None:
-        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        descriptor = os.open(name, flags, 0o600, dir_fd=parent_fd)
-        path = parent_path / name
-        created_state = _node_state(os.fstat(descriptor), b"")
-        artifact = _Artifact(
-            path=path,
-            parent_fd=parent_fd,
-            name=name,
-            created_state=created_state,
-            retention_store=retention_store,
-            retention_key=retention_key,
-        )
-        registry.append(artifact)
-    else:
-        artifact, descriptor = claimed
+    if recycled is not None:
+        _before_private_artifact_authoring(recycled)
+        current_recycled = _artifact_current_state(recycled)
+        if current_recycled is None or not _states_match(
+            recycled.created_state,
+            current_recycled,
+        ):
+            if current_recycled is not None:
+                recycled.state = current_recycled
+            recycled.retain = True
+            raise ValueError(
+                f"quest retained artifact changed before private authoring: {recycled.path}"
+            )
+
+    private_name = f".{target_name}.afterlight-private-{kind}-{uuid.uuid4().hex}"
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(
+        private_name,
+        flags,
+        0o600,
+        dir_fd=authoring_store.descriptor,
+    )
+    private_path = authoring_store.path / private_name
+    created_state = _node_state(os.fstat(descriptor), b"")
+    artifact = _Artifact(
+        path=private_path,
+        parent_fd=authoring_store.descriptor,
+        name=private_name,
+        created_state=created_state,
+        retention_store=retention_store,
+        retention_key=retention_key,
+    )
+    registry.append(artifact)
     try:
-        os.ftruncate(descriptor, 0)
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        artifact.state = _node_state(os.fstat(descriptor), b"")
         view = memoryview(payload)
         written = 0
         while written < len(view):
@@ -1270,20 +1315,100 @@ def _create_artifact(
         status = os.fstat(descriptor)
         state = _node_state(status, payload)
         artifact.state = state
-        _require_same_device(os.fstat(parent_fd), status, artifact.path)
+        _require_same_device(os.fstat(authoring_store.descriptor), status, artifact.path)
         if state.links != 1 or state.kind != "file":
             raise ValueError(f"invalid quest transaction stage: {artifact.path}")
-        observed = _artifact_current_state(artifact)
-        if observed is None or not _states_match(state, observed):
-            if observed is not None:
-                artifact.state = observed
-            artifact.retain = True
-            raise ValueError(
-                f"quest transaction stage changed after creation: {artifact.path}"
-            )
-        return artifact
     finally:
         os.close(descriptor)
+
+    observed = _artifact_current_state(artifact)
+    if observed is None or not _states_match(state, observed):
+        if observed is not None:
+            artifact.state = observed
+        artifact.retain = True
+        raise ValueError(
+            f"quest transaction stage changed after private authoring: {artifact.path}"
+        )
+
+    if recycled is not None:
+        current_recycled = _artifact_current_state(recycled)
+        if current_recycled is None or not _states_match(
+            recycled.created_state,
+            current_recycled,
+        ):
+            if current_recycled is not None:
+                recycled.state = current_recycled
+            recycled.retain = True
+            raise ValueError(
+                f"quest retained artifact changed before retirement: {recycled.path}"
+            )
+        source_name = artifact.name
+        replacement_name = recycled.name
+        try:
+            os.replace(
+                source_name,
+                replacement_name,
+                src_dir_fd=authoring_store.descriptor,
+                dst_dir_fd=authoring_store.descriptor,
+            )
+        except BaseException:
+            source = _artifact_current_state(artifact)
+            replacement = _artifact_current_state(recycled)
+            if source is None and replacement is not None and _states_match(
+                state,
+                replacement,
+            ):
+                recycled.present = False
+                artifact.name = replacement_name
+                artifact.path = authoring_store.path / replacement_name
+                artifact.state = replacement
+            elif replacement is not None and not _states_match(
+                recycled.created_state,
+                replacement,
+            ):
+                recycled.state = replacement
+                recycled.retain = True
+            raise
+        recycled.present = False
+        artifact.name = replacement_name
+        artifact.path = authoring_store.path / replacement_name
+        _fsync_directory_fd(authoring_store.descriptor)
+
+    source_parent_fd = artifact.parent_fd
+    source_name = artifact.name
+    source_path = artifact.path
+    try:
+        _atomic_no_replace_between(
+            source_parent_fd,
+            source_name,
+            parent_fd,
+            name,
+        )
+    except BaseException:
+        source = _read_any_at(source_parent_fd, source_name, source_path)
+        published = _read_any_at(parent_fd, name, parent_path / name)
+        if source is None and published is not None and _states_match(state, published):
+            artifact.parent_fd = parent_fd
+            artifact.name = name
+            artifact.path = parent_path / name
+            artifact.state = published
+        elif published is not None:
+            artifact.retain = True
+        raise
+    artifact.parent_fd = parent_fd
+    artifact.name = name
+    artifact.path = parent_path / name
+    _fsync_directory_fd(source_parent_fd)
+    _fsync_directory_fd(parent_fd)
+    published = _artifact_current_state(artifact)
+    if published is None or not _states_match(state, published):
+        if published is not None:
+            artifact.state = published
+        artifact.retain = True
+        raise ValueError(
+            f"quest transaction stage changed after publication: {artifact.path}"
+        )
+    return artifact
 
 
 def _unlink_artifact(artifact: _Artifact) -> None:
@@ -1296,12 +1421,25 @@ def _unlink_artifact(artifact: _Artifact) -> None:
     retention_name = _retention_name(key, expected)
     retention_path = store.path / retention_name
     source_parent_fd = artifact.parent_fd
-    _atomic_no_replace_between(
-        source_parent_fd,
-        artifact.name,
-        store.descriptor,
-        retention_name,
-    )
+    source_name = artifact.name
+    source_path = artifact.path
+    try:
+        _atomic_no_replace_between(
+            source_parent_fd,
+            source_name,
+            store.descriptor,
+            retention_name,
+        )
+    except BaseException:
+        source = _read_any_at(source_parent_fd, source_name, source_path)
+        retained = _read_any_at(store.descriptor, retention_name, retention_path)
+        if source is None and retained is not None and _states_match(expected, retained):
+            artifact.parent_fd = store.descriptor
+            artifact.name = retention_name
+            artifact.path = retention_path
+            artifact.state = retained
+            artifact.retain = True
+        raise
     artifact.parent_fd = store.descriptor
     artifact.name = retention_name
     artifact.path = retention_path
@@ -1642,6 +1780,7 @@ class QuestBuildTransaction:
         changed: list[Path] = []
         repository_state = _node_state(os.fstat(root_fd), None)
         retention_store: _RetentionStore | None = None
+        authoring_store: _AuthoringStore | None = None
 
         def require_retention_store() -> _RetentionStore:
             nonlocal retention_store
@@ -1653,6 +1792,12 @@ class QuestBuildTransaction:
                 )
                 assert retention_store is not None
             return retention_store
+
+        def require_authoring_store() -> _AuthoringStore:
+            nonlocal authoring_store
+            if authoring_store is None:
+                authoring_store = _open_authoring_store(require_retention_store())
+            return authoring_store
 
         try:
             retention_store = _open_retention_store(
@@ -1713,6 +1858,7 @@ class QuestBuildTransaction:
                     artifacts,
                     store,
                     retention_key,
+                    require_authoring_store(),
                 )
                 stages[path] = stage
                 if original is None:
@@ -1728,6 +1874,7 @@ class QuestBuildTransaction:
                         artifacts,
                         store,
                         retention_key,
+                        require_authoring_store(),
                     )
                 changed.append(path)
 
@@ -2014,6 +2161,8 @@ class QuestBuildTransaction:
                 os.close(descriptor)
             for record in created_records:
                 os.close(record.parent_fd)
+            if authoring_store is not None:
+                os.close(authoring_store.descriptor)
             if retention_store is not None:
                 os.close(retention_store.descriptor)
 

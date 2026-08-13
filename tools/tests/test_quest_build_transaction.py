@@ -618,6 +618,59 @@ class QuestBuildTransactionTests(unittest.TestCase):
                 before["config/ftbquests/quests/first.snbt"][-1],
             )
 
+    def test_interrupt_after_retention_move_authenticates_retained_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            original_identity = self.path_identity(first)
+            real_move = self.transaction_module._atomic_no_replace_between
+            interrupted = False
+
+            def interrupt_after_move(
+                source_parent_fd,
+                source_name,
+                target_parent_fd,
+                target_name,
+            ):
+                nonlocal interrupted
+                result = real_move(
+                    source_parent_fd,
+                    source_name,
+                    target_parent_fd,
+                    target_name,
+                )
+                if (
+                    not interrupted
+                    and ".afterlight-stage-" in source_name
+                    and target_name.startswith(".afterlight-retained-")
+                ):
+                    interrupted = True
+                    raise KeyboardInterrupt("injected post-retention interruption")
+                return result
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_atomic_no_replace_between",
+                    side_effect=interrupt_after_move,
+                ):
+                    result = transaction.promote_bytes(
+                        {first: b"installed-after-interruption\n"},
+                        frozen,
+                    )
+
+            self.assertTrue(interrupted)
+            self.assertTrue(result.committed)
+            self.assertEqual(len(result.cleanup_warnings), 1)
+            self.assertIsInstance(result.cleanup_warnings[0], KeyboardInterrupt)
+            self.assertEqual(len(result.recovery_paths), 1)
+            self.assertEqual(result.retained_paths, result.recovery_paths)
+            self.assertFalse(result.unexpected_recovery_paths)
+            self.assertEqual(
+                self.path_identity(result.recovery_paths[0]),
+                original_identity,
+            )
+
     def test_in_root_recovery_blocks_retry_without_growing_residue(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root, first, _ = self.make_root(Path(temp_dir))
@@ -822,6 +875,120 @@ class QuestBuildTransactionTests(unittest.TestCase):
                 retained_before,
             )
 
+    def test_read_only_replacements_recycle_one_exact_retained_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            os.chmod(first, 0o400)
+            observed_retention: set[Path] = set()
+            previous_public = self.path_identity(first)
+            previous_retained: tuple[Path, tuple[object, ...]] | None = None
+
+            for payload in (
+                b"read-only-replacement-one\n",
+                b"read-only-replacement-two\n",
+                b"read-only-replacement-three\n",
+                b"read-only-replacement-four\n",
+            ):
+                with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                    frozen = self.freeze(transaction, root)
+                    try:
+                        result = transaction.promote_bytes({first: payload}, frozen)
+                    except BaseException as error:
+                        self.fail(f"read-only retained record was not reusable: {error}")
+
+                public = self.path_identity(first)
+                self.assertEqual(public[0], "file")
+                self.assertEqual(public[3:7], (0o400, os.geteuid(), os.getegid(), 1))
+                self.assertEqual(public[-1], payload)
+                self.assertNotEqual(public[2], previous_public[2])
+                self.assertFalse(result.cleanup_warnings)
+                self.assertEqual(len(result.recovery_paths), 1)
+                self.assertEqual(result.retained_paths, result.recovery_paths)
+                self.assertFalse(result.unexpected_recovery_paths)
+
+                retained_path = result.retained_paths[0]
+                retained = self.path_identity(retained_path)
+                self.assertEqual(retained[0], "file")
+                self.assertEqual(retained[2], previous_public[2])
+                self.assertEqual(retained[3:7], previous_public[3:7])
+                self.assertEqual(retained[-1], previous_public[-1])
+                self.assertNotEqual(retained[2], public[2])
+
+                observed_retention.add(retained_path)
+                existing = [
+                    path for path in observed_retention if path.exists()
+                ]
+                self.assertEqual(existing, [retained_path])
+                if previous_retained is not None:
+                    previous_path, previous_identity = previous_retained
+                    self.assertFalse(previous_path.exists())
+                    self.assertNotIn(previous_identity[2], (public[2], retained[2]))
+                previous_public = public
+                previous_retained = retained_path, retained
+
+    def test_pre_authoring_hardlink_race_never_mutates_external_inode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root, first, _ = self.make_root(Path(temp_dir))
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                first_result = transaction.promote_bytes(
+                    {first: b"first-installed\n"},
+                    frozen,
+                )
+
+            retained = first_result.retained_paths[0]
+            retained_inode = retained.stat().st_ino
+            public_before = self.path_identity(first)
+            external = root.parent / "external-retained-link.snbt"
+            linked_identity: tuple[object, ...] | None = None
+            injected = False
+            real_ftruncate = self.transaction_module.os.ftruncate
+
+            def inject_link(artifact):
+                nonlocal injected, linked_identity
+                if not injected and artifact.created_state.inode == retained_inode:
+                    os.link(artifact.path, external)
+                    linked_identity = self.path_identity(external)
+                    injected = True
+
+            def race_former_first_write(descriptor, length):
+                nonlocal injected, linked_identity
+                if not injected and os.fstat(descriptor).st_ino == retained_inode:
+                    candidates = [
+                        path
+                        for path in first.parent.iterdir()
+                        if ".afterlight-stage-" in path.name
+                        and path.lstat().st_ino == retained_inode
+                    ]
+                    self.assertEqual(len(candidates), 1)
+                    os.link(candidates[0], external)
+                    linked_identity = self.path_identity(external)
+                    injected = True
+                return real_ftruncate(descriptor, length)
+
+            with self.transaction_module.QuestBuildTransaction(root) as transaction:
+                frozen = self.freeze(transaction, root)
+                with mock.patch.object(
+                    self.transaction_module,
+                    "_before_private_artifact_authoring",
+                    side_effect=inject_link,
+                    create=True,
+                ), mock.patch.object(
+                    self.transaction_module.os,
+                    "ftruncate",
+                    side_effect=race_former_first_write,
+                ):
+                    with self.assertRaises(BaseException):
+                        transaction.promote_bytes(
+                            {first: b"second-installed\n"},
+                            frozen,
+                        )
+
+            self.assertTrue(injected)
+            self.assertIsNotNone(linked_identity)
+            self.assertEqual(self.path_identity(external), linked_identity)
+            self.assertEqual(self.path_identity(first), public_before)
+
     def test_repeated_delete_create_cycles_keep_two_file_records_at_most(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root, first, _ = self.make_root(Path(temp_dir))
@@ -908,8 +1075,7 @@ class QuestBuildTransactionTests(unittest.TestCase):
             ):
                 nonlocal failed_cleanup
                 if (
-                    ".afterlight-stage-" in source_name
-                    and target_name.startswith(".afterlight-retained-")
+                    target_name.startswith(".afterlight-retained-")
                     and not failed_cleanup
                 ):
                     failed_cleanup = True

@@ -623,3 +623,99 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `.github/workflows/pack-ci.yml` and `tools/tests/test_release_artifacts.py`
 - **Impact:** CI now renders the hardened Compose model with an explicitly unprivileged fixture identity. No production credentials, pack content, quest identity, artifact, production service, or player state changed.
 - **Follow-up:** Push the corrected exact head, require green Linux CI and an accepted local gauntlet receipt for that same commit, then promote and publish RC2.
+
+### MEM-2026-08-13-051
+
+- **Date:** 2026-08-13
+- **Category:** success
+- **Status:** verified
+- **Subsystem:** RC2 publication and stable delivery
+- **Summary:** AFTERLIGHT `1.0.0-rc.2` was accepted at one exact commit, promoted to both release branches, published with the five canonical artifacts, and selected by the public portal.
+- **Evidence:** Accepted SHA `c5993d1581bc7359eca503b99793da47bf4b9616`; receipt SHA-256 `7f1e37ecea320beb728483547bab780b33c1d7f42dda49ee22715ee3da49c687`; transcript SHA-256 `a76c25e352e188b85a761ab2c0a6e852d039f216002daf9926fa2ff9b2526ef8`; `dev` run `31747999995` and `main` run `31755216256` succeeded; Pages pack and index SHA-256 values matched acceptance; all five public downloads matched their release checksums; a live browser check selected `v1.0.0-rc.2` with three launcher links and no page errors.
+- **Files or Commit:** `c5993d1581bc7359eca503b99793da47bf4b9616`, tag `v1.0.0-rc.2`, and `docs/releases/1.0.0-rc.2.md`
+- **Impact:** Prism, CurseForge, and Modrinth-compatible downloads now resolve to the accepted RC2 bytes. The stable Packwiz channel serves the same accepted manifest.
+- **Follow-up:** Treat released-client confirmation of the Signal title, ECHO Pin, and ECHO Claim as gameplay observations rather than blockers for this published release candidate.
+
+### MEM-2026-08-13-052
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** release portal fallback
+- **Summary:** The portal retained a pinned RC1 fallback after RC2 publication, which could select the older release when live discovery failed.
+- **Evidence:** Website commit `e9343c808bc1a092940fde046704a2e584d7b870` replaced the stale fallback; pull request `R-L-Labs/Website#10` merged as `8b8e23a7539d7ed7daf766a2506b1f2f7d799a7f`; 121 tests, build, static contract, security checks, and audit passed; a live browser check then displayed `v1.0.0-rc.2` and three RC2 links.
+- **Files or Commit:** Website commits `e9343c808bc1a092940fde046704a2e584d7b870` and `8b8e23a7539d7ed7daf766a2506b1f2f7d799a7f`
+- **Impact:** Portal fallback and live release discovery now agree on RC2.
+- **Follow-up:** Update the pinned fallback during every future release before calling portal selection complete.
+
+### MEM-2026-08-13-053
+
+- **Date:** 2026-08-13
+- **Category:** addition
+- **Status:** verified
+- **Subsystem:** legacy VPS control-plane bridge
+- **Summary:** The RC1 production host predated the hardened transaction control plane, so an immutable rollback bridge and a compatible Python runtime were installed before attempting RC2.
+- **Evidence:** Bridge commits `03e6db05b66787ac9f8af30dd1cd283053ab8e14` and `42d924f9d393c0973cb217d188e290cd29ac6428` produced a clean Packwiz verification and bound the 158-record RC1 server mod inventory plus the normalized live RC1 quest corpus. Python `3.12.13` was installed at `/opt/afterlight-python/3.12.13` from a checksum-pinned standalone artifact, and `afterlight-server.sh doctor` printed `Doctor: OK`.
+- **Files or Commit:** Retained branch `codex/rc1-control-bridge`, commits `03e6db05b66787ac9f8af30dd1cd283053ab8e14` and `42d924f9d393c0973cb217d188e290cd29ac6428`
+- **Impact:** The production host gained a root-owned, fail-closed control plane without changing player world data, and RC1 remains an immutable rollback target.
+- **Follow-up:** Retain the bridge branch and standalone Python runtime until a future verified migration supersedes both.
+
+### MEM-2026-08-13-054
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** open
+- **Subsystem:** quest-safe progress and live quest verification
+- **Summary:** The quest-safe wrapper rejects valid FTB saved progress because its SNBT parser requires commas, while FTB writes newline-separated fields. Its live verifier also requires source-byte identity even though FTB performs characterized save normalization and Packwiz deliberately excludes `.afterlight-managed.json`.
+- **Evidence:** The first production transaction failed before data mutation with `ERROR: parse failure`; a root-only extraction of the fresh backup reproduced the same line-three separator failure across every protected SNBT document. After the expedited update, byte-level source verification reported `live quest corpus differs from accepted checkout`, while `verify_quest_identity_stability` accepted 3,847 semantic records with SHA-256 `9c9509ec8b34f0051555ec489f286842f85412563e32a2b5fee4c1b89fd4a2e6`.
+- **Files or Commit:** `server/afterlight-progress-guard.py`, `server/afterlight-safety.py`, `.packwizignore`, and `tools/rc_hygiene.py`
+- **Impact:** The wrapper fails closed and does not corrupt progress, but it cannot currently complete a real FTB production update without a protected manual fallback.
+- **Follow-up:** Add test-first support for FTB newline separators, use the characterized semantic quest verifier for live normalization, and exclude source-only management state from installed-byte comparison.
+
+### MEM-2026-08-13-055
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** open
+- **Subsystem:** Ubuntu firewall gate cleanup
+- **Summary:** Ubuntu's iptables renderer appends the explicit default `--reject-with icmp-port-unreachable`, while the cleanup validator accepts only equivalent forms without that token.
+- **Evidence:** Recovery ended with `ERROR: owned firewall gate shape differs from authority` while durable authority was terminal at `cleanup-gate` with `data_mutated=False`. The exact authority-owned rule was matched by full comment and shape, deleted once with the explicit reject type, and the supported transaction finalizer then printed `TRANSACTION CLEANUP: OK`. Fresh checks show no update rule and no transaction authority.
+- **Files or Commit:** `server/afterlight-safety.py` and `server/afterlight-transaction-finalize.sh`
+- **Impact:** The defect can delay terminal cleanup on this Ubuntu host, but the production host is not currently gated or quarantined.
+- **Follow-up:** Add a failing Ubuntu-render regression and accept only the canonical rule with or without the explicit default reject type during inspection and deletion.
+
+### MEM-2026-08-13-056
+
+- **Date:** 2026-08-13
+- **Category:** failure
+- **Status:** resolved
+- **Subsystem:** Docker Compose secret ownership
+- **Summary:** Root-owned mode `0600` source secrets remain root-owned inside local Compose bind-mounted secrets, so the UID `1000` Minecraft and backup containers could not read RCON credentials.
+- **Evidence:** Container logs repeated `cat: /run/secrets/rcon_password: Permission denied`. Keeping `/etc/afterlight/secrets` root-owned mode `0700` while changing only `rcon_password` to UID and GID `1000`, mode `0600`, made `Doctor: OK` pass and both containers reach healthy state. The non-login runtime identity still cannot traverse the host secrets directory directly.
+- **Files or Commit:** Production `/etc/afterlight/secrets/rcon_password`, `server/docker-compose.yml`, and `server/README.md`
+- **Impact:** Minecraft and backup can read the same protected RCON secret without exposing the host secrets directory or enabling a login shell.
+- **Follow-up:** Correct the documented host installation command and add a real Compose permission regression before the next host bootstrap.
+
+### MEM-2026-08-13-057
+
+- **Date:** 2026-08-13
+- **Category:** success
+- **Status:** verified
+- **Subsystem:** RC2 production deployment
+- **Summary:** RC2 was deployed to the existing world through an expedited, backup-first fallback after the stricter quest-safe wrapper failed before mutation.
+- **Evidence:** Zero players were online. Full backup `world-20260814-011813.tar.zst` has SHA-256 `68160c0a9d5afcdd83acf05cb81464cc0b3290ed00901a61b06825ff613ff516`. Offline progress archive `protected-progress-pre-rc2-20260814T011904Z.tar.zst` has SHA-256 `0b2a5334e6c80d3abef1b6ccf5b044ffe271a484873c9bbdf06959de990745de`. All 12 protected progress records retained manifest SHA-256 `657af03b67f59a4197101eb78505e8f6002b2e9ca5b666d42109d18139c539ba`. The checkout and marker equal accepted SHA `c5993d1581bc7359eca503b99793da47bf4b9616`; 159 server mods matched the lock by inventory, size, and digest; Minecraft logged `Done (3.886s)!`; both containers are healthy; TCP `25565` listens; the maintenance timer is active; no authority or update firewall gate remains.
+- **Files or Commit:** Accepted commit `c5993d1581bc7359eca503b99793da47bf4b9616`, `docs/releases/1.0.0-rc.2.md`, and `docs/HANDOFF.md`
+- **Impact:** Friends can update to RC2 and join the existing server. Existing FTB Quests and FTB Teams progress bytes were preserved.
+- **Follow-up:** Observe one real client rejoin plus Signal title, Pin, and Claim. Fix the three fail-closed control-plane compatibility defects before relying on the automated wrapper for the next production quest update.
+
+### MEM-2026-08-13-058
+
+- **Date:** 2026-08-13
+- **Category:** decision
+- **Status:** accepted
+- **Subsystem:** release closeout scope
+- **Summary:** Shane requested a good-enough release closeout rather than another full gauntlet, accepting that noncritical bugs can be fixed after friends resume play.
+- **Evidence:** RC2 already had an accepted receipt, green exact-SHA `dev` and `main` CI, public artifact equality, Pages parity, and a live portal check. Production closeout therefore focused on zero players, recoverable backups, exact revision and mod parity, quest semantic parity, protected progress byte preservation, container health, port availability, timers, and fail-closed cleanup.
+- **Files or Commit:** `docs/releases/1.0.0-rc.2.md`, `docs/HANDOFF.md`, and this memory ledger
+- **Impact:** The release reached a playable and recoverable state without delaying friends for duplicate broad validation.
+- **Follow-up:** Prioritize only critical gameplay regressions and the documented control-plane compatibility fixes. Defer optional polish and exhaustive manual matrices.

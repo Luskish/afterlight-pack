@@ -1,36 +1,51 @@
 {
+	icon: {
+		id: "mekanism:alloy_atomic"
+	}
 	id: "399722D6E7EF5835"
-	order_index: 12
-	filename: "depot_late"
-	icon: { id: "mekanism:alloy_atomic" }
 	loot_size: 1
-	use_title: true
+	order_index: 5
 	rewards: [
-		{ id: "7BC6937AD85315B7"
-			type: "item"
-			item: { count: 8, id: "mekanism:alloy_atomic" }
+		{
 			count: 8
-			weight: 1.0f }
-		{ id: "55F843765DD033BA"
-			type: "item"
-			item: { count: 16, id: "ae2:calculation_processor" }
+			id: "7BC6937AD85315B7"
+			item: {
+				count: 8
+				id: "mekanism:alloy_atomic"
+			}
+		}
+		{
 			count: 16
-			weight: 1.0f }
-		{ id: "16C9CD53B373C2B2"
-			type: "item"
-			item: { count: 8, id: "immersiveengineering:component_electronic_adv" }
+			id: "55F843765DD033BA"
+			item: {
+				count: 16
+				id: "ae2:calculation_processor"
+			}
+		}
+		{
 			count: 8
-			weight: 1.0f }
-		{ id: "7E509415D210B1B9"
-			type: "item"
-			item: { count: 8, id: "oritech:machine_core_2" }
+			id: "16C9CD53B373C2B2"
+			item: {
+				count: 8
+				id: "immersiveengineering:component_electronic_adv"
+			}
+		}
+		{
 			count: 8
-			weight: 1.0f }
-		{ id: "170BFB03C1F6381D"
-			type: "item"
-			item: { count: 4, id: "minecraft:netherite_ingot" }
+			id: "7E509415D210B1B9"
+			item: {
+				count: 8
+				id: "oritech:machine_core_2"
+			}
+		}
+		{
 			count: 4
-			weight: 1.0f }
+			id: "170BFB03C1F6381D"
+			item: {
+				count: 4
+				id: "minecraft:netherite_ingot"
+			}
+		}
 	]
-	title: "Requisition Depot: Late"
+	use_title: true
 }

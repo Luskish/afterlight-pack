@@ -3,244 +3,228 @@
 	default_quest_shape: ""
 	filename: "2D7CB8E643BDC03B"
 	group: "4525BB3160467FCB"
-	icon: { id: "oritech:advanced_computing_engine" }
+	icon: {
+		id: "oritech:advanced_computing_engine"
+	}
 	id: "2D7CB8E643BDC03B"
 	images: [ ]
 	order_index: 12
 	quest_links: [ ]
 	quests: [
 		{
-			id: "6A0FBE1789BEFD37"
 			dependencies: ["036D1C6E20B78461"]
+			id: "6A0FBE1789BEFD37"
+			rewards: [{
+				count: 2
+				id: "0CB6051E9C33A205"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "078F22A0FE228DBA"
+				item: { count: 1, id: "oritech:machine_core_1" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "078F22A0FE228DBA"
-					type: "item"
-					item: { count: 1, id: "oritech:machine_core_1" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "0CB6051E9C33A205"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1722A64B05E8F748"
 			dependencies: ["6A0FBE1789BEFD37"]
+			id: "1722A64B05E8F748"
+			rewards: [{
+				count: 2
+				id: "437429033CBDB4D2"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "5A2D67A226C939A3"
+				item: { count: 1, id: "oritech:pulverizer_block" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "5A2D67A226C939A3"
-					type: "item"
-					item: { count: 1, id: "oritech:pulverizer_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "437429033CBDB4D2"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "53D1A5F68323B089"
 			dependencies: ["1722A64B05E8F748"]
+			id: "53D1A5F68323B089"
+			rewards: [{
+				count: 2
+				id: "2300E3337B5BD0CB"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "7BA376D5D8347A50"
+				item: { count: 1, id: "oritech:centrifuge_block" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "7BA376D5D8347A50"
-					type: "item"
-					item: { count: 1, id: "oritech:centrifuge_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "2300E3337B5BD0CB"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2D3E39C0E15785D1"
 			dependencies: ["53D1A5F68323B089"]
+			id: "2D3E39C0E15785D1"
+			rewards: [{
+				count: 2
+				id: "65D2DD9DC4D53B41"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "50ADDD68F0D98397"
+				item: { count: 1, id: "oritech:assembler_block" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "50ADDD68F0D98397"
-					type: "item"
-					item: { count: 1, id: "oritech:assembler_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "65D2DD9DC4D53B41"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: ["2D3E39C0E15785D1"]
 			id: "6E83735A4CE6877B"
-			dependencies: ["2D3E39C0E15785D1"]
+			rewards: [{
+				count: 2
+				id: "0A10A987DFA73393"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "6DFB6F26C9FE5C0C"
+				item: { count: 1, id: "oritech:foundry_block" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "6DFB6F26C9FE5C0C"
-					type: "item"
-					item: { count: 1, id: "oritech:foundry_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "0A10A987DFA73393"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: ["2D3E39C0E15785D1"]
 			id: "035F257B1640AD1D"
-			dependencies: ["2D3E39C0E15785D1"]
+			rewards: [{
+				count: 2
+				id: "2CDD60DB19B583AF"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "27A4A5D83FE7B5C1"
+				item: { count: 1, id: "oritech:laser_arm_block" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "27A4A5D83FE7B5C1"
-					type: "item"
-					item: { count: 1, id: "oritech:laser_arm_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "2CDD60DB19B583AF"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "761A07B7BE2502DE"
 			dependencies: ["6E83735A4CE6877B"]
+			id: "761A07B7BE2502DE"
+			rewards: [{
+				count: 2
+				id: "730CC9F22719BE6A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "320DD121F7FEE583"
+				item: { count: 1, id: "oritech:jetpack" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "320DD121F7FEE583"
-					type: "item"
-					item: { count: 1, id: "oritech:jetpack" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "730CC9F22719BE6A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"6E83735A4CE6877B"
+				"035F257B1640AD1D"
+			]
 			id: "4B68E6373A038832"
-			dependencies: ["6E83735A4CE6877B", "035F257B1640AD1D"]
+			rewards: [{
+				count: 2
+				id: "5A43BA403E9C3509"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "0ADD935A676435E3"
+				item: { count: 1, id: "oritech:reactor_controller" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "0ADD935A676435E3"
-					type: "item"
-					item: { count: 1, id: "oritech:reactor_controller" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5A43BA403E9C3509"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5D88D33506B63870"
 			dependencies: ["4B68E6373A038832"]
+			id: "5D88D33506B63870"
+			rewards: [{
+				count: 2
+				id: "567BC5E8889AC4B5"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "1482D851ED4D0F4F"
+				item: { count: 1, id: "oritech:prometheum_ingot" }
+				type: "item"
+			}]
 			x: 12.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "1482D851ED4D0F4F"
-					type: "item"
-					item: { count: 1, id: "oritech:prometheum_ingot" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "567BC5E8889AC4B5"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "10EDD2BED35BE9E3"
-			dependencies: ["5D88D33506B63870", "761A07B7BE2502DE"]
-			x: 14.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "78ACA220833CCC86"
-					type: "item"
-					item: { count: 1, id: "oritech:advanced_computing_engine" }
-					count: 1L
-					consume_items: false
-				}
+			dependencies: [
+				"5D88D33506B63870"
+				"761A07B7BE2502DE"
 			]
+			id: "10EDD2BED35BE9E3"
 			rewards: [
 				{
 					id: "2B028D5D7A21F763"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "33A194CBD0316724"
-					type: "item"
-					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28
+					id: "33A194CBD0316724"
+					item: {
+						count: 28
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "53630C5F4F47121A"
@@ -249,16 +233,26 @@
 				}
 				{
 					id: "0675D6672A5276BF"
+					item: {
+						count: 1
+						id: "kubejs:schematic_kinetic_frame"
+					}
 					type: "item"
-					item: { count: 1, id: "kubejs:schematic_kinetic_frame" }
-					count: 1
 				}
 				{
 					id: "04C5E80BE826153B"
-					type: "gamestage"
 					stage: "afterlight:gate_create"
+					type: "gamestage"
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "78ACA220833CCC86"
+				item: { count: 1, id: "oritech:advanced_computing_engine" }
+				type: "item"
+			}]
+			x: 14.0d
+			y: 0.0d
 		}
 	]
 }

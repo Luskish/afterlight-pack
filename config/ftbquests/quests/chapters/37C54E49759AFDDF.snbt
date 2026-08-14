@@ -3,244 +3,230 @@
 	default_quest_shape: ""
 	filename: "37C54E49759AFDDF"
 	group: "4525BB3160467FCB"
-	icon: { id: "mekanismgenerators:fission_reactor_logic_adapter" }
+	icon: {
+		id: "mekanismgenerators:fission_reactor_logic_adapter"
+	}
 	id: "37C54E49759AFDDF"
 	images: [ ]
 	order_index: 10
 	quest_links: [ ]
 	quests: [
 		{
-			id: "3F12A84AF92F28B8"
 			dependencies: ["6B876A865DE7A77A"]
+			id: "3F12A84AF92F28B8"
+			rewards: [{
+				count: 2
+				id: "36CEBEB44A8C1ECC"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "3B0BAF116050CE8F"
+				item: { count: 1, id: "mekanism:electrolytic_separator" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "3B0BAF116050CE8F"
-					type: "item"
-					item: { count: 1, id: "mekanism:electrolytic_separator" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "36CEBEB44A8C1ECC"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "564A301931FD5B1C"
 			dependencies: ["3F12A84AF92F28B8"]
+			id: "564A301931FD5B1C"
+			rewards: [{
+				count: 2
+				id: "49314EC82C2FBBFD"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "11BE47ECF0F17C2A"
+				item: { count: 1, id: "mekanism:purification_chamber" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "11BE47ECF0F17C2A"
-					type: "item"
-					item: { count: 1, id: "mekanism:purification_chamber" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "49314EC82C2FBBFD"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "0D4C50AC8346E16D"
 			dependencies: ["564A301931FD5B1C"]
+			id: "0D4C50AC8346E16D"
+			rewards: [{
+				count: 2
+				id: "1F7CCE1F512FB9F0"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "2B8CA6F158241545"
+				item: { count: 1, id: "mekanism:crusher" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2B8CA6F158241545"
-					type: "item"
-					item: { count: 1, id: "mekanism:crusher" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "1F7CCE1F512FB9F0"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "0B77E5639E9D31E4"
 			dependencies: ["0D4C50AC8346E16D"]
+			id: "0B77E5639E9D31E4"
+			rewards: [{
+				count: 2
+				id: "768F3A74C4666942"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "33A7640B993153E3"
+				item: { count: 1, id: "mekanism:chemical_injection_chamber" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "33A7640B993153E3"
-					type: "item"
-					item: { count: 1, id: "mekanism:chemical_injection_chamber" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "768F3A74C4666942"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "081DFC95CFFAD85C"
 			dependencies: ["0B77E5639E9D31E4"]
+			id: "081DFC95CFFAD85C"
+			rewards: [{
+				count: 2
+				id: "4787205A2C62FD23"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "7F4FE447550C1C33"
+				item: { count: 1, id: "mekanism:basic_purifying_factory" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "7F4FE447550C1C33"
-					type: "item"
-					item: { count: 1, id: "mekanism:basic_purifying_factory" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "4787205A2C62FD23"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5F748ABC48F2A139"
 			dependencies: ["081DFC95CFFAD85C"]
+			id: "5F748ABC48F2A139"
+			rewards: [{
+				count: 2
+				id: "6C35C433B5A592F3"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "3F36FFB4E04708EC"
+				item: { count: 1, id: "mekanism:digital_miner" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "3F36FFB4E04708EC"
-					type: "item"
-					item: { count: 1, id: "mekanism:digital_miner" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "6C35C433B5A592F3"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "350919A8B89A2E84"
 			dependencies: ["3F12A84AF92F28B8"]
+			id: "350919A8B89A2E84"
+			rewards: [{
+				count: 2
+				id: "1FA3C72E210D7F9A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "4CACFB50ABAB0889"
+				item: { count: 1, id: "mekanism:sulfuric_acid_bucket" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "4CACFB50ABAB0889"
-					type: "item"
-					item: { count: 1, id: "mekanism:sulfuric_acid_bucket" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "1FA3C72E210D7F9A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"350919A8B89A2E84"
+				"0B77E5639E9D31E4"
+			]
 			id: "4F4FF6396A3E4E57"
-			dependencies: ["350919A8B89A2E84", "0B77E5639E9D31E4"]
+			rewards: [{
+				count: 2
+				id: "793FBB7201F0C060"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "2E4A6D5BAF6ABA17"
+				item: { count: 1, id: "mekanism:isotopic_centrifuge" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "2E4A6D5BAF6ABA17"
-					type: "item"
-					item: { count: 1, id: "mekanism:isotopic_centrifuge" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "793FBB7201F0C060"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"5F748ABC48F2A139"
+				"081DFC95CFFAD85C"
+			]
 			id: "3C72E0ADC8E785D0"
-			dependencies: ["5F748ABC48F2A139", "081DFC95CFFAD85C"]
+			rewards: [{
+				count: 2
+				id: "14291F5F149AD359"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 1024L
+				id: "6A10840DA3CB2850"
+				item: { count: 1, id: "mekanism:ingot_osmium" }
+				type: "item"
+			}]
 			x: 12.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "6A10840DA3CB2850"
-					type: "item"
-					item: { count: 1, id: "mekanism:ingot_osmium" }
-					count: 1024L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "14291F5F149AD359"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "45A86A6AA4AD7824"
-			dependencies: ["4F4FF6396A3E4E57", "3C72E0ADC8E785D0"]
-			x: 14.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "68FA468B76692602"
-					type: "item"
-					item: { count: 1, id: "mekanismgenerators:fission_reactor_logic_adapter" }
-					count: 1L
-					consume_items: false
-				}
+			dependencies: [
+				"4F4FF6396A3E4E57"
+				"3C72E0ADC8E785D0"
 			]
+			id: "45A86A6AA4AD7824"
 			rewards: [
 				{
 					id: "631B1314204D9FEA"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "24A249890E82D79A"
-					type: "item"
-					item: { count: 20, id: "kubejs:requisition_chit" }
 					count: 20
+					id: "24A249890E82D79A"
+					item: {
+						count: 20
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "0F551203AF93BBA6"
@@ -248,6 +234,14 @@
 					xp: 450
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "68FA468B76692602"
+				item: { count: 1, id: "mekanismgenerators:fission_reactor_logic_adapter" }
+				type: "item"
+			}]
+			x: 14.0d
+			y: 0.0d
 		}
 	]
 }

@@ -3,35 +3,31 @@
 	default_quest_shape: ""
 	filename: "099200314296766A"
 	group: "4A20F33642175B95"
-	icon: { id: "mekanism:alloy_atomic" }
+	icon: {
+		id: "mekanism:alloy_atomic"
+	}
 	id: "099200314296766A"
 	images: [ ]
-	order_index: 22
+	order_index: 9
 	quest_links: [ ]
-	quests: [
-		{
-			id: "0CD3B784A9C67990"
-			dependencies: ["036D1C6E20B78461"]
-			x: 0.0d
-			y: 0.0d
-			can_repeat: true
-			repeat_cooldown: 5
-			tasks: [
-				{
-					id: "3C1B8F09A3A541D9"
-					type: "item"
-					item: { count: 1, id: "kubejs:requisition_chit" }
-					count: 32L
-					consume_items: true
-				}
-			]
-			rewards: [
-				{
-					id: "5F33ADA6D05A1E21"
-					type: "choice"
-					table_id: 4149823888054769717L
-				}
-			]
-		}
-	]
+	quests: [{
+		can_repeat: true
+		dependencies: ["036D1C6E20B78461"]
+		id: "0CD3B784A9C67990"
+		repeat_cooldown: 5
+		rewards: [{
+			id: "5F33ADA6D05A1E21"
+			table_id: 4149823888054769717L
+			type: "choice"
+		}]
+		tasks: [{
+			consume_items: true
+			count: 32L
+			id: "3C1B8F09A3A541D9"
+			item: { count: 1, id: "kubejs:requisition_chit" }
+			type: "item"
+		}]
+		x: 0.0d
+		y: 0.0d
+	}]
 }

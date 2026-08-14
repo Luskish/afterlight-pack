@@ -3,7 +3,9 @@
 	default_quest_shape: ""
 	filename: "65C7EC00C7DC1038"
 	group: "51FF272F5030D2E6"
-	icon: { id: "ars_nouveau:source_gem" }
+	icon: {
+		id: "ars_nouveau:source_gem"
+	}
 	id: "65C7EC00C7DC1038"
 	images: [ ]
 	order_index: 0
@@ -11,108 +13,132 @@
 	quests: [
 		{
 			id: "6546BA910285D6EB"
+			rewards: [{
+				count: 3
+				id: "4B5354343CA56ECC"
+				item: {
+					count: 3
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "49BEABF3BA054BBC"
+				item: { count: 1, id: "ars_nouveau:worn_notebook" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{ id: "49BEABF3BA054BBC"
-				type: "item"
-				item: { count: 1, id: "ars_nouveau:worn_notebook" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "4B5354343CA56ECC"
-				type: "item"
-				item: { count: 3, id: "kubejs:requisition_chit" }
-				count: 3 }
-			]
 		}
 		{
-			id: "4CAA052A2178377C"
 			dependencies: ["6546BA910285D6EB"]
+			id: "4CAA052A2178377C"
+			rewards: [
+				{
+					count: 5
+					id: "6A6B131C6F212132"
+					item: {
+						count: 5
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "03F91353F9DB1F9B"
+					type: "xp"
+					xp: 100
+				}
+			]
+			tasks: [{
+				consume_items: false
+				id: "1F682DF9B967D698"
+				item: { count: 1, id: "ars_nouveau:novice_spell_book" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{ id: "1F682DF9B967D698"
-				type: "item"
-				item: { count: 1, id: "ars_nouveau:novice_spell_book" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "6A6B131C6F212132"
-				type: "item"
-				item: { count: 5, id: "kubejs:requisition_chit" }
-				count: 5 }
-				{ id: "03F91353F9DB1F9B"
-				type: "xp"
-				xp: 100 }
-			]
 		}
 		{
-			id: "5DA50309DBF9D019"
 			dependencies: ["4CAA052A2178377C"]
+			id: "5DA50309DBF9D019"
+			rewards: [{
+				count: 4
+				id: "7E84D5E966008753"
+				item: {
+					count: 4
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "7A63B7029431C343"
+				item: { count: 1, id: "ars_nouveau:source_gem" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: -1.0d
-			tasks: [
-				{ id: "7A63B7029431C343"
-				type: "item"
-				item: { count: 1, id: "ars_nouveau:source_gem" }
-				count: 8L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "7E84D5E966008753"
-				type: "item"
-				item: { count: 4, id: "kubejs:requisition_chit" }
-				count: 4 }
-			]
 		}
 		{
-			id: "0133A61DB9FB84AC"
 			dependencies: ["4CAA052A2178377C"]
+			id: "0133A61DB9FB84AC"
+			rewards: [{
+				count: 4
+				id: "2D3CAD167EE92E5C"
+				item: {
+					count: 4
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "3CA55474DDE56684"
+				item: { count: 1, id: "ars_nouveau:imbuement_chamber" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 1.0d
-			tasks: [
-				{ id: "3CA55474DDE56684"
-				type: "item"
-				item: { count: 1, id: "ars_nouveau:imbuement_chamber" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "2D3CAD167EE92E5C"
-				type: "item"
-				item: { count: 4, id: "kubejs:requisition_chit" }
-				count: 4 }
-			]
 		}
 		{
+			dependencies: [
+				"5DA50309DBF9D019"
+				"0133A61DB9FB84AC"
+			]
 			id: "7480D99D56556C8E"
-			dependencies: ["5DA50309DBF9D019", "0133A61DB9FB84AC"]
-			x: 6.0d
-			y: 0.0d
+			rewards: [
+				{
+					id: "44F49A038502165F"
+					table_id: 1398900581490095521L
+					type: "loot"
+				}
+				{
+					count: 10
+					id: "52F066475C5C3E35"
+					item: {
+						count: 10
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "07DF472E96A4D844"
+					type: "xp"
+					xp: 150
+				}
+			]
 			shape: "hexagon"
 			size: 1.4d
-			tasks: [
-				{ id: "4E8C76208075940D"
-				type: "item"
+			tasks: [{
+				consume_items: false
+				id: "4E8C76208075940D"
 				item: { count: 1, id: "ars_nouveau:enchanting_apparatus" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "44F49A038502165F"
-				type: "loot"
-				table_id: 1398900581490095521L }
-				{ id: "52F066475C5C3E35"
 				type: "item"
-				item: { count: 10, id: "kubejs:requisition_chit" }
-				count: 10 }
-				{ id: "07DF472E96A4D844"
-				type: "xp"
-				xp: 150 }
-			]
+			}]
+			x: 6.0d
+			y: 0.0d
 		}
 	]
 }

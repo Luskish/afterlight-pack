@@ -3,175 +3,161 @@
 	default_quest_shape: ""
 	filename: "7A26679C913AAF90"
 	group: "4DEAD1F5F7AB4DA3"
-	icon: { id: "modern_industrialization:nuclear_reactor" }
+	icon: {
+		id: "modern_industrialization:nuclear_reactor"
+	}
 	id: "7A26679C913AAF90"
 	images: [ ]
 	order_index: 3
 	quest_links: [ ]
 	quests: [
 		{
-			id: "2107CE4AC7DCE2B3"
 			dependencies: ["3E1151169E81AD32"]
+			id: "2107CE4AC7DCE2B3"
+			rewards: [{
+				count: 2
+				id: "0F07B4A2194CFB6D"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "61D256324C21CFB8"
+				item: { count: 1, id: "modern_industrialization:digital_circuit" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "61D256324C21CFB8"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:digital_circuit" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "0F07B4A2194CFB6D"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "561929A2956F2507"
 			dependencies: ["2107CE4AC7DCE2B3"]
+			id: "561929A2956F2507"
+			rewards: [{
+				count: 2
+				id: "3A1892A15473A065"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "0B2F93F753108919"
+				item: { count: 1, id: "modern_industrialization:implosion_compressor" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0B2F93F753108919"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:implosion_compressor" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "3A1892A15473A065"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "53DCD0CBD9BE347A"
 			dependencies: ["561929A2956F2507"]
+			id: "53DCD0CBD9BE347A"
+			rewards: [{
+				count: 2
+				id: "465118712150C4EF"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "1C802882824E3A92"
+				item: { count: 1, id: "modern_industrialization:nuclear_casing" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1C802882824E3A92"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:nuclear_casing" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "465118712150C4EF"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "0A362BDB888E949B"
 			dependencies: ["53DCD0CBD9BE347A"]
+			id: "0A362BDB888E949B"
+			rewards: [{
+				count: 2
+				id: "4CC397774C66AD5C"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1F771D858C95F0C7"
+				item: { count: 1, id: "modern_industrialization:nuclear_reactor" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1F771D858C95F0C7"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:nuclear_reactor" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "4CC397774C66AD5C"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5C7ADA9A9A49770A"
 			dependencies: ["0A362BDB888E949B"]
+			id: "5C7ADA9A9A49770A"
+			rewards: [{
+				count: 2
+				id: "19D51728DE883959"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "7EA0FA84AD0A2B05"
+				item: { count: 1, id: "modern_industrialization:uranium_fuel_rod" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "7EA0FA84AD0A2B05"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:uranium_fuel_rod" }
-					count: 8L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "19D51728DE883959"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "49C43EEDD7055C79"
 			dependencies: ["5C7ADA9A9A49770A"]
+			id: "49C43EEDD7055C79"
+			rewards: [{
+				count: 2
+				id: "1600F3FB9335BD91"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "6DFD193646574F8F"
+				item: { count: 1, id: "modern_industrialization:le_uranium_fuel_rod_quad" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "6DFD193646574F8F"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:le_uranium_fuel_rod_quad" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "1600F3FB9335BD91"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "7131E55FB7E21244"
 			dependencies: ["49C43EEDD7055C79"]
-			x: 12.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "043F4A19C7D0C484"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:plutonium_ingot" }
-					count: 16L
-					consume_items: false
-				}
-			]
+			id: "7131E55FB7E21244"
 			rewards: [
 				{
 					id: "10B44C69AA86007E"
-					type: "loot"
 					table_id: 1895912205423590869L
+					type: "loot"
 				}
 				{
-					id: "6947BBC6BFFE4A2D"
-					type: "item"
-					item: { count: 20, id: "kubejs:requisition_chit" }
 					count: 20
+					id: "6947BBC6BFFE4A2D"
+					item: {
+						count: 20
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "70B1F01A86F2EF69"
@@ -179,6 +165,15 @@
 					xp: 600
 				}
 			]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "043F4A19C7D0C484"
+				item: { count: 1, id: "modern_industrialization:plutonium_ingot" }
+				type: "item"
+			}]
+			x: 12.0d
+			y: 0.0d
 		}
 	]
 }

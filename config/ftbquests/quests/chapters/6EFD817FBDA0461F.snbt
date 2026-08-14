@@ -3,252 +3,253 @@
 	default_quest_shape: ""
 	filename: "6EFD817FBDA0461F"
 	group: "48F8381D9519D002"
-	icon: { id: "mowziesmobs:wrought_helmet" }
+	icon: {
+		id: "mowziesmobs:wrought_helmet"
+	}
 	id: "6EFD817FBDA0461F"
 	images: [ ]
 	order_index: 4
 	quest_links: [ ]
 	quests: [
 		{
+			dependencies: [
+				"0DAB608A7B083DB8"
+				"26E98713CAC0A689"
+				"231CFB60DB42BD03"
+			]
 			id: "37E7EE94AB9C2675"
-			dependencies: ["0DAB608A7B083DB8", "26E98713CAC0A689", "231CFB60DB42BD03"]
+			rewards: [{
+				count: 2
+				id: "261977E8F7F9482F"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				id: "0BA7546FB83CE0C6"
+				type: "checkmark"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0BA7546FB83CE0C6"
-					type: "checkmark"
-				}
-			]
-			rewards: [
-				{
-					id: "261977E8F7F9482F"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: ["37E7EE94AB9C2675"]
 			id: "499464BC3E160165"
-			dependencies: ["37E7EE94AB9C2675"]
+			rewards: [{
+				count: 2
+				id: "40F1CBBCF902DA01"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "mowziesmobs:ferrous_wroughtnaut"
+				id: "6F9F2FBC3055B088"
+				type: "kill"
+				value: 1L
+			}]
 			x: 2.0d
 			y: -3.0d
-			tasks: [
-				{
-					id: "6F9F2FBC3055B088"
-					type: "kill"
-					entity: "mowziesmobs:ferrous_wroughtnaut"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "40F1CBBCF902DA01"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: ["37E7EE94AB9C2675"]
 			id: "338780DB7926F700"
-			dependencies: ["37E7EE94AB9C2675"]
+			rewards: [{
+				count: 2
+				id: "1F5EDABDDBE6A1D8"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "mowziesmobs:frostmaw"
+				id: "27A2398938E5B468"
+				type: "kill"
+				value: 1L
+			}]
 			x: 4.0d
 			y: -3.0d
-			tasks: [
-				{
-					id: "27A2398938E5B468"
-					type: "kill"
-					entity: "mowziesmobs:frostmaw"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "1F5EDABDDBE6A1D8"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "79F5F12B6BD564B1"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "79F5F12B6BD564B1"
+			rewards: [{
+				count: 2
+				id: "6DF7093E81236EB7"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "mowziesmobs:umvuthi"
+				id: "169E2FE5AFF795C9"
+				type: "kill"
+				value: 1L
+			}]
 			x: 6.0d
 			y: -3.0d
-			tasks: [
-				{
-					id: "169E2FE5AFF795C9"
-					type: "kill"
-					entity: "mowziesmobs:umvuthi"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "6DF7093E81236EB7"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6D9E08C372D0906F"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "6D9E08C372D0906F"
+			rewards: [{
+				count: 2
+				id: "0B39C28333CB124D"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "bosses_of_mass_destruction:nether/gauntlet_defeat"
+				criterion: ""
+				id: "4A027F3974856F88"
+				type: "advancement"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "4A027F3974856F88"
-					type: "advancement"
-					advancement: "bosses_of_mass_destruction:nether/gauntlet_defeat"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "0B39C28333CB124D"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2752C3D5F803277A"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "2752C3D5F803277A"
+			rewards: [{
+				count: 2
+				id: "69A4DBD008C50E23"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "bosses_of_mass_destruction:adventure/night_lich_defeat"
+				criterion: ""
+				id: "1BD2ADD032B163FB"
+				type: "advancement"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1BD2ADD032B163FB"
-					type: "advancement"
-					advancement: "bosses_of_mass_destruction:adventure/night_lich_defeat"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "69A4DBD008C50E23"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1B0CECC6538D34B5"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "1B0CECC6538D34B5"
+			rewards: [{
+				count: 2
+				id: "4E7AC1D518033EFD"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "bosses_of_mass_destruction:end/obsidilith_defeat"
+				criterion: ""
+				id: "68FFC7EB4B8788FC"
+				type: "advancement"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "68FFC7EB4B8788FC"
-					type: "advancement"
-					advancement: "bosses_of_mass_destruction:end/obsidilith_defeat"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "4E7AC1D518033EFD"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "4927B70BCF913116"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "4927B70BCF913116"
+			rewards: [{
+				count: 2
+				id: "67D70A82C366D7D7"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "bosses_of_mass_destruction:adventure/void_blossom_defeat"
+				criterion: ""
+				id: "4BD60E62EEFAE88E"
+				type: "advancement"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "4BD60E62EEFAE88E"
-					type: "advancement"
-					advancement: "bosses_of_mass_destruction:adventure/void_blossom_defeat"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "67D70A82C366D7D7"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1E1D393F0208BF48"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "1E1D393F0208BF48"
+			rewards: [{
+				count: 2
+				id: "42CB9E8662AB1A80"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "cataclysm:netherite_monstrosity"
+				id: "61C197FB34AFAFC3"
+				type: "kill"
+				value: 1L
+			}]
 			x: 2.0d
 			y: 3.0d
-			tasks: [
-				{
-					id: "61C197FB34AFAFC3"
-					type: "kill"
-					entity: "cataclysm:netherite_monstrosity"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "42CB9E8662AB1A80"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6BA4692E12E8772A"
 			dependencies: ["37E7EE94AB9C2675"]
+			id: "6BA4692E12E8772A"
+			rewards: [{
+				count: 2
+				id: "7ABFFB7AEB3B95E9"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "cataclysm:maledictus"
+				id: "58B52186E14EE684"
+				type: "kill"
+				value: 1L
+			}]
 			x: 4.0d
 			y: 3.0d
-			tasks: [
-				{
-					id: "58B52186E14EE684"
-					type: "kill"
-					entity: "cataclysm:maledictus"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "7ABFFB7AEB3B95E9"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "00EB5746A726C5B4"
-			dependencies: ["499464BC3E160165", "338780DB7926F700", "79F5F12B6BD564B1", "6D9E08C372D0906F", "2752C3D5F803277A", "1B0CECC6538D34B5", "4927B70BCF913116", "1E1D393F0208BF48", "6BA4692E12E8772A"]
-			x: 10.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "22DD925EF1B3FA27"
-					type: "checkmark"
-				}
+			dependencies: [
+				"499464BC3E160165"
+				"338780DB7926F700"
+				"79F5F12B6BD564B1"
+				"6D9E08C372D0906F"
+				"2752C3D5F803277A"
+				"1B0CECC6538D34B5"
+				"4927B70BCF913116"
+				"1E1D393F0208BF48"
+				"6BA4692E12E8772A"
 			]
+			id: "00EB5746A726C5B4"
 			rewards: [
 				{
 					id: "1CEF628691C5AE9B"
-					type: "loot"
 					table_id: 1895912205423590869L
+					type: "loot"
 				}
 				{
-					id: "09E162AF71706FBA"
-					type: "item"
-					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28
+					id: "09E162AF71706FBA"
+					item: {
+						count: 28
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "3844E04DC0D3A29C"
@@ -256,6 +257,12 @@
 					xp: 800
 				}
 			]
+			tasks: [{
+				id: "22DD925EF1B3FA27"
+				type: "checkmark"
+			}]
+			x: 10.0d
+			y: 0.0d
 		}
 	]
 }

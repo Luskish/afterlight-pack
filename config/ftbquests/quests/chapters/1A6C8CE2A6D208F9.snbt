@@ -3,124 +3,120 @@
 	default_quest_shape: ""
 	filename: "1A6C8CE2A6D208F9"
 	group: "51FF272F5030D2E6"
-	icon: { id: "kubejs:undercurrent_stabilizer_precursor" }
+	icon: {
+		id: "kubejs:undercurrent_stabilizer_precursor"
+	}
 	id: "1A6C8CE2A6D208F9"
 	images: [ ]
 	order_index: 4
 	quest_links: [ ]
 	quests: [
 		{
-			id: "6363BCE8A71FA766"
-			dependencies: ["051EA7B2A3B36BFD", "5F26F92E726A22AC", "49286624F8D7D554"]
+			dependencies: [
+				"051EA7B2A3B36BFD"
+				"5F26F92E726A22AC"
+				"49286624F8D7D554"
+			]
 			dependency_requirement: "one_completed"
+			id: "6363BCE8A71FA766"
+			rewards: [{
+				count: 2
+				id: "2D7649576953098A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				id: "0D9CC065F9EC5F12"
+				type: "checkmark"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0D9CC065F9EC5F12"
-					type: "checkmark"
-				}
-			]
-			rewards: [
-				{
-					id: "2D7649576953098A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2D4915DD8FDA1D06"
 			dependencies: ["6363BCE8A71FA766"]
+			id: "2D4915DD8FDA1D06"
+			rewards: [{
+				count: 2
+				id: "04CE640DA656B6EF"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "1EA21339A94E8C29"
+				item: { count: 1, id: "ars_nouveau:source_jar" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1EA21339A94E8C29"
-					type: "item"
-					item: { count: 1, id: "ars_nouveau:source_jar" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "04CE640DA656B6EF"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "47311C112F22894D"
 			dependencies: ["2D4915DD8FDA1D06"]
+			id: "47311C112F22894D"
+			rewards: [{
+				count: 2
+				id: "17C0B6D4A34B3E8E"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "726CC07B28C9CC5E"
+				item: { count: 1, id: "ars_nouveau:arcane_pedestal" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "726CC07B28C9CC5E"
-					type: "item"
-					item: { count: 1, id: "ars_nouveau:arcane_pedestal" }
-					count: 8L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "17C0B6D4A34B3E8E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1306DADA70B362F3"
 			dependencies: ["47311C112F22894D"]
+			id: "1306DADA70B362F3"
+			rewards: [{
+				count: 2
+				id: "5DC9F39BA7A65A76"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "44903AEAF07A6FA3"
+				item: { count: 1, id: "ars_nouveau:ritual_brazier" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "44903AEAF07A6FA3"
-					type: "item"
-					item: { count: 1, id: "ars_nouveau:ritual_brazier" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5DC9F39BA7A65A76"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "07338DE0FE8114CF"
 			dependencies: ["1306DADA70B362F3"]
-			x: 8.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "03C805BE3B5FFDE3"
-					type: "checkmark"
-				}
-			]
+			id: "07338DE0FE8114CF"
 			rewards: [
 				{
 					id: "2ACF875D536F5967"
-					type: "loot"
 					table_id: 1895912205423590869L
+					type: "loot"
 				}
 				{
-					id: "678D925244FFB0DF"
-					type: "item"
-					item: { count: 20, id: "kubejs:requisition_chit" }
 					count: 20
+					id: "678D925244FFB0DF"
+					item: {
+						count: 20
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "0C1D3A2E10E7A8A0"
@@ -129,16 +125,24 @@
 				}
 				{
 					id: "71754C053A0E65E4"
+					item: {
+						count: 1
+						id: "kubejs:undercurrent_stabilizer_precursor"
+					}
 					type: "item"
-					item: { count: 1, id: "kubejs:undercurrent_stabilizer_precursor" }
-					count: 1
 				}
 				{
 					id: "19BC36262FB19FDC"
-					type: "gamestage"
 					stage: "afterlight_stabilizer_ready"
+					type: "gamestage"
 				}
 			]
+			tasks: [{
+				id: "03C805BE3B5FFDE3"
+				type: "checkmark"
+			}]
+			x: 8.0d
+			y: 0.0d
 		}
 	]
 }

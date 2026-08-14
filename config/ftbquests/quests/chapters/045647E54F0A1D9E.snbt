@@ -3,152 +3,138 @@
 	default_quest_shape: ""
 	filename: "045647E54F0A1D9E"
 	group: "51FF272F5030D2E6"
-	icon: { id: "malum:encyclopedia_arcana" }
+	icon: {
+		id: "malum:encyclopedia_arcana"
+	}
 	id: "045647E54F0A1D9E"
 	images: [ ]
 	order_index: 3
 	quest_links: [ ]
 	quests: [
 		{
-			id: "10752736922A5C3C"
 			dependencies: ["7480D99D56556C8E"]
+			id: "10752736922A5C3C"
+			rewards: [{
+				count: 2
+				id: "680E58B48BC897B6"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "79DDCFE57AD67CF7"
+				item: { count: 1, id: "malum:encyclopedia_arcana" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "79DDCFE57AD67CF7"
-					type: "item"
-					item: { count: 1, id: "malum:encyclopedia_arcana" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "680E58B48BC897B6"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "352D54CEF81F094F"
 			dependencies: ["10752736922A5C3C"]
+			id: "352D54CEF81F094F"
+			rewards: [{
+				count: 2
+				id: "41A784F7EEF8A9F6"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "58EE0617D96B03B4"
+				item: { count: 1, id: "malum:spirit_altar" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "58EE0617D96B03B4"
-					type: "item"
-					item: { count: 1, id: "malum:spirit_altar" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "41A784F7EEF8A9F6"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "183429DB7153D480"
 			dependencies: ["352D54CEF81F094F"]
+			id: "183429DB7153D480"
+			rewards: [{
+				count: 2
+				id: "378517158985B8E3"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "2176A7A2F41BDABE"
+				item: { count: 1, id: "malum:spirit_jar" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2176A7A2F41BDABE"
-					type: "item"
-					item: { count: 1, id: "malum:spirit_jar" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "378517158985B8E3"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1A6847ABC9BFF817"
 			dependencies: ["183429DB7153D480"]
+			id: "1A6847ABC9BFF817"
+			rewards: [{
+				count: 2
+				id: "6E24240F79EA8A8F"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1B46B2B65D1F1666"
+				item: { count: 1, id: "malum:spirit_crucible" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1B46B2B65D1F1666"
-					type: "item"
-					item: { count: 1, id: "malum:spirit_crucible" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "6E24240F79EA8A8F"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5A083FCA4825F423"
 			dependencies: ["1A6847ABC9BFF817"]
+			id: "5A083FCA4825F423"
+			rewards: [{
+				count: 2
+				id: "5E175DF98558A4C7"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "016BCCCB1231F10A"
+				item: { count: 1, id: "malum:arcana_pylon" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "016BCCCB1231F10A"
-					type: "item"
-					item: { count: 1, id: "malum:arcana_pylon" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5E175DF98558A4C7"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "49286624F8D7D554"
 			dependencies: ["5A083FCA4825F423"]
-			x: 10.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "6752A54D673DCABA"
-					type: "item"
-					item: { count: 1, id: "malum:soul_stained_steel_ingot" }
-					count: 16L
-					consume_items: false
-				}
-			]
+			id: "49286624F8D7D554"
 			rewards: [
 				{
 					id: "26FC3DA5FE4B1A62"
-					type: "loot"
 					table_id: 6745737485865812687L
+					type: "loot"
 				}
 				{
-					id: "2395B91C39EF4346"
-					type: "item"
-					item: { count: 12, id: "kubejs:requisition_chit" }
 					count: 12
+					id: "2395B91C39EF4346"
+					item: {
+						count: 12
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "5987EEADCD7FC053"
@@ -156,6 +142,15 @@
 					xp: 250
 				}
 			]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "6752A54D673DCABA"
+				item: { count: 1, id: "malum:soul_stained_steel_ingot" }
+				type: "item"
+			}]
+			x: 10.0d
+			y: 0.0d
 		}
 	]
 }

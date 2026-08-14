@@ -3,182 +3,170 @@
 	default_quest_shape: ""
 	filename: "5307E7406CB0DAE6"
 	group: "4DEAD1F5F7AB4DA3"
-	icon: { id: "modern_industrialization:singularity" }
+	icon: {
+		id: "modern_industrialization:singularity"
+	}
 	id: "5307E7406CB0DAE6"
 	images: [ ]
 	order_index: 4
 	quest_links: [ ]
 	quests: [
 		{
-			id: "616B4C5C04BDD88D"
 			dependencies: ["7131E55FB7E21244"]
+			id: "616B4C5C04BDD88D"
+			rewards: [{
+				count: 2
+				id: "253A97AB0CBAE8B5"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "3A46F6A985DB59C6"
+				item: { count: 1, id: "modern_industrialization:iridium_ingot" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "3A46F6A985DB59C6"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:iridium_ingot" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "253A97AB0CBAE8B5"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6418053F13B8F3C3"
 			dependencies: ["616B4C5C04BDD88D"]
+			id: "6418053F13B8F3C3"
+			rewards: [{
+				count: 2
+				id: "42586EE6B7C9A0E8"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "6CB2D194AE6405FD"
+				item: { count: 1, id: "modern_industrialization:superconductor_ingot" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "6CB2D194AE6405FD"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:superconductor_ingot" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "42586EE6B7C9A0E8"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "43B82DB92C7A1E22"
 			dependencies: ["6418053F13B8F3C3"]
+			id: "43B82DB92C7A1E22"
+			rewards: [{
+				count: 2
+				id: "691FE7F28A542058"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "31AE59307524E471"
+				item: { count: 1, id: "modern_industrialization:quantum_circuit" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "31AE59307524E471"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:quantum_circuit" }
-					count: 8L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "691FE7F28A542058"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "057C19B0A4111580"
 			dependencies: ["43B82DB92C7A1E22"]
+			id: "057C19B0A4111580"
+			rewards: [{
+				count: 2
+				id: "37B2E2B73A3026D7"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "049696905848056C"
+				item: { count: 1, id: "modern_industrialization:quantum_machine_hull" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "049696905848056C"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:quantum_machine_hull" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "37B2E2B73A3026D7"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "689170334A824C52"
 			dependencies: ["057C19B0A4111580"]
+			id: "689170334A824C52"
+			rewards: [{
+				count: 2
+				id: "6F5AED947CA7E0C6"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "2A762B0EFBBFD320"
+				item: { count: 1, id: "modern_industrialization:quantum_upgrade" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2A762B0EFBBFD320"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:quantum_upgrade" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "6F5AED947CA7E0C6"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "57D1232E7FCAE4B4"
 			dependencies: ["689170334A824C52"]
+			id: "57D1232E7FCAE4B4"
+			rewards: [{
+				count: 2
+				id: "4B265ABAF11EA5F5"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [
+				{
+					consume_items: false
+					id: "3AC82D61A3B04BE9"
+					item: { count: 1, id: "modern_industrialization:quantum_tank" }
+					type: "item"
+				}
+				{
+					consume_items: false
+					id: "03F2F5C612600EE1"
+					item: { count: 1, id: "modern_industrialization:quantum_barrel" }
+					type: "item"
+				}
+			]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "3AC82D61A3B04BE9"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:quantum_tank" }
-					count: 1L
-					consume_items: false
-				}
-				{
-					id: "03F2F5C612600EE1"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:quantum_barrel" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "4B265ABAF11EA5F5"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "505A306462A8BC7E"
 			dependencies: ["57D1232E7FCAE4B4"]
-			x: 12.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "5BE3A5AC5610C716"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:singularity" }
-					count: 1L
-					consume_items: false
-				}
-			]
+			id: "505A306462A8BC7E"
 			rewards: [
 				{
 					id: "35386EEE27F36E07"
-					type: "loot"
 					table_id: 1895912205423590869L
+					type: "loot"
 				}
 				{
-					id: "7B95D839B8462599"
-					type: "item"
-					item: { count: 28, id: "kubejs:requisition_chit" }
 					count: 28
+					id: "7B95D839B8462599"
+					item: {
+						count: 28
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "7D6140BBCEA9BE30"
@@ -186,6 +174,14 @@
 					xp: 900
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "5BE3A5AC5610C716"
+				item: { count: 1, id: "modern_industrialization:singularity" }
+				type: "item"
+			}]
+			x: 12.0d
+			y: 0.0d
 		}
 	]
 }

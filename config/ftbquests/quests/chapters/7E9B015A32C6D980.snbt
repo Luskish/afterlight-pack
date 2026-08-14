@@ -3,155 +3,163 @@
 	default_quest_shape: ""
 	filename: "7E9B015A32C6D980"
 	group: "4525BB3160467FCB"
-	icon: { id: "kubejs:gate_kinetic_frame" }
+	icon: {
+		id: "kubejs:gate_kinetic_frame"
+	}
 	id: "7E9B015A32C6D980"
 	images: [ ]
 	order_index: 17
 	quest_links: [ ]
 	quests: [
 		{
+			dependencies: [
+				"72446D404001B38D"
+				"10EDD2BED35BE9E3"
+			]
 			id: "0055C66103106D86"
-			dependencies: ["72446D404001B38D", "10EDD2BED35BE9E3"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "7DDF59C2E8611A33"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "586F94BC6A6D08EA"
+				item: { count: 1, id: "kubejs:gate_kinetic_frame" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: -2.0d
-			tasks: [
-				{
-					id: "586F94BC6A6D08EA"
-					type: "item"
-					item: { count: 1, id: "kubejs:gate_kinetic_frame" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7DDF59C2E8611A33"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"72446D404001B38D"
+				"752C3E53CA89C92D"
+			]
 			id: "52FE1624DCCE878F"
-			dependencies: ["72446D404001B38D", "752C3E53CA89C92D"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "773BE066DAA64F1E"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "262F1E36525F23DC"
+				item: { count: 1, id: "kubejs:gate_industrial_anchor" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "262F1E36525F23DC"
-					type: "item"
-					item: { count: 1, id: "kubejs:gate_industrial_anchor" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "773BE066DAA64F1E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"72446D404001B38D"
+				"21A99D99B372916F"
+			]
 			id: "50775CE87FAA4EB7"
-			dependencies: ["72446D404001B38D", "21A99D99B372916F"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "51D958EF8F96550A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1FAFC12F3779D20A"
+				item: { count: 1, id: "kubejs:gate_isotopic_core" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1FAFC12F3779D20A"
-					type: "item"
-					item: { count: 1, id: "kubejs:gate_isotopic_core" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "51D958EF8F96550A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"72446D404001B38D"
+				"3497EFDF016FAFD7"
+			]
 			id: "7F064705A3CAB2E6"
-			dependencies: ["72446D404001B38D", "3497EFDF016FAFD7"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "7C2E41070C0D4EAD"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "56F8BDF69E27EB09"
+				item: { count: 1, id: "kubejs:gate_lattice_matrix" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "56F8BDF69E27EB09"
-					type: "item"
-					item: { count: 1, id: "kubejs:gate_lattice_matrix" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7C2E41070C0D4EAD"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"72446D404001B38D"
+				"07338DE0FE8114CF"
+			]
 			id: "39C1F24EABBB34A3"
-			dependencies: ["72446D404001B38D", "07338DE0FE8114CF"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "49E08ADA36D12C00"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "123B3D197A42CCEC"
+				item: { count: 1, id: "kubejs:undercurrent_stabilizer" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 2.0d
-			tasks: [
-				{
-					id: "123B3D197A42CCEC"
-					type: "item"
-					item: { count: 1, id: "kubejs:undercurrent_stabilizer" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "49E08ADA36D12C00"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "144473B8267DBC28"
-			dependencies: ["0055C66103106D86", "52FE1624DCCE878F", "50775CE87FAA4EB7", "7F064705A3CAB2E6", "39C1F24EABBB34A3"]
-			progression_mode: "linear"
-			x: 3.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "42F99C5AFE250994"
-					type: "checkmark"
-				}
+			dependencies: [
+				"0055C66103106D86"
+				"52FE1624DCCE878F"
+				"50775CE87FAA4EB7"
+				"7F064705A3CAB2E6"
+				"39C1F24EABBB34A3"
 			]
+			id: "144473B8267DBC28"
+			progression_mode: "linear"
 			rewards: [
 				{
 					id: "15F642B272CAD5D9"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "7C74A9AE020CCF88"
-					type: "item"
-					item: { count: 48, id: "kubejs:requisition_chit" }
 					count: 48
+					id: "7C74A9AE020CCF88"
+					item: {
+						count: 48
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "7841DFAAC02FE09C"
@@ -159,6 +167,12 @@
 					xp: 1200
 				}
 			]
+			tasks: [{
+				id: "42F99C5AFE250994"
+				type: "checkmark"
+			}]
+			x: 3.0d
+			y: 0.0d
 		}
 	]
 }

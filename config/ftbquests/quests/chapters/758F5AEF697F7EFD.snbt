@@ -3,34 +3,30 @@
 	default_quest_shape: ""
 	filename: "758F5AEF697F7EFD"
 	group: "4A20F33642175B95"
-	icon: { id: "minecraft:iron_ingot" }
+	icon: {
+		id: "minecraft:iron_ingot"
+	}
 	id: "758F5AEF697F7EFD"
 	images: [ ]
-	order_index: 20
+	order_index: 7
 	quest_links: [ ]
-	quests: [
-		{
-			id: "44C4CC196D2FB334"
-			x: 0.0d
-			y: 0.0d
-			can_repeat: true
-			repeat_cooldown: 5
-			tasks: [
-				{
-					id: "55E050AAB771AC43"
-					type: "item"
-					item: { count: 1, id: "kubejs:requisition_chit" }
-					count: 8L
-					consume_items: true
-				}
-			]
-			rewards: [
-				{
-					id: "4B1DA9D78091E76D"
-					type: "choice"
-					table_id: 1722236105617115092L
-				}
-			]
-		}
-	]
+	quests: [{
+		can_repeat: true
+		id: "44C4CC196D2FB334"
+		repeat_cooldown: 5
+		rewards: [{
+			id: "4B1DA9D78091E76D"
+			table_id: 1722236105617115092L
+			type: "choice"
+		}]
+		tasks: [{
+			consume_items: true
+			count: 8L
+			id: "55E050AAB771AC43"
+			item: { count: 1, id: "kubejs:requisition_chit" }
+			type: "item"
+		}]
+		x: 0.0d
+		y: 0.0d
+	}]
 }

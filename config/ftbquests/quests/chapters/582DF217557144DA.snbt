@@ -3,237 +3,218 @@
 	default_quest_shape: ""
 	filename: "582DF217557144DA"
 	group: "4525BB3160467FCB"
-	icon: { id: "ae2:quantum_entangled_singularity" }
+	icon: {
+		id: "ae2:quantum_entangled_singularity"
+	}
 	id: "582DF217557144DA"
 	images: [ ]
 	order_index: 15
 	quest_links: [ ]
 	quests: [
 		{
-			id: "557DC7BACD462EFE"
 			dependencies: ["21A99D99B372916F"]
+			id: "557DC7BACD462EFE"
+			rewards: [{
+				count: 2
+				id: "05119726F772D973"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "3EA453ACE70727D9"
+				item: { count: 1, id: "oritech:exo_jetpack" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "3EA453ACE70727D9"
-					type: "item"
-					item: { count: 1, id: "oritech:exo_jetpack" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "05119726F772D973"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6770D80A33AA7CC7"
 			dependencies: ["557DC7BACD462EFE"]
+			id: "6770D80A33AA7CC7"
+			rewards: [{
+				count: 2
+				id: "53FF4B38051FDA05"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "aeronautics:head_in_the_clouds"
+				criterion: ""
+				id: "03005E62D7F11D57"
+				type: "advancement"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "03005E62D7F11D57"
-					type: "advancement"
-					advancement: "aeronautics:head_in_the_clouds"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "53FF4B38051FDA05"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "18A7CD636003AFE5"
 			dependencies: ["6770D80A33AA7CC7"]
+			id: "18A7CD636003AFE5"
+			rewards: [{
+				count: 2
+				id: "6DD24D6BFB73F2D4"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "aeronautics:in_thrust_we_trust"
+				criterion: ""
+				id: "41D050DA1DB40290"
+				type: "advancement"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "41D050DA1DB40290"
-					type: "advancement"
-					advancement: "aeronautics:in_thrust_we_trust"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "6DD24D6BFB73F2D4"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "06029069587D765F"
 			dependencies: ["18A7CD636003AFE5"]
+			id: "06029069587D765F"
+			rewards: [{
+				count: 2
+				id: "77275C7C262A9638"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "43441C97186D13C4"
+				item: { count: 1, id: "oritech:large_storage_block" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "43441C97186D13C4"
-					type: "item"
-					item: { count: 1, id: "oritech:large_storage_block" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "77275C7C262A9638"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "71DD8E9040C4CBA3"
 			dependencies: ["06029069587D765F"]
+			id: "71DD8E9040C4CBA3"
+			rewards: [{
+				count: 2
+				id: "2F6A9F220ECAB382"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "39C69BF4D90908A2"
+				item: { count: 1, id: "oritech:jetpack_elytra" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "39C69BF4D90908A2"
-					type: "item"
-					item: { count: 1, id: "oritech:jetpack_elytra" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "2F6A9F220ECAB382"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "23C08FB037E35BDE"
 			dependencies: ["71DD8E9040C4CBA3"]
+			id: "23C08FB037E35BDE"
+			rewards: [{
+				count: 2
+				id: "7D90B20E1D1A84B8"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				dimension: "eternal_starlight:starlight"
+				id: "7C3C9A0122D94D02"
+				type: "dimension"
+			}]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "7C3C9A0122D94D02"
-					type: "dimension"
-					dimension: "eternal_starlight:starlight"
-				}
-			]
-			rewards: [
-				{
-					id: "7D90B20E1D1A84B8"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "79B4A2CBDDE45176"
 			dependencies: ["23C08FB037E35BDE"]
+			id: "79B4A2CBDDE45176"
+			rewards: [{
+				count: 2
+				id: "5EADB9933E1C8573"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				id: "6FED0CC0D7A39EBC"
+				structure: "eternal_starlight:golem_forge"
+				type: "structure"
+			}]
 			x: 12.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "6FED0CC0D7A39EBC"
-					type: "structure"
-					structure: "eternal_starlight:golem_forge"
-				}
-			]
-			rewards: [
-				{
-					id: "5EADB9933E1C8573"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "793ED9746DE25AD2"
 			dependencies: ["79B4A2CBDDE45176"]
+			id: "793ED9746DE25AD2"
+			rewards: [{
+				count: 2
+				id: "5F02C5EBA6F8C900"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				entity: "eternal_starlight:the_gatekeeper"
+				id: "6DBDAAFA6ACB3BFC"
+				type: "kill"
+				value: 1L
+			}]
 			x: 14.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "6DBDAAFA6ACB3BFC"
-					type: "kill"
-					entity: "eternal_starlight:the_gatekeeper"
-					value: 1L
-				}
-			]
-			rewards: [
-				{
-					id: "5F02C5EBA6F8C900"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "7DEA80315CFDE8AA"
 			dependencies: ["793ED9746DE25AD2"]
+			id: "7DEA80315CFDE8AA"
+			rewards: [{
+				count: 2
+				id: "79B88E29C833FBB0"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "185EA5D4E6B607F9"
+				item: { count: 1, id: "ae2:quantum_link" }
+				type: "item"
+			}]
 			x: 16.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "185EA5D4E6B607F9"
-					type: "item"
-					item: { count: 1, id: "ae2:quantum_link" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "79B88E29C833FBB0"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "3497EFDF016FAFD7"
 			dependencies: ["7DEA80315CFDE8AA"]
-			x: 18.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "6ECA9C1D0167DC3B"
-					type: "item"
-					item: { count: 1, id: "ae2:quantum_entangled_singularity" }
-					count: 1L
-					consume_items: false
-				}
-			]
+			id: "3497EFDF016FAFD7"
 			rewards: [
 				{
 					id: "018D14893F6DE0CF"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "4C50616E9D9FAE02"
-					type: "item"
-					item: { count: 34, id: "kubejs:requisition_chit" }
 					count: 34
+					id: "4C50616E9D9FAE02"
+					item: {
+						count: 34
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "0CB91427A91877D9"
@@ -242,16 +223,26 @@
 				}
 				{
 					id: "2A8880D7E6C0A05B"
+					item: {
+						count: 1
+						id: "kubejs:schematic_lattice_matrix"
+					}
 					type: "item"
-					item: { count: 1, id: "kubejs:schematic_lattice_matrix" }
-					count: 1
 				}
 				{
 					id: "288082985A62A22A"
-					type: "gamestage"
 					stage: "afterlight:gate_ae2"
+					type: "gamestage"
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "6ECA9C1D0167DC3B"
+				item: { count: 1, id: "ae2:quantum_entangled_singularity" }
+				type: "item"
+			}]
+			x: 18.0d
+			y: 0.0d
 		}
 	]
 }

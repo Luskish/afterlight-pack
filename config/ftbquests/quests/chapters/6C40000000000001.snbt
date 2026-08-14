@@ -3,32 +3,28 @@
 	default_quest_shape: ""
 	filename: "6C40000000000001"
 	group: "4525BB3160467FCB"
-	icon: { id: "afterlight:echo" }
+	icon: {
+		id: "afterlight:echo"
+	}
 	id: "6C40000000000001"
 	images: [ ]
 	order_index: 0
 	quest_links: [ ]
-	quests: [
-		{
-			id: "6C40000000000002"
-			x: 0.0d
-			y: 0.0d
-			can_repeat: true
-			repeat_cooldown: 5
-			tasks: [
-				{
-					id: "6C40000000000003"
-					type: "checkmark"
-				}
-			]
-			rewards: [
-				{
-					id: "6C40000000000004"
-					type: "command"
-					command: "echo recover"
-					silent: true
-				}
-			]
-		}
-	]
+	quests: [{
+		can_repeat: true
+		id: "6C40000000000002"
+		repeat_cooldown: 5
+		rewards: [{
+			command: "echo recover"
+			id: "6C40000000000004"
+			silent: true
+			type: "command"
+		}]
+		tasks: [{
+			id: "6C40000000000003"
+			type: "checkmark"
+		}]
+		x: 0.0d
+		y: 0.0d
+	}]
 }

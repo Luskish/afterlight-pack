@@ -3,152 +3,137 @@
 	default_quest_shape: ""
 	filename: "11D0B654D6E9B714"
 	group: "51FF272F5030D2E6"
-	icon: { id: "irons_spellbooks:arcane_anvil" }
+	icon: {
+		id: "irons_spellbooks:arcane_anvil"
+	}
 	id: "11D0B654D6E9B714"
 	images: [ ]
 	order_index: 2
 	quest_links: [ ]
 	quests: [
 		{
-			id: "532A6B9EECE82E69"
 			dependencies: ["7480D99D56556C8E"]
+			id: "532A6B9EECE82E69"
+			rewards: [{
+				count: 2
+				id: "5AB9117D488414CC"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "2755F32AED60594C"
+				item: { components: { "irons_spellbooks:spell_container": { data: [ ], maxSpells: 5, mustEquip: 1b, spellWheel: 1b } }, count: 1, id: "irons_spellbooks:copper_spell_book" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2755F32AED60594C"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:copper_spell_book" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5AB9117D488414CC"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "7A4FCF5F5EEAD9C8"
 			dependencies: ["532A6B9EECE82E69"]
+			id: "7A4FCF5F5EEAD9C8"
+			rewards: [{
+				count: 2
+				id: "29B9057CF37C660D"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 32L
+				id: "09DA3DEC633A8F30"
+				item: { count: 1, id: "irons_spellbooks:arcane_essence" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "09DA3DEC633A8F30"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:arcane_essence" }
-					count: 32L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "29B9057CF37C660D"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "1C3C84CCFA45C227"
 			dependencies: ["7A4FCF5F5EEAD9C8"]
+			id: "1C3C84CCFA45C227"
+			rewards: [{
+				count: 2
+				id: "23583BCD98CB3EEA"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "7175179F4F48308A"
+				item: { count: 1, id: "irons_spellbooks:inscription_table" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "7175179F4F48308A"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:inscription_table" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "23583BCD98CB3EEA"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "539095BF36C4999C"
 			dependencies: ["1C3C84CCFA45C227"]
+			id: "539095BF36C4999C"
+			rewards: [{
+				count: 2
+				id: "14892DE8F8A9A2D3"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "21BB32895B78CCAB"
+				item: { count: 1, id: "irons_spellbooks:scroll_forge" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "21BB32895B78CCAB"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:scroll_forge" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "14892DE8F8A9A2D3"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2B4DC1F500264B40"
 			dependencies: ["539095BF36C4999C"]
+			id: "2B4DC1F500264B40"
+			rewards: [{
+				count: 2
+				id: "78588759A972D28A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "023A00BE613086AF"
+				item: { count: 1, id: "irons_spellbooks:alchemist_cauldron" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "023A00BE613086AF"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:alchemist_cauldron" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "78588759A972D28A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5F26F92E726A22AC"
 			dependencies: ["2B4DC1F500264B40"]
-			x: 10.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "192FBAD0A3833AA3"
-					type: "item"
-					item: { count: 1, id: "irons_spellbooks:arcane_anvil" }
-					count: 1L
-					consume_items: false
-				}
-			]
+			id: "5F26F92E726A22AC"
 			rewards: [
 				{
 					id: "565E68E866BCBB48"
-					type: "loot"
 					table_id: 6745737485865812687L
+					type: "loot"
 				}
 				{
-					id: "7422A04A65B27E02"
-					type: "item"
-					item: { count: 12, id: "kubejs:requisition_chit" }
 					count: 12
+					id: "7422A04A65B27E02"
+					item: {
+						count: 12
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "06A9BA39E4FE6008"
@@ -156,6 +141,14 @@
 					xp: 250
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "192FBAD0A3833AA3"
+				item: { count: 1, id: "irons_spellbooks:arcane_anvil" }
+				type: "item"
+			}]
+			x: 10.0d
+			y: 0.0d
 		}
 	]
 }

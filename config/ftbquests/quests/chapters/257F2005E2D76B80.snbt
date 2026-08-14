@@ -3,221 +3,206 @@
 	default_quest_shape: ""
 	filename: "257F2005E2D76B80"
 	group: "4525BB3160467FCB"
-	icon: { id: "fluxnetworks:flux_controller" }
+	icon: {
+		id: "fluxnetworks:flux_controller"
+	}
 	id: "257F2005E2D76B80"
 	images: [ ]
 	order_index: 9
 	quest_links: [ ]
 	quests: [
 		{
-			id: "0D1D4842B326D878"
 			dependencies: ["591C65D0AC3AABA7"]
+			id: "0D1D4842B326D878"
+			rewards: [{
+				count: 2
+				id: "773224603B7D2ECD"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "0E6E8246E063FF20"
+				item: { count: 1, id: "powah:energizing_orb" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0E6E8246E063FF20"
-					type: "item"
-					item: { count: 1, id: "powah:energizing_orb" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "773224603B7D2ECD"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "068564885949C7CB"
 			dependencies: ["0D1D4842B326D878"]
+			id: "068564885949C7CB"
+			rewards: [{
+				count: 2
+				id: "486492E8F5EA7BFE"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 2L
+				id: "34DB4AAA9AD50F79"
+				item: { count: 1, id: "powah:thermo_generator_basic" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "34DB4AAA9AD50F79"
-					type: "item"
-					item: { count: 1, id: "powah:thermo_generator_basic" }
-					count: 2L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "486492E8F5EA7BFE"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2C2EF25F89BFE5E5"
 			dependencies: ["068564885949C7CB"]
+			id: "2C2EF25F89BFE5E5"
+			rewards: [{
+				count: 2
+				id: "4C20F10286B8415D"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "48FD9CC73EE69DBA"
+				item: { count: 1, id: "powah:reactor_basic" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "48FD9CC73EE69DBA"
-					type: "item"
-					item: { count: 1, id: "powah:reactor_basic" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "4C20F10286B8415D"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "4E76FFCCB1836525"
 			dependencies: ["068564885949C7CB"]
+			id: "4E76FFCCB1836525"
+			rewards: [{
+				count: 2
+				id: "331A5C74A44F0554"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 2L
+				id: "026A3343A9451DCB"
+				item: { count: 1, id: "powah:energy_cell_basic" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "026A3343A9451DCB"
-					type: "item"
-					item: { count: 1, id: "powah:energy_cell_basic" }
-					count: 2L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "331A5C74A44F0554"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"2C2EF25F89BFE5E5"
+				"4E76FFCCB1836525"
+			]
 			id: "0EB523691407A912"
-			dependencies: ["2C2EF25F89BFE5E5", "4E76FFCCB1836525"]
+			rewards: [{
+				count: 2
+				id: "7A7358BF650E0F15"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "554C5061966DCA68"
+				item: { count: 1, id: "enderio:basic_capacitor_bank" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "554C5061966DCA68"
-					type: "item"
-					item: { count: 1, id: "enderio:basic_capacitor_bank" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7A7358BF650E0F15"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "4AEF6244C3588A9F"
 			dependencies: ["0EB523691407A912"]
+			id: "4AEF6244C3588A9F"
+			rewards: [{
+				count: 2
+				id: "4653893AFCDC9CEF"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 32L
+				id: "11B5FB8321FA8CA0"
+				item: { components: { "enderio:conduit": "enderio:energy" }, count: 1, id: "enderio:conduit" }
+				match_components: "fuzzy"
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "11B5FB8321FA8CA0"
-					type: "item"
-					item: { count: 1, id: "enderio:conduit", components: { "enderio:conduit": "enderio:energy" } }
-					count: 32L
-					consume_items: false
-					match_components: "fuzzy"
-				}
-			]
-			rewards: [
-				{
-					id: "4653893AFCDC9CEF"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "73E90DB4726301B0"
 			dependencies: ["4AEF6244C3588A9F"]
+			id: "73E90DB4726301B0"
+			rewards: [{
+				count: 2
+				id: "318A1DA7AEB6AE32"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "7085764F315AC1CA"
+				item: { count: 1, id: "fluxnetworks:flux_plug" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "7085764F315AC1CA"
-					type: "item"
-					item: { count: 1, id: "fluxnetworks:flux_plug" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "318A1DA7AEB6AE32"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "11239054873E1CD7"
 			dependencies: ["73E90DB4726301B0"]
+			id: "11239054873E1CD7"
+			rewards: [{
+				count: 2
+				id: "7426CBD75FCD761E"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "0971562C9301B587"
+				item: { count: 1, id: "fluxnetworks:flux_controller" }
+				type: "item"
+			}]
 			x: 12.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0971562C9301B587"
-					type: "item"
-					item: { count: 1, id: "fluxnetworks:flux_controller" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7426CBD75FCD761E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6B876A865DE7A77A"
 			dependencies: ["11239054873E1CD7"]
-			x: 14.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "233437755BA69526"
-					type: "forge_energy"
-					value: 10000000L
-					max_input: 250000L
-				}
-			]
+			id: "6B876A865DE7A77A"
 			rewards: [
 				{
 					id: "57D4DE000CACE3FE"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "1563E63C54404D11"
-					type: "item"
-					item: { count: 18, id: "kubejs:requisition_chit" }
 					count: 18
+					id: "1563E63C54404D11"
+					item: {
+						count: 18
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "7F127A4EA4163F5C"
@@ -225,6 +210,14 @@
 					xp: 400
 				}
 			]
+			tasks: [{
+				id: "233437755BA69526"
+				max_input: 250000L
+				type: "forge_energy"
+				value: 10000000L
+			}]
+			x: 14.0d
+			y: 0.0d
 		}
 	]
 }

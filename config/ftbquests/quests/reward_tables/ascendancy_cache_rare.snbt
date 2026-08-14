@@ -1,71 +1,117 @@
 {
+	icon: {
+		id: "create:brass_ingot"
+	}
 	id: "5D9DAC80C11182CF"
-	order_index: 1
-	filename: "ascendancy_cache_rare"
-	icon: { id: "create:brass_ingot" }
 	loot_size: 2
-	use_title: true
+	order_index: 1
 	rewards: [
-		{ id: "42F7AE77976ECC96"
-			type: "item"
-			item: { count: 10, id: "kubejs:requisition_chit" }
+		{
 			count: 10
-			weight: 30.0f }
-		{ id: "12AC69356A7247AF"
-			type: "item"
-			item: { count: 4, id: "minecraft:iron_block" }
+			id: "42F7AE77976ECC96"
+			item: {
+				count: 10
+				id: "kubejs:requisition_chit"
+			}
+			weight: 30.0f
+		}
+		{
 			count: 4
-			weight: 20.0f }
-		{ id: "622410C8BE4AED54"
-			type: "item"
-			item: { count: 3, id: "minecraft:golden_apple" }
+			id: "12AC69356A7247AF"
+			item: {
+				count: 4
+				id: "minecraft:iron_block"
+			}
+			weight: 20.0f
+		}
+		{
 			count: 3
-			weight: 15.0f }
-		{ id: "74B0F48CBB14A5F3"
-			type: "item"
-			item: { count: 4, id: "minecraft:diamond" }
+			id: "622410C8BE4AED54"
+			item: {
+				count: 3
+				id: "minecraft:golden_apple"
+			}
+			weight: 15.0f
+		}
+		{
 			count: 4
-			weight: 18.0f }
-		{ id: "701A0D3E15BF19C7"
-			type: "item"
-			item: { count: 12, id: "create:brass_ingot" }
+			id: "74B0F48CBB14A5F3"
+			item: {
+				count: 4
+				id: "minecraft:diamond"
+			}
+			weight: 18.0f
+		}
+		{
 			count: 12
-			weight: 16.0f }
-		{ id: "283D60B94512B363"
-			type: "item"
-			item: { count: 4, id: "mekanism:alloy_reinforced" }
+			id: "701A0D3E15BF19C7"
+			item: {
+				count: 12
+				id: "create:brass_ingot"
+			}
+			weight: 16.0f
+		}
+		{
 			count: 4
-			weight: 12.0f }
-		{ id: "39B76CB497172A50"
-			type: "item"
-			item: { count: 2, id: "ae2:logic_processor" }
+			id: "283D60B94512B363"
+			item: {
+				count: 4
+				id: "mekanism:alloy_reinforced"
+			}
+			weight: 12.0f
+		}
+		{
 			count: 2
-			weight: 12.0f }
-		{ id: "7CEBB7A65F7B8553"
-			type: "item"
-			item: { count: 8, id: "immersiveengineering:ingot_steel" }
+			id: "39B76CB497172A50"
+			item: {
+				count: 2
+				id: "ae2:logic_processor"
+			}
+			weight: 12.0f
+		}
+		{
 			count: 8
-			weight: 16.0f }
-		{ id: "6604B1A872F97EBD"
-			type: "item"
-			item: { count: 8, id: "modern_industrialization:stainless_steel_ingot" }
+			id: "7CEBB7A65F7B8553"
+			item: {
+				count: 8
+				id: "immersiveengineering:ingot_steel"
+			}
+			weight: 16.0f
+		}
+		{
 			count: 8
-			weight: 10.0f }
-		{ id: "7EE6196244E009DD"
-			type: "item"
-			item: { count: 24, id: "minecraft:experience_bottle" }
+			id: "6604B1A872F97EBD"
+			item: {
+				count: 8
+				id: "modern_industrialization:stainless_steel_ingot"
+			}
+			weight: 10.0f
+		}
+		{
 			count: 24
-			weight: 18.0f }
-		{ id: "2617AD63DA377F13"
-			type: "item"
-			item: { count: 1, id: "minecraft:netherite_scrap" }
-			count: 1
-			weight: 4.0f }
-		{ id: "6F247DF2E6BA3E83"
-			type: "item"
-			item: { count: 1, id: "minecraft:enchanted_golden_apple" }
-			count: 1
-			weight: 2.0f }
+			id: "7EE6196244E009DD"
+			item: {
+				count: 24
+				id: "minecraft:experience_bottle"
+			}
+			weight: 18.0f
+		}
+		{
+			id: "2617AD63DA377F13"
+			item: {
+				count: 1
+				id: "minecraft:netherite_scrap"
+			}
+			weight: 4.0f
+		}
+		{
+			id: "6F247DF2E6BA3E83"
+			item: {
+				count: 1
+				id: "minecraft:enchanted_golden_apple"
+			}
+			weight: 2.0f
+		}
 	]
-	title: "Ascendancy Cache: Rare"
+	use_title: true
 }

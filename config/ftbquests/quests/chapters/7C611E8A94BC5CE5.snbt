@@ -3,35 +3,31 @@
 	default_quest_shape: ""
 	filename: "7C611E8A94BC5CE5"
 	group: "4A20F33642175B95"
-	icon: { id: "create:brass_ingot" }
+	icon: {
+		id: "create:brass_ingot"
+	}
 	id: "7C611E8A94BC5CE5"
 	images: [ ]
-	order_index: 21
+	order_index: 8
 	quest_links: [ ]
-	quests: [
-		{
-			id: "22699BF1FF1633C4"
-			dependencies: ["5A407B47132C07C6"]
-			x: 0.0d
-			y: 0.0d
-			can_repeat: true
-			repeat_cooldown: 5
-			tasks: [
-				{
-					id: "6BA7BF2F90031284"
-					type: "item"
-					item: { count: 1, id: "kubejs:requisition_chit" }
-					count: 16L
-					consume_items: true
-				}
-			]
-			rewards: [
-				{
-					id: "78CA1DCAE584FE43"
-					type: "choice"
-					table_id: 1739929614607485509L
-				}
-			]
-		}
-	]
+	quests: [{
+		can_repeat: true
+		dependencies: ["5A407B47132C07C6"]
+		id: "22699BF1FF1633C4"
+		repeat_cooldown: 5
+		rewards: [{
+			id: "78CA1DCAE584FE43"
+			table_id: 1739929614607485509L
+			type: "choice"
+		}]
+		tasks: [{
+			consume_items: true
+			count: 16L
+			id: "6BA7BF2F90031284"
+			item: { count: 1, id: "kubejs:requisition_chit" }
+			type: "item"
+		}]
+		x: 0.0d
+		y: 0.0d
+	}]
 }

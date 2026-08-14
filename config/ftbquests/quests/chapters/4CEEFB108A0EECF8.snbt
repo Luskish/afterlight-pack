@@ -3,192 +3,190 @@
 	default_quest_shape: ""
 	filename: "4CEEFB108A0EECF8"
 	group: "48F8381D9519D002"
-	icon: { id: "twilightforest:twilight_scepter" }
+	icon: {
+		id: "twilightforest:twilight_scepter"
+	}
 	id: "4CEEFB108A0EECF8"
 	images: [ ]
 	order_index: 1
 	quest_links: [ ]
 	quests: [
 		{
+			dependencies: [
+				"4B24516D89E13CFF"
+				"07475C3BA1A4143F"
+			]
 			id: "4261DA792971891F"
-			dependencies: ["4B24516D89E13CFF", "07475C3BA1A4143F"]
-			x: 0.0d
-			y: 0.0d
+			rewards: [{
+				count: 2
+				id: "31D68DC3CA95EF7E"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
 			tasks: [
 				{
+					dimension: "twilightforest:twilight_forest"
 					id: "4135975CDE8DB62B"
 					type: "dimension"
-					dimension: "twilightforest:twilight_forest"
 				}
 				{
+					dimension: "aether:the_aether"
 					id: "49C1604F7AC50FE7"
 					type: "dimension"
-					dimension: "aether:the_aether"
 				}
 			]
-			rewards: [
-				{
-					id: "31D68DC3CA95EF7E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "170433D6BE7EA6C8"
-			dependencies: ["4261DA792971891F"]
-			x: 2.0d
-			y: -2.0d
-			tasks: [
-				{
-					id: "3F317C30FD77649C"
-					type: "advancement"
-					advancement: "twilightforest:progress_naga"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "28D9BD8745B77136"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "46D366F3759D2106"
-			dependencies: ["170433D6BE7EA6C8"]
-			x: 4.0d
-			y: -2.0d
-			tasks: [
-				{
-					id: "6A79911B82BB4400"
-					type: "advancement"
-					advancement: "twilightforest:progress_lich"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "757FFD18A18FF539"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "6AD1F62284E66823"
-			dependencies: ["46D366F3759D2106"]
-			x: 6.0d
-			y: -2.0d
-			tasks: [
-				{
-					id: "21376A199B82246E"
-					type: "advancement"
-					advancement: "twilightforest:progress_hydra"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "247DE99054E7449F"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "75F9827EFEAF090E"
-			dependencies: ["4261DA792971891F"]
-			x: 2.0d
-			y: 2.0d
-			tasks: [
-				{
-					id: "153C29A5F31F161D"
-					type: "advancement"
-					advancement: "aether:bronze_dungeon"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "4EB3EB377A006AC6"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "317C0D9B82BCD3C6"
-			dependencies: ["75F9827EFEAF090E"]
-			x: 4.0d
-			y: 2.0d
-			tasks: [
-				{
-					id: "55280FEE063B71CB"
-					type: "advancement"
-					advancement: "aether:silver_dungeon"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "728CEB8F9497C363"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "2D4397AD41F67A50"
-			dependencies: ["317C0D9B82BCD3C6"]
-			x: 6.0d
-			y: 2.0d
-			tasks: [
-				{
-					id: "52E210625DB9D42D"
-					type: "advancement"
-					advancement: "aether:gold_dungeon"
-					criterion: ""
-				}
-			]
-			rewards: [
-				{
-					id: "35093499C3CCC553"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
-		}
-		{
-			id: "0DAB608A7B083DB8"
-			dependencies: ["6AD1F62284E66823", "2D4397AD41F67A50"]
-			x: 8.0d
+			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "26F66E97A5D86FC3"
-					type: "checkmark"
+		}
+		{
+			dependencies: ["4261DA792971891F"]
+			id: "170433D6BE7EA6C8"
+			rewards: [{
+				count: 2
+				id: "28D9BD8745B77136"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
 				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "twilightforest:progress_naga"
+				criterion: ""
+				id: "3F317C30FD77649C"
+				type: "advancement"
+			}]
+			x: 2.0d
+			y: -2.0d
+		}
+		{
+			dependencies: ["170433D6BE7EA6C8"]
+			id: "46D366F3759D2106"
+			rewards: [{
+				count: 2
+				id: "757FFD18A18FF539"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "twilightforest:progress_lich"
+				criterion: ""
+				id: "6A79911B82BB4400"
+				type: "advancement"
+			}]
+			x: 4.0d
+			y: -2.0d
+		}
+		{
+			dependencies: ["46D366F3759D2106"]
+			id: "6AD1F62284E66823"
+			rewards: [{
+				count: 2
+				id: "247DE99054E7449F"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "twilightforest:progress_hydra"
+				criterion: ""
+				id: "21376A199B82246E"
+				type: "advancement"
+			}]
+			x: 6.0d
+			y: -2.0d
+		}
+		{
+			dependencies: ["4261DA792971891F"]
+			id: "75F9827EFEAF090E"
+			rewards: [{
+				count: 2
+				id: "4EB3EB377A006AC6"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "aether:bronze_dungeon"
+				criterion: ""
+				id: "153C29A5F31F161D"
+				type: "advancement"
+			}]
+			x: 2.0d
+			y: 2.0d
+		}
+		{
+			dependencies: ["75F9827EFEAF090E"]
+			id: "317C0D9B82BCD3C6"
+			rewards: [{
+				count: 2
+				id: "728CEB8F9497C363"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "aether:silver_dungeon"
+				criterion: ""
+				id: "55280FEE063B71CB"
+				type: "advancement"
+			}]
+			x: 4.0d
+			y: 2.0d
+		}
+		{
+			dependencies: ["317C0D9B82BCD3C6"]
+			id: "2D4397AD41F67A50"
+			rewards: [{
+				count: 2
+				id: "35093499C3CCC553"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				advancement: "aether:gold_dungeon"
+				criterion: ""
+				id: "52E210625DB9D42D"
+				type: "advancement"
+			}]
+			x: 6.0d
+			y: 2.0d
+		}
+		{
+			dependencies: [
+				"6AD1F62284E66823"
+				"2D4397AD41F67A50"
 			]
+			id: "0DAB608A7B083DB8"
 			rewards: [
 				{
 					id: "6919078360354D9A"
-					type: "loot"
 					table_id: 6745737485865812687L
+					type: "loot"
 				}
 				{
-					id: "3E91D2CD7B87C631"
-					type: "item"
-					item: { count: 12, id: "kubejs:requisition_chit" }
 					count: 12
+					id: "3E91D2CD7B87C631"
+					item: {
+						count: 12
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "6526521764538780"
@@ -196,6 +194,12 @@
 					xp: 300
 				}
 			]
+			tasks: [{
+				id: "26F66E97A5D86FC3"
+				type: "checkmark"
+			}]
+			x: 8.0d
+			y: 0.0d
 		}
 	]
 }

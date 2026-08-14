@@ -3,175 +3,160 @@
 	default_quest_shape: ""
 	filename: "3C0EE28909760862"
 	group: "4DEAD1F5F7AB4DA3"
-	icon: { id: "modern_industrialization:assembler" }
+	icon: {
+		id: "modern_industrialization:assembler"
+	}
 	id: "3C0EE28909760862"
 	images: [ ]
 	order_index: 1
 	quest_links: [ ]
 	quests: [
 		{
-			id: "2826B8E3F1C3FD28"
 			dependencies: ["72CE68CEF727A313"]
+			id: "2826B8E3F1C3FD28"
+			rewards: [{
+				count: 2
+				id: "5DD957E16016E6F6"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "1B90D2E6C4AA8D88"
+				item: { count: 1, id: "modern_industrialization:analog_circuit" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1B90D2E6C4AA8D88"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:analog_circuit" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5DD957E16016E6F6"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "65ECD64817F1A750"
 			dependencies: ["2826B8E3F1C3FD28"]
+			id: "65ECD64817F1A750"
+			rewards: [{
+				count: 2
+				id: "7D714D7CDAF0535C"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 4L
+				id: "0BEDC4408FFBBF38"
+				item: { count: 1, id: "modern_industrialization:basic_machine_hull" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "0BEDC4408FFBBF38"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:basic_machine_hull" }
-					count: 4L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7D714D7CDAF0535C"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "35783224C0644E3E"
 			dependencies: ["65ECD64817F1A750"]
+			id: "35783224C0644E3E"
+			rewards: [{
+				count: 2
+				id: "37127303E7470256"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 2L
+				id: "2B7F964CE8C9D62F"
+				item: { count: 1, id: "modern_industrialization:lv_steam_turbine" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2B7F964CE8C9D62F"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:lv_steam_turbine" }
-					count: 2L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "37127303E7470256"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "73FEA26D1A9CD3AB"
 			dependencies: ["35783224C0644E3E"]
+			id: "73FEA26D1A9CD3AB"
+			rewards: [{
+				count: 2
+				id: "167112960C17838C"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "389713ACD256777A"
+				item: { count: 1, id: "modern_industrialization:lv_storage_unit" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "389713ACD256777A"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:lv_storage_unit" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "167112960C17838C"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "22136042E5BE2514"
 			dependencies: ["73FEA26D1A9CD3AB"]
+			id: "22136042E5BE2514"
+			rewards: [{
+				count: 2
+				id: "73942AF583FDB2EB"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "5086ACA1961BACEA"
+				item: { count: 1, id: "modern_industrialization:electric_macerator" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "5086ACA1961BACEA"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:electric_macerator" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "73942AF583FDB2EB"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "13FD3F81EDE7AE26"
 			dependencies: ["22136042E5BE2514"]
+			id: "13FD3F81EDE7AE26"
+			rewards: [{
+				count: 2
+				id: "2C3C9B9BBACBBBC8"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "6A0D152949ED24E7"
+				item: { count: 1, id: "modern_industrialization:electric_wiremill" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "6A0D152949ED24E7"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:electric_wiremill" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "2C3C9B9BBACBBBC8"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "4F4161F5B97E27ED"
 			dependencies: ["13FD3F81EDE7AE26"]
-			x: 12.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "14154FFC341210E0"
-					type: "item"
-					item: { count: 1, id: "modern_industrialization:assembler" }
-					count: 1L
-					consume_items: false
-				}
-			]
+			id: "4F4161F5B97E27ED"
 			rewards: [
 				{
 					id: "6B04B2A80735849B"
-					type: "loot"
 					table_id: 6745737485865812687L
+					type: "loot"
 				}
 				{
-					id: "770DD6D44169D821"
-					type: "item"
-					item: { count: 12, id: "kubejs:requisition_chit" }
 					count: 12
+					id: "770DD6D44169D821"
+					item: {
+						count: 12
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "73125222A7FDC147"
@@ -179,6 +164,14 @@
 					xp: 300
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "14154FFC341210E0"
+				item: { count: 1, id: "modern_industrialization:assembler" }
+				type: "item"
+			}]
+			x: 12.0d
+			y: 0.0d
 		}
 	]
 }

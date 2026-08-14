@@ -3,221 +3,207 @@
 	default_quest_shape: ""
 	filename: "584A7E77CC881049"
 	group: "4525BB3160467FCB"
-	icon: { id: "pneumaticcraft:printed_circuit_board" }
+	icon: {
+		id: "pneumaticcraft:printed_circuit_board"
+	}
 	id: "584A7E77CC881049"
 	images: [ ]
 	order_index: 8
 	quest_links: [ ]
 	quests: [
 		{
-			id: "4D41BE537DD35854"
 			dependencies: ["7199A16DB5D83154"]
+			id: "4D41BE537DD35854"
+			rewards: [{
+				count: 2
+				id: "2D39B2A11D9C8EC9"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "39A0F637D663868A"
+				item: { count: 1, id: "pneumaticcraft:air_compressor" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "39A0F637D663868A"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:air_compressor" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "2D39B2A11D9C8EC9"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "2BD4830EE305402B"
 			dependencies: ["4D41BE537DD35854"]
+			id: "2BD4830EE305402B"
+			rewards: [{
+				count: 2
+				id: "51D2EE10ABFE583B"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 24L
+				id: "68DCA895C8D2568D"
+				item: { count: 1, id: "pneumaticcraft:pressure_chamber_wall" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "68DCA895C8D2568D"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:pressure_chamber_wall" }
-					count: 24L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "51D2EE10ABFE583B"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "222E4484F8B79FFC"
 			dependencies: ["2BD4830EE305402B"]
+			id: "222E4484F8B79FFC"
+			rewards: [{
+				count: 2
+				id: "765DD525C96CD7DC"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 32L
+				id: "1BAAD2BEF727856C"
+				item: { count: 1, id: "pneumaticcraft:ingot_iron_compressed" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1BAAD2BEF727856C"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:ingot_iron_compressed" }
-					count: 32L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "765DD525C96CD7DC"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "46498F948F091463"
 			dependencies: ["222E4484F8B79FFC"]
+			id: "46498F948F091463"
+			rewards: [{
+				count: 2
+				id: "406FE8FB22371394"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "1B5E903FEF9C95D7"
+				item: { count: 1, id: "pneumaticcraft:plastic" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: -1.0d
-			tasks: [
-				{
-					id: "1B5E903FEF9C95D7"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:plastic" }
-					count: 16L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "406FE8FB22371394"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "5C4E3C4A5AD4EFA6"
 			dependencies: ["222E4484F8B79FFC"]
+			id: "5C4E3C4A5AD4EFA6"
+			rewards: [{
+				count: 2
+				id: "62968B51B9F73734"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1B0790FB9ACC4B54"
+				item: { count: 1, id: "pneumaticcraft:etching_acid_bucket" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "1B0790FB9ACC4B54"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:etching_acid_bucket" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "62968B51B9F73734"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
+			dependencies: [
+				"46498F948F091463"
+				"5C4E3C4A5AD4EFA6"
+			]
 			id: "6BF38621204B70B0"
-			dependencies: ["46498F948F091463", "5C4E3C4A5AD4EFA6"]
+			rewards: [{
+				count: 2
+				id: "628DE9689CE9AC57"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "21BB88834EEFF181"
+				item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "21BB88834EEFF181"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
-					count: 8L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "628DE9689CE9AC57"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "64CFABA3EB6E9B4D"
 			dependencies: ["6BF38621204B70B0"]
+			id: "64CFABA3EB6E9B4D"
+			rewards: [{
+				count: 2
+				id: "7C3175E67212579A"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "30B684E3A89AD426"
+				item: { count: 1, id: "pneumaticcraft:programmer" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "30B684E3A89AD426"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:programmer" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "7C3175E67212579A"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "53C65BE4DB17F1B9"
 			dependencies: ["64CFABA3EB6E9B4D"]
+			id: "53C65BE4DB17F1B9"
+			rewards: [{
+				count: 2
+				id: "43F84D82E1D9B319"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 2L
+				id: "2F3F97DCB7B971AD"
+				item: { count: 1, id: "pneumaticcraft:logistics_drone" }
+				type: "item"
+			}]
 			x: 12.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "2F3F97DCB7B971AD"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:logistics_drone" }
-					count: 2L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "43F84D82E1D9B319"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "591C65D0AC3AABA7"
 			dependencies: ["53C65BE4DB17F1B9"]
-			x: 14.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "1D280627C677E53A"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
-					count: 64L
-					consume_items: false
-				}
-			]
+			id: "591C65D0AC3AABA7"
 			rewards: [
 				{
 					id: "0E2F8BB68E411C35"
-					type: "loot"
 					table_id: 1398900581490095521L
+					type: "loot"
 				}
 				{
-					id: "52D3D7436F7DC33F"
-					type: "item"
-					item: { count: 16, id: "kubejs:requisition_chit" }
 					count: 16
+					id: "52D3D7436F7DC33F"
+					item: {
+						count: 16
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "19F7A7DF212C44CD"
@@ -225,6 +211,15 @@
 					xp: 350
 				}
 			]
+			tasks: [{
+				consume_items: false
+				count: 64L
+				id: "1D280627C677E53A"
+				item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
+				type: "item"
+			}]
+			x: 14.0d
+			y: 0.0d
 		}
 	]
 }

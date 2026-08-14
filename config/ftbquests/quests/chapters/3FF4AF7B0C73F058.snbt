@@ -3,32 +3,27 @@
 	default_quest_shape: ""
 	filename: "3FF4AF7B0C73F058"
 	group: "4525BB3160467FCB"
-	icon: { id: "draconicevolution:chaotic_core" }
+	icon: {
+		id: "draconicevolution:chaotic_core"
+	}
 	id: "3FF4AF7B0C73F058"
 	images: [ ]
 	order_index: 21
 	quest_links: [ ]
 	quests: [
 		{
-			id: "6C40000000000101"
 			dependencies: ["31C9557D2F51238F"]
+			id: "6C40000000000101"
 			progression_mode: "linear"
-			x: 0.0d
-			y: -3.0d
-			tasks: [
-				{
-					id: "6C40000000000102"
-					type: "advancement"
-					advancement: "afterlight:far_relay_arrival"
-					criterion: ""
-				}
-			]
 			rewards: [
 				{
-					id: "6C40000000000103"
-					type: "item"
-					item: { count: 16, id: "kubejs:requisition_chit" }
 					count: 16
+					id: "6C40000000000103"
+					item: {
+						count: 16
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "6C40000000000104"
@@ -36,95 +31,91 @@
 					xp: 500
 				}
 			]
+			tasks: [{
+				advancement: "afterlight:far_relay_arrival"
+				criterion: ""
+				id: "6C40000000000102"
+				type: "advancement"
+			}]
+			x: 0.0d
+			y: -3.0d
 		}
 		{
-			id: "480D3EAD1B1EA51B"
 			dependencies: ["7E6A0AC031F7F484"]
+			id: "480D3EAD1B1EA51B"
 			progression_mode: "linear"
+			rewards: [{
+				count: 4
+				id: "57178803C8835935"
+				item: {
+					count: 4
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1CCF9FFC57852557"
+				item: { count: 1, id: "kubejs:ascendancy_seal" }
+				type: "item"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "1CCF9FFC57852557"
-					type: "item"
-					item: { count: 1, id: "kubejs:ascendancy_seal" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "57178803C8835935"
-					type: "item"
-					item: { count: 4, id: "kubejs:requisition_chit" }
-					count: 4
-				}
-			]
 		}
 		{
-			id: "3549F08263C17499"
 			dependencies: ["480D3EAD1B1EA51B"]
+			id: "3549F08263C17499"
 			progression_mode: "linear"
+			rewards: [{
+				count: 8
+				id: "47AFC900EB5531B5"
+				item: {
+					count: 8
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [
+				{
+					consume_items: false
+					id: "552233E3840472BD"
+					item: { count: 1, id: "draconicevolution:draconium_core" }
+					type: "item"
+				}
+				{
+					consume_items: false
+					id: "0FD70329B302D235"
+					item: { count: 1, id: "draconicevolution:dislocator" }
+					type: "item"
+				}
+				{
+					consume_items: false
+					id: "069798564A2943FA"
+					item: { count: 1, id: "draconicevolution:module_core" }
+					type: "item"
+				}
+			]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "552233E3840472BD"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:draconium_core" }
-					count: 1L
-					consume_items: false
-				}
-				{
-					id: "0FD70329B302D235"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:dislocator" }
-					count: 1L
-					consume_items: false
-				}
-				{
-					id: "069798564A2943FA"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:module_core" }
-					count: 1L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "47AFC900EB5531B5"
-					type: "item"
-					item: { count: 8, id: "kubejs:requisition_chit" }
-					count: 8
-				}
-			]
 		}
 		{
-			id: "58CB670EA52B1BCE"
 			dependencies: ["3549F08263C17499"]
+			id: "58CB670EA52B1BCE"
 			progression_mode: "linear"
-			x: 4.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "506E30469C21EC85"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:chaotic_core" }
-					count: 1L
-					consume_items: false
-				}
-			]
 			rewards: [
 				{
 					id: "0761B2A37B66A358"
-					type: "loot"
 					table_id: 1895912205423590869L
+					type: "loot"
 				}
 				{
-					id: "3BC27479AA455615"
-					type: "item"
-					item: { count: 16, id: "kubejs:requisition_chit" }
 					count: 16
+					id: "3BC27479AA455615"
+					item: {
+						count: 16
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "48AA57E507A53AE6"
@@ -132,132 +123,141 @@
 					xp: 1000
 				}
 			]
+			tasks: [{
+				consume_items: false
+				id: "506E30469C21EC85"
+				item: { count: 1, id: "draconicevolution:chaotic_core" }
+				type: "item"
+			}]
+			x: 4.0d
+			y: 0.0d
 		}
 		{
-			id: "077BB9C525F29F6D"
+			can_repeat: true
 			dependencies: ["58CB670EA52B1BCE"]
+			id: "077BB9C525F29F6D"
 			progression_mode: "linear"
+			repeat_cooldown: 3600
+			rewards: [{
+				id: "14373B49E45A97AC"
+				item: {
+					count: 1
+					id: "create:creative_motor"
+				}
+				type: "item"
+			}]
+			tasks: [
+				{
+					consume_items: true
+					count: 256L
+					id: "55BDDB1245A09683"
+					item: { count: 1, id: "create:precision_mechanism" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 64L
+					id: "3CEEEDECBD7D1D36"
+					item: { count: 1, id: "create:railway_casing" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					id: "2FB04E1016BE7915"
+					item: { count: 1, id: "draconicevolution:chaotic_core" }
+					type: "item"
+				}
+			]
 			x: 6.0d
 			y: -2.0d
-			can_repeat: true
-			repeat_cooldown: 3600
-			tasks: [
-				{
-					id: "55BDDB1245A09683"
-					type: "item"
-					item: { count: 1, id: "create:precision_mechanism" }
-					count: 256L
-					consume_items: true
-				}
-				{
-					id: "3CEEEDECBD7D1D36"
-					type: "item"
-					item: { count: 1, id: "create:railway_casing" }
-					count: 64L
-					consume_items: true
-				}
-				{
-					id: "2FB04E1016BE7915"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:chaotic_core" }
-					count: 1L
-					consume_items: true
-				}
-			]
-			rewards: [
-				{
-					id: "14373B49E45A97AC"
-					type: "item"
-					item: { count: 1, id: "create:creative_motor" }
-					count: 1
-				}
-			]
 		}
 		{
-			id: "6E81867AC3F34C6B"
+			can_repeat: true
 			dependencies: ["58CB670EA52B1BCE"]
+			id: "6E81867AC3F34C6B"
 			progression_mode: "linear"
+			repeat_cooldown: 3600
+			rewards: [{
+				id: "76163DC425B7683B"
+				item: {
+					count: 1
+					id: "ae2:creative_energy_cell"
+				}
+				type: "item"
+			}]
+			tasks: [
+				{
+					consume_items: true
+					count: 64L
+					id: "336DA1497068D7D5"
+					item: { count: 1, id: "ae2:quantum_entangled_singularity" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "2853E2D7FD71500D"
+					item: { count: 1, id: "ae2:cell_component_256k" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					id: "15F6D0E7985B20A8"
+					item: { count: 1, id: "draconicevolution:chaotic_core" }
+					type: "item"
+				}
+			]
 			x: 6.0d
 			y: 0.0d
-			can_repeat: true
-			repeat_cooldown: 3600
-			tasks: [
-				{
-					id: "336DA1497068D7D5"
-					type: "item"
-					item: { count: 1, id: "ae2:quantum_entangled_singularity" }
-					count: 64L
-					consume_items: true
-				}
-				{
-					id: "2853E2D7FD71500D"
-					type: "item"
-					item: { count: 1, id: "ae2:cell_component_256k" }
-					count: 16L
-					consume_items: true
-				}
-				{
-					id: "15F6D0E7985B20A8"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:chaotic_core" }
-					count: 1L
-					consume_items: true
-				}
-			]
-			rewards: [
-				{
-					id: "76163DC425B7683B"
-					type: "item"
-					item: { count: 1, id: "ae2:creative_energy_cell" }
-					count: 1
-				}
-			]
 		}
 		{
-			id: "14FAB67A6CE71A00"
-			dependencies: ["58CB670EA52B1BCE"]
-			progression_mode: "linear"
-			x: 6.0d
-			y: 2.0d
 			can_repeat: true
+			dependencies: ["58CB670EA52B1BCE"]
+			id: "14FAB67A6CE71A00"
+			progression_mode: "linear"
 			repeat_cooldown: 3600
-			tasks: [
-				{
-					id: "48CA55FFEC0E520A"
-					type: "item"
-					item: { count: 1, id: "mekanism:alloy_atomic" }
-					count: 64L
-					consume_items: true
-				}
-				{
-					id: "03CABFBA9933EB0E"
-					type: "item"
-					item: { count: 1, id: "immersiveengineering:heavy_engineering" }
-					count: 64L
-					consume_items: true
-				}
-				{
-					id: "289A3672715F5EA0"
-					type: "item"
-					item: { count: 1, id: "draconicevolution:chaotic_core" }
-					count: 1L
-					consume_items: true
-				}
-			]
 			rewards: [
 				{
 					id: "0318F8EC25721760"
+					item: {
+						count: 1
+						id: "mekanism:creative_energy_cube"
+					}
 					type: "item"
-					item: { count: 1, id: "mekanism:creative_energy_cube" }
-					count: 1
 				}
 				{
 					id: "69677E965C9E0109"
+					item: {
+						count: 1
+						id: "immersiveengineering:capacitor_creative"
+					}
 					type: "item"
-					item: { count: 1, id: "immersiveengineering:capacitor_creative" }
-					count: 1
 				}
 			]
+			tasks: [
+				{
+					consume_items: true
+					count: 64L
+					id: "48CA55FFEC0E520A"
+					item: { count: 1, id: "mekanism:alloy_atomic" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 64L
+					id: "03CABFBA9933EB0E"
+					item: { count: 1, id: "immersiveengineering:heavy_engineering" }
+					type: "item"
+				}
+				{
+					consume_items: true
+					id: "289A3672715F5EA0"
+					item: { count: 1, id: "draconicevolution:chaotic_core" }
+					type: "item"
+				}
+			]
+			x: 6.0d
+			y: 2.0d
 		}
 	]
 }

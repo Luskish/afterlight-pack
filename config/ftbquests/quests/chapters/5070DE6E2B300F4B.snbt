@@ -3,147 +3,151 @@
 	default_quest_shape: ""
 	filename: "5070DE6E2B300F4B"
 	group: "4A20F33642175B95"
-	icon: { id: "ae2:logic_processor" }
+	icon: {
+		id: "ae2:logic_processor"
+	}
 	id: "5070DE6E2B300F4B"
 	images: [ ]
 	order_index: 6
 	quest_links: [ ]
 	quests: [
 		{
+			dependencies: [
+				"5ADAE277C9FEF0F1"
+				"3107D8813D59B2FF"
+				"66CDE7B061D8DA5C"
+				"42EE25F560AE65CD"
+				"61F5D15817ED5EFD"
+				"7C9EA276C2D84333"
+			]
 			id: "7CB2D7D361BEA4C4"
-			dependencies: ["5ADAE277C9FEF0F1", "3107D8813D59B2FF", "66CDE7B061D8DA5C", "42EE25F560AE65CD", "61F5D15817ED5EFD", "7C9EA276C2D84333"]
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "1CD8C5F9F73C112E"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				id: "74AB10F5C91F1022"
+				type: "checkmark"
+			}]
 			x: 0.0d
 			y: 0.0d
-			tasks: [
-				{
-					id: "74AB10F5C91F1022"
-					type: "checkmark"
-				}
-			]
-			rewards: [
-				{
-					id: "1CD8C5F9F73C112E"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "0880A01ABFC1FAB0"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			id: "0880A01ABFC1FAB0"
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "5F4D9DE69E070802"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 1024L
+				id: "73060E37DDB3FD85"
+				item: { count: 1, id: "create:iron_sheet" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: -2.0d
-			tasks: [
-				{
-					id: "73060E37DDB3FD85"
-					type: "item"
-					item: { count: 1, id: "create:iron_sheet" }
-					count: 1024L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5F4D9DE69E070802"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "44FEE3F4874BF144"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			id: "44FEE3F4874BF144"
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "72C26FBAA231E1D4"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 512L
+				id: "62278CEA0790420C"
+				item: { count: 1, id: "ae2:logic_processor" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: -0.5d
-			tasks: [
-				{
-					id: "62278CEA0790420C"
-					type: "item"
-					item: { count: 1, id: "ae2:logic_processor" }
-					count: 512L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "72C26FBAA231E1D4"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6957697A48020CDB"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			id: "6957697A48020CDB"
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "126A657840ED1B1C"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 512L
+				id: "457E1ACF5AD62CD2"
+				item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 1.0d
-			tasks: [
-				{
-					id: "457E1ACF5AD62CD2"
-					type: "item"
-					item: { count: 1, id: "pneumaticcraft:printed_circuit_board" }
-					count: 512L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "126A657840ED1B1C"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "792E405CE058FD1A"
 			dependencies: ["7CB2D7D361BEA4C4"]
+			id: "792E405CE058FD1A"
 			progression_mode: "linear"
+			rewards: [{
+				count: 2
+				id: "5D403721BE433BE7"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 1024L
+				id: "1679C5714C2F2A74"
+				item: { count: 1, id: "immersiveengineering:ingot_steel" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 2.5d
-			tasks: [
-				{
-					id: "1679C5714C2F2A74"
-					type: "item"
-					item: { count: 1, id: "immersiveengineering:ingot_steel" }
-					count: 1024L
-					consume_items: false
-				}
-			]
-			rewards: [
-				{
-					id: "5D403721BE433BE7"
-					type: "item"
-					item: { count: 2, id: "kubejs:requisition_chit" }
-					count: 2
-				}
-			]
 		}
 		{
-			id: "6524EE78235F0942"
-			dependencies: ["0880A01ABFC1FAB0", "44FEE3F4874BF144", "6957697A48020CDB", "792E405CE058FD1A"]
-			progression_mode: "linear"
-			x: 5.0d
-			y: 0.0d
-			tasks: [
-				{
-					id: "6189BA7C78E546C4"
-					type: "checkmark"
-				}
+			dependencies: [
+				"0880A01ABFC1FAB0"
+				"44FEE3F4874BF144"
+				"6957697A48020CDB"
+				"792E405CE058FD1A"
 			]
+			id: "6524EE78235F0942"
+			progression_mode: "linear"
 			rewards: [
 				{
-					id: "26460851C20380AD"
-					type: "item"
-					item: { count: 10, id: "kubejs:requisition_chit" }
 					count: 10
+					id: "26460851C20380AD"
+					item: {
+						count: 10
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
 				}
 				{
 					id: "12A6C6D52CA0CE7E"
@@ -152,10 +156,16 @@
 				}
 				{
 					id: "48A0AB1E5D0ED4E6"
-					type: "gamestage"
 					stage: "afterlight_cert_infrastructure_ii"
+					type: "gamestage"
 				}
 			]
+			tasks: [{
+				id: "6189BA7C78E546C4"
+				type: "checkmark"
+			}]
+			x: 5.0d
+			y: 0.0d
 		}
 	]
 }

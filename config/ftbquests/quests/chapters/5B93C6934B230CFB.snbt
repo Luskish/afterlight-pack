@@ -3,7 +3,9 @@
 	default_quest_shape: ""
 	filename: "5B93C6934B230CFB"
 	group: "4525BB3160467FCB"
-	icon: { id: "minecraft:redstone" }
+	icon: {
+		id: "minecraft:redstone"
+	}
 	id: "5B93C6934B230CFB"
 	images: [ ]
 	order_index: 1
@@ -11,235 +13,300 @@
 	quests: [
 		{
 			id: "13EDA73D499B3803"
-			x: 0.0d
-			y: 0.0d
+			rewards: [
+				{
+					count: 5
+					id: "1F83DE5047CEE589"
+					item: {
+						count: 5
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "5D425AF78D1664A7"
+					type: "xp"
+					xp: 50
+				}
+			]
 			shape: "gear"
 			size: 1.5d
-			tasks: [
-				{ id: "1772B8092835A5B0"
-				type: "checkmark" }
-			]
-			rewards: [
-				{ id: "1F83DE5047CEE589"
-				type: "item"
-				item: { count: 5, id: "kubejs:requisition_chit" }
-				count: 5 }
-				{ id: "5D425AF78D1664A7"
-				type: "xp"
-				xp: 50 }
-			]
+			tasks: [{
+				id: "1772B8092835A5B0"
+				type: "checkmark"
+			}]
+			x: 0.0d
+			y: 0.0d
 		}
 		{
-			id: "7C8F354295683FD1"
 			dependencies: ["13EDA73D499B3803"]
+			id: "7C8F354295683FD1"
+			rewards: [{
+				count: 3
+				id: "72A5FF054CA665B4"
+				item: {
+					count: 3
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "22BA15F6E2DBC031"
+				item: { count: 1, id: "minecraft:crafting_table" }
+				type: "item"
+			}]
 			x: 2.0d
 			y: 0.0d
-			tasks: [
-				{ id: "22BA15F6E2DBC031"
-				type: "item"
-				item: { count: 1, id: "minecraft:crafting_table" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "72A5FF054CA665B4"
-				type: "item"
-				item: { count: 3, id: "kubejs:requisition_chit" }
-				count: 3 }
-			]
 		}
 		{
-			id: "5212B235023439B9"
 			dependencies: ["7C8F354295683FD1"]
+			id: "5212B235023439B9"
+			rewards: [
+				{
+					count: 3
+					id: "0487712186009640"
+					item: {
+						count: 3
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "51D4A54B51CC33FF"
+					type: "xp"
+					xp: 30
+				}
+			]
+			tasks: [{
+				consume_items: false
+				count: 32L
+				id: "1E71BF7AB5EEE038"
+				item: { count: 1, id: "minecraft:oak_planks" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: -1.0d
-			tasks: [
-				{ id: "1E71BF7AB5EEE038"
-				type: "item"
-				item: { count: 1, id: "minecraft:oak_planks" }
-				count: 32L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "0487712186009640"
-				type: "item"
-				item: { count: 3, id: "kubejs:requisition_chit" }
-				count: 3 }
-				{ id: "51D4A54B51CC33FF"
-				type: "xp"
-				xp: 30 }
-			]
 		}
 		{
-			id: "2B27B2D887F61D7F"
 			dependencies: ["7C8F354295683FD1"]
+			id: "2B27B2D887F61D7F"
+			rewards: [{
+				count: 4
+				id: "02CE685CF915FEB4"
+				item: {
+					count: 4
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "1D73FB79ED38668F"
+				item: { count: 1, id: "minecraft:red_bed" }
+				type: "item"
+			}]
 			x: 4.0d
 			y: 1.0d
-			tasks: [
-				{ id: "1D73FB79ED38668F"
-				type: "item"
-				item: { count: 1, id: "minecraft:red_bed" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "02CE685CF915FEB4"
-				type: "item"
-				item: { count: 4, id: "kubejs:requisition_chit" }
-				count: 4 }
-			]
 		}
 		{
+			dependencies: [
+				"5212B235023439B9"
+				"2B27B2D887F61D7F"
+			]
 			id: "1F1C7A7B6649CDF4"
-			dependencies: ["5212B235023439B9", "2B27B2D887F61D7F"]
+			rewards: [{
+				count: 3
+				id: "73AA114B55D3F3A7"
+				item: {
+					count: 3
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				id: "040959DD95001907"
+				item: { count: 1, id: "minecraft:stone_pickaxe" }
+				type: "item"
+			}]
 			x: 6.0d
 			y: 0.0d
-			tasks: [
-				{ id: "040959DD95001907"
-				type: "item"
-				item: { count: 1, id: "minecraft:stone_pickaxe" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "73AA114B55D3F3A7"
-				type: "item"
-				item: { count: 3, id: "kubejs:requisition_chit" }
-				count: 3 }
-			]
 		}
 		{
-			id: "43B0A7E3442397D3"
 			dependencies: ["1F1C7A7B6649CDF4"]
+			id: "43B0A7E3442397D3"
+			rewards: [
+				{
+					count: 5
+					id: "7AF046D7FFDE842B"
+					item: {
+						count: 5
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "5B166C262B0C7E4D"
+					type: "xp"
+					xp: 60
+				}
+			]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "1B19222FF3A3BA79"
+				item: { count: 1, id: "minecraft:iron_ingot" }
+				type: "item"
+			}]
 			x: 8.0d
 			y: 0.0d
-			tasks: [
-				{ id: "1B19222FF3A3BA79"
-				type: "item"
-				item: { count: 1, id: "minecraft:iron_ingot" }
-				count: 16L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "7AF046D7FFDE842B"
-				type: "item"
-				item: { count: 5, id: "kubejs:requisition_chit" }
-				count: 5 }
-				{ id: "5B166C262B0C7E4D"
-				type: "xp"
-				xp: 60 }
-			]
 		}
 		{
-			id: "43115F61A3212A8C"
 			dependencies: ["43B0A7E3442397D3"]
-			x: 10.0d
-			y: 0.0d
+			id: "43115F61A3212A8C"
+			rewards: [
+				{
+					count: 10
+					id: "1FACCB01FF478653"
+					item: {
+						count: 10
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "30EBFA037EE0879F"
+					type: "xp"
+					xp: 150
+				}
+			]
 			shape: "hexagon"
 			size: 1.5d
-			tasks: [
-				{ id: "39D7C9EFCBCE97E8"
-				type: "item"
-				item: { count: 1, id: "minecraft:redstone_block" }
+			tasks: [{
+				consume_items: true
 				count: 2L
-				consume_items: true }
-			]
-			rewards: [
-				{ id: "1FACCB01FF478653"
+				id: "39D7C9EFCBCE97E8"
+				item: { count: 1, id: "minecraft:redstone_block" }
 				type: "item"
-				item: { count: 10, id: "kubejs:requisition_chit" }
-				count: 10 }
-				{ id: "30EBFA037EE0879F"
-				type: "xp"
-				xp: 150 }
-			]
+			}]
+			x: 10.0d
+			y: 0.0d
 		}
 		{
-			id: "6828B9A1C4BACDF3"
 			dependencies: ["43115F61A3212A8C"]
+			id: "6828B9A1C4BACDF3"
+			rewards: [{
+				count: 2
+				id: "7F0E6088BF4CD810"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 16L
+				id: "757949CF26F11CF6"
+				item: { count: 1, id: "minecraft:torch" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: 2.0d
-			tasks: [
-				{ id: "757949CF26F11CF6"
-				type: "item"
-				item: { count: 1, id: "minecraft:torch" }
-				count: 16L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "7F0E6088BF4CD810"
-				type: "item"
-				item: { count: 2, id: "kubejs:requisition_chit" }
-				count: 2 }
-			]
 		}
 		{
-			id: "038F61D9ECA32B48"
 			dependencies: ["43115F61A3212A8C"]
+			id: "038F61D9ECA32B48"
+			rewards: [{
+				count: 2
+				id: "5A7C865B56AF6379"
+				item: {
+					count: 2
+					id: "kubejs:requisition_chit"
+				}
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: false
+				count: 8L
+				id: "39C717BFFEE3D235"
+				item: { count: 1, id: "minecraft:bread" }
+				type: "item"
+			}]
 			x: 10.0d
 			y: -2.0d
-			tasks: [
-				{ id: "39C717BFFEE3D235"
-				type: "item"
-				item: { count: 1, id: "minecraft:bread" }
-				count: 8L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "5A7C865B56AF6379"
-				type: "item"
-				item: { count: 2, id: "kubejs:requisition_chit" }
-				count: 2 }
-			]
 		}
 		{
-			id: "248FD34379A1F831"
 			dependencies: ["43115F61A3212A8C"]
+			id: "248FD34379A1F831"
+			rewards: [
+				{
+					count: 5
+					id: "3DA932471A728E41"
+					item: {
+						count: 5
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "46ACCAF26365F879"
+					type: "xp"
+					xp: 80
+				}
+			]
+			tasks: [{
+				entity: "minecraft:zombie"
+				id: "08E429B073786DFA"
+				type: "kill"
+				value: 10L
+			}]
 			x: 12.0d
 			y: 1.0d
-			tasks: [
-				{ id: "08E429B073786DFA"
-				type: "kill"
-				entity: "minecraft:zombie"
-				value: 10L }
-			]
-			rewards: [
-				{ id: "3DA932471A728E41"
-				type: "item"
-				item: { count: 5, id: "kubejs:requisition_chit" }
-				count: 5 }
-				{ id: "46ACCAF26365F879"
-				type: "xp"
-				xp: 80 }
-			]
 		}
 		{
+			dependencies: [
+				"6828B9A1C4BACDF3"
+				"038F61D9ECA32B48"
+				"248FD34379A1F831"
+			]
 			id: "6BAD52BAD435FBAD"
-			dependencies: ["6828B9A1C4BACDF3", "038F61D9ECA32B48", "248FD34379A1F831"]
-			x: 14.0d
-			y: 0.0d
+			rewards: [
+				{
+					count: 15
+					id: "3359B2F5C4A16E5E"
+					item: {
+						count: 15
+						id: "kubejs:requisition_chit"
+					}
+					type: "item"
+				}
+				{
+					id: "08E6034371572FA4"
+					type: "xp"
+					xp: 200
+				}
+				{
+					count: 2
+					id: "28D5D76597A28DE5"
+					item: {
+						count: 2
+						id: "minecraft:golden_apple"
+					}
+					type: "item"
+				}
+			]
 			shape: "diamond"
 			size: 1.3d
-			tasks: [
-				{ id: "5A4D1A25468127CA"
-				type: "item"
+			tasks: [{
+				consume_items: false
+				id: "5A4D1A25468127CA"
 				item: { count: 1, id: "sophisticatedbackpacks:backpack" }
-				count: 1L
-				consume_items: false }
-			]
-			rewards: [
-				{ id: "3359B2F5C4A16E5E"
 				type: "item"
-				item: { count: 15, id: "kubejs:requisition_chit" }
-				count: 15 }
-				{ id: "08E6034371572FA4"
-				type: "xp"
-				xp: 200 }
-				{ id: "28D5D76597A28DE5"
-				type: "item"
-				item: { count: 2, id: "minecraft:golden_apple" }
-				count: 2 }
-			]
+			}]
+			x: 14.0d
+			y: 0.0d
 		}
 	]
 }

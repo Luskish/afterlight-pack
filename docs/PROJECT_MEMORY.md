@@ -719,3 +719,15 @@ Every event uses the following fields. Update the original event when its status
 - **Files or Commit:** `docs/releases/1.0.0-rc.2.md`, `docs/HANDOFF.md`, and this memory ledger
 - **Impact:** The release reached a playable and recoverable state without delaying friends for duplicate broad validation.
 - **Follow-up:** Prioritize only critical gameplay regressions and the documented control-plane compatibility fixes. Defer optional polish and exhaustive manual matrices.
+
+### MEM-2026-08-13-059
+
+- **Date:** 2026-08-13
+- **Category:** issue
+- **Status:** open
+- **Subsystem:** FTB Quests, Power Draw
+- **Summary:** The Power Draw Forge Energy task cannot accept energy in RC2 because it omits `max_input`, which FTB Quests 2101.1.30 reads as zero. The quest text also incorrectly implies that energy stored in an ordinary machine is detected passively.
+- **Evidence:** Quest `752409F46D854A92` contains task `14E2851EC7427F5A` with `type: "forge_energy"` and `value: 100000L`, but no `max_input`. Same-version `EnergyTask.readData` assigns an absent `max_input` as zero, and `NeoForgeTaskScreenBlockEntity.TaskEnergyHandler.receiveEnergy` caps every transfer by that value. A Heat Generator holding 64,000 FE therefore reports zero progress, and even a correctly configured FTB Quests Task Screen cannot receive FE from this task definition.
+- **Files or Commit:** `config/ftbquests/quests/chapters/45491A24F6B8C192.snbt` and `config/ftbquests/quests/lang/en_us.snbt`
+- **Impact:** Power Draw blocks the Foothold finale unless an administrator completes quest `752409F46D854A92` manually. Completing only this quest by ID preserves unrelated progression.
+- **Follow-up:** In the next pack update, add an explicit positive `max_input`, rewrite the instructions to explain the Task Screen transfer mechanic, add a regression for every Forge Energy task, and validate the corrected task on a dedicated server before deployment.

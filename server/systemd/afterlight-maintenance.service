@@ -1,18 +1,15 @@
 [Unit]
 Description=AFTERLIGHT daily warned server restart
-Requires=docker.service
-After=docker.service network-online.target
+Requires=docker.service afterlight-ingress-boot-gate.service
+After=docker.service network-online.target afterlight-ingress-boot-gate.service
 ConditionFileIsExecutable=/opt/afterlight/server/afterlight-maintenance.sh
 
 [Service]
 Type=oneshot
-User=afterlight
-Group=afterlight
-SupplementaryGroups=docker
+User=root
+Group=root
 WorkingDirectory=/opt/afterlight
 ExecStart=/opt/afterlight/server/afterlight-maintenance.sh scheduled
-RuntimeDirectory=afterlight
-RuntimeDirectoryMode=0750
 UMask=0077
 TimeoutStartSec=infinity
 NoNewPrivileges=true

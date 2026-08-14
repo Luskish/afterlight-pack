@@ -4,11 +4,9 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/.." && pwd -P)
-OPERATOR=${AFTERLIGHT_OPERATOR:-$SCRIPT_DIR/afterlight-server.sh}
-RUNTIME_DIR=${AFTERLIGHT_RUNTIME_DIR:-/run/afterlight}
+source "$SCRIPT_DIR/afterlight-safety-contract.sh"
+afterlight_load_safety_contract "$SCRIPT_DIR" || exit 1
 MIN_UPTIME_SECONDS=${AFTERLIGHT_MIN_UPTIME_SECONDS:-72000}
-ENV_FILE="$SCRIPT_DIR/.env"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 PLAYER_PATTERN='^There are ([0-9]+) of a max of ([0-9]+) players online: ?([A-Za-z0-9_, ]*)$'
 
@@ -29,6 +27,36 @@ require_command() {
   local command_name=$1
   command -v "$command_name" >/dev/null 2>&1 ||
     fail "Required command not found: $command_name"
+}
+
+stat_value() {
+  local format=$1 target=$2
+  stat -c "$format" "$target" 2>/dev/null || stat -f "$format" "$target"
+}
+
+acquire_shared_lock() {
+  [[ -x "$SAFETY_HELPER" ]] || fail "Safety helper is unavailable"
+  [[ -d "$RUNTIME_DIR" && ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory is missing or unsafe"
+  afterlight_verify_or_reexec_lock 3600 300 "$@"
+}
+
+verify_no_transaction_authority() {
+  [[ -d "$QUARANTINE_DIR" && ! -L "$QUARANTINE_DIR" ]] || fail "Transaction authority directory is missing or unsafe"
+  [[ -d "$SNAPSHOT_ROOT" && ! -L "$SNAPSHOT_ROOT" ]] || fail "Snapshot root is missing or unsafe"
+  local -a common=()
+  while IFS= read -r -d '' value; do common+=("$value"); done < <(afterlight_state_arguments)
+  local authority_status=0
+  if "$SAFETY_HELPER" authority-status \
+    "${common[@]}" >/dev/null 2>&1; then
+    fail "Maintenance rejected because a quest update transaction is active"
+    return 1
+  else
+    authority_status=$?
+  fi
+  if [[ "$authority_status" -ne 3 ]]; then
+    fail "Maintenance rejected because transaction authority is unsafe"
+    return 1
+  fi
 }
 
 player_count() {
@@ -118,6 +146,8 @@ main() {
   local started_at
   local started_epoch
 
+  afterlight_require_control_root || return 1
+
   if [[ "$#" -gt 1 ]]; then
     fail "Usage: server/afterlight-maintenance.sh [idle|scheduled]"
     return 1
@@ -132,7 +162,6 @@ main() {
 
   require_command date || return 1
   require_command docker || return 1
-  require_command flock || return 1
   require_command sed || return 1
   if [[ "$mode" == "scheduled" ]]; then
     require_command sleep || return 1
@@ -150,12 +179,9 @@ main() {
     fi
   fi
 
+  acquire_shared_lock "$@"
+  verify_no_transaction_authority || return 1
   cd "$REPOSITORY_ROOT"
-  exec 9>"$RUNTIME_DIR/maintenance.lock"
-  if ! flock -n 9; then
-    printf 'Maintenance skipped: another maintenance process holds the lock\n'
-    return 0
-  fi
 
   container_id=$(compose ps -q minecraft)
   if [[ -z "$container_id" ]]; then

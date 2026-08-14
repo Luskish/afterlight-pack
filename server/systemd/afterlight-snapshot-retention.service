@@ -1,0 +1,25 @@
+[Unit]
+Description=AFTERLIGHT successful transaction snapshot retention
+Requires=afterlight-ingress-boot-gate.service
+After=afterlight-ingress-boot-gate.service
+ConditionFileIsExecutable=/opt/afterlight/server/afterlight-snapshot-retention.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/afterlight
+ExecStart=/opt/afterlight/server/afterlight-snapshot-retention.sh
+UMask=0077
+TimeoutStartSec=15min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/opt/afterlight /etc/afterlight /var/lib/afterlight/quest-update-quarantine
+ReadWritePaths=/run/afterlight /var/lib/afterlight/quest-update-snapshots

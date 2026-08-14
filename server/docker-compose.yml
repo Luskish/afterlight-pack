@@ -9,14 +9,16 @@ services:
       TYPE: NEOFORGE
       VERSION: "1.21.1"
       NEOFORGE_VERSION: "21.1.248"
+      UID: ${AFTERLIGHT_DATA_UID:?AFTERLIGHT_DATA_UID must be set}
+      GID: ${AFTERLIGHT_DATA_GID:?AFTERLIGHT_DATA_GID must be set}
       PACKWIZ_URL: ${AFTERLIGHT_PACKWIZ_URL:-https://luskish.github.io/afterlight-pack/pack.toml}
       INIT_MEMORY: ${AFTERLIGHT_INIT_MEMORY:-4G}
       MAX_MEMORY: ${AFTERLIGHT_MAX_MEMORY:-10G}
       ENABLE_RCON: "TRUE"
       RCON_PASSWORD_FILE: /run/secrets/rcon_password
     ports:
-      - "25565:25565/tcp"
-      - "24454:24454/udp"
+      - "0.0.0.0:25565:25565/tcp"
+      - "0.0.0.0:24454:24454/udp"
     secrets: [rcon_password]
     volumes:
       - type: bind
@@ -30,6 +32,7 @@ services:
       retries: 48
       start_period: 2m
     mem_limit: ${AFTERLIGHT_MEMORY_LIMIT:-13G}
+    mem_swappiness: 1
     stop_grace_period: 2m
   backup:
     image: itzg/mc-backup:2026.8.0@sha256:ae54d88d1a5dfbc185f1f94e50bb2e9b68484719013f4f21c573422dd4950f32
@@ -63,6 +66,12 @@ services:
         target: /backups
         bind: { create_host_path: false }
       - ./backup-excludes.txt:/etc/afterlight-backup-excludes.txt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "entrypoint-demoter --match /backups sh -ec 'test -r /data/server.properties && test -w /backups && mc-monitor status --host minecraft --port 25565'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 secrets:
   rcon_password:
     file: ${SECRETS_DIR:?SECRETS_DIR must be set}/rcon_password
